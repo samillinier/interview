@@ -1,0 +1,156 @@
+// Prisma Schema for Installer Prescreening System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Installer model - stores all installer information
+model Installer {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Basic Information
+  firstName             String
+  lastName              String
+  email                 String    @unique
+  phone                 String?
+  
+  // Work Experience
+  yearsOfExperience     Int?
+  flooringSpecialties   String?   // JSON array stored as string
+  previousEmployers     String?
+  
+  // Crew & Equipment
+  hasOwnCrew            Boolean   @default(false)
+  crewSize              Int?
+  hasOwnTools           Boolean   @default(false)
+  hasVehicle            Boolean   @default(false)
+  toolsDescription      String?
+  
+  // Service Areas
+  serviceAreas          String?   // JSON array of cities/regions
+  willingToTravel       Boolean   @default(false)
+  maxTravelDistance     Int?      // in miles
+  
+  // Availability
+  availability          String?   // full-time, part-time, contract
+  canStartImmediately   Boolean   @default(false)
+  preferredStartDate    DateTime?
+  
+  // Licensing & Insurance
+  hasInsurance          Boolean   @default(false)
+  insuranceType         String?
+  hasLicense            Boolean   @default(false)
+  licenseNumber         String?
+  licenseExpiry         DateTime?
+  
+  // Prescreening Results
+  status                String    @default("pending") // pending, passed, failed, review
+  passFailReason        String?
+  overallScore          Int?      // 0-100
+  
+  // Notes & Follow-up
+  notes                 String?
+  followUpDate          DateTime?
+  followUpReason        String?
+  
+  // Relationships
+  interviews            Interview[]
+  documents             Document[]
+  communications        Communication[]
+}
+
+// Interview model - stores each prescreening interview
+model Interview {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  installerId     String
+  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  
+  status          String    @default("in_progress") // in_progress, completed, abandoned
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  
+  // Interview data
+  transcript      String?   // Full conversation transcript
+  extractedData   String?   // JSON of extracted information
+  aiAnalysis      String?   // AI's analysis and recommendations
+  
+  // Questions and Answers
+  responses       InterviewResponse[]
+}
+
+// Individual question responses
+model InterviewResponse {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  
+  interviewId     String
+  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  
+  questionId      String
+  questionText    String
+  answerText      String?
+  answerAudio     String?   // Path to audio file if voice response
+  
+  // AI extraction
+  extractedValue  String?
+  confidence      Float?    // 0-1 confidence score
+}
+
+// Documents uploaded by installers
+model Document {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  
+  installerId     String
+  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  
+  type            String    // insurance, license, certification, other
+  name            String
+  url             String
+  verified        Boolean   @default(false)
+  verifiedAt      DateTime?
+  expiryDate      DateTime?
+}
+
+// Communications log
+model Communication {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  
+  installerId     String
+  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  
+  type            String    // email, sms, notification
+  subject         String?
+  content         String
+  status          String    @default("sent") // sent, delivered, failed
+  sentAt          DateTime  @default(now())
+}
+
+// Prescreening criteria configuration
+model ScreeningCriteria {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  name            String
+  description     String?
+  isActive        Boolean   @default(true)
+  
+  // Criteria rules (JSON)
+  rules           String    // JSON array of rules
+  
+  // Weights for scoring
+  weights         String?   // JSON object of field weights
+}
+
