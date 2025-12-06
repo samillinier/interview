@@ -1,8 +1,10 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { User, Bot } from 'lucide-react'
+import { User } from 'lucide-react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import interviewerImage from '@/images/27f1f909-0d63-4757-88e4-0e76f939f363.jpeg'
 
 interface MessageBubbleProps {
   role: 'user' | 'assistant'
@@ -25,12 +27,18 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
       {/* Avatar */}
       <div
         className={cn(
-          'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0',
-          isAssistant ? 'bg-brand-green' : 'bg-primary-100'
+          'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
+          isAssistant ? 'bg-brand-green ring-2 ring-brand-green/20' : 'bg-primary-100'
         )}
       >
         {isAssistant ? (
-          <Bot className="w-5 h-5 text-white" />
+          <Image
+            src={interviewerImage}
+            alt="Interviewer"
+            width={40}
+            height={40}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <User className="w-5 h-5 text-primary-600" />
         )}
@@ -60,4 +68,3 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
     </motion.div>
   )
 }
-

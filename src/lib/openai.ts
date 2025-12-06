@@ -40,11 +40,13 @@ export async function extractInterviewData(transcript: string): Promise<{
   phone?: string
   yearsOfExperience?: number
   flooringSpecialties?: string[]
+  flooringSkills?: string[]
   hasOwnCrew?: boolean
   crewSize?: number
   hasOwnTools?: boolean
   toolsDescription?: string
   hasVehicle?: boolean
+  vehicleDescription?: string
   serviceAreas?: string[]
   willingToTravel?: boolean
   availability?: string
@@ -53,6 +55,20 @@ export async function extractInterviewData(transcript: string): Promise<{
   insuranceType?: string
   hasLicense?: boolean
   licenseInfo?: string
+  // New fields
+  hasGeneralLiability?: boolean
+  hasCommercialAutoLiability?: boolean
+  hasWorkersComp?: boolean
+  hasWorkersCompExemption?: boolean
+  isSunbizRegistered?: boolean
+  isSunbizActive?: boolean
+  hasBusinessLicense?: boolean
+  canPassBackgroundCheck?: boolean
+  backgroundCheckDetails?: string
+  mondayToFridayAvailability?: string
+  saturdayAvailability?: string
+  openToTravel?: boolean
+  travelLocations?: string[]
   additionalNotes?: string
 }> {
   const response = await openai.chat.completions.create({
@@ -60,7 +76,11 @@ export async function extractInterviewData(transcript: string): Promise<{
     messages: [
       {
         role: 'system',
-        content: `You are a data extraction assistant. Extract structured information from the interview transcript and return it as JSON. Be accurate and only include information that was explicitly mentioned. If something wasn't mentioned, don't include that field.
+        content: `You are a data extraction assistant. Extract structured information from the interview transcript and return it as JSON. Be accurate and extract information based on what was mentioned.
+
+IMPORTANT: For yes/no questions, interpret affirmative responses generously:
+- "yes", "yeah", "yep", "sure", "I do", "I have", "correct", "that's right", "affirmative" = true
+- "no", "nope", "I don't", "I don't have", "not yet", "negative" = false
 
 Return a JSON object with these fields (only include fields that have data):
 - firstName: string
@@ -69,20 +89,37 @@ Return a JSON object with these fields (only include fields that have data):
 - phone: string
 - yearsOfExperience: number
 - flooringSpecialties: string[] (e.g., ["hardwood", "laminate", "vinyl"])
+- flooringSkills: string[] (e.g., ["Carpet", "LVP", "Hardwood", "Tile"])
 - hasOwnCrew: boolean
 - crewSize: number
 - hasOwnTools: boolean
 - toolsDescription: string
 - hasVehicle: boolean
+- vehicleDescription: string (make, model, cargo capacity)
 - serviceAreas: string[] (cities/regions)
 - willingToTravel: boolean
 - availability: string (full-time, part-time, contract)
 - canStartImmediately: boolean
-- hasInsurance: boolean
+- hasInsurance: boolean (set to true if they have ANY type of insurance)
 - insuranceType: string
 - hasLicense: boolean
 - licenseInfo: string
-- additionalNotes: string`,
+- hasGeneralLiability: boolean (General Liability Insurance - true if answered yes)
+- hasCommercialAutoLiability: boolean (Commercial Auto Liability Insurance - true if answered yes)
+- hasWorkersComp: boolean (Worker's Compensation Insurance - true if answered yes)
+- hasWorkersCompExemption: boolean (Worker's Comp Exemption - true if answered yes)
+- isSunbizRegistered: boolean (Registered with Florida SunBiz - true if answered yes)
+- isSunbizActive: boolean (SunBiz registration is active - true if answered yes)
+- hasBusinessLicense: boolean (Business Tax Receipt/Business License - true if answered yes)
+- canPassBackgroundCheck: boolean (can pass background check - true if answered yes)
+- backgroundCheckDetails: string (details about background issues if any)
+- mondayToFridayAvailability: string (e.g., "available", "full-time", "part-time")
+- saturdayAvailability: string (e.g., "available", "not available", "half-day")
+- openToTravel: boolean (open to traveling for work - true if answered yes)
+- travelLocations: string[] (locations willing to travel to, e.g., ["Tampa", "Sarasota", "Naples"])
+- additionalNotes: string
+
+NOTE: If someone answers "yes" to General Liability, Commercial Auto, or Worker's Comp, also set hasInsurance to true.`,
       },
       {
         role: 'user',

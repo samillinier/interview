@@ -13,9 +13,11 @@ import {
   Loader2,
   MessageSquare,
 } from 'lucide-react'
+import Image from 'next/image'
 import MessageBubble from '@/components/MessageBubble'
 import SpeakingAnimation from '@/components/SpeakingAnimation'
 import { getInterviewQuestions } from '@/lib/questions'
+import interviewerImage from '@/images/27f1f909-0d63-4757-88e4-0e76f939f363.jpeg'
 
 interface Message {
   id: string
@@ -445,8 +447,14 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
               exit={{ opacity: 0 }}
               className="flex items-center gap-3"
             >
-              <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center">
-                <Volume2 className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20">
+                <Image
+                  src={interviewerImage}
+                  alt="Interviewer"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <SpeakingAnimation isActive={true} />
             </motion.div>

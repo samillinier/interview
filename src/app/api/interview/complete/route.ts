@@ -35,14 +35,25 @@ export async function POST(request: NextRequest) {
       crewSize: extractedData.crewSize,
       hasOwnTools: extractedData.hasOwnTools,
       hasInsurance: extractedData.hasInsurance,
+      hasGeneralLiability: extractedData.hasGeneralLiability,
+      hasCommercialAutoLiability: extractedData.hasCommercialAutoLiability,
+      hasWorkersComp: extractedData.hasWorkersComp,
+      hasWorkersCompExemption: extractedData.hasWorkersCompExemption,
       hasLicense: extractedData.hasLicense,
+      hasBusinessLicense: extractedData.hasBusinessLicense,
+      isSunbizRegistered: extractedData.isSunbizRegistered,
       flooringSpecialties: extractedData.flooringSpecialties,
+      flooringSkills: extractedData.flooringSkills,
     })
 
     // Determine pass/fail
     const { passed, reason } = determinePassFail(score, {
       yearsOfExperience: extractedData.yearsOfExperience,
       hasInsurance: extractedData.hasInsurance,
+      hasGeneralLiability: extractedData.hasGeneralLiability,
+      hasCommercialAutoLiability: extractedData.hasCommercialAutoLiability,
+      hasWorkersComp: extractedData.hasWorkersComp,
+      hasWorkersCompExemption: extractedData.hasWorkersCompExemption,
     })
 
     // Update installer record with extracted data
@@ -56,11 +67,15 @@ export async function POST(request: NextRequest) {
         flooringSpecialties: extractedData.flooringSpecialties
           ? JSON.stringify(extractedData.flooringSpecialties)
           : null,
+        flooringSkills: extractedData.flooringSkills
+          ? JSON.stringify(extractedData.flooringSkills)
+          : null,
         hasOwnCrew: extractedData.hasOwnCrew ?? false,
         crewSize: extractedData.crewSize,
         hasOwnTools: extractedData.hasOwnTools ?? false,
         toolsDescription: extractedData.toolsDescription,
         hasVehicle: extractedData.hasVehicle ?? false,
+        vehicleDescription: extractedData.vehicleDescription,
         serviceAreas: extractedData.serviceAreas
           ? JSON.stringify(extractedData.serviceAreas)
           : null,
@@ -70,6 +85,26 @@ export async function POST(request: NextRequest) {
         hasInsurance: extractedData.hasInsurance ?? false,
         insuranceType: extractedData.insuranceType,
         hasLicense: extractedData.hasLicense ?? false,
+        // New insurance & licensing fields
+        hasGeneralLiability: extractedData.hasGeneralLiability ?? false,
+        hasCommercialAutoLiability: extractedData.hasCommercialAutoLiability ?? false,
+        hasWorkersComp: extractedData.hasWorkersComp ?? false,
+        hasWorkersCompExemption: extractedData.hasWorkersCompExemption ?? false,
+        isSunbizRegistered: extractedData.isSunbizRegistered ?? false,
+        isSunbizActive: extractedData.isSunbizActive ?? false,
+        hasBusinessLicense: extractedData.hasBusinessLicense ?? false,
+        // Background check
+        canPassBackgroundCheck: extractedData.canPassBackgroundCheck,
+        backgroundCheckDetails: extractedData.backgroundCheckDetails,
+        // Schedule availability
+        mondayToFridayAvailability: extractedData.mondayToFridayAvailability,
+        saturdayAvailability: extractedData.saturdayAvailability,
+        // Travel
+        openToTravel: extractedData.openToTravel ?? false,
+        travelLocations: extractedData.travelLocations
+          ? JSON.stringify(extractedData.travelLocations)
+          : null,
+        // Status & scoring
         status: passed ? 'passed' : 'failed',
         passFailReason: reason,
         overallScore: score,

@@ -49,6 +49,31 @@ model Installer {
   hasLicense            Boolean   @default(false)
   licenseNumber         String?
   licenseExpiry         DateTime?
+  hasGeneralLiability         Boolean   @default(false)
+  hasCommercialAutoLiability  Boolean   @default(false)
+  hasWorkersComp              Boolean   @default(false)
+  hasWorkersCompExemption     Boolean   @default(false)
+  isSunbizRegistered          Boolean   @default(false)
+  isSunbizActive              Boolean   @default(false)
+  hasBusinessLicense          Boolean   @default(false)
+  
+  // Background Check
+  canPassBackgroundCheck      Boolean?
+  backgroundCheckDetails      String?
+  
+  // Vehicle
+  vehicleDescription          String?
+  
+  // Skills
+  flooringSkills              String?   // JSON array of skills
+  
+  // Schedule Availability
+  mondayToFridayAvailability  String?
+  saturdayAvailability        String?
+  
+  // Travel
+  openToTravel                Boolean   @default(false)
+  travelLocations             String?   // JSON array of locations
   
   // Prescreening Results
   status                String    @default("pending") // pending, passed, failed, review

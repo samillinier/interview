@@ -1,19 +1,33 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-  Users,
-  CheckCircle,
-  Clock,
-  BarChart3,
-  ArrowRight,
-  Sparkles,
-} from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import teamImage from '@/images/freepik_br_e1727cfa-604b-4a3f-becf-722dc82dc811.png'
+
+const rotatingWords = [
+  { text: 'Automate', color: 'text-brand-green' },
+  { text: 'Excel', color: 'text-brand-yellow' },
+  { text: 'Upgrade', color: 'text-brand-orange' },
+  { text: 'Simplify', color: 'text-brand-green' },
+]
 
 export default function HomePage() {
+  const { data: session } = useSession()
+  const [wordIndex, setWordIndex] = useState(0)
+  const currentWord = rotatingWords[wordIndex]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % rotatingWords.length)
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -30,18 +44,50 @@ export default function HomePage() {
               />
             </div>
             <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="text-primary-600 hover:text-brand-green transition-colors font-medium"
-              >
-                Dashboard
-              </Link>
+              {session ? (
+                // Logged in - show Dashboard link
+                <Link
+                  href="/dashboard"
+                  className="text-primary-600 hover:text-brand-green transition-colors font-medium"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                // Not logged in - show Sign In
+                <Link
+                  href="/auth/signin"
+                  className="text-primary-600 hover:text-brand-green transition-colors font-medium"
+                >
+                  Sign In
+                </Link>
+              )}
               <Link
                 href="/interview"
                 className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
               >
                 Start Interview
               </Link>
+              {session && (
+                // Profile photo on the right
+                <Link
+                  href="/dashboard"
+                  className="flex items-center"
+                >
+                  {session.user?.image ? (
+                    <Image
+                      src={session.user.image}
+                      alt={session.user.name || 'User'}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full ring-2 ring-brand-green/20"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-medium ring-2 ring-brand-green/20">
+                      {session.user?.name?.charAt(0) || session.user?.email?.charAt(0)}
+                    </div>
+                  )}
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -54,10 +100,12 @@ export default function HomePage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 bg-primary-50 text-primary-700 px-4 py-2 rounded-full text-sm font-medium mb-6"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 via-pink-50 to-orange-50 px-4 py-2 rounded-full text-sm font-semibold mb-6 border border-violet-100/50"
             >
-              <Sparkles className="w-4 h-4" />
-              AI-Powered Prescreening
+              <Sparkles className="w-4 h-4 text-violet-500" />
+              <span className="bg-gradient-to-r from-violet-600 via-pink-500 to-orange-500 bg-clip-text text-transparent">
+                AI-Powered Prescreening
+              </span>
             </motion.div>
 
             <motion.h1
@@ -66,7 +114,22 @@ export default function HomePage() {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-bold text-primary-900 mb-6 leading-tight"
             >
-              FIS Automate
+              <span className="text-primary-500">FIS</span>{' '}
+              <span className="inline-block relative w-[180px] md:w-[260px] text-left">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={wordIndex}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -20, opacity: 0 }}
+                    transition={{ duration: 0.4, ease: 'easeInOut' }}
+                    className={`absolute left-0 whitespace-nowrap ${currentWord.color}`}
+                  >
+                    {currentWord.text}
+                  </motion.span>
+                </AnimatePresence>
+                <span className="invisible">Automate</span>
+              </span>
               <br />
               <span className="text-primary-500">Installer Recruitment</span>
             </motion.h1>
@@ -105,32 +168,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-brand-green">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { label: 'Time Saved', value: '80%', icon: Clock },
-              { label: 'Qualified Leads', value: '3x', icon: CheckCircle },
-              { label: 'Cost Reduction', value: '60%', icon: BarChart3 },
-              { label: 'Candidates Processed', value: '24/7', icon: Users },
-            ].map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <stat.icon className="w-8 h-8 text-white/70 mx-auto mb-3" />
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1">
-                  {stat.value}
-                </div>
-                <div className="text-white/80">{stat.label}</div>
-              </motion.div>
-            ))}
-          </div>
+      {/* Team Image Section */}
+      <section className="pt-8 pb-0 bg-brand-green overflow-hidden">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex justify-center items-end"
+          >
+            <Image
+              src={teamImage}
+              alt="Our Team"
+              width={600}
+              height={300}
+              className="h-36 w-auto object-contain object-bottom"
+            />
+          </motion.div>
         </div>
       </section>
 
