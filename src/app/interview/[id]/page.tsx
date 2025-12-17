@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import MessageBubble from '@/components/MessageBubble'
-import SpeakingAnimation from '@/components/SpeakingAnimation'
 import { getInterviewQuestions } from '@/lib/questions'
 import interviewerImage from '@/images/27f1f909-0d63-4757-88e4-0e76f939f363.jpeg'
 
@@ -58,10 +57,88 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   const [pendingResponse, setPendingResponse] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
+  // Installation Experience state
+  const [installationExperience, setInstallationExperience] = useState<Record<string, { canDo: boolean; capacity: string; isSkilled: boolean }>>({
+    'Carpet': { canDo: false, capacity: '', isSkilled: false },
+    'Vinyl Sheet (Roll)': { canDo: false, capacity: '', isSkilled: false },
+    'LVP /LVT': { canDo: false, capacity: '', isSkilled: false },
+    'Hardwood / Engineered Hardwood': { canDo: false, capacity: '', isSkilled: false },
+    'Laminate': { canDo: false, capacity: '', isSkilled: false },
+    'Ceramic Tile': { canDo: false, capacity: '', isSkilled: false },
+  })
+
+  // Travel locations state
+  const [selectedTravelLocations, setSelectedTravelLocations] = useState<string[]>([])
+  const travelLocationOptions = [
+    'Albany, GA',
+    'Dothan, AL',
+    'Gainesville',
+    'Lakeland',
+    'Naples',
+    'Panama City',
+    'Sarasota',
+    'Tallahassee',
+    'Tampa',
+    'Wildwood',
+  ]
+
+  // Flooring skills state
+  const [selectedFlooringSkills, setSelectedFlooringSkills] = useState<string[]>([])
+  const flooringSkillOptions = [
+    'Carpet',
+    'Vinyl Sheet Roll',
+    'LVP (Luxury Vinyl Plank)',
+    'LVT (Luxury Vinyl Tile)',
+    'VCT (Vinyl Composition Tile)',
+    'Hardwood',
+    'Engineered Hardwood',
+    'Bamboo',
+    'Laminate',
+    'Ceramic Tile',
+    'Porcelain Tile',
+    'Stone Tile',
+    'Carpet Tile',
+  ]
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Tab shake effect when Anna is speaking
+  useEffect(() => {
+    if (isSpeaking && typeof document !== 'undefined') {
+      const originalTitle = document.title
+      let shakeCount = 0
+      const maxShakes = 30
+      
+      const shakeInterval = setInterval(() => {
+        if (shakeCount < maxShakes && isSpeaking) {
+          // Alternate between different indicators to create a "shake" effect
+          const indicators = ['🔊', '●', '○']
+          const indicator = indicators[shakeCount % indicators.length]
+          document.title = shakeCount % 2 === 0 ? `${indicator} ${originalTitle}` : originalTitle
+          shakeCount++
+        } else {
+          document.title = originalTitle
+          if (shakeCount >= maxShakes) {
+            clearInterval(shakeInterval)
+          }
+        }
+      }, 150)
+
+      return () => {
+        clearInterval(shakeInterval)
+        document.title = originalTitle
+      }
+    } else if (typeof document !== 'undefined') {
+      // Reset title when not speaking
+      const originalTitle = document.title.replace(/^[🔊●○]\s*/, '')
+      if (document.title !== originalTitle) {
+        document.title = originalTitle
+      }
+    }
+  }, [isSpeaking])
 
   // Initialize interview
   useEffect(() => {
@@ -106,13 +183,23 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
   const playAudio = useCallback((base64Audio: string) => {
     setIsSpeaking(true)
-    const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`)
-    audioRef.current = audio
-    audio.onended = () => setIsSpeaking(false)
-    audio.play().catch((err) => {
-      console.error('Error playing audio:', err)
+    try {
+      // OpenAI TTS returns MP3 format
+      const audio = new Audio(`data:audio/mpeg;base64,${base64Audio}`)
+      audioRef.current = audio
+      audio.onended = () => setIsSpeaking(false)
+      audio.onerror = (err) => {
+        console.error('Error playing audio:', err)
+        setIsSpeaking(false)
+      }
+      audio.play().catch((err) => {
+        console.error('Error playing audio:', err)
+        setIsSpeaking(false)
+      })
+    } catch (error) {
+      console.error('Error creating audio:', error)
       setIsSpeaking(false)
-    })
+    }
   }, [])
 
   const startRecording = async () => {
@@ -265,6 +352,42 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     const text = textInput
     setTextInput('')
     await processResponse(undefined, text)
+  }
+
+  // Get current question type
+  const currentQuestion = questions[currentQuestionIndex]
+  const questionType = currentQuestion ? (currentQuestion as any)?.type : undefined
+
+  // Handle installation experience submission
+  const handleInstallationExperienceSubmit = async () => {
+    const response = Object.entries(installationExperience)
+      .map(([type, data]) => {
+        if (!data.canDo) return null
+        const parts = [type]
+        if (data.capacity) parts.push(`${data.capacity} sq ft/day`)
+        if (data.isSkilled) parts.push('(Skilled)')
+        return parts.join(' - ')
+      })
+      .filter(Boolean)
+      .join(', ')
+    
+    await processResponse(undefined, response || 'None')
+  }
+
+  // Handle travel locations submission
+  const handleTravelLocationsSubmit = async () => {
+    const response = selectedTravelLocations.length > 0 
+      ? selectedTravelLocations.join(', ')
+      : 'None'
+    await processResponse(undefined, response)
+  }
+
+  // Handle flooring skills submission
+  const handleFlooringSkillsSubmit = async () => {
+    const response = selectedFlooringSkills.length > 0 
+      ? selectedFlooringSkills.join(', ')
+      : 'None'
+    await processResponse(undefined, response)
   }
 
   const completeInterview = async () => {
@@ -439,26 +562,6 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             ))}
           </AnimatePresence>
 
-          {/* Speaking animation */}
-          {isSpeaking && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20">
-                <Image
-                  src={interviewerImage}
-                  alt="Interviewer"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <SpeakingAnimation isActive={true} />
-            </motion.div>
-          )}
 
           {/* Processing indicator */}
           {isProcessing && (
@@ -480,8 +583,151 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       <div className="border-t border-primary-100 bg-white sticky bottom-0">
         <div className="max-w-3xl mx-auto px-4 py-6">
           
+          {/* Flooring Skills Selection UI */}
+          {questionType === 'flooring_skills' && (
+            <div className="space-y-4">
+              <div className="bg-primary-50 rounded-xl p-4">
+                <p className="text-sm text-slate-600 mb-4">Select all flooring types you are skilled in installing:</p>
+                <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
+                  {flooringSkillOptions.map((skill) => (
+                    <button
+                      key={skill}
+                      onClick={() => {
+                        setSelectedFlooringSkills(prev =>
+                          prev.includes(skill)
+                            ? prev.filter(s => s !== skill)
+                            : [...prev, skill]
+                        )
+                      }}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                        selectedFlooringSkills.includes(skill)
+                          ? 'bg-brand-green text-white'
+                          : 'bg-white text-slate-700 border border-primary-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {selectedFlooringSkills.includes(skill) && '✓ '}
+                      {skill}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleFlooringSkillsSubmit}
+                disabled={isProcessing || isSpeaking || selectedFlooringSkills.length === 0}
+                className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* Installation Experience Selection UI */}
+          {questionType === 'installation_experience' && (
+            <div className="space-y-4">
+              <div className="bg-primary-50 rounded-xl p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                {Object.entries(installationExperience).map(([type, data]) => (
+                  <div key={type} className="bg-white rounded-lg p-4 border border-primary-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="font-medium text-primary-900">{type}</label>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setInstallationExperience(prev => ({
+                            ...prev,
+                            [type]: { ...prev[type], canDo: !prev[type].canDo }
+                          }))}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            data.canDo
+                              ? 'bg-brand-green text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {data.canDo ? 'Yes' : 'No'}
+                        </button>
+                        {data.canDo && (
+                          <button
+                            onClick={() => setInstallationExperience(prev => ({
+                              ...prev,
+                              [type]: { ...prev[type], isSkilled: !prev[type].isSkilled }
+                            }))}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              data.isSkilled
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {data.isSkilled ? '✓ Skilled' : 'Mark Skilled'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {data.canDo && (
+                      <div className="mt-2">
+                        <label className="block text-sm text-slate-600 mb-1">Daily Square Footage Capacity</label>
+                        <input
+                          type="text"
+                          value={data.capacity}
+                          onChange={(e) => setInstallationExperience(prev => ({
+                            ...prev,
+                            [type]: { ...prev[type], capacity: e.target.value }
+                          }))}
+                          placeholder="e.g., 500"
+                          className="w-full px-3 py-2 rounded-lg border border-primary-200 focus:border-brand-green focus:ring-0 outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleInstallationExperienceSubmit}
+                disabled={isProcessing || isSpeaking}
+                className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* Travel Locations Selection UI */}
+          {questionType === 'travel_availability' && (
+            <div className="space-y-4">
+              <div className="bg-primary-50 rounded-xl p-4">
+                <p className="text-sm text-slate-600 mb-4">Select all locations you're willing to travel to:</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {travelLocationOptions.map((location) => (
+                    <button
+                      key={location}
+                      onClick={() => {
+                        setSelectedTravelLocations(prev =>
+                          prev.includes(location)
+                            ? prev.filter(l => l !== location)
+                            : [...prev, location]
+                        )
+                      }}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                        selectedTravelLocations.includes(location)
+                          ? 'bg-brand-green text-white'
+                          : 'bg-white text-slate-700 border border-primary-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {selectedTravelLocations.includes(location) && '✓ '}
+                      {location}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleTravelLocationsSubmit}
+                disabled={isProcessing || isSpeaking}
+                className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
           {/* Pending Response Preview - for editing before sending */}
-          {pendingResponse !== null ? (
+          {pendingResponse !== null && questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -526,7 +772,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 </button>
               </div>
             </motion.div>
-          ) : (
+          ) : questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' ? (
             <>
               {/* Mode toggle */}
               <div className="flex justify-center mb-4">
@@ -618,7 +864,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 </div>
               )}
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

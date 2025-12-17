@@ -50,11 +50,43 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: userResponse },
     ]
 
+    // Determine the actual next question index (accounting for conditional skips)
+    let actualNextQuestionIndex = currentQuestionIndex + 1
+    
+    // Skip background_details if user answered "Yes" to background_check
+    if (currentQuestion.id === 'background_check' && actualNextQuestionIndex < questions.length) {
+      const nextQuestion = questions[actualNextQuestionIndex]
+      if (nextQuestion.id === 'background_details') {
+        const responseLower = userResponse.toLowerCase().trim()
+        const positiveAnswers = ['yes', 'y', 'yeah', 'yep', 'sure', 'absolutely', 'of course', 'definitely']
+        const isPositive = positiveAnswers.some(answer => responseLower.includes(answer))
+        
+        if (isPositive) {
+          actualNextQuestionIndex = actualNextQuestionIndex + 1
+        }
+      }
+    }
+
+    // Skip crew_size if user answered "No" to crew question
+    if (currentQuestion.id === 'crew' && actualNextQuestionIndex < questions.length) {
+      const nextQuestion = questions[actualNextQuestionIndex]
+      if (nextQuestion.id === 'crew_size') {
+        const responseLower = userResponse.toLowerCase().trim()
+        const negativeAnswers = ['no', 'n', 'nope', 'nah', 'none', 'solo', 'alone', 'by myself', 'myself']
+        const isNegative = negativeAnswers.some(answer => responseLower.includes(answer))
+        
+        if (isNegative) {
+          actualNextQuestionIndex = actualNextQuestionIndex + 1
+        }
+      }
+    }
+
     // Generate AI response with language
     const aiResponse = await generateInterviewResponse(
       updatedHistory,
       currentQuestionIndex,
-      language as 'en' | 'es'
+      language as 'en' | 'es',
+      actualNextQuestionIndex
     )
 
     // Update conversation history with AI response
@@ -77,15 +109,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if interview is complete
+    // Use the calculated next question index (already accounts for conditional skips)
     const nextQuestionIndex = aiResponse.shouldMoveToNextQuestion
-      ? currentQuestionIndex + 1
+      ? actualNextQuestionIndex
       : currentQuestionIndex
 
-    const isComplete = nextQuestionIndex >= questions.length
+    // Check if this is the closing question or if we've reached the end
+    const isClosingQuestion = currentQuestion.id === 'closing'
+    const isComplete = nextQuestionIndex >= questions.length || isClosingQuestion
 
     if (isComplete) {
-      // Mark interview as completed
+      // Mark interview as completed (but don't calculate score here - let completeInterview do it)
       await prisma.interview.update({
         where: { id: interviewId },
         data: {
@@ -100,7 +134,7 @@ export async function POST(request: NextRequest) {
     let audioBase64 = null
     try {
       const audioBuffer = await generateSpeech(aiResponse.response)
-      audioBase64 = Buffer.from(audioBuffer).toString('base64')
+      audioBase64 = audioBuffer.toString('base64')
     } catch (error) {
       console.error('Error generating speech:', error)
     }

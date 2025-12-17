@@ -3,7 +3,7 @@
 export const INTERVIEW_QUESTIONS_EN = [
   {
     id: 'intro',
-    text: "Hello and thank you for your interest in becoming an independent service provider with Floor Interior Service. I'll be guiding you through a brief qualification screening. This will only take a few minutes. Let's begin with your full legal name, please.",
+    text: "Hello, I'm Anna from Floor Interior Service. Thank you for your interest in becoming an installer with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
     field: 'name',
     required: true,
   },
@@ -24,6 +24,7 @@ export const INTERVIEW_QUESTIONS_EN = [
     text: 'Which flooring types are you skilled in installing? Please indicate all that apply: Carpet, Vinyl Sheet Roll, LVP (Luxury Vinyl Plank), LVT (Luxury Vinyl Tile), VCT (Vinyl Composition Tile), Hardwood, Engineered Hardwood, Bamboo, Laminate, Ceramic Tile, Porcelain Tile, Stone Tile, or Carpet Tile.',
     field: 'flooringSkills',
     required: true,
+    type: 'flooring_skills', // Special type for interactive UI
   },
   {
     id: 'general_liability',
@@ -45,9 +46,15 @@ export const INTERVIEW_QUESTIONS_EN = [
   },
   {
     id: 'crew',
-    text: 'Do you work with a crew or helper? If so, how many team members do you typically employ?',
-    field: 'crew',
+    text: 'Do you work with a crew or helper?',
+    field: 'hasCrew',
     required: true,
+  },
+  {
+    id: 'crew_size',
+    text: 'How many team members do you typically employ?',
+    field: 'crewSize',
+    required: false,
   },
   {
     id: 'workers_comp_exemption',
@@ -114,6 +121,7 @@ export const INTERVIEW_QUESTIONS_EN = [
     text: 'Which of the following locations would you be willing to travel to for work? Please indicate all that apply: Albany, Dothan, Gainesville, Lakeland, Naples, Panama City, Sarasota, Tallahassee, Tampa, or Wildwood.',
     field: 'travelLocations',
     required: false,
+    type: 'travel_availability', // Special type for interactive UI
   },
   {
     id: 'closing',
@@ -126,7 +134,7 @@ export const INTERVIEW_QUESTIONS_EN = [
 export const INTERVIEW_QUESTIONS_ES = [
   {
     id: 'intro',
-    text: "Hola y gracias por su interés en convertirse en un proveedor de servicios independiente con Floor Interior Service. Le guiaré a través de una breve evaluación de calificación. Esto solo tomará unos minutos. Comencemos con su nombre legal completo, por favor.",
+    text: "Hola, soy Anna de Floor Interior Service. Gracias por su interés en convertirse en instalador con nosotros. Realizaré una breve evaluación de calificación para conocer su experiencia, certificaciones, equipo, capacidades de instalación y disponibilidad. Esto tomará solo unos minutos. Comencemos con su nombre y apellido.",
     field: 'name',
     required: true,
   },
@@ -147,6 +155,7 @@ export const INTERVIEW_QUESTIONS_ES = [
     text: '¿En qué tipos de pisos tiene habilidad para instalar? Por favor indique todos los que apliquen: Alfombra, Rollo de Vinilo, LVP (Tablón de Vinilo de Lujo), LVT (Loseta de Vinilo de Lujo), VCT (Loseta de Composición de Vinilo), Madera Dura, Madera de Ingeniería, Bambú, Laminado, Azulejo Cerámico, Azulejo de Porcelana, Azulejo de Piedra, o Loseta de Alfombra.',
     field: 'flooringSkills',
     required: true,
+    type: 'flooring_skills',
   },
   {
     id: 'general_liability',
@@ -168,9 +177,15 @@ export const INTERVIEW_QUESTIONS_ES = [
   },
   {
     id: 'crew',
-    text: '¿Trabaja con un equipo o ayudante? Si es así, ¿cuántos miembros del equipo emplea normalmente?',
-    field: 'crew',
+    text: '¿Trabaja con un equipo o ayudante?',
+    field: 'hasCrew',
     required: true,
+  },
+  {
+    id: 'crew_size',
+    text: '¿Cuántos miembros del equipo emplea normalmente?',
+    field: 'crewSize',
+    required: false,
   },
   {
     id: 'workers_comp_exemption',
@@ -237,6 +252,7 @@ export const INTERVIEW_QUESTIONS_ES = [
     text: '¿A cuáles de las siguientes ubicaciones estaría dispuesto a viajar para trabajar? Por favor indique todas las que apliquen: Albany, Dothan, Gainesville, Lakeland, Naples, Panama City, Sarasota, Tallahassee, Tampa, o Wildwood.',
     field: 'travelLocations',
     required: false,
+    type: 'travel_availability', // Special type for interactive UI
   },
   {
     id: 'closing',

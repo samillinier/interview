@@ -28,7 +28,7 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
       <div
         className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
-          isAssistant ? 'bg-brand-green ring-2 ring-brand-green/20' : 'bg-primary-100'
+          isAssistant ? 'bg-brand-green ring-2 ring-brand-green/20' : 'bg-brand-green/20 ring-2 ring-brand-green/30'
         )}
       >
         {isAssistant ? (
@@ -40,7 +40,7 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
             className="w-full h-full object-cover"
           />
         ) : (
-          <User className="w-5 h-5 text-primary-600" />
+          <User className="w-5 h-5 text-brand-green" />
         )}
       </div>
 
@@ -50,7 +50,7 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
           'rounded-2xl px-4 py-3',
           isAssistant
             ? 'bg-primary-100 text-primary-900 rounded-tl-none'
-            : 'bg-primary-900 text-white rounded-tr-none'
+            : 'bg-brand-green text-white rounded-tr-none'
         )}
       >
         <p className="text-sm leading-relaxed">{content}</p>
@@ -58,7 +58,7 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
           <p
             className={cn(
               'text-xs mt-1',
-              isAssistant ? 'text-primary-400' : 'text-primary-300'
+              isAssistant ? 'text-primary-400' : 'text-white'
             )}
           >
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
