@@ -9,12 +9,15 @@ export async function GET() {
     hasTenantId: !!process.env.AZURE_AD_TENANT_ID,
     tenantId: process.env.AZURE_AD_TENANT_ID?.trim() || 'not set',
     tenantIdRaw: process.env.AZURE_AD_TENANT_ID ? JSON.stringify(process.env.AZURE_AD_TENANT_ID) : 'not set',
-    nextAuthUrl: process.env.NEXTAUTH_URL || 'NOT SET - THIS IS THE PROBLEM!',
-    nextPublicAppUrl: process.env.NEXT_PUBLIC_APP_URL || 'not set',
-    nodeEnv: process.env.NODE_ENV,
-    expectedCallback: process.env.NEXTAUTH_URL 
-      ? `${process.env.NEXTAUTH_URL}/api/auth/callback/azure-ad`
-      : 'Cannot determine - NEXTAUTH_URL not set',
+      nextAuthUrl: process.env.NEXTAUTH_URL || 'NOT SET - THIS IS THE PROBLEM!',
+      nextPublicAppUrl: process.env.NEXT_PUBLIC_APP_URL || 'not set',
+      hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
+      nodeEnv: process.env.NODE_ENV,
+      expectedCallback: process.env.NEXTAUTH_URL 
+        ? `${process.env.NEXTAUTH_URL}/api/auth/callback/azure-ad`
+        : 'Cannot determine - NEXTAUTH_URL not set',
+      tenantIdLength: process.env.AZURE_AD_TENANT_ID?.length || 0,
+      tenantIdHasNewline: process.env.AZURE_AD_TENANT_ID?.includes('\n') || false,
   }
 
   return NextResponse.json(debugInfo, {
