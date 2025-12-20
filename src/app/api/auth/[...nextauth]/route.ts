@@ -8,32 +8,45 @@ const ALLOWED_EMAILS = [
   'sbiru@fiscorponline.com',
 ]
 
+// Check if Azure AD is properly configured
+const isAzureADConfigured = 
+  process.env.AZURE_AD_CLIENT_ID && 
+  process.env.AZURE_AD_CLIENT_SECRET
+
+if (!isAzureADConfigured) {
+  console.error('Azure AD is not properly configured. Missing CLIENT_ID or CLIENT_SECRET')
+}
+
 const handler = NextAuth({
   providers: [
-    AzureADProvider({
-      clientId: process.env.AZURE_AD_CLIENT_ID!,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId: 'common',
-      authorization: {
-        params: {
-          scope: 'openid profile email User.Read',
-        },
-      },
-    }),
+    ...(isAzureADConfigured
+      ? [
+          AzureADProvider({
+            clientId: process.env.AZURE_AD_CLIENT_ID!,
+            clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+            tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
+            authorization: {
+              params: {
+                scope: 'openid profile email User.Read',
+              },
+            },
+          }),
+        ]
+      : []),
   ],
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/error',
+    error: '/auth/access-denied',
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
       // Check if user's email is in the allowed list
       const email = user.email?.toLowerCase()
       if (email && ALLOWED_EMAILS.includes(email)) {
         return true
       }
-      // Redirect to access denied page
-      return '/auth/access-denied'
+      // Return false to deny access - NextAuth will redirect to error page
+      return false
     },
     async jwt({ token, account, profile }) {
       if (account) {

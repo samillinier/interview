@@ -1,14 +1,54 @@
 'use client'
 
-import { signIn } from 'next-auth/react'
+import { signIn, getProviders } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
 export default function SignInPage() {
-  const handleMicrosoftSignIn = () => {
-    signIn('azure-ad', { callbackUrl: '/dashboard' })
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [providers, setProviders] = useState<any>(null)
+
+  useEffect(() => {
+    // Check available providers
+    getProviders().then((provs) => {
+      console.log('Available providers:', provs)
+      setProviders(provs)
+      if (!provs || !provs['azure-ad']) {
+        setError('Azure AD provider is not configured. Please check your environment variables.')
+      }
+    }).catch((err) => {
+      console.error('Error getting providers:', err)
+      setError('Unable to check authentication providers.')
+    })
+  }, [])
+
+  const handleMicrosoftSignIn = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      console.log('Attempting to sign in with Azure AD...')
+      
+      // Check if signIn is available
+      if (typeof signIn !== 'function') {
+        throw new Error('signIn function is not available')
+      }
+      
+      // NextAuth will handle the redirect to Microsoft
+      const result = await signIn('azure-ad', { 
+        callbackUrl: '/dashboard',
+        redirect: true // Explicitly enable redirect
+      })
+      
+      console.log('Sign in result:', result)
+    } catch (err: any) {
+      console.error('Sign-in error:', err)
+      setError(`Sign-in failed: ${err?.message || 'Unknown error'}. Please check the browser console for details.`)
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -48,10 +88,21 @@ export default function SignInPage() {
             </p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-xs text-red-500 mt-2">
+                If this persists, Azure AD credentials may not be configured. Please contact your administrator.
+              </p>
+            </div>
+          )}
+
           {/* Microsoft Sign In Button */}
           <button
             onClick={handleMicrosoftSignIn}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-[#2F2F2F] hover:bg-[#1a1a1a] text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl"
+            disabled={isLoading || !providers?.['azure-ad']}
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-[#2F2F2F] hover:bg-[#1a1a1a] text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {/* Microsoft Logo */}
             <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none">
@@ -60,8 +111,14 @@ export default function SignInPage() {
               <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
               <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
             </svg>
-            Sign in with Microsoft
+            {isLoading ? 'Signing in...' : 'Sign in with Microsoft'}
           </button>
+          
+          {!providers?.['azure-ad'] && !error && (
+            <p className="text-xs text-amber-600 mt-2 text-center">
+              Checking authentication configuration...
+            </p>
+          )}
 
           {/* Divider */}
           <div className="relative my-8">
@@ -98,6 +155,8 @@ export default function SignInPage() {
     </div>
   )
 }
+
+
 
 
 

@@ -1,0 +1,10 @@
+# Files to ignore when deploying to Vercel
+node_modules
+.next
+.env.local
+.env*.local
+prisma/dev.db
+prisma/dev.db-journal
+.DS_Store
+*.log
+

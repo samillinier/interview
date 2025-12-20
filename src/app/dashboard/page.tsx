@@ -566,7 +566,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-slate-50 border-b border-slate-200/60">
                 <div className="col-span-4 text-sm font-semibold text-slate-600 uppercase tracking-wider">Installer</div>
                 <div className="col-span-2 text-sm font-semibold text-slate-600 uppercase tracking-wider">Experience</div>
-                <div className="col-span-2 text-sm font-semibold text-slate-600 uppercase tracking-wider">Specialties</div>
+                <div className="col-span-2 text-sm font-semibold text-slate-600 uppercase tracking-wider">Flooring Skills</div>
                 <div className="col-span-2 text-sm font-semibold text-slate-600 uppercase tracking-wider">Status</div>
                 <div className="col-span-2 text-sm font-semibold text-slate-600 uppercase tracking-wider text-right">Actions</div>
               </div>
@@ -619,7 +619,37 @@ export default function DashboardPage() {
 
                       {/* Specialties */}
                       <div className="col-span-2">
-                        {installer.flooringSpecialties ? (
+                        {installer.flooringSkills ? (
+                          <div className="flex flex-wrap gap-1">
+                            {(() => {
+                              try {
+                                const skills = typeof installer.flooringSkills === 'string' 
+                                  ? JSON.parse(installer.flooringSkills)
+                                  : installer.flooringSkills
+                                return Array.isArray(skills) 
+                                  ? skills.slice(0, 2).map((skill: string) => (
+                                      <span
+                                        key={skill}
+                                        className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium"
+                                      >
+                                        {skill}
+                                      </span>
+                                    ))
+                                  : <span className="text-slate-400">—</span>
+                              } catch {
+                                // If parsing fails, try to display as string
+                                const skillsStr = typeof installer.flooringSkills === 'string' 
+                                  ? installer.flooringSkills 
+                                  : ''
+                                return skillsStr ? (
+                                  <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-medium">
+                                    {skillsStr.split(',').slice(0, 2).join(', ')}
+                                  </span>
+                                ) : <span className="text-slate-400">—</span>
+                              }
+                            })()}
+                          </div>
+                        ) : installer.flooringSpecialties ? (
                           <div className="flex flex-wrap gap-1">
                             {(() => {
                               try {

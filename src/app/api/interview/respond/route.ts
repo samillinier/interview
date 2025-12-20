@@ -35,6 +35,43 @@ export async function POST(request: NextRequest) {
 
     // Save the response
     const currentQuestion = questions[currentQuestionIndex]
+    
+    // Save interactive selections directly to installer record
+    if (currentQuestion.id === 'skills' && userResponse && userResponse !== 'None') {
+      try {
+        // Parse the comma-separated skills into an array
+        const skillsArray = userResponse.split(',').map(s => s.trim()).filter(s => s.length > 0)
+        
+        // Update installer with flooring skills immediately
+        await prisma.installer.update({
+          where: { id: interview.installerId },
+          data: {
+            flooringSkills: JSON.stringify(skillsArray),
+          },
+        })
+        console.log('Flooring skills saved:', skillsArray)
+      } catch (error) {
+        console.error('Error saving flooring skills:', error)
+      }
+    }
+    
+    // Save travel locations if provided
+    if (currentQuestion.id === 'travel_locations' && userResponse && userResponse !== 'None') {
+      try {
+        const locationsArray = userResponse.split(',').map(s => s.trim()).filter(s => s.length > 0)
+        await prisma.installer.update({
+          where: { id: interview.installerId },
+          data: {
+            travelLocations: JSON.stringify(locationsArray),
+            openToTravel: true,
+          },
+        })
+        console.log('Travel locations saved:', locationsArray)
+      } catch (error) {
+        console.error('Error saving travel locations:', error)
+      }
+    }
+    
     await prisma.interviewResponse.create({
       data: {
         interviewId,

@@ -29,7 +29,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen">
       {/* Navigation */}
       <nav className="border-b border-primary-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -94,7 +94,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-20 lg:py-32 grid-pattern">
+      <section className="py-20 lg:py-32 grid-pattern bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-4xl mx-auto">
             <motion.div
@@ -169,7 +169,7 @@ export default function HomePage() {
       </section>
 
       {/* Team Image Section */}
-      <section className="pt-8 pb-0 bg-brand-green overflow-hidden">
+      <section className="pt-16 pb-8 bg-brand-green overflow-hidden flex-1">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -53,17 +53,20 @@ npm install
 
 2. **Set up environment variables:**
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file in the root directory (copy from `env.local.example`):
 
 ```env
 # OpenAI API Key - Get yours at https://platform.openai.com/api-keys
 OPENAI_API_KEY=sk-your-openai-api-key-here
 
-# Database URL - Using SQLite for simplicity
+# Database URL - SQLite for local development
+# For production (Vercel Postgres), use PostgreSQL connection string
 DATABASE_URL="file:./dev.db"
 
 # Base URL for the application
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-nextauth-secret-here-generate-with-openssl
 ```
 
 3. **Initialize the database:**
@@ -192,16 +195,57 @@ Edit `src/lib/utils.ts` → `calculateScore()` and `determinePassFail()`
 ### Change Pass/Fail Criteria
 Modify the logic in `src/lib/utils.ts`
 
+## Deployment
+
+### Deploy to Vercel with Vercel Postgres
+
+This application is configured for deployment on Vercel with Vercel Postgres database.
+
+**Quick Start:**
+
+1. **Push your code to GitHub:**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git push origin main
+   ```
+
+2. **Import to Vercel:**
+   - Go to [vercel.com/new](https://vercel.com/new)
+   - Import your GitHub repository
+   - Vercel will auto-detect Next.js settings
+
+3. **Add Vercel Postgres:**
+   - In Vercel Dashboard → **Storage** tab
+   - Click **Create Database** → Select **Postgres**
+   - This automatically creates `POSTGRES_URL` environment variable
+
+4. **Configure Environment Variables:**
+   - Go to **Settings** → **Environment Variables**
+   - Add `DATABASE_URL` (copy value from `POSTGRES_URL`)
+   - Add `OPENAI_API_KEY`
+   - Add `NEXTAUTH_URL` (your Vercel app URL)
+   - Add `NEXTAUTH_SECRET` (generate with: `openssl rand -base64 32`)
+   - Add `NEXT_PUBLIC_APP_URL` (your Vercel app URL)
+
+5. **Deploy:**
+   - Click **Deploy**
+   - Database migrations run automatically during build
+
+**📖 For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)**
+
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
-- **Database**: SQLite with Prisma ORM
+- **Database**: SQLite (local) / PostgreSQL (production) with Prisma ORM
 - **AI**: OpenAI GPT-4, Whisper, TTS
 - **Styling**: Tailwind CSS
 - **Animation**: Framer Motion
 - **State**: Zustand
 - **Icons**: Lucide React
+- **Deployment**: Vercel + Vercel Postgres
 
 ## License
 

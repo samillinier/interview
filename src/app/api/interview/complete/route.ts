@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       yearsOfExperience: extractedData.yearsOfExperience,
       hasOwnCrew: extractedData.hasOwnCrew,
       crewSize: extractedData.crewSize,
-      hasOwnTools: extractedData.hasOwnTools,
+      hasOwnTools: false, // Not currently asked in interview
       hasInsurance: extractedData.hasInsurance,
       hasGeneralLiability: extractedData.hasGeneralLiability,
       hasCommercialAutoLiability: extractedData.hasCommercialAutoLiability,
@@ -72,18 +72,16 @@ export async function POST(request: NextRequest) {
           : null,
         hasOwnCrew: extractedData.hasOwnCrew ?? false,
         crewSize: extractedData.crewSize,
-        hasOwnTools: extractedData.hasOwnTools ?? false,
-        toolsDescription: extractedData.toolsDescription,
-        hasVehicle: extractedData.hasVehicle ?? false,
+        hasOwnTools: false, // Not currently asked in interview
+        toolsDescription: null, // Not currently extracted
+        hasVehicle: false, // Not currently asked in interview
         vehicleDescription: extractedData.vehicleDescription,
-        serviceAreas: extractedData.serviceAreas
-          ? JSON.stringify(extractedData.serviceAreas)
-          : null,
-        willingToTravel: extractedData.willingToTravel ?? false,
-        availability: extractedData.availability,
-        canStartImmediately: extractedData.canStartImmediately ?? false,
+        serviceAreas: null, // Not currently extracted
+        willingToTravel: extractedData.openToTravel ?? false,
+        availability: null, // Not currently extracted
+        canStartImmediately: false, // Not currently asked in interview
         hasInsurance: extractedData.hasInsurance ?? false,
-        insuranceType: extractedData.insuranceType,
+        insuranceType: null, // Not currently extracted
         hasLicense: extractedData.hasLicense ?? false,
         // New insurance & licensing fields
         hasGeneralLiability: extractedData.hasGeneralLiability ?? false,
@@ -91,14 +89,14 @@ export async function POST(request: NextRequest) {
         hasWorkersComp: extractedData.hasWorkersComp ?? false,
         hasWorkersCompExemption: extractedData.hasWorkersCompExemption ?? false,
         isSunbizRegistered: extractedData.isSunbizRegistered ?? false,
-        isSunbizActive: extractedData.isSunbizActive ?? false,
+        isSunbizActive: false, // Not currently extracted
         hasBusinessLicense: extractedData.hasBusinessLicense ?? false,
         // Background check
         canPassBackgroundCheck: extractedData.canPassBackgroundCheck,
-        backgroundCheckDetails: extractedData.backgroundCheckDetails,
+        backgroundCheckDetails: null, // Not currently extracted
         // Schedule availability
-        mondayToFridayAvailability: extractedData.mondayToFridayAvailability,
-        saturdayAvailability: extractedData.saturdayAvailability,
+        mondayToFridayAvailability: null, // Not currently extracted
+        saturdayAvailability: null, // Not currently extracted
         // Travel
         openToTravel: extractedData.openToTravel ?? false,
         travelLocations: extractedData.travelLocations
@@ -108,7 +106,7 @@ export async function POST(request: NextRequest) {
         status: passed ? 'passed' : 'failed',
         passFailReason: reason,
         overallScore: score,
-        notes: extractedData.additionalNotes,
+        notes: null, // Not currently extracted
       },
     })
 

@@ -6,11 +6,18 @@ const openai = new OpenAI({
 })
 
 export async function generateSpeech(text: string): Promise<Buffer> {
+  const voice = 'nova'
+  console.log('🔊 ===== GENERATING SPEECH =====')
+  console.log('🔊 Voice setting:', voice)
+  console.log('🔊 Model: tts-1')
+  console.log('🔊 Text length:', text.length)
   const response = await openai.audio.speech.create({
     model: 'tts-1',
-    voice: 'alloy',
+    voice: voice,
     input: text,
   })
+  console.log('🔊 Speech generated successfully with voice:', voice)
+  console.log('🔊 ===== END SPEECH GENERATION =====')
 
   const arrayBuffer = await response.arrayBuffer()
   return Buffer.from(arrayBuffer)
@@ -139,7 +146,7 @@ export async function extractInterviewData(transcript: string): Promise<{
     messages: [
       {
         role: 'system',
-        content: 'Extract structured data from this interview transcript. Return only valid JSON with the following fields: firstName, lastName, email, phone, yearsOfExperience, flooringSpecialties (array), flooringSkills (array), hasOwnCrew (boolean), crewSize (number), hasInsurance (boolean), hasGeneralLiability (boolean), hasCommercialAutoLiability (boolean), hasWorkersComp (boolean), hasWorkersCompExemption (boolean), hasLicense (boolean), hasBusinessLicense (boolean), isSunbizRegistered (boolean), canPassBackgroundCheck (boolean), vehicleDescription (string), openToTravel (boolean), travelLocations (array). Only include fields that have values.',
+        content: 'Extract structured data from this interview transcript. Return only valid JSON with the following fields: firstName, lastName, email, phone, yearsOfExperience, flooringSpecialties (array), flooringSkills (array - IMPORTANT: if the user selected flooring types like "Carpet, LVP, Hardwood", parse them into an array), hasOwnCrew (boolean), crewSize (number), hasInsurance (boolean), hasGeneralLiability (boolean), hasCommercialAutoLiability (boolean), hasWorkersComp (boolean), hasWorkersCompExemption (boolean), hasLicense (boolean), hasBusinessLicense (boolean), isSunbizRegistered (boolean), canPassBackgroundCheck (boolean), vehicleDescription (string), openToTravel (boolean), travelLocations (array). Only include fields that have values. For flooringSkills, if the answer is a comma-separated list, split it into an array.',
       },
       {
         role: 'user',

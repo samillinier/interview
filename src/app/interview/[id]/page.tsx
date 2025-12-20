@@ -514,9 +514,9 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="min-h-screen interview-gradient flex flex-col">
-      {/* Header */}
-      <header className="border-b border-primary-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+    <div className="min-h-screen interview-gradient flex flex-col relative">
+      {/* Header - Fixed at top */}
+      <header className="border-b border-primary-100 bg-white/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="font-bold text-primary-900">Prescreening Interview</h1>
@@ -548,8 +548,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Messages - Scrollable area with padding for fixed header and footer */}
+      <div className="flex-1 overflow-y-auto pt-24 pb-32">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
           <AnimatePresence>
             {messages.map((message) => (
@@ -579,8 +579,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-primary-100 bg-white sticky bottom-0">
+      {/* Input area - Fixed at bottom */}
+      <div className="border-t border-primary-100/30 bg-gradient-to-t from-white/80 via-white/60 to-transparent backdrop-blur-md fixed bottom-0 left-0 right-0 z-50">
         <div className="max-w-3xl mx-auto px-4 py-6">
           
           {/* Flooring Skills Selection UI */}
