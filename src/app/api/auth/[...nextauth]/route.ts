@@ -14,10 +14,14 @@ const isAzureADConfigured =
   process.env.AZURE_AD_CLIENT_SECRET
 
 if (!isAzureADConfigured) {
-  console.error('Azure AD is not properly configured. Missing CLIENT_ID or CLIENT_SECRET')
+  console.error('❌ Azure AD is not properly configured. Missing CLIENT_ID or CLIENT_SECRET')
+} else {
+  console.log('✅ Azure AD configured with Client ID:', process.env.AZURE_AD_CLIENT_ID?.substring(0, 8) + '...')
 }
 
 const handler = NextAuth({
+  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     ...(isAzureADConfigured
       ? [
@@ -40,12 +44,19 @@ const handler = NextAuth({
   },
   callbacks: {
     async signIn({ user, account, profile }) {
+      console.log('🔐 SignIn callback triggered')
+      console.log('📧 User email:', user?.email)
+      console.log('🔑 Account provider:', account?.provider)
+      
       // Check if user's email is in the allowed list
       const email = user.email?.toLowerCase()
       if (email && ALLOWED_EMAILS.includes(email)) {
+        console.log('✅ User authorized:', email)
         return true
       }
       // Return false to deny access - NextAuth will redirect to error page
+      console.log('❌ User not authorized:', email)
+      console.log('📋 Allowed emails:', ALLOWED_EMAILS)
       return false
     },
     async jwt({ token, account, profile }) {
@@ -80,6 +91,25 @@ const handler = NextAuth({
         }
       }
       return session
+    },
+  },
+  events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      console.log('🎉 Sign in event:', { email: user.email, isNewUser })
+    },
+    async signOut() {
+      console.log('👋 Sign out event')
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      console.error('❌ NextAuth Error:', code, metadata)
+    },
+    warn(code) {
+      console.warn('⚠️ NextAuth Warning:', code)
+    },
+    debug(code, metadata) {
+      console.log('🔍 NextAuth Debug:', code, metadata)
     },
   },
 })
