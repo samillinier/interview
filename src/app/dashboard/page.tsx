@@ -108,12 +108,12 @@ export default function DashboardPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Redirect to sign in if not authenticated
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-    }
-  }, [status, router])
+  // TEMPORARILY DISABLED: Redirect to sign in if not authenticated
+  // useEffect(() => {
+  //   if (status === 'unauthenticated') {
+  //     router.push('/auth/signin')
+  //   }
+  // }, [status, router])
 
   const fetchInstallers = useCallback(async () => {
     setIsLoading(true)

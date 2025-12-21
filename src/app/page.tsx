@@ -44,23 +44,13 @@ export default function HomePage() {
               />
             </div>
             <div className="flex items-center gap-4">
-              {session ? (
-                // Logged in - show Dashboard link
-                <Link
-                  href="/dashboard"
-                  className="text-primary-600 hover:text-brand-green transition-colors font-medium"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                // Not logged in - show Sign In
-                <Link
-                  href="/auth/signin"
-                  className="text-primary-600 hover:text-brand-green transition-colors font-medium"
-                >
-                  Sign In
-                </Link>
-              )}
+              {/* Temporarily disabled sign-in */}
+              <Link
+                href="/dashboard"
+                className="text-primary-600 hover:text-brand-green transition-colors font-medium"
+              >
+                Dashboard
+              </Link>
               <Link
                 href="/interview"
                 className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"

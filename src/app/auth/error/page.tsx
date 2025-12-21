@@ -52,11 +52,11 @@ export default function AuthErrorPage() {
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/auth/signin"
+              href="/"
               className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Try Again
+              Go to Home
             </Link>
             <Link
               href="/"
