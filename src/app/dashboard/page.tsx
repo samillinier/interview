@@ -108,12 +108,12 @@ export default function DashboardPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Redirect to sign in if not authenticated
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-    }
-  }, [status, router])
+  // Authentication disabled - allow access without sign-in
+  // useEffect(() => {
+  //   if (status === 'unauthenticated') {
+  //     router.push('/auth/signin')
+  //   }
+  // }, [status, router])
 
   const fetchInstallers = useCallback(async () => {
     setIsLoading(true)
@@ -128,12 +128,25 @@ export default function DashboardPage() {
       if (experienceFilter !== 'all') params.append('experience', experienceFilter)
 
       const response = await fetch(`/api/installers?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch installers: ${response.statusText}`)
+      }
+      
       const data = await response.json()
-
-      setInstallers(data.installers || [])
-      setPagination(prev => ({ ...prev, ...data.pagination }))
+      
+      console.log('Fetched installers:', data.installers?.length || 0, 'installers')
+      
+      if (data.error) {
+        console.error('API Error:', data.error)
+        setInstallers([])
+      } else {
+        setInstallers(data.installers || [])
+        setPagination(prev => ({ ...prev, ...data.pagination }))
+      }
     } catch (error) {
       console.error('Error fetching installers:', error)
+      setInstallers([])
     } finally {
       setIsLoading(false)
     }
@@ -294,22 +307,22 @@ export default function DashboardPage() {
     }
   }
 
-  // Show loading while checking auth
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 font-medium">Loading...</p>
-        </div>
-      </div>
-    )
-  }
+  // Authentication disabled - no loading check needed
+  // if (status === 'loading') {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+  //       <div className="text-center">
+  //         <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
+  //         <p className="text-slate-500 font-medium">Loading...</p>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
-  // Don't render if not authenticated (redirect will happen)
-  if (!session) {
-    return null
-  }
+  // Authentication disabled - allow access without sign-in
+  // if (!session) {
+  //   return null
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -357,21 +370,24 @@ export default function DashboardPage() {
                   </button>
                   
                   {/* Dropdown Menu */}
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                    <div className="p-3 border-b border-slate-100">
-                      <p className="font-medium text-slate-900">{session.user.name}</p>
-                      <p className="text-sm text-slate-500 truncate">{session.user.email}</p>
+                  {/* Profile menu disabled when authentication is disabled */}
+                  {session && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <div className="p-3 border-b border-slate-100">
+                        <p className="font-medium text-slate-900">{session.user?.name || 'User'}</p>
+                        <p className="text-sm text-slate-500 truncate">{session.user?.email || ''}</p>
+                      </div>
+                      <div className="p-2">
+                        <button
+                          onClick={() => signOut({ callbackUrl: '/' })}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors text-left"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign Out
+                        </button>
+                      </div>
                     </div>
-                    <div className="p-2">
-                      <button
-                        onClick={() => signOut({ callbackUrl: '/' })}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors text-left"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
