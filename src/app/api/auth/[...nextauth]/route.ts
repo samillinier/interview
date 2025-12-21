@@ -22,7 +22,6 @@ if (!isAzureADConfigured) {
 const handler = NextAuth({
   debug: true,
   secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true, // Allow Vercel to set the hostname for callbacks
   providers: [
     ...(isAzureADConfigured
       ? [
