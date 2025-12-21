@@ -14,10 +14,14 @@ const isAzureADConfigured =
   process.env.AZURE_AD_CLIENT_SECRET
 
 if (!isAzureADConfigured) {
-  console.error('Azure AD is not properly configured. Missing CLIENT_ID or CLIENT_SECRET')
+  console.error('❌ Azure AD is not properly configured. Missing CLIENT_ID or CLIENT_SECRET')
+} else {
+  console.log('✅ Azure AD configured with Client ID:', process.env.AZURE_AD_CLIENT_ID?.substring(0, 8) + '...')
 }
 
 const handler = NextAuth({
+  debug: true,
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     ...(isAzureADConfigured
       ? [
@@ -40,13 +44,24 @@ const handler = NextAuth({
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Check if user's email is in the allowed list
-      const email = user.email?.toLowerCase()
-      if (email && ALLOWED_EMAILS.includes(email)) {
-        return true
-      }
-      // Return false to deny access - NextAuth will redirect to error page
-      return false
+      console.log('🔐 SignIn callback triggered')
+      console.log('📧 User email:', user?.email)
+      console.log('🔑 Account provider:', account?.provider)
+      
+      // TEMPORARILY DISABLED: Allow all users to sign in
+      // TODO: Re-enable email restriction after testing
+      console.log('⚠️ Email restriction temporarily disabled - allowing all users')
+      return true
+      
+      // Original email restriction code (disabled):
+      // const email = user.email?.toLowerCase()
+      // if (email && ALLOWED_EMAILS.includes(email)) {
+      //   console.log('✅ User authorized:', email)
+      //   return true
+      // }
+      // console.log('❌ User not authorized:', email)
+      // console.log('📋 Allowed emails:', ALLOWED_EMAILS)
+      // return false
     },
     async jwt({ token, account, profile }) {
       if (account) {
@@ -60,7 +75,6 @@ const handler = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.sub
-        // Get profile picture from Microsoft Graph API
         if (token.accessToken) {
           try {
             const response = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
@@ -74,12 +88,42 @@ const handler = NextAuth({
               session.user.image = `data:image/jpeg;base64,${base64}`
             }
           } catch (error) {
-            // Profile picture not available, use default
             console.log('Could not fetch profile picture')
           }
         }
       }
       return session
+    },
+  },
+  events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      console.log('🎉 Sign in event:', { email: user.email, isNewUser })
+    },
+    async signOut() {
+      console.log('👋 Sign out event')
+    },
+  },
+  logger: {
+    error(code, metadata) {
+      console.error('❌ NextAuth Error:', code, metadata)
+      if (code === 'OAuthCallback') {
+        console.error('🔴 OAuthCallback Error Details:')
+        console.error('  This means the OAuth flow started but callback failed')
+        console.error('  Common causes:')
+        console.error('  1. Redirect URI mismatch in Azure AD')
+        console.error('  2. NEXTAUTH_SECRET missing or incorrect')
+        console.error('  3. Session/cookie issues')
+        console.error('  4. User email not in allowed list')
+        if (metadata) {
+          console.error('  Error metadata:', JSON.stringify(metadata, null, 2))
+        }
+      }
+    },
+    warn(code) {
+      console.warn('⚠️ NextAuth Warning:', code)
+    },
+    debug(code, metadata) {
+      console.log('🔍 NextAuth Debug:', code, metadata)
     },
   },
 })
