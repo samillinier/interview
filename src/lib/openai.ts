@@ -11,16 +11,36 @@ export async function generateSpeech(text: string): Promise<Buffer> {
   console.log('🔊 Voice setting:', voice)
   console.log('🔊 Model: tts-1')
   console.log('🔊 Text length:', text.length)
-  const response = await openai.audio.speech.create({
-    model: 'tts-1',
-    voice: voice,
-    input: text,
-  })
-  console.log('🔊 Speech generated successfully with voice:', voice)
-  console.log('🔊 ===== END SPEECH GENERATION =====')
+  
+  // Check if API key is configured
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-your-openai-api-key-here') {
+    const error = 'OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.'
+    console.error('❌', error)
+    throw new Error(error)
+  }
+  
+  try {
+    const response = await openai.audio.speech.create({
+      model: 'tts-1',
+      voice: voice,
+      input: text,
+    })
+    console.log('🔊 Speech generated successfully with voice:', voice)
+    console.log('🔊 ===== END SPEECH GENERATION =====')
 
-  const arrayBuffer = await response.arrayBuffer()
-  return Buffer.from(arrayBuffer)
+    const arrayBuffer = await response.arrayBuffer()
+    return Buffer.from(arrayBuffer)
+  } catch (error: any) {
+    console.error('❌ Error generating speech:', error.message || error)
+    if (error.status === 401) {
+      throw new Error('Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable.')
+    } else if (error.status === 429) {
+      throw new Error('OpenAI API rate limit exceeded. Please try again later.')
+    } else if (error.message) {
+      throw new Error(`OpenAI API error: ${error.message}`)
+    }
+    throw error
+  }
 }
 
 export async function generateInterviewResponse(
