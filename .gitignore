@@ -46,3 +46,4 @@ prisma/dev.db-journal
 
 
 
+.env.vercel
