@@ -108,12 +108,12 @@ export default function DashboardPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Authentication disabled - allow access without sign-in
-  // useEffect(() => {
-  //   if (status === 'unauthenticated') {
-  //     router.push('/auth/signin')
-  //   }
-  // }, [status, router])
+  // Protect dashboard - redirect to login if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login?callbackUrl=/dashboard')
+    }
+  }, [status, router])
 
   const fetchInstallers = useCallback(async () => {
     setIsLoading(true)
@@ -307,22 +307,22 @@ export default function DashboardPage() {
     }
   }
 
-  // Authentication disabled - no loading check needed
-  // if (status === 'loading') {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-  //       <div className="text-center">
-  //         <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-  //         <p className="text-slate-500 font-medium">Loading...</p>
-  //       </div>
-  //     </div>
-  //   )
-  // }
+  // Show loading state while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
+          <p className="text-slate-500 font-medium">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
-  // Authentication disabled - allow access without sign-in
-  // if (!session) {
-  //   return null
-  // }
+  // Redirect if not authenticated (handled by useEffect, but return null as fallback)
+  if (!session) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -370,7 +370,6 @@ export default function DashboardPage() {
                   </button>
                   
                   {/* Dropdown Menu */}
-                  {/* Profile menu disabled when authentication is disabled */}
                   {session && (
                     <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                       <div className="p-3 border-b border-slate-100">

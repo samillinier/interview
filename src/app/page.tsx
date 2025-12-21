@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight, Sparkles, LogOut, ChevronDown } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import teamImage from '@/images/freepik_br_e1727cfa-604b-4a3f-becf-722dc82dc811.png'
 
@@ -44,13 +44,21 @@ export default function HomePage() {
               />
             </div>
             <div className="flex items-center gap-4">
-              {/* Temporarily disabled sign-in */}
-              <Link
-                href="/dashboard"
-                className="text-primary-600 hover:text-brand-green transition-colors font-medium"
-              >
-                Dashboard
-              </Link>
+              {!session ? (
+                <Link
+                  href="/login"
+                  className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
+                >
+                  Sign In
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="text-primary-600 hover:text-brand-green transition-colors font-medium"
+                >
+                  Dashboard
+                </Link>
+              )}
               <Link
                 href="/interview"
                 className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
@@ -58,25 +66,50 @@ export default function HomePage() {
                 Start Interview
               </Link>
               {session && (
-                // Profile photo on the right
-                <Link
-                  href="/dashboard"
-                  className="flex items-center"
-                >
-                  {session.user?.image ? (
-                    <Image
-                      src={session.user.image}
-                      alt={session.user.name || 'User'}
-                      width={40}
-                      height={40}
-                      className="w-10 h-10 rounded-full ring-2 ring-brand-green/20"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-medium ring-2 ring-brand-green/20">
-                      {session.user?.name?.charAt(0) || session.user?.email?.charAt(0)}
+                <div className="relative group">
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    {session.user?.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt={session.user.name || 'User'}
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-full ring-2 ring-brand-green/20"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-medium ring-2 ring-brand-green/20">
+                        {session.user?.name?.charAt(0) || session.user?.email?.charAt(0)}
+                      </div>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-slate-500 hidden sm:block" />
+                  </Link>
+                  
+                  {/* Dropdown Menu */}
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-3 border-b border-slate-100">
+                      <p className="font-medium text-slate-900 text-sm">{session.user?.name || 'User'}</p>
+                      <p className="text-xs text-slate-500 truncate">{session.user?.email || ''}</p>
                     </div>
-                  )}
-                </Link>
+                    <div className="p-2">
+                      <Link
+                        href="/dashboard"
+                        className="block w-full px-3 py-2 text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left text-sm"
+                      >
+                        Dashboard
+                      </Link>
+                      <button
+                        onClick={() => signOut({ callbackUrl: '/' })}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors text-left text-sm mt-1"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -147,12 +180,21 @@ export default function HomePage() {
                 Start Prescreening
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <Link
-                href="/dashboard"
-                className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
-              >
-                View Dashboard
-              </Link>
+              {session ? (
+                <Link
+                  href="/dashboard"
+                  className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
+                >
+                  View Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
+                >
+                  Sign In to Dashboard
+                </Link>
+              )}
             </motion.div>
           </div>
         </div>

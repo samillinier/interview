@@ -39,7 +39,7 @@ const handler = NextAuth({
       : []),
   ],
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/login',
     error: '/auth/access-denied',
   },
   callbacks: {
@@ -113,10 +113,19 @@ const handler = NextAuth({
         console.error('  1. Redirect URI mismatch in Azure AD')
         console.error('  2. NEXTAUTH_SECRET missing or incorrect')
         console.error('  3. Session/cookie issues')
-        console.error('  4. User email not in allowed list')
+        console.error('  4. Client secret expired or incorrect')
+        console.error('  5. Callback URL not matching exactly')
         if (metadata) {
           console.error('  Error metadata:', JSON.stringify(metadata, null, 2))
+          console.error('  Full error object:', metadata)
         }
+        // Log environment check
+        console.error('  Environment check:')
+        console.error('    NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+        console.error('    NEXTAUTH_SECRET exists:', !!process.env.NEXTAUTH_SECRET)
+        console.error('    AZURE_AD_CLIENT_ID:', process.env.AZURE_AD_CLIENT_ID?.substring(0, 8) + '...')
+        console.error('    AZURE_AD_CLIENT_SECRET exists:', !!process.env.AZURE_AD_CLIENT_SECRET)
+        console.error('    Expected callback:', process.env.NEXTAUTH_URL ? `${process.env.NEXTAUTH_URL}/api/auth/callback/azure-ad` : 'NEXTAUTH_URL not set')
       }
     },
     warn(code) {
