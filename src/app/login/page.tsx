@@ -20,12 +20,16 @@ function LoginForm() {
     // Check for error in URL parameters
     const errorParam = searchParams?.get('error')
     if (errorParam) {
+      // Get the current origin (works for both localhost and production)
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+      const callbackUrl = `${currentOrigin}/api/auth/callback/azure-ad`
+      
       switch (errorParam) {
         case 'OAuthSignin':
           setError('Sign-in failed. Please check your Microsoft account credentials and try again.')
           break
         case 'OAuthCallback':
-          setError('Authentication callback failed. This usually means the redirect URI in Azure AD doesn\'t match. Please check that http://localhost:3000/api/auth/callback/azure-ad is configured in Azure Portal.')
+          setError(`Authentication callback failed. This usually means the redirect URI in Azure AD doesn't match. Please check that ${callbackUrl} is configured in Azure Portal.`)
           break
         case 'OAuthCreateAccount':
           setError('Unable to create account. Please contact support.')
