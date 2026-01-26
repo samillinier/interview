@@ -775,7 +775,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+              className="bg-white rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -793,19 +793,60 @@ export default function DashboardPage() {
                       <p className="text-white/80">{selectedInstaller.email}</p>
                     </div>
                   </div>
-                  {(() => {
-                    const statusConfig = getStatusConfig(selectedInstaller.status)
-                    const StatusIcon = statusConfig.icon
-                    return (
-                      <span className={cn(
-                        'inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-white',
-                        statusConfig.text
-                      )}>
-                        <StatusIcon className="w-4 h-4" />
-                        {statusConfig.label}
-                      </span>
-                    )
-                  })()}
+                  <div className="relative inline-flex items-center">
+                    {(() => {
+                      const statusConfig = getStatusConfig(selectedInstaller.status)
+                      const StatusIcon = statusConfig.icon
+                      return (
+                        <>
+                          <StatusIcon className="absolute left-3 w-4 h-4 pointer-events-none z-10" style={{ color: 'inherit' }} />
+                          <select
+                            value={selectedInstaller.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value
+                              try {
+                                const response = await fetch(`/api/installers/${selectedInstaller.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ 
+                                    status: newStatus,
+                                    passFailReason: newStatus === 'passed' 
+                                      ? 'Manually approved by admin' 
+                                      : newStatus === 'failed' 
+                                      ? 'Manually rejected by admin'
+                                      : selectedInstaller.passFailReason
+                                  }),
+                                })
+                                if (response.ok) {
+                                  const updated = await response.json()
+                                  setSelectedInstaller({ ...selectedInstaller, status: newStatus })
+                                  fetchInstallers()
+                                }
+                              } catch (error) {
+                                console.error('Error updating status:', error)
+                              }
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 pl-8 pr-8 py-2 rounded-full text-sm font-semibold bg-white cursor-pointer',
+                              'hover:bg-white/95 transition-all focus:outline-none focus:ring-2 focus:ring-white/50',
+                              'appearance-none',
+                              statusConfig.text
+                            )}
+                            style={{
+                              backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'right 0.75rem center',
+                              backgroundSize: '0.875em'
+                            }}
+                          >
+                          <option value="passed">Qualified</option>
+                          <option value="failed">Not Qualified</option>
+                          <option value="pending">Pending Review</option>
+                          </select>
+                        </>
+                      )
+                    })()}
+                  </div>
                 </div>
               </div>
 
@@ -842,7 +883,7 @@ export default function DashboardPage() {
                 {/* Basic Info Grid */}
                 <div>
                   <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Basic Information</p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-slate-50 rounded-xl p-4">
                       <div className="flex items-center gap-3 mb-2">
                         <Briefcase className="w-5 h-5 text-slate-400" />
@@ -928,7 +969,7 @@ export default function DashboardPage() {
                 {/* Insurance & Licensing */}
                 <div>
                   <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Insurance & Licensing</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center",
@@ -1015,10 +1056,10 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* SunBiz Registration */}
+                {/* State Registration */}
                 <div>
-                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">SunBiz Registration</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">State Registration</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center",
@@ -1030,7 +1071,7 @@ export default function DashboardPage() {
                           <XCircle className="w-4 h-4 text-slate-400" />
                         )}
                       </div>
-                      <span className="text-sm text-slate-700">SunBiz Registered</span>
+                      <span className="text-sm text-slate-700">State Registered</span>
                     </div>
 
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
@@ -1044,7 +1085,7 @@ export default function DashboardPage() {
                           <XCircle className="w-4 h-4 text-slate-400" />
                         )}
                       </div>
-                      <span className="text-sm text-slate-700">SunBiz Active</span>
+                      <span className="text-sm text-slate-700">Registration Active</span>
                     </div>
                   </div>
                 </div>
@@ -1201,14 +1242,22 @@ export default function DashboardPage() {
                       Send Email
                     </a>
                   )}
-                  {selectedInstaller.phone && (
+                  {selectedInstaller.phone ? (
                     <a
                       href={`tel:${selectedInstaller.phone}`}
-                      className="flex-1 px-6 py-4 border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 px-6 py-4 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/25 flex items-center justify-center gap-2"
                     >
                       <Phone className="w-5 h-5" />
                       Call Now
                     </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex-1 px-6 py-4 border-2 border-slate-200 text-slate-400 rounded-xl font-semibold cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <Phone className="w-5 h-5" />
+                      Call Now
+                    </button>
                   )}
                 </div>
               </div>

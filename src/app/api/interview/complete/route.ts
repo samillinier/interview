@@ -95,8 +95,8 @@ export async function POST(request: NextRequest) {
         canPassBackgroundCheck: extractedData.canPassBackgroundCheck,
         backgroundCheckDetails: null, // Not currently extracted
         // Schedule availability
-        mondayToFridayAvailability: null, // Not currently extracted
-        saturdayAvailability: null, // Not currently extracted
+        mondayToFridayAvailability: extractedData.mondayToFridayAvailability || null,
+        saturdayAvailability: extractedData.saturdayAvailability || null,
         // Travel
         openToTravel: extractedData.openToTravel ?? false,
         travelLocations: extractedData.travelLocations

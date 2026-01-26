@@ -6,6 +6,7 @@ const ALLOWED_EMAILS = [
   'amunoz@fiscorponline.com',
   'aclass@fiscorponline.com',
   'sbiru@fiscorponline.com',
+  'svudaru@fiscorponline.com',
 ]
 
 // Check if Azure AD is properly configured

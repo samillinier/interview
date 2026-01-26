@@ -7,7 +7,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Sparkles, LogOut, ChevronDown } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
-import teamImage from '@/images/freepik_br_e1727cfa-604b-4a3f-becf-722dc82dc811.png'
 
 const rotatingWords = [
   { text: 'Automate', color: 'text-brand-green' },
@@ -200,23 +199,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Team Image Section */}
+      {/* Footer */}
       <section className="pt-16 pb-8 bg-brand-green overflow-hidden flex-1">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="flex justify-center items-end"
-          >
-            <Image
-              src={teamImage}
-              alt="Our Team"
-              width={600}
-              height={300}
-              className="h-36 w-auto object-contain object-bottom"
-            />
-          </motion.div>
+          {/* Footer content without image */}
         </div>
       </section>
 

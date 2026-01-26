@@ -45,41 +45,25 @@ export function calculateScore(data: {
   flooringSkills?: string[]
 }): number {
   let score = 0
-  const maxScore = 100
+  const maxScore = 90
 
-  // Experience (max 25 points)
-  if (data.yearsOfExperience) {
-    if (data.yearsOfExperience >= 10) score += 25
-    else if (data.yearsOfExperience >= 5) score += 20
-    else if (data.yearsOfExperience >= 3) score += 15
-    else if (data.yearsOfExperience >= 1) score += 10
-    else score += 5
+  // General Liability Insurance = 40 points (40%)
+  if (data.hasGeneralLiability) {
+    score += 40
   }
 
-  // Has crew (max 10 points)
-  if (data.hasOwnCrew) {
-    score += 7
-    if (data.crewSize && data.crewSize >= 3) score += 3
+  // Auto Liability Insurance = 20 points (20%)
+  if (data.hasCommercialAutoLiability) {
+    score += 20
   }
 
-  // Has tools (10 points)
-  if (data.hasOwnTools) score += 10
-
-  // Insurance - check any type (max 20 points)
-  const hasAnyInsurance = data.hasInsurance || data.hasGeneralLiability || data.hasCommercialAutoLiability || data.hasWorkersComp || data.hasWorkersCompExemption
-  if (hasAnyInsurance) score += 20
-
-  // Business registration (max 15 points)
-  if (data.hasBusinessLicense) score += 8
-  if (data.isSunbizRegistered) score += 7
-
-  // License (10 points)
-  if (data.hasLicense) score += 10
-
-  // Flooring specialties/skills (max 10 points)
-  const skills = data.flooringSkills || data.flooringSpecialties
-  if (skills && skills.length > 0) {
-    score += Math.min(skills.length * 2, 10)
+  // Business registration = 30 points (30%)
+  // Business License + State Registration
+  if (data.hasBusinessLicense) {
+    score += 15
+  }
+  if (data.isSunbizRegistered) {
+    score += 15
   }
 
   return Math.min(score, maxScore)
@@ -93,23 +77,13 @@ export function determinePassFail(score: number, data: {
   hasWorkersComp?: boolean
   hasWorkersCompExemption?: boolean
 }): { passed: boolean; reason: string } {
-  // Check if they have any type of insurance
-  const hasAnyInsurance = data.hasInsurance || data.hasGeneralLiability || data.hasCommercialAutoLiability || data.hasWorkersComp || data.hasWorkersCompExemption
+  // Pass threshold: 70% of 90 points = 63 points
+  const passThreshold = 63
 
-  // Minimum requirements
-  if (!data.yearsOfExperience || data.yearsOfExperience < 1) {
-    return { passed: false, reason: 'Minimum 1 year of experience required' }
+  if (score >= passThreshold) {
+    return { passed: true, reason: 'Meets minimum qualification score (70%)' }
   }
 
-  if (!hasAnyInsurance) {
-    return { passed: false, reason: 'Insurance is required (General Liability, Commercial Auto, or Worker\'s Comp)' }
-  }
-
-  // Score threshold
-  if (score >= 50) {
-    return { passed: true, reason: 'Meets all minimum requirements' }
-  }
-
-  return { passed: false, reason: 'Does not meet minimum qualification score' }
+  return { passed: false, reason: `Score ${score}/90 (${Math.round((score/90)*100)}%) - Does not meet minimum qualification score of 70%` }
 }
 

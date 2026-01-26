@@ -17,7 +17,7 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         'flex gap-3 max-w-[85%]',

@@ -64,13 +64,13 @@ export const INTERVIEW_QUESTIONS_EN = [
   },
   {
     id: 'sunbiz_registered',
-    text: 'Is your business currently registered with the Florida Department of State through SunBiz?',
+    text: 'Is your business currently registered with your state Department of State?',
     field: 'isSunbizRegistered',
     required: true,
   },
   {
     id: 'sunbiz_active',
-    text: 'Is your SunBiz business registration currently in active status?',
+    text: 'Is your state business registration currently in active status?',
     field: 'isSunbizActive',
     required: true,
   },
@@ -195,13 +195,13 @@ export const INTERVIEW_QUESTIONS_ES = [
   },
   {
     id: 'sunbiz_registered',
-    text: '¿Su negocio está actualmente registrado en el Departamento de Estado de Florida a través de SunBiz?',
+    text: '¿Su negocio está actualmente registrado en el Departamento de Estado de su estado?',
     field: 'isSunbizRegistered',
     required: true,
   },
   {
     id: 'sunbiz_active',
-    text: '¿El registro de su negocio en SunBiz está actualmente en estado activo?',
+    text: '¿El registro de su negocio en su estado está actualmente en estado activo?',
     field: 'isSunbizActive',
     required: true,
   },

@@ -13,10 +13,8 @@ import {
   Loader2,
   MessageSquare,
 } from 'lucide-react'
-import Image from 'next/image'
 import MessageBubble from '@/components/MessageBubble'
 import { getInterviewQuestions } from '@/lib/questions'
-import interviewerImage from '@/images/27f1f909-0d63-4757-88e4-0e76f939f363.jpeg'
 
 interface Message {
   id: string
@@ -27,7 +25,8 @@ interface Message {
 
 export default function InterviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesStartRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -100,10 +99,18 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     'Carpet Tile',
   ]
 
-  // Scroll to bottom when messages change
+  // Scroll to top when messages change (newest messages at top)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    // Use requestAnimationFrame and setTimeout to ensure DOM is updated before scrolling
+    const timeoutId = setTimeout(() => {
+      if (messagesContainerRef.current) {
+        // Scroll the container to the top to show the newest message
+        messagesContainerRef.current.scrollTop = 0
+      }
+    }, 50)
+    
+    return () => clearTimeout(timeoutId)
+  }, [messages.length, isProcessing, pendingResponse])
 
   // Tab shake effect when Anna is speaking
   useEffect(() => {
@@ -170,6 +177,13 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
           if (data.audioBase64) {
             playAudio(data.audioBase64)
           }
+          
+          // Scroll to top after initial load (newest messages at top)
+          setTimeout(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = 0
+            }
+          }, 300)
         }
       } catch (error) {
         console.error('Error initializing interview:', error)
@@ -549,21 +563,12 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       </header>
 
       {/* Messages - Scrollable area with padding for fixed header and footer */}
-      <div className="flex-1 overflow-y-auto pt-24 pb-32">
+      {/* Newest messages appear at top, scroll to top to see latest */}
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto pt-24 pb-40">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-          <AnimatePresence>
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                role={message.role}
-                content={message.content}
-                timestamp={message.timestamp}
-              />
-            ))}
-          </AnimatePresence>
-
-
-          {/* Processing indicator */}
+          <div ref={messagesStartRef} />
+          
+          {/* Processing indicator - shown at top when processing */}
           {isProcessing && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -575,7 +580,16 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             </motion.div>
           )}
 
-          <div ref={messagesEndRef} />
+          <AnimatePresence mode="popLayout">
+            {[...messages].reverse().map((message) => (
+              <MessageBubble
+                key={message.id}
+                role={message.role}
+                content={message.content}
+                timestamp={message.timestamp}
+              />
+            ))}
+          </AnimatePresence>
         </div>
       </div>
 
