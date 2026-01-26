@@ -1,9 +1,15 @@
 import OpenAI from 'openai'
 import { getInterviewQuestions } from './questions'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization to avoid build-time errors when API key is missing
+function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.')
+  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+}
 
 export async function generateSpeech(text: string): Promise<Buffer> {
   const voice = 'nova'
@@ -20,6 +26,7 @@ export async function generateSpeech(text: string): Promise<Buffer> {
   }
   
   try {
+    const openai = getOpenAIClient()
     const response = await openai.audio.speech.create({
       model: 'tts-1',
       voice: voice,
@@ -119,6 +126,7 @@ IMPORTANT RULES:
     })
   }
 
+  const openai = getOpenAIClient()
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages,
@@ -163,6 +171,7 @@ export async function extractInterviewData(transcript: string): Promise<{
   mondayToFridayAvailability?: string
   saturdayAvailability?: string
 }> {
+  const openai = getOpenAIClient()
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
