@@ -2921,7 +2921,7 @@ export default function InstallerProfilePage() {
           </motion.div>
 
           {/* Additional Information (Notes & Follow-up) */}
-          {(installer.notes || installer.followUpDate || installer.followUpReason) && (
+          {installer && (installer.notes || installer.followUpDate || installer.followUpReason) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
