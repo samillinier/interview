@@ -15,7 +15,7 @@ export async function GET(
 
     const documents = await prisma.document.findMany({
       where: { installerId },
-      orderBy: { uploadedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
 
     return NextResponse.json({ documents })
