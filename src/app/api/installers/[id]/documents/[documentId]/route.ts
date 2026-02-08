@@ -29,7 +29,7 @@ export async function DELETE(
     }
 
     // Delete file from filesystem
-    const filePath = join(process.cwd(), 'public', document.fileUrl)
+    const filePath = join(process.cwd(), 'public', document.url)
     if (existsSync(filePath)) {
       await unlink(filePath).catch(() => {}) // Ignore errors if file doesn't exist
     }
