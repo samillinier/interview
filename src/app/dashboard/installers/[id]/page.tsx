@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { 
   User, 
@@ -335,7 +335,9 @@ export default function InstallerProfileViewPage() {
           </Link>
           <Link
             href="/dashboard/analytics"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
           >
             <BarChart3 className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Analytics</span>}
@@ -426,7 +428,9 @@ export default function InstallerProfileViewPage() {
             <MessageSquare className="w-5 h-5" />
             <span>Messages</span>
           </Link>
-          <Link href="/dashboard/analytics" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+          <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+            pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+          }`}>
             <BarChart3 className="w-5 h-5" />
             <span>Analytics</span>
           </Link>
