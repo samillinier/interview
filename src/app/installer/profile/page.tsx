@@ -368,6 +368,9 @@ export default function InstallerProfilePage() {
   const [availability, setAvailability] = useState('')
   const [mondayToFridayAvailability, setMondayToFridayAvailability] = useState('')
   const [saturdayAvailability, setSaturdayAvailability] = useState('')
+  const [notes, setNotes] = useState('')
+  const [followUpDate, setFollowUpDate] = useState('')
+  const [followUpReason, setFollowUpReason] = useState('')
 
   useEffect(() => {
     checkAuthAndLoadProfile()
