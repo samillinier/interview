@@ -1077,7 +1077,7 @@ export default function InstallerProfilePage() {
                   : installer.email.split('@')[0])
                 }
               </p>
-              <p className="text-xs text-primary-500 truncate">{installer.email}</p>
+              <p className="text-xs text-primary-500 truncate">{installer?.email}</p>
             </div>
           </div>
           <button
