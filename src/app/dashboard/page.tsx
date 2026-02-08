@@ -64,6 +64,67 @@ export default function DashboardPage() {
   })
   const itemsPerPage = 20
 
+  const fetchStats = async () => {
+    try {
+      // Fetch stats separately to get accurate counts
+      const [allResponse, qualifiedResponse, failedResponse, pendingResponse] = await Promise.all([
+        fetch('/api/installers?limit=1'),
+        fetch('/api/installers?status=passed&limit=1'),
+        fetch('/api/installers?status=failed&limit=1'),
+        fetch('/api/installers?status=pending&limit=1'),
+      ])
+      
+      const [allData, qualifiedData, failedData, pendingData] = await Promise.all([
+        allResponse.json(),
+        qualifiedResponse.json(),
+        failedResponse.json(),
+        pendingResponse.json(),
+      ])
+
+      setStats({
+        total: allData.pagination?.total || 0,
+        qualified: qualifiedData.pagination?.total || 0,
+        notQualified: failedData.pagination?.total || 0,
+        pending: pendingData.pagination?.total || 0,
+      })
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
+  }
+
+  const fetchInstallers = async (page: number = currentPage) => {
+    try {
+      setIsLoading(true)
+      const params = new URLSearchParams()
+      if (searchQuery) params.append('search', searchQuery)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      params.append('page', page.toString())
+      params.append('limit', itemsPerPage.toString())
+
+      const response = await fetch(`/api/installers?${params.toString()}`)
+      const data = await response.json()
+      setInstallers(data.installers || [])
+      
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages || 1)
+        setTotalCount(data.pagination.total || 0)
+        setCurrentPage(data.pagination.page || 1)
+      }
+    } catch (error) {
+      console.error('Error fetching installers:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+      fetchInstallers(page)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
@@ -81,14 +142,6 @@ export default function DashboardPage() {
       setCurrentPage(1)
     }
   }, [searchQuery, statusFilter])
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page)
-      fetchInstallers(page)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }
 
 
   const getInitials = (firstName: string, lastName: string) => {
