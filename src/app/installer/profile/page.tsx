@@ -981,12 +981,12 @@ export default function InstallerProfilePage() {
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-primary-900 text-sm truncate">
-                  {installer.firstName || installer.lastName 
+                  {installer && (installer.firstName || installer.lastName 
                     ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                    : installer.email.split('@')[0]
+                    : installer.email.split('@')[0])
                   }
                 </p>
-                <p className="text-xs text-primary-500 truncate">{installer.email}</p>
+                <p className="text-xs text-primary-500 truncate">{installer?.email}</p>
               </div>
             )}
           </div>
