@@ -66,26 +66,16 @@ export default function DashboardPage() {
 
   const fetchStats = async () => {
     try {
-      // Fetch stats separately to get accurate counts
-      const [allResponse, qualifiedResponse, failedResponse, pendingResponse] = await Promise.all([
-        fetch('/api/installers?limit=1'),
-        fetch('/api/installers?status=passed&limit=1'),
-        fetch('/api/installers?status=failed&limit=1'),
-        fetch('/api/installers?status=pending&limit=1'),
-      ])
+      // Fetch all installers to calculate stats accurately
+      const allResponse = await fetch('/api/installers?limit=1000')
+      const allData = await allResponse.json()
+      const allInstallers = allData.installers || []
       
-      const [allData, qualifiedData, failedData, pendingData] = await Promise.all([
-        allResponse.json(),
-        qualifiedResponse.json(),
-        failedResponse.json(),
-        pendingResponse.json(),
-      ])
-
       setStats({
-        total: allData.pagination?.total || 0,
-        qualified: qualifiedData.pagination?.total || 0,
-        notQualified: failedData.pagination?.total || 0,
-        pending: pendingData.pagination?.total || 0,
+        total: allData.pagination?.total || allInstallers.length,
+        qualified: allInstallers.filter((i: Installer) => i.status === 'passed' || i.status === 'qualified').length,
+        notQualified: allInstallers.filter((i: Installer) => i.status === 'failed').length,
+        pending: allInstallers.filter((i: Installer) => i.status === 'pending').length,
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
