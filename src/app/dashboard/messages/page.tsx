@@ -47,6 +47,8 @@ interface Message {
   link?: string
   isRead: boolean
   createdAt: string
+  senderId?: string
+  senderType?: string
   installer: {
     id: string
     firstName: string
