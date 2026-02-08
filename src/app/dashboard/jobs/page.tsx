@@ -43,6 +43,7 @@ interface Job {
   endDate?: string
   status: string
   targetStatus?: string
+  benefits?: string
   createdAt: string
   _count: {
     applications: number
