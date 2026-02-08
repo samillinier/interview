@@ -1252,9 +1252,9 @@ export default function InstallerProfilePage() {
               className="pt-4 border-t border-slate-200/60"
             >
               <p className="text-base text-slate-700 font-medium">
-                {installer.status === 'pending'
+                {installer && (installer.status === 'pending'
                   ? '⏳ Application under review'
-                  : '📋 Please check back for updates'
+                  : '📋 Please check back for updates')
                 }
               </p>
             </motion.div>
