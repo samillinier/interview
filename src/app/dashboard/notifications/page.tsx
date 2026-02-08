@@ -237,17 +237,6 @@ export default function NotificationsPage() {
             {sidebarOpen && <span>Installers</span>}
           </Link>
           <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics'
-                ? 'bg-white/20 text-white font-medium'
-                : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
-          <Link
             href="/dashboard/notifications"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               pathname === '/dashboard/notifications'
@@ -257,6 +246,15 @@ export default function NotificationsPage() {
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Notifications</span>}
+          </Link>
+          <Link
+            href="/dashboard/analytics"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Analytics</span>}
           </Link>
           <Link
             href="/dashboard/messages"
