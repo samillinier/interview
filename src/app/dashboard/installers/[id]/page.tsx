@@ -36,7 +36,8 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Bell
+  Bell,
+  BarChart3
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -331,6 +332,13 @@ export default function InstallerProfileViewPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/analytics"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <BarChart3 className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Analytics</span>}
           </Link>
         </nav>
 
