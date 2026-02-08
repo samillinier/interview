@@ -426,6 +426,10 @@ export default function InstallerProfileViewPage() {
             <MessageSquare className="w-5 h-5" />
             <span>Messages</span>
           </Link>
+          <Link href="/dashboard/analytics" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+            <BarChart3 className="w-5 h-5" />
+            <span>Analytics</span>
+          </Link>
         </nav>
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className="flex items-center gap-3 mb-4">
