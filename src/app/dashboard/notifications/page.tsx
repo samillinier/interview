@@ -22,7 +22,8 @@ import {
   Search,
   Filter,
   Plus,
-  BarChart3
+  BarChart3,
+  Briefcase
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -237,15 +238,13 @@ export default function NotificationsPage() {
             {sidebarOpen && <span>Installers</span>}
           </Link>
           <Link
-            href="/dashboard/notifications"
+            href="/dashboard/jobs"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/notifications'
-                ? 'bg-white/20 text-white font-medium'
-                : 'text-white/90 hover:bg-white/10'
+              pathname === '/dashboard/jobs' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
             }`}
           >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            <Briefcase className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Jobs</span>}
           </Link>
           <Link
             href="/dashboard/analytics"
@@ -255,6 +254,17 @@ export default function NotificationsPage() {
           >
             <BarChart3 className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Analytics</span>}
+          </Link>
+          <Link
+            href="/dashboard/notifications"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/notifications'
+                ? 'bg-white/20 text-white font-medium'
+                : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Bell className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Notifications</span>}
           </Link>
           <Link
             href="/dashboard/messages"
@@ -340,6 +350,14 @@ export default function NotificationsPage() {
           <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Users className="w-5 h-5" />
             <span>Installers</span>
+          </Link>
+          <Link href="/dashboard/jobs" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+            pathname === '/dashboard/jobs'
+              ? 'bg-white/20 text-white font-medium'
+              : 'text-white/90 hover:bg-white/10'
+          }`}>
+            <Briefcase className="w-5 h-5" />
+            <span>Jobs</span>
           </Link>
           <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
             pathname === '/dashboard/analytics'

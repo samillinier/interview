@@ -5,8 +5,6 @@ import { motion } from 'framer-motion'
 import { 
   User, 
   LayoutDashboard,
-  FileText,
-  Award,
   Bell,
   Menu,
   X,
@@ -290,20 +288,27 @@ export default function InstallerDashboardPage() {
             <User className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Profile</span>}
           </Link>
-          <a
-            href="#"
+          <Link
+            href="/installer/jobs"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Interviews</span>}
-          </a>
-          <a
-            href="#"
+            <Briefcase className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Jobs</span>}
+          </Link>
+          <Link
+            href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <Award className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Qualifications</span>}
-          </a>
+            <Paperclip className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Attachments</span>}
+          </Link>
+          <Link
+            href="/installer/payment"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <CreditCard className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Payment</span>}
+          </Link>
           <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
@@ -392,6 +397,10 @@ export default function InstallerDashboardPage() {
           <Link href="/installer/profile" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <User className="w-5 h-5" />
             <span>Profile</span>
+          </Link>
+          <Link href="/installer/jobs" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+            <Briefcase className="w-5 h-5" />
+            <span>Jobs</span>
           </Link>
           <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Paperclip className="w-5 h-5" />

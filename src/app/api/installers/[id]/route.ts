@@ -35,18 +35,18 @@ export async function GET(
     try {
       const installer = await prisma.installer.findUnique({
         where: { id: installerId },
-      })
+    })
 
-      if (!installer) {
+    if (!installer) {
         console.error('Installer not found with ID:', installerId)
         return NextResponse.json(
           { error: 'Installer not found', installerId },
           { status: 404 }
         )
-      }
+    }
 
       console.log('Installer found:', installer.email)
-      return NextResponse.json({ installer })
+    return NextResponse.json({ installer })
     } catch (dbError: any) {
       // Handle Prisma/database specific errors
       console.error('Database error fetching installer:', dbError)

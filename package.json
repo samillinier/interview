@@ -16,7 +16,7 @@
     "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
-    "@prisma/client": "^5.7.1",
+    "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.0.0",
     "date-fns": "^3.0.6",

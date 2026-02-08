@@ -171,6 +171,7 @@ model Installer {
   documents             Document[]
   communications        Communication[]
   notifications         Notification[]
+  jobApplications       JobApplication[]
 }
 
 // Interview model - stores each prescreening interview
@@ -261,6 +262,7 @@ model ScreeningCriteria {
   weights         String?   // JSON object of field weights
 }
 
+
 // Notifications for installers
 model Notification {
   id              String    @id @default(cuid())
@@ -270,13 +272,68 @@ model Notification {
   installerId     String
   installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
   
-  type            String    // 'notification', 'message', 'news'
+  type            String    // notification, message, news, job
   title           String
   content         String
+  priority        String    @default("normal") // low, normal, high, urgent
+  link            String?
   isRead          Boolean   @default(false)
   readAt          DateTime?
-  priority        String    @default("normal") // 'low', 'normal', 'high', 'urgent'
-  link            String?   // Optional link to a related page
-  senderId        String?   // 'admin' or installerId - who sent the message
-  senderType      String?   // 'admin' or 'installer'
+  
+  // Sender information
+  senderId        String?
+  senderType      String?   // admin, installer
+  
+  @@index([installerId])
+  @@index([type])
+  @@index([isRead])
+}
+
+// Jobs posted by admin
+model Job {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  title           String
+  description     String
+  location        String
+  jobType         String    // full-time, part-time, contract, project
+  requirements    String?   // JSON array of requirements
+  skills          String?   // JSON array of required skills
+  payRange        String?   // e.g., "$50-75/hour" or "$5000-8000/project"
+  startDate       DateTime?
+  endDate         DateTime?
+  status          String    @default("active") // active, closed, filled
+  
+  // Who can see this job
+  targetStatus    String?   // passed, qualified, all - who can apply
+  
+  // Benefits (JSON array of selected benefits)
+  benefits        String?   // JSON array of benefits
+  
+  applications    JobApplication[]
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Job applications from installers
+model JobApplication {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  
+  jobId           String
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  installerId     String
+  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  
+  status          String    @default("pending") // pending, reviewed, accepted, rejected
+  notes           String?
+  
+  @@unique([jobId, installerId])
+  @@index([installerId])
+  @@index([jobId])
+  @@index([status])
 }

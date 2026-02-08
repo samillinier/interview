@@ -40,6 +40,7 @@ interface Installer {
   phone?: string
   yearsOfExperience?: number
   flooringSkills?: string
+  flooringSpecialties?: string
   status: string
   photoUrl?: string
 }
@@ -234,9 +235,18 @@ export default function DashboardPage() {
             {sidebarOpen && <span>Installers</span>}
           </Link>
           <Link
+            href="/dashboard/jobs"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/jobs' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Briefcase className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Jobs</span>}
+          </Link>
+          <Link
             href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
             }`}
           >
             <BarChart3 className="w-5 h-5 flex-shrink-0" />
@@ -549,7 +559,7 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {installer.yearsOfExperience ? (
+                        {installer.yearsOfExperience != null && installer.yearsOfExperience !== undefined ? (
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
                               <Briefcase className="w-4 h-4 text-slate-600" />
@@ -561,24 +571,55 @@ export default function DashboardPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {installer.flooringSkills ? (
-                          <div className="flex flex-wrap gap-2">
-                            {(() => {
+                        {(() => {
+                          // Try to get skills from flooringSkills or flooringSpecialties
+                          const skillsData = installer.flooringSkills || installer.flooringSpecialties
+                          
+                          if (!skillsData) {
+                            return <span className="text-slate-400">-</span>
+                          }
+
+                          try {
+                            // Try parsing as JSON first
+                            let skills: string[] = []
+                            
+                            if (typeof skillsData === 'string') {
+                              // Try JSON parse
                               try {
-                                const skills = JSON.parse(installer.flooringSkills || '[]')
-                                return Array.isArray(skills) ? skills.slice(0, 2).map((skill: string, idx: number) => (
+                                const parsed = JSON.parse(skillsData)
+                                skills = Array.isArray(parsed) ? parsed : [parsed].filter(Boolean)
+                              } catch {
+                                // If JSON parse fails, try comma-separated
+                                if (skillsData.includes(',')) {
+                                  skills = skillsData.split(',').map(s => s.trim()).filter(Boolean)
+                                } else {
+                                  skills = [skillsData].filter(Boolean)
+                                }
+                              }
+                            } else if (Array.isArray(skillsData)) {
+                              skills = skillsData
+                            } else {
+                              skills = [String(skillsData)].filter(Boolean)
+                            }
+
+                            if (skills.length === 0) {
+                              return <span className="text-slate-400">-</span>
+                            }
+
+                            return (
+                              <div className="flex flex-wrap gap-2">
+                                {skills.slice(0, 2).map((skill: string, idx: number) => (
                                   <span key={idx} className="px-3 py-1 bg-gradient-to-r from-slate-100 to-slate-50 text-slate-700 rounded-lg text-xs font-medium border border-slate-200">
                                     {skill}
                                   </span>
-                                )) : null
-                              } catch {
-                                return <span className="text-slate-400">-</span>
-                              }
-                            })()}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
+                                ))}
+                              </div>
+                            )
+                          } catch (error) {
+                            console.error('Error parsing skills:', error)
+                            return <span className="text-slate-400">-</span>
+                          }
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         {getStatusBadge(installer.status)}

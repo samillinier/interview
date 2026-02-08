@@ -153,6 +153,7 @@ interface InstallerProfile {
 export default function InstallerProfileViewPage() {
   const router = useRouter()
   const params = useParams()
+  const pathname = usePathname()
   const { data: session, status: sessionStatus } = useSession()
   const installerId = params?.id as string
 
@@ -243,6 +244,106 @@ export default function InstallerProfileViewPage() {
     }
   }
 
+  // Calculate profile completion percentage
+  const calculateProfileCompletion = (): number => {
+    if (!installer) return 0
+    
+    const fields = [
+      // Basic Info
+      installer.firstName,
+      installer.lastName,
+      installer.phone,
+      installer.email,
+      installer.photoUrl,
+      // Company Info
+      installer.companyName,
+      installer.companyTitle,
+      installer.companyStreetAddress,
+      installer.companyCity,
+      installer.companyState,
+      installer.companyZipCode,
+      // Experience & Skills
+      installer.yearsOfExperience,
+      installer.flooringSpecialties,
+      installer.flooringSkills,
+      installer.hasOwnCrew !== undefined,
+      installer.crewSize,
+      // Insurance & Registration
+      installer.hasInsurance !== undefined,
+      installer.insuranceType,
+      installer.hasLicense !== undefined,
+      installer.licenseNumber,
+      installer.hasGeneralLiability !== undefined,
+      installer.hasCommercialAutoLiability !== undefined,
+      installer.hasWorkersComp !== undefined,
+      installer.isSunbizRegistered !== undefined,
+      installer.hasBusinessLicense !== undefined,
+      // Tools & Equipment
+      installer.hasOwnTools !== undefined,
+      installer.toolsDescription,
+      installer.hasVehicle !== undefined,
+      installer.vehicleDescription,
+      // Travel & Availability
+      installer.willingToTravel !== undefined,
+      installer.maxTravelDistance,
+      installer.canStartImmediately !== undefined,
+      installer.preferredStartDate,
+      installer.mondayToFridayAvailability,
+      installer.saturdayAvailability,
+      // Carpet Installation
+      installer.wantsToAddCarpet !== undefined,
+      installer.installsStretchInCarpet !== undefined,
+      installer.dailyStretchInCarpetSqft,
+      installer.installsGlueDownCarpet !== undefined,
+      // Hardwood Installation
+      installer.wantsToAddHardwood !== undefined,
+      installer.installsNailDownSolidHardwood !== undefined,
+      installer.dailyNailDownSolidHardwoodSqft,
+      installer.installsStapleDownEngineeredHardwood !== undefined,
+      // Laminate Installation
+      installer.wantsToAddLaminate !== undefined,
+      installer.dailyLaminateSqft,
+      installer.installsLaminateOnStairs !== undefined,
+      // Vinyl Installation
+      installer.wantsToAddVinyl !== undefined,
+      installer.installsSheetVinyl !== undefined,
+      installer.installsLuxuryVinylPlank !== undefined,
+      installer.dailyLuxuryVinylPlankSqft,
+      installer.installsLuxuryVinylTile !== undefined,
+      installer.installsVinylCompositionTile !== undefined,
+      installer.dailyVinylCompositionTileSqft,
+      // Tile Installation
+      installer.wantsToAddTile !== undefined,
+      installer.installsCeramicTile !== undefined,
+      installer.dailyCeramicTileSqft,
+      installer.installsPorcelainTile !== undefined,
+      installer.dailyPorcelainTileSqft,
+      installer.installsStoneTile !== undefined,
+      installer.dailyStoneTileSqft,
+      installer.offersTileRemoval !== undefined,
+      installer.installsTileBacksplash !== undefined,
+      installer.dailyTileBacksplashSqft,
+      // Additional Work
+      installer.movesFurniture !== undefined,
+      installer.installsTrim !== undefined,
+    ]
+    
+    const filledFields = fields.filter(field => {
+      if (field === undefined || field === null) return false
+      if (typeof field === 'string' && field.trim() === '') return false
+      if (typeof field === 'number' && field === 0) return false
+      return true
+    }).length
+    
+    const totalFields = fields.length
+    const percentage = Math.round((filledFields / totalFields) * 100)
+    
+    return Math.min(percentage, 100)
+  }
+
+  const profileCompletion = installer ? calculateProfileCompletion() : 0
+  const isProfileUnfinished = installer ? (profileCompletion < 100 || !installer.overallScore) : false
+
   if (sessionStatus === 'loading' || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -307,31 +408,30 @@ export default function InstallerProfileViewPage() {
         <nav className="flex-1 p-4 space-y-2">
           <Link
             href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
           >
             <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Dashboard</span>}
           </Link>
           <Link
             href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname.startsWith('/dashboard/installers') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
           >
             <UsersIcon className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
           <Link
-            href="/dashboard/notifications"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+            href="/dashboard/jobs"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/jobs' || pathname?.startsWith('/dashboard/jobs') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
           >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
-          </Link>
-          <Link
-            href="/dashboard/messages"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
+            <Briefcase className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Jobs</span>}
           </Link>
           <Link
             href="/dashboard/analytics"
@@ -341,6 +441,24 @@ export default function InstallerProfileViewPage() {
           >
             <BarChart3 className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Analytics</span>}
+          </Link>
+          <Link
+            href="/dashboard/notifications"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Bell className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Notifications</span>}
+          </Link>
+          <Link
+            href="/dashboard/messages"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Messages</span>}
           </Link>
         </nav>
 
@@ -420,6 +538,18 @@ export default function InstallerProfileViewPage() {
             <UsersIcon className="w-5 h-5" />
             <span>Installers</span>
           </Link>
+          <Link href="/dashboard/jobs" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+            pathname === '/dashboard/jobs' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+          }`}>
+            <Briefcase className="w-5 h-5" />
+            <span>Jobs</span>
+          </Link>
+          <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+            pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+          }`}>
+            <BarChart3 className="w-5 h-5" />
+            <span>Analytics</span>
+          </Link>
           <Link href="/dashboard/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5" />
             <span>Notifications</span>
@@ -427,12 +557,6 @@ export default function InstallerProfileViewPage() {
           <Link href="/dashboard/messages" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <MessageSquare className="w-5 h-5" />
             <span>Messages</span>
-          </Link>
-          <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <BarChart3 className="w-5 h-5" />
-            <span>Analytics</span>
           </Link>
         </nav>
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -479,6 +603,28 @@ export default function InstallerProfileViewPage() {
         </header>
 
         <main className="p-4 lg:p-6">
+          {/* Unfinished Profile Loading Banner */}
+          {isProfileUnfinished && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-md border border-slate-200 p-6 mb-6"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-slate-900 font-medium">Profile Completion</h3>
+                <span className="text-brand-green font-semibold">{profileCompletion}%</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${profileCompletion}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full bg-brand-green rounded-full"
+                />
+              </div>
+            </motion.div>
+          )}
+
           {/* Status Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

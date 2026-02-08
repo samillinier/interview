@@ -59,12 +59,6 @@ export default function HomePage() {
               </Link>
               )}
               <Link
-                href="/installer"
-                className="px-4 py-2 border border-brand-green text-brand-green rounded-lg font-medium hover:bg-brand-green/10 transition-colors"
-              >
-                Installer Portal
-              </Link>
-              <Link
                 href="/interview"
                 className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
               >
@@ -193,23 +187,15 @@ export default function HomePage() {
                 View Dashboard
               </Link>
               ) : (
-                <>
-                  <Link
-                    href="/create-account"
-                    className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
-                  >
-                    Create Account
-                  </Link>
-                  <a
-                    href="https://youtu.be/xz_KRogQWt0"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Play className="w-5 h-5" />
-                    Watch Video
-                  </a>
-                </>
+                <a
+                  href="https://youtu.be/xz_KRogQWt0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Play className="w-5 h-5" />
+                  Watch Video
+                </a>
               )}
             </motion.div>
           </div>
@@ -224,9 +210,6 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <Link href="/interview" className="hover:text-white transition-colors">
                 Start Interview
-              </Link>
-              <Link href="/installer" className="hover:text-white transition-colors">
-                Installer Portal
               </Link>
               {session && (
                 <Link href="/dashboard" className="hover:text-white transition-colors">
