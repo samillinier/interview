@@ -7,8 +7,8 @@ function getOpenAIClient() {
     throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.')
   }
   return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
+  apiKey: process.env.OPENAI_API_KEY,
+})
 }
 
 export async function generateSpeech(text: string): Promise<Buffer> {
@@ -27,16 +27,16 @@ export async function generateSpeech(text: string): Promise<Buffer> {
   
   try {
     const openai = getOpenAIClient()
-    const response = await openai.audio.speech.create({
-      model: 'tts-1',
-      voice: voice,
-      input: text,
-    })
-    console.log('🔊 Speech generated successfully with voice:', voice)
-    console.log('🔊 ===== END SPEECH GENERATION =====')
+  const response = await openai.audio.speech.create({
+    model: 'tts-1',
+    voice: voice,
+    input: text,
+  })
+  console.log('🔊 Speech generated successfully with voice:', voice)
+  console.log('🔊 ===== END SPEECH GENERATION =====')
 
-    const arrayBuffer = await response.arrayBuffer()
-    return Buffer.from(arrayBuffer)
+  const arrayBuffer = await response.arrayBuffer()
+  return Buffer.from(arrayBuffer)
   } catch (error: any) {
     console.error('❌ Error generating speech:', error.message || error)
     if (error.status === 401) {

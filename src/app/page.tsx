@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Sparkles, LogOut, ChevronDown } from 'lucide-react'
+import { ArrowRight, Sparkles, LogOut, ChevronDown, Play } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
 const rotatingWords = [
@@ -51,13 +51,19 @@ export default function HomePage() {
                   Sign In
                 </Link>
               ) : (
-                <Link
-                  href="/dashboard"
-                  className="text-primary-600 hover:text-brand-green transition-colors font-medium"
-                >
-                  Dashboard
-                </Link>
+              <Link
+                href="/dashboard"
+                className="text-primary-600 hover:text-brand-green transition-colors font-medium"
+              >
+                Dashboard
+              </Link>
               )}
+              <Link
+                href="/installer"
+                className="px-4 py-2 border border-brand-green text-brand-green rounded-lg font-medium hover:bg-brand-green/10 transition-colors"
+              >
+                Installer Portal
+              </Link>
               <Link
                 href="/interview"
                 className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
@@ -180,19 +186,30 @@ export default function HomePage() {
                 <ArrowRight className="w-5 h-5" />
               </Link>
               {session ? (
-                <Link
-                  href="/dashboard"
-                  className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
-                >
-                  View Dashboard
-                </Link>
+              <Link
+                href="/dashboard"
+                className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
+              >
+                View Dashboard
+              </Link>
               ) : (
-                <Link
-                  href="/login"
-                  className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
-                >
-                  Sign In to Dashboard
-                </Link>
+                <>
+                  <Link
+                    href="/create-account"
+                    className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors"
+                  >
+                    Create Account
+                  </Link>
+                  <a
+                    href="https://youtu.be/xz_KRogQWt0"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto px-8 py-4 border border-brand-green text-brand-green rounded-xl font-medium hover:bg-brand-green/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Play className="w-5 h-5" />
+                    Watch Video
+                  </a>
+                </>
               )}
             </motion.div>
           </div>
@@ -202,7 +219,22 @@ export default function HomePage() {
       {/* Footer */}
       <section className="pt-16 pb-8 bg-brand-green overflow-hidden flex-1">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Footer content without image */}
+          <div className="text-center text-white/90">
+            <p className="mb-4">Floor Interior Service - AI-Powered Prescreening System</p>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+              <Link href="/interview" className="hover:text-white transition-colors">
+                Start Interview
+              </Link>
+              <Link href="/installer" className="hover:text-white transition-colors">
+                Installer Portal
+              </Link>
+              {session && (
+                <Link href="/dashboard" className="hover:text-white transition-colors">
+                  Admin Dashboard
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 

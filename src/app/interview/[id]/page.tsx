@@ -15,12 +15,14 @@ import {
 } from 'lucide-react'
 import MessageBubble from '@/components/MessageBubble'
 import { getInterviewQuestions } from '@/lib/questions'
+import { getSupportedMimeType, isMobile, resumeAudioContext, isMediaRecorderSupported, isIOS } from '@/lib/utils'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  audioBase64?: string // Store audio for replay on mobile
 }
 
 export default function InterviewPage({ params }: { params: { id: string } }) {
@@ -28,8 +30,10 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   const messagesStartRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const audioEnabledRef = useRef<boolean>(false)
 
   const [isLoading, setIsLoading] = useState(true)
   const [interviewData, setInterviewData] = useState<any>(null)
@@ -51,6 +55,11 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice')
   const [textInput, setTextInput] = useState('')
+  
+  // Audio initialization state for mobile
+  const [audioInitialized, setAudioInitialized] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(false)
+  const [pendingAudio, setPendingAudio] = useState<string | null>(null)
   
   // Pending response for review/edit
   const [pendingResponse, setPendingResponse] = useState<string | null>(null)
@@ -147,6 +156,190 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     }
   }, [isSpeaking])
 
+  // Play audio function
+  const playAudio = useCallback(async (base64Audio: string) => {
+    // On mobile, ensure audio is enabled first
+    if (isMobile() && !audioEnabledRef.current) {
+      setPendingAudio(base64Audio)
+      return
+    }
+    
+    setIsSpeaking(true)
+    try {
+      // Ensure AudioContext is initialized and resumed
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+      
+      // Resume audio context if suspended (critical for iOS)
+      if (audioContextRef.current.state === 'suspended') {
+        try {
+          await audioContextRef.current.resume()
+        } catch (resumeError) {
+          console.warn('Could not resume audio context:', resumeError)
+        }
+      }
+      
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause()
+          audioRef.current.currentTime = 0
+        } catch (e) {
+          // Ignore errors when stopping
+        }
+        audioRef.current = null
+      }
+      
+      // Create audio element with proper attributes for mobile
+      const audio = document.createElement('audio')
+      audio.src = `data:audio/mpeg;base64,${base64Audio}`
+      audio.preload = 'auto'
+      audio.volume = 1.0
+      audio.setAttribute('playsinline', 'true')
+      audio.setAttribute('webkit-playsinline', 'true')
+      audio.setAttribute('crossorigin', 'anonymous')
+      
+      // Add to DOM temporarily (helps with some mobile browsers)
+      audio.style.display = 'none'
+      document.body.appendChild(audio)
+      
+      audioRef.current = audio as HTMLAudioElement
+      
+      // Set up event handlers
+      audio.onended = () => {
+        setIsSpeaking(false)
+        if (audioRef.current === audio) {
+          audioRef.current = null
+        }
+        try {
+          document.body.removeChild(audio)
+        } catch (e) {
+          // Ignore if already removed
+        }
+      }
+      
+      audio.onerror = (err) => {
+        console.error('Error playing audio:', err)
+        setIsSpeaking(false)
+        if (audioRef.current === audio) {
+          audioRef.current = null
+        }
+        try {
+          document.body.removeChild(audio)
+        } catch (e) {
+          // Ignore if already removed
+        }
+      }
+      
+      // Play audio - on mobile, this must be in response to user interaction
+      try {
+        const playPromise = audio.play()
+        if (playPromise !== undefined) {
+          await playPromise
+          console.log('✅ Audio playing successfully')
+        }
+      } catch (err: any) {
+        console.error('Error playing audio:', err)
+        setIsSpeaking(false)
+        try {
+          document.body.removeChild(audio)
+        } catch (e) {
+          // Ignore if already removed
+        }
+        
+        // If autoplay fails on mobile, store for later
+        if (isMobile() && (err.name === 'NotAllowedError' || err.name === 'NotSupportedError')) {
+          setPendingAudio(base64Audio)
+          audioEnabledRef.current = false
+          setAudioEnabled(false)
+          console.warn('Audio playback blocked - will retry after user interaction')
+        }
+      }
+    } catch (error) {
+      console.error('Error creating audio:', error)
+      setIsSpeaking(false)
+    }
+  }, [])
+
+  // Enable audio on user interaction (required for mobile)
+  const enableAudio = useCallback(async () => {
+    try {
+      // Initialize AudioContext first
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+      
+      // Resume audio context (required for iOS) - MUST be done first
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume()
+      }
+      
+      // On mobile, request microphone permission immediately
+      // This is required for iOS Safari to work properly
+      if (isMobile()) {
+        try {
+          // Request microphone permission - this must be done in response to user interaction
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            } 
+          })
+          // Immediately stop the stream - we just needed permission
+          stream.getTracks().forEach(track => track.stop())
+          console.log('✅ Microphone permission granted')
+        } catch (micError: any) {
+          console.error('Microphone permission error:', micError)
+          if (micError.name === 'NotAllowedError' || micError.name === 'PermissionDeniedError') {
+            alert('Microphone permission is required for voice recording. Please allow microphone access and try again.')
+            return
+          }
+          throw micError
+        }
+      }
+      
+      // Create a silent audio element and play it to unlock audio on mobile
+      // This MUST be done in the same user interaction context
+      const unlockAudio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGWi77+efTQ==')
+      unlockAudio.volume = 0.01
+      unlockAudio.setAttribute('playsinline', 'true')
+      unlockAudio.setAttribute('webkit-playsinline', 'true')
+      
+      try {
+        const playPromise = unlockAudio.play()
+        if (playPromise !== undefined) {
+          await playPromise
+        }
+        unlockAudio.pause()
+        unlockAudio.remove()
+        console.log('✅ Audio unlocked')
+      } catch (e) {
+        console.warn('Audio unlock attempt:', e)
+        // Continue anyway - some browsers may not need this
+      }
+      
+      // Update state and ref - mark as enabled
+      audioEnabledRef.current = true
+      setAudioEnabled(true)
+      setAudioInitialized(true)
+      
+      // Play any pending audio IMMEDIATELY while user interaction context is still active
+      const audioToPlay = pendingAudio
+      if (audioToPlay) {
+        setPendingAudio(null)
+        // Play immediately - no delays, no awaits that might lose context
+        playAudio(audioToPlay).catch(err => {
+          console.error('Error playing pending audio:', err)
+        })
+      }
+    } catch (error: any) {
+      console.error('Error enabling audio:', error)
+      alert('Failed to enable audio. Please make sure you allow microphone access when prompted.')
+    }
+  }, [pendingAudio, playAudio])
+
   // Initialize interview
   useEffect(() => {
     const initInterview = async () => {
@@ -163,20 +356,30 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             setLanguage(data.language)
           }
 
-          // Add first AI message
+          // Add first AI message with audio
           const firstMessage: Message = {
             id: crypto.randomUUID(),
             role: 'assistant',
             content: data.currentQuestion.text,
             timestamp: new Date(),
+            audioBase64: data.audioBase64, // Store audio for replay
           }
           setMessages([firstMessage])
           setConversationHistory([{ role: 'assistant', content: data.currentQuestion.text }])
 
-          // Play audio if available
-          if (data.audioBase64) {
+        // On mobile, store audio for later playback after user enables audio
+        // On desktop, try to play (may still be blocked)
+        if (isMobile() && data.audioBase64) {
+          if (audioEnabledRef.current) {
+            // If audio is already enabled, play immediately
             playAudio(data.audioBase64)
+          } else {
+            // Store for later playback
+            setPendingAudio(data.audioBase64)
           }
+        } else if (data.audioBase64) {
+          playAudio(data.audioBase64)
+        }
           
           // Scroll to top after initial load (newest messages at top)
           setTimeout(() => {
@@ -195,34 +398,67 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     initInterview()
   }, [])
 
-  const playAudio = useCallback((base64Audio: string) => {
-    setIsSpeaking(true)
-    try {
-      // OpenAI TTS returns MP3 format
-      const audio = new Audio(`data:audio/mpeg;base64,${base64Audio}`)
-      audioRef.current = audio
-      audio.onended = () => setIsSpeaking(false)
-      audio.onerror = (err) => {
-        console.error('Error playing audio:', err)
-        setIsSpeaking(false)
-      }
-      audio.play().catch((err) => {
-        console.error('Error playing audio:', err)
-        setIsSpeaking(false)
-      })
-    } catch (error) {
-      console.error('Error creating audio:', error)
-      setIsSpeaking(false)
-    }
-  }, [])
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
+      // On mobile, enable audio first if not already enabled
+      if (isMobile() && !audioEnabledRef.current) {
+        await enableAudio()
+        // Small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 200))
+        // Re-check after state update using ref
+        if (!audioEnabledRef.current) {
+          console.warn('Audio not enabled after enableAudio call')
+          alert('Please enable audio first by tapping the "Enable Audio & Microphone" button.')
+          return
+        }
+      }
+      
+      // Initialize AudioContext if not already done
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      }
+      
+      // Resume audio context (required for iOS) - do this BEFORE getUserMedia
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume()
+      }
+      
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
       })
+      
+      // After getting stream, ensure audio context is still active
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume()
+      }
+
+      // Check if MediaRecorder is supported
+      if (!isMediaRecorderSupported()) {
+        throw new Error('MediaRecorder is not supported on this device. Please use text input instead.')
+      }
+
+      // Get supported MIME type for this device
+      const mimeType = getSupportedMimeType()
+      
+      // Set up media recorder with device-compatible codec
+      const options: MediaRecorderOptions = {}
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        options.mimeType = mimeType
+      }
+
+      // For iOS, we might need to use timeslice for better compatibility
+      if (isIOS()) {
+        // iOS Safari works better with timeslice
+        mediaRecorderRef.current = new MediaRecorder(stream, options)
+      } else {
+        mediaRecorderRef.current = new MediaRecorder(stream, options)
+      }
 
       chunksRef.current = []
 
@@ -233,16 +469,32 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       }
 
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        // Use the actual MIME type from the recorder or fallback
+        const blobType = mediaRecorderRef.current?.mimeType || mimeType || 'audio/webm'
+        const audioBlob = new Blob(chunksRef.current, { type: blobType })
         stream.getTracks().forEach((track) => track.stop())
         // Transcribe audio first and show for review
         await transcribeAndPreview(audioBlob)
       }
 
-      mediaRecorderRef.current.start()
+      // Start recording with timeslice for iOS compatibility
+      if (isIOS()) {
+        // iOS Safari requires timeslice for better compatibility
+        mediaRecorderRef.current.start(1000) // Collect data every second
+      } else {
+        mediaRecorderRef.current.start()
+      }
       setIsRecording(true)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing microphone:', error)
+      // Provide user-friendly error message
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Microphone permission denied. Please allow microphone access in your browser settings.')
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No microphone found. Please connect a microphone and try again.')
+      } else {
+        alert('Error accessing microphone. Please try again or use text input instead.')
+      }
     }
   }
 
@@ -257,8 +509,23 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   const transcribeAndPreview = async (audioBlob: Blob) => {
     setIsProcessing(true)
     try {
+      // Determine file extension based on MIME type
+      const mimeType = audioBlob.type || 'audio/webm'
+      let extension = 'webm'
+      if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+        extension = 'm4a'
+      } else if (mimeType.includes('aac')) {
+        extension = 'aac'
+      } else if (mimeType.includes('ogg')) {
+        extension = 'ogg'
+      } else if (mimeType.includes('wav')) {
+        extension = 'wav'
+      } else if (mimeType.includes('mp3')) {
+        extension = 'mp3'
+      }
+      
       const formData = new FormData()
-      formData.append('audio', audioBlob, 'audio.webm')
+      formData.append('audio', audioBlob, `audio.${extension}`)
       formData.append('language', language)
 
       const response = await fetch('/api/interview/transcribe', {
@@ -332,20 +599,33 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
           timestamp: new Date(),
         }
 
-        // Add AI message
+        // Add AI message with audio
         const aiMessage: Message = {
           id: crypto.randomUUID(),
           role: 'assistant',
           content: data.aiResponse,
           timestamp: new Date(),
+          audioBase64: data.audioBase64, // Store audio for replay
         }
 
         setMessages((prev) => [...prev, userMessage, aiMessage])
         setConversationHistory(data.conversationHistory)
         setCurrentQuestionIndex(data.nextQuestionIndex)
 
-        // Play AI response
-        if (data.audioBase64) {
+        // Play audio response
+        // On mobile, if audio is enabled, play immediately (user interaction context from button click)
+        // Otherwise, store for later playback
+        if (isMobile() && data.audioBase64) {
+          if (audioEnabledRef.current) {
+            // Audio is enabled, play immediately while user interaction context is active
+            // No setTimeout - play immediately to maintain user interaction context
+            playAudio(data.audioBase64)
+          } else {
+            // Store for later playback after user enables audio
+            setPendingAudio(data.audioBase64)
+          }
+        } else if (data.audioBase64) {
+          // Desktop: try to play (may still be blocked)
           playAudio(data.audioBase64)
         }
 
@@ -516,12 +796,40 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          <button
-            onClick={() => router.push('/')}
-            className="w-full py-4 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
-          >
-            Return Home
-          </button>
+          {/* Show create account option - always show for new installers */}
+          <div className="bg-brand-green/10 border border-brand-green/20 rounded-2xl p-4 mb-6 text-left">
+            <p className="text-sm text-primary-700 mb-3">
+              <strong>Create your account</strong> to manage your profile and view your interview results anytime.
+            </p>
+            <button
+              onClick={() => {
+                const params = new URLSearchParams()
+                if (result.installerId) params.set('installerId', result.installerId)
+                if (result.email) params.set('email', result.email)
+                router.push(`/create-account?${params.toString()}`)
+              }}
+              className="w-full py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
+            >
+              Create Account
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            {result.hasAccount && (
+              <button
+                onClick={() => router.push('/installer/login')}
+                className="flex-1 py-3 bg-primary-100 text-primary-700 rounded-xl font-medium hover:bg-primary-200 transition-colors"
+              >
+                View My Profile
+              </button>
+            )}
+            <button
+              onClick={() => router.push('/')}
+              className={`py-3 px-6 bg-primary-100 text-primary-700 rounded-xl font-medium hover:bg-primary-200 transition-colors ${result.hasAccount ? '' : 'w-full'}`}
+            >
+              Return Home
+            </button>
+          </div>
         </motion.div>
       </div>
     )
@@ -567,7 +875,33 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto pt-24 pb-40">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
           <div ref={messagesStartRef} />
-          
+
+          {/* Audio Enablement Banner for Mobile */}
+          {isMobile() && !audioEnabled && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-brand-green/10 border border-brand-green/20 rounded-xl p-4 mb-4"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Volume2 className="w-5 h-5 text-brand-green" />
+                <div className="flex-1">
+                  <h3 className="font-medium text-primary-900">Enable Audio</h3>
+                  <p className="text-sm text-primary-600">
+                    Tap the button below to enable audio and microphone for this interview.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={enableAudio}
+                className="w-full px-4 py-3 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2"
+              >
+                <Volume2 className="w-4 h-4" />
+                Enable Audio & Microphone
+              </button>
+            </motion.div>
+          )}
+
           {/* Processing indicator - shown at top when processing */}
           {isProcessing && (
             <motion.div
@@ -587,6 +921,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 role={message.role}
                 content={message.content}
                 timestamp={message.timestamp}
+                audioBase64={message.audioBase64}
+                onPlayAudio={playAudio}
               />
             ))}
           </AnimatePresence>
@@ -818,32 +1154,48 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
               {inputMode === 'voice' ? (
                 <div className="flex flex-col items-center">
-                  <motion.button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={isProcessing || isSpeaking}
-                    className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-                      isRecording
-                        ? 'bg-danger-500 recording-pulse'
-                        : 'bg-brand-green hover:bg-brand-green-dark'
-                    } ${(isProcessing || isSpeaking) && 'opacity-50 cursor-not-allowed'}`}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {isRecording ? (
-                      <Square className="w-8 h-8 text-white fill-white" />
-                    ) : (
-                      <Mic className="w-8 h-8 text-white" />
-                    )}
-                  </motion.button>
+                  {isMobile() && !audioEnabled ? (
+                    <div className="text-center">
+                      <button
+                        onClick={enableAudio}
+                        className="w-20 h-20 rounded-full flex items-center justify-center bg-brand-green hover:bg-brand-green-dark transition-all mb-4"
+                      >
+                        <Volume2 className="w-8 h-8 text-white" />
+                      </button>
+                      <p className="text-sm text-primary-500">
+                        Tap to enable audio & microphone
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <motion.button
+                        onClick={isRecording ? stopRecording : startRecording}
+                        disabled={isProcessing || isSpeaking}
+                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
+                          isRecording
+                            ? 'bg-danger-500 recording-pulse'
+                            : 'bg-brand-green hover:bg-brand-green-dark'
+                        } ${(isProcessing || isSpeaking) && 'opacity-50 cursor-not-allowed'}`}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {isRecording ? (
+                          <Square className="w-8 h-8 text-white fill-white" />
+                        ) : (
+                          <Mic className="w-8 h-8 text-white" />
+                        )}
+                      </motion.button>
 
-                  <p className="mt-4 text-sm text-primary-500">
-                    {isRecording
-                      ? 'Click to stop recording'
-                      : isSpeaking
-                      ? 'Listening to AI response...'
-                      : isProcessing
-                      ? 'Transcribing...'
-                      : 'Click to start recording'}
-                  </p>
+                      <p className="mt-4 text-sm text-primary-500">
+                        {isRecording
+                          ? 'Click to stop recording'
+                          : isSpeaking
+                          ? 'Listening to AI response...'
+                          : isProcessing
+                          ? 'Transcribing...'
+                          : 'Click to start recording'}
+                      </p>
+                    </>
+                  )}
 
                   {/* Recording indicator */}
                   {isRecording && (

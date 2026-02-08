@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Square } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getSupportedMimeType, isMobile, resumeAudioContext } from '@/lib/utils'
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void
@@ -41,10 +41,22 @@ export default function VoiceRecorder({
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
+      })
       
       // Set up audio analysis for visualization
-      audioContextRef.current = new AudioContext()
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+      
+      // Resume audio context on mobile (required for iOS)
+      if (isMobile()) {
+        await resumeAudioContext(audioContextRef.current)
+      }
+      
       analyserRef.current = audioContextRef.current.createAnalyser()
       const source = audioContextRef.current.createMediaStreamSource(stream)
       source.connect(analyserRef.current)
@@ -62,10 +74,16 @@ export default function VoiceRecorder({
       }
       updateAudioLevel()
       
-      // Set up media recorder
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      })
+      // Get supported MIME type for this device
+      const mimeType = getSupportedMimeType()
+      
+      // Set up media recorder with device-compatible codec
+      const options: MediaRecorderOptions = {}
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        options.mimeType = mimeType
+      }
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, options)
       
       chunksRef.current = []
       
@@ -76,7 +94,9 @@ export default function VoiceRecorder({
       }
       
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        // Use the actual MIME type from the recorder or fallback
+        const blobType = mediaRecorderRef.current?.mimeType || mimeType || 'audio/webm'
+        const audioBlob = new Blob(chunksRef.current, { type: blobType })
         onRecordingComplete(audioBlob)
         stream.getTracks().forEach(track => track.stop())
         setAudioLevel(0)
@@ -84,8 +104,16 @@ export default function VoiceRecorder({
       
       mediaRecorderRef.current.start()
       setIsRecording(true)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing microphone:', error)
+      // Provide user-friendly error message
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Microphone permission denied. Please allow microphone access in your browser settings.')
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No microphone found. Please connect a microphone and try again.')
+      } else {
+        alert('Error accessing microphone. Please try again or use text input instead.')
+      }
     }
   }, [onRecordingComplete])
 

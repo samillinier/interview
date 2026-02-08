@@ -84,11 +84,93 @@ model Installer {
   notes                 String?
   followUpDate          DateTime?
   followUpReason        String?
+
+  // Account Information
+  username                    String?   @unique
+  passwordHash                String?
+  emailVerificationToken      String?
+  emailVerifiedAt             DateTime?
+  passwordResetToken          String?
+  photoUrl                    String?
+  
+  // Company Information
+  companyName                 String?
+  companyTitle                String?
+  companyStreetAddress        String?
+  companyCity                 String?
+  companyState                String?
+  companyZipCode              String?
+  ndaAgreedAt                 DateTime?
+  
+  // Service Agreement
+  serviceAgreementSignedAt    DateTime?
+  serviceAgreementSignature   String?
+  serviceAgreementName        String?
+  serviceAgreementDate        DateTime?
+  
+  // Carpet Installation
+  wantsToAddCarpet            Boolean?
+  installsStretchInCarpet     Boolean?
+  dailyStretchInCarpetSqft    Int?
+  installsGlueDownCarpet      Boolean?
+  
+  // Hardwood Installation
+  wantsToAddHardwood          Boolean?
+  installsNailDownSolidHardwood Boolean?
+  dailyNailDownSolidHardwoodSqft Int?
+  installsStapleDownEngineeredHardwood Boolean?
+  
+  // Laminate Installation
+  wantsToAddLaminate          Boolean?
+  dailyLaminateSqft           Int?
+  installsLaminateOnStairs    Boolean?
+  
+  // Vinyl Installation
+  wantsToAddVinyl             Boolean?
+  installsSheetVinyl          Boolean?
+  installsLuxuryVinylPlank    Boolean?
+  dailyLuxuryVinylPlankSqft   Int?
+  installsLuxuryVinylTile     Boolean?
+  installsVinylCompositionTile Boolean?
+  dailyVinylCompositionTileSqft Int?
+  
+  // Tile Installation
+  wantsToAddTile              Boolean?
+  installsCeramicTile         Boolean?
+  dailyCeramicTileSqft        Int?
+  installsPorcelainTile      Boolean?
+  dailyPorcelainTileSqft     Int?
+  installsStoneTile           Boolean?
+  dailyStoneTileSqft          Int?
+  offersTileRemoval           Boolean?
+  installsTileBacksplash      Boolean?
+  dailyTileBacksplashSqft     Int?
+  
+  // Additional Work
+  movesFurniture              Boolean?
+  installsTrim                Boolean?
+  
+  // Payment Information
+  paymentCompanyName          String?
+  paymentContactPerson        String?
+  paymentPhoneNumber          String?
+  paymentBusinessAddress      String?
+  paymentEmailAddress         String?
+  paymentBankName             String?
+  paymentAccountName          String?
+  paymentAccountNumber         String?
+  paymentRoutingNumber        String?
+  paymentAccountType          String?
+  paymentAuthorizationName    String?
+  paymentAuthorizationSignature String?
+  paymentAuthorizationDate    DateTime?
+
   
   // Relationships
   interviews            Interview[]
   documents             Document[]
   communications        Communication[]
+  notifications         Notification[]
 }
 
 // Interview model - stores each prescreening interview
@@ -179,3 +261,22 @@ model ScreeningCriteria {
   weights         String?   // JSON object of field weights
 }
 
+// Notifications for installers
+model Notification {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  installerId     String
+  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  
+  type            String    // 'notification', 'message', 'news'
+  title           String
+  content         String
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+  priority        String    @default("normal") // 'low', 'normal', 'high', 'urgent'
+  link            String?   // Optional link to a related page
+  senderId        String?   // 'admin' or installerId - who sent the message
+  senderType      String?   // 'admin' or 'installer'
+}

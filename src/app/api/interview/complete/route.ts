@@ -132,6 +132,9 @@ export async function POST(request: NextRequest) {
         reason,
         score,
         extractedData,
+        installerId: interview.installerId,
+        email: interview.installer.email,
+        hasAccount: !!(interview.installer.username && interview.installer.passwordHash),
       },
     })
   } catch (error) {

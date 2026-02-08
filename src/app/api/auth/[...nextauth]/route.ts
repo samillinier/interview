@@ -49,20 +49,15 @@ const handler = NextAuth({
       console.log('📧 User email:', user?.email)
       console.log('🔑 Account provider:', account?.provider)
       
-      // TEMPORARILY DISABLED: Allow all users to sign in
-      // TODO: Re-enable email restriction after testing
-      console.log('⚠️ Email restriction temporarily disabled - allowing all users')
-      return true
-      
-      // Original email restriction code (disabled):
-      // const email = user.email?.toLowerCase()
-      // if (email && ALLOWED_EMAILS.includes(email)) {
-      //   console.log('✅ User authorized:', email)
-      //   return true
-      // }
-      // console.log('❌ User not authorized:', email)
-      // console.log('📋 Allowed emails:', ALLOWED_EMAILS)
-      // return false
+      // Email restriction: Only allow users in the ALLOWED_EMAILS list
+      const email = user.email?.toLowerCase()
+      if (email && ALLOWED_EMAILS.includes(email)) {
+        console.log('✅ User authorized:', email)
+        return true
+      }
+      console.log('❌ User not authorized:', email)
+      console.log('📋 Allowed emails:', ALLOWED_EMAILS)
+      return false
     },
     async jwt({ token, account, profile }) {
       if (account) {

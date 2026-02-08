@@ -87,3 +87,48 @@ export function determinePassFail(score: number, data: {
   return { passed: false, reason: `Score ${score}/90 (${Math.round((score/90)*100)}%) - Does not meet minimum qualification score of 70%` }
 }
 
+// Mobile audio compatibility utilities
+export function getSupportedMimeType(): string {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/aac',
+    'audio/ogg;codecs=opus',
+    'audio/wav',
+  ]
+
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type
+    }
+  }
+
+  // Fallback to default
+  return 'audio/webm'
+}
+
+export function isIOS(): boolean {
+  if (typeof window === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+}
+
+export function isMobile(): boolean {
+  if (typeof window === 'undefined') return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+export async function resumeAudioContext(audioContext: AudioContext): Promise<void> {
+  if (audioContext.state === 'suspended') {
+    try {
+      await audioContext.resume()
+    } catch (error) {
+      console.error('Error resuming audio context:', error)
+    }
+  }
+}
+
+export function isMediaRecorderSupported(): boolean {
+  if (typeof window === 'undefined') return false
+  return typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported !== undefined
+}

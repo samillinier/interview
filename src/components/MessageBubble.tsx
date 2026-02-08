@@ -10,6 +10,8 @@ interface MessageBubbleProps {
   role: 'user' | 'assistant'
   content: string
   timestamp?: Date
+  audioBase64?: string
+  onPlayAudio?: (base64Audio: string) => void
 }
 
 export default function MessageBubble({ role, content, timestamp }: MessageBubbleProps) {
