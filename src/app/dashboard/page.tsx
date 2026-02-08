@@ -377,15 +377,17 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 hover:shadow-lg transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Total Applicants</p>
-                <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Total Applicants</p>
+                <p className="text-4xl font-bold text-slate-900 mb-1">{stats.total}</p>
+                <p className="text-xs text-slate-400">All registered installers</p>
               </div>
-              <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-slate-600" />
+              <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <Users className="w-7 h-7 text-slate-700" />
               </div>
             </div>
           </motion.div>
@@ -394,15 +396,17 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-md border border-brand-green/20 p-6 hover:shadow-lg hover:border-brand-green/30 transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Qualified</p>
-                <p className="text-3xl font-bold text-brand-green">{stats.qualified}</p>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-brand-green uppercase tracking-wide mb-2">Qualified</p>
+                <p className="text-4xl font-bold text-brand-green mb-1">{stats.qualified}</p>
+                <p className="text-xs text-brand-green/70">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-12 h-12 bg-brand-green/10 rounded-lg flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-brand-green" />
+              <div className="w-16 h-16 bg-gradient-to-br from-brand-green to-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-brand-green/30">
+                <CheckCircle2 className="w-7 h-7 text-white" />
               </div>
             </div>
           </motion.div>
@@ -411,15 +415,17 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 hover:shadow-lg transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Not Qualified</p>
-                <p className="text-3xl font-bold text-red-600">{stats.notQualified}</p>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Not Qualified</p>
+                <p className="text-4xl font-bold text-red-600 mb-1">{stats.notQualified}</p>
+                <p className="text-xs text-red-500">{stats.total > 0 ? Math.round((stats.notQualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-red-600" />
+              <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <XCircle className="w-7 h-7 text-red-600" />
               </div>
             </div>
           </motion.div>
@@ -428,36 +434,38 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 hover:shadow-lg transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Pending Review</p>
-                <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Pending Review</p>
+                <p className="text-4xl font-bold text-yellow-600 mb-1">{stats.pending}</p>
+                <p className="text-xs text-yellow-500">{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
+              <div className="w-16 h-16 bg-yellow-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                <Clock className="w-7 h-7 text-yellow-600" />
               </div>
             </div>
           </motion.div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search installers by name, email, or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none"
+                className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none"
+              className="px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -470,48 +478,52 @@ export default function DashboardPage() {
                 fetchInstallers(1)
                 setCurrentPage(1)
               }}
-              className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              className="px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all hover:border-brand-green/30 flex items-center justify-center"
             >
               <RefreshCw className="w-5 h-5 text-slate-600" />
             </button>
-            <button className="px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors flex items-center gap-2">
+            <button className="px-6 py-3 bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl">
               <Download className="w-5 h-5" />
               Export
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Installer</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Experience</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Flooring Skills</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Installer</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Experience</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Flooring Skills</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100">
                 {installers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                      No installers found
+                    <td colSpan={5} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <Users className="w-12 h-12 text-slate-300" />
+                        <p className="text-slate-500 font-medium">No installers found</p>
+                        <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   installers.map((installer) => (
                     <tr 
                       key={installer.id} 
-                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-emerald-50/30 transition-all duration-200 cursor-pointer group"
                       onClick={() => router.push(`/dashboard/installers/${installer.id}`)}
                     >
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-brand-green">
+                        <div className="flex items-center gap-4">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-gradient-to-br from-brand-green to-emerald-600 shadow-md group-hover:ring-brand-green/40 transition-all">
                             {/* Fallback initials - always present */}
-                            <div className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
+                            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-sm">
                               {getInitials(installer.firstName, installer.lastName)}
                             </div>
                             {/* Photo overlay - shows if available and loads successfully */}
@@ -519,8 +531,8 @@ export default function DashboardPage() {
                               <Image
                                 src={installer.photoUrl}
                                 alt={`${installer.firstName} ${installer.lastName}`}
-                                width={40}
-                                height={40}
+                                width={48}
+                                height={48}
                                 className="relative w-full h-full object-cover z-10"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none'
@@ -529,7 +541,7 @@ export default function DashboardPage() {
                             )}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-900">
+                            <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
                               {installer.firstName} {installer.lastName}
                             </p>
                             <p className="text-sm text-slate-500">{installer.email}</p>
@@ -539,8 +551,10 @@ export default function DashboardPage() {
                       <td className="px-6 py-4">
                         {installer.yearsOfExperience ? (
                           <div className="flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-slate-400" />
-                            <span className="text-slate-900">{installer.yearsOfExperience} yrs</span>
+                            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                              <Briefcase className="w-4 h-4 text-slate-600" />
+                            </div>
+                            <span className="font-semibold text-slate-900">{installer.yearsOfExperience} yrs</span>
                           </div>
                         ) : (
                           <span className="text-slate-400">-</span>
@@ -553,7 +567,7 @@ export default function DashboardPage() {
                               try {
                                 const skills = JSON.parse(installer.flooringSkills || '[]')
                                 return Array.isArray(skills) ? skills.slice(0, 2).map((skill: string, idx: number) => (
-                                  <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs">
+                                  <span key={idx} className="px-3 py-1 bg-gradient-to-r from-slate-100 to-slate-50 text-slate-700 rounded-lg text-xs font-medium border border-slate-200">
                                     {skill}
                                   </span>
                                 )) : null
@@ -573,11 +587,11 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => router.push(`/dashboard/installers/${installer.id}`)}
-                            className="p-2 text-slate-400 hover:text-brand-green transition-colors"
+                            className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-slate-400 hover:text-red-600 transition-colors">
+                          <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -591,20 +605,20 @@ export default function DashboardPage() {
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
               <div className="text-sm text-slate-600">
-                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                <span className="font-medium">
+                Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-semibold text-slate-900">
                   {Math.min(currentPage * itemsPerPage, totalCount)}
                 </span>{' '}
-                of <span className="font-medium">{totalCount}</span> installers
+                of <span className="font-semibold text-slate-900">{totalCount}</span> installers
               </div>
               
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="p-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
                 >
                   <ChevronLeft className="w-5 h-5 text-slate-600" />
                 </button>
@@ -626,10 +640,10 @@ export default function DashboardPage() {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
                           currentPage === pageNum
-                            ? 'bg-brand-green text-white'
-                            : 'text-slate-700 hover:bg-slate-100'
+                            ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
+                            : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
                         }`}
                       >
                         {pageNum}
@@ -641,7 +655,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="p-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
                 >
                   <ChevronRight className="w-5 h-5 text-slate-600" />
                 </button>
