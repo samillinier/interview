@@ -1178,7 +1178,7 @@ export default function InstallerProfilePage() {
           >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
             <div className="flex items-center gap-5">
-              {installer.status === 'passed' || installer.status === 'qualified' ? (
+              {installer && (installer.status === 'passed' || installer.status === 'qualified') ? (
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -1211,7 +1211,7 @@ export default function InstallerProfilePage() {
                 </motion.h2>
               </div>
             </div>
-            {installer.overallScore !== null && installer.overallScore !== undefined && (
+            {installer && installer.overallScore !== null && installer.overallScore !== undefined && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1244,7 +1244,7 @@ export default function InstallerProfilePage() {
               </motion.div>
             )}
           </div>
-          {(installer.status === 'pending' || (installer.status !== 'passed' && installer.status !== 'qualified')) && (
+          {installer && (installer.status === 'pending' || (installer.status !== 'passed' && installer.status !== 'qualified')) && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
