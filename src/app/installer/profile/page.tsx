@@ -1204,9 +1204,9 @@ export default function InstallerProfilePage() {
                   transition={{ delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold text-slate-900 mb-2 leading-tight"
                 >
-                  {installer.firstName || installer.lastName 
+                  {installer && (installer.firstName || installer.lastName 
                     ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                    : installer.email.split('@')[0] || 'Installer'
+                    : installer.email.split('@')[0] || 'Installer')
                   }
                 </motion.h2>
               </div>
