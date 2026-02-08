@@ -2643,7 +2643,7 @@ export default function InstallerProfilePage() {
           </motion.div>
 
           {/* Work History & Service Areas */}
-          {(installer.previousEmployers || installer.serviceAreas) && (
+          {installer && (installer.previousEmployers || installer.serviceAreas) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
