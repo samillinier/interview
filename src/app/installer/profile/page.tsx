@@ -1422,7 +1422,7 @@ export default function InstallerProfilePage() {
                       placeholder="Enter first name"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.firstName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.firstName || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1444,7 +1444,7 @@ export default function InstallerProfilePage() {
                       placeholder="Enter last name"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.lastName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.lastName || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1457,7 +1457,7 @@ export default function InstallerProfilePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Email</p>
-                  <p className="font-semibold text-slate-900 text-lg break-all">{installer.email}</p>
+                  <p className="font-semibold text-slate-900 text-lg break-all">{installer?.email}</p>
                 </div>
               </div>
             </div>
@@ -1478,13 +1478,13 @@ export default function InstallerProfilePage() {
                       placeholder="Enter phone number"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.phone || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.phone || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {installer.username && (
+            {installer && installer.username && (
               <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-green/20 transition-colors">
@@ -1492,7 +1492,7 @@ export default function InstallerProfilePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Username</p>
-                    <p className="font-semibold text-slate-900 text-lg">{installer.username}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.username}</p>
                   </div>
                 </div>
               </div>
@@ -1523,7 +1523,7 @@ export default function InstallerProfilePage() {
               </div>
             </div>
 
-            {installer.flooringSpecialties && (() => {
+            {installer && installer.flooringSpecialties && (() => {
               try {
                 const specialties = typeof installer.flooringSpecialties === 'string' 
                   ? JSON.parse(installer.flooringSpecialties)
@@ -1553,7 +1553,7 @@ export default function InstallerProfilePage() {
               }
             })()}
 
-            {installer.flooringSkills && (() => {
+            {installer && installer.flooringSkills && (() => {
               try {
                 const skills = typeof installer.flooringSkills === 'string' 
                   ? JSON.parse(installer.flooringSkills)
@@ -1641,7 +1641,7 @@ export default function InstallerProfilePage() {
               </div>
             </div>
 
-            {installer.vehicleDescription && (
+            {installer && installer.vehicleDescription && (
               <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-green/20 transition-colors">
@@ -1658,14 +1658,14 @@ export default function InstallerProfilePage() {
                         rows={3}
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">{installer.vehicleDescription}</p>
+                      <p className="font-semibold text-slate-900 text-lg">{installer?.vehicleDescription}</p>
                     )}
                   </div>
                 </div>
               </div>
             )}
 
-            {installer.openToTravel && installer.travelLocations && (() => {
+            {installer && installer.openToTravel && installer.travelLocations && (() => {
               try {
                 const locations = typeof installer.travelLocations === 'string' 
                   ? JSON.parse(installer.travelLocations)
@@ -1711,7 +1711,7 @@ export default function InstallerProfilePage() {
                       placeholder="Please enter your Company Name"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.companyName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyName || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1733,7 +1733,7 @@ export default function InstallerProfilePage() {
                       placeholder="Please enter your company title"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.companyTitle || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyTitle || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1755,7 +1755,7 @@ export default function InstallerProfilePage() {
                       placeholder="Please enter your Company Street Address"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.companyStreetAddress || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyStreetAddress || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1777,7 +1777,7 @@ export default function InstallerProfilePage() {
                       placeholder="Please enter your Company City"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.companyCity || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyCity || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1895,7 +1895,7 @@ export default function InstallerProfilePage() {
                       placeholder="Please enter your Zip Code"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer.companyZipCode || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyZipCode || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -1928,7 +1928,7 @@ export default function InstallerProfilePage() {
                   Insurance Coverage
                 </h3>
 
-                {installer.hasInsurance !== undefined && (
+                {installer && installer.hasInsurance !== undefined && (
                   <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1938,7 +1938,7 @@ export default function InstallerProfilePage() {
                         <div>
                           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
                           <p className="font-semibold text-slate-900">
-                            {installer.hasInsurance ? (
+                            {installer && installer.hasInsurance ? (
                               <span className="text-success-600 flex items-center gap-1">
                                 <CheckCircle2 className="w-4 h-4" /> Yes
                               </span>
@@ -2661,7 +2661,7 @@ export default function InstallerProfilePage() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                {installer.previousEmployers && (() => {
+                {installer && installer.previousEmployers && (() => {
                   try {
                     const employers = typeof installer.previousEmployers === 'string' 
                       ? JSON.parse(installer.previousEmployers)
@@ -2695,7 +2695,7 @@ export default function InstallerProfilePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Previous Employers</p>
-                            <p className="font-semibold text-slate-900 text-lg">{installer.previousEmployers}</p>
+                            <p className="font-semibold text-slate-900 text-lg">{installer?.previousEmployers}</p>
                           </div>
                         </div>
                       </div>
@@ -2703,7 +2703,7 @@ export default function InstallerProfilePage() {
                   }
                 })()}
 
-                {installer.serviceAreas && (() => {
+                {installer && installer.serviceAreas && (() => {
                   try {
                     const areas = typeof installer.serviceAreas === 'string' 
                       ? JSON.parse(installer.serviceAreas)
@@ -2737,7 +2737,7 @@ export default function InstallerProfilePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Service Areas</p>
-                            <p className="font-semibold text-slate-900 text-lg">{installer.serviceAreas}</p>
+                            <p className="font-semibold text-slate-900 text-lg">{installer?.serviceAreas}</p>
                           </div>
                         </div>
                       </div>
@@ -2939,7 +2939,7 @@ export default function InstallerProfilePage() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                {installer.notes && (
+                {installer && installer.notes && (
                   <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -2947,13 +2947,13 @@ export default function InstallerProfilePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Notes</p>
-                        <p className="font-semibold text-slate-900 text-lg whitespace-pre-wrap">{installer.notes}</p>
+                        <p className="font-semibold text-slate-900 text-lg whitespace-pre-wrap">{installer?.notes}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {installer.followUpDate && (
+                {installer && installer.followUpDate && (
                   <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -2973,7 +2973,7 @@ export default function InstallerProfilePage() {
                   </div>
                 )}
 
-                {installer.followUpReason && (
+                {installer && installer.followUpReason && (
                   <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -2981,7 +2981,7 @@ export default function InstallerProfilePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Follow-up Reason</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer.followUpReason}</p>
+                        <p className="font-semibold text-slate-900 text-lg">{installer?.followUpReason}</p>
                       </div>
                     </div>
                   </div>
