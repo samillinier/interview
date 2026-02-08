@@ -1295,6 +1295,7 @@ export default function InstallerProfilePage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
+                    if (!installer) return
                     setIsEditing(false)
                     setFirstName(installer.firstName || '')
                     setLastName(installer.lastName || '')
