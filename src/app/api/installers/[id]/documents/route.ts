@@ -95,7 +95,7 @@ export async function POST(
 
     if (existingDoc) {
       // Delete old file
-      const oldFilePath = join(process.cwd(), 'public', existingDoc.fileUrl)
+      const oldFilePath = join(process.cwd(), 'public', existingDoc.url)
       if (existsSync(oldFilePath)) {
         const { unlink } = await import('fs/promises')
         await unlink(oldFilePath).catch(() => {}) // Ignore errors if file doesn't exist
@@ -105,10 +105,8 @@ export async function POST(
       const document = await prisma.document.update({
         where: { id: existingDoc.id },
         data: {
-          fileName: file.name,
-          fileUrl,
-          fileSize: file.size,
-          uploadedAt: new Date(),
+          name: file.name,
+          url: fileUrl,
         },
       })
 
@@ -119,9 +117,8 @@ export async function POST(
         data: {
           installerId,
           type,
-          fileName: file.name,
-          fileUrl,
-          fileSize: file.size,
+          name: file.name,
+          url: fileUrl,
         },
       })
 
