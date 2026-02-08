@@ -1072,9 +1072,9 @@ export default function InstallerProfilePage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-primary-900 text-sm truncate">
-                {installer.firstName || installer.lastName 
+                {installer && (installer.firstName || installer.lastName
                   ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                  : installer.email.split('@')[0]
+                  : installer.email.split('@')[0])
                 }
               </p>
               <p className="text-xs text-primary-500 truncate">{installer.email}</p>
@@ -1142,7 +1142,7 @@ export default function InstallerProfilePage() {
         {/* Content Area */}
         <main className="p-6 lg:p-8">
           {/* Complete Profile Notice */}
-          {(!installer.firstName || !installer.lastName) && (
+          {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
