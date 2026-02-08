@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Loader2, CheckCircle2, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
-export default function SetupPasswordPage() {
+function SetupPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const installerId = searchParams.get('installerId')
@@ -260,5 +260,20 @@ export default function SetupPasswordPage() {
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function SetupPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-green" />
+          <p className="text-primary-500">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupPasswordContent />
+    </Suspense>
   )
 }
