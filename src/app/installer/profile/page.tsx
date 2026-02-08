@@ -1852,7 +1852,7 @@ export default function InstallerProfilePage() {
                   ) : (
                     <p className="font-semibold text-slate-900 text-lg">
                       {(() => {
-                        const stateToDisplay = installer.companyState || companyState || ''
+                        const stateToDisplay = installer?.companyState || companyState || ''
                         if (!stateToDisplay) {
                           return <span className="text-slate-400 italic">Not provided</span>
                         }
