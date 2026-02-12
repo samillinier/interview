@@ -349,6 +349,7 @@ export default function InstallerProfilePage() {
   const [staffMembers, setStaffMembers] = useState<any[]>([])
   const [showStaffModal, setShowStaffModal] = useState(false)
   const [editingStaff, setEditingStaff] = useState<any | null>(null)
+  const [failedImageLoads, setFailedImageLoads] = useState<Set<string>>(new Set())
   
   // Historical Data Management
   const [historicalData, setHistoricalData] = useState<any[]>([])
@@ -454,6 +455,7 @@ export default function InstallerProfilePage() {
   })
   const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState(false)
   const [isSavingStaff, setIsSavingStaff] = useState(false)
+  const [staffFormImageError, setStaffFormImageError] = useState(false)
   // Carpet Installation fields
   const [wantsToAddCarpet, setWantsToAddCarpet] = useState<boolean | undefined>(undefined)
   const [installsStretchInCarpet, setInstallsStretchInCarpet] = useState<boolean | undefined>(undefined)
@@ -1216,6 +1218,7 @@ export default function InstallerProfilePage() {
 
       if (data.success && data.photoUrl) {
         setStaffForm({ ...staffForm, photoUrl: data.photoUrl })
+        setStaffFormImageError(false) // Reset error state when new photo is uploaded
         setSuccess('Photo uploaded successfully!')
         setTimeout(() => setSuccess(''), 3000)
       } else {
@@ -1325,6 +1328,7 @@ export default function InstallerProfilePage() {
       notes: staff.notes || '',
       photoUrl: staff.photoUrl || '',
     })
+    setStaffFormImageError(false) // Reset error state when editing staff
     setShowStaffModal(true)
   }
 
@@ -1343,6 +1347,7 @@ export default function InstallerProfilePage() {
       notes: '',
       photoUrl: '',
     })
+    setStaffFormImageError(false) // Reset error state when adding new staff
     setShowStaffModal(true)
   }
 
@@ -3491,16 +3496,16 @@ export default function InstallerProfilePage() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3 flex-1">
-                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
-                          {staff.photoUrl ? (
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center relative">
+                          {staff.photoUrl && !failedImageLoads.has(staff.id) ? (
                             <Image
                               src={staff.photoUrl}
                               alt={`${staff.firstName} ${staff.lastName}`}
                               width={64}
                               height={64}
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
+                              onError={() => {
+                                setFailedImageLoads(prev => new Set(prev).add(staff.id))
                               }}
                             />
                           ) : (
@@ -6053,16 +6058,16 @@ export default function InstallerProfilePage() {
                 {/* Photo Upload */}
                 <div className="flex flex-col items-center">
                   <div className="relative group mb-4">
-                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand-green/30 shadow-xl flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
-                      {staffForm.photoUrl ? (
+                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand-green/30 shadow-xl flex-shrink-0 bg-brand-green/10 flex items-center justify-center relative">
+                      {staffForm.photoUrl && !staffFormImageError ? (
                         <Image
                           src={staffForm.photoUrl}
                           alt="Staff Photo"
                           width={128}
                           height={128}
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
+                          onError={() => {
+                            setStaffFormImageError(true)
                           }}
                         />
                       ) : (

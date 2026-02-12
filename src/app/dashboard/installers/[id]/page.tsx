@@ -428,6 +428,7 @@ export default function InstallerProfileViewPage() {
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
   const [staffMembers, setStaffMembers] = useState<any[]>([])
+  const [failedImageLoads, setFailedImageLoads] = useState<Set<string>>(new Set())
   const [historicalData, setHistoricalData] = useState<any[]>([])
   const [expandedHistory, setExpandedHistory] = useState<{ [key: string]: boolean }>({})
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -2685,16 +2686,16 @@ export default function InstallerProfileViewPage() {
                       </button>
                     </div>
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
-                        {staff.photoUrl ? (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center relative">
+                        {staff.photoUrl && !failedImageLoads.has(staff.id) ? (
                           <Image
                             src={staff.photoUrl}
                             alt={`${staff.firstName} ${staff.lastName}`}
                             width={64}
                             height={64}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
+                            onError={() => {
+                              setFailedImageLoads(prev => new Set(prev).add(staff.id))
                             }}
                           />
                         ) : (
