@@ -77,10 +77,10 @@ export function InstallerBarcode({ installerId, installerName, className = '' }:
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className={`flex flex-col items-center justify-center w-full max-w-full ${className}`}
+      className={`flex flex-col items-center justify-center ${className}`}
     >
-      <div ref={barcodeRef} className="flex flex-col items-center justify-center bg-white rounded-lg p-2 border border-slate-200 w-full max-w-full overflow-hidden">
-        <div className="scale-75 origin-center max-w-full overflow-hidden">
+      <div ref={barcodeRef} className="flex flex-col items-center justify-center bg-white rounded-lg p-2 border border-slate-200">
+        <div className="w-full" style={{ transform: 'scale(0.7)', transformOrigin: 'center' }}>
           <ReactBarcode
             value={installerCode}
             format="CODE128"

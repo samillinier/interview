@@ -2110,7 +2110,7 @@ export default function InstallerProfileViewPage() {
                 )}
                 {/* Barcode Section - Right Side */}
                 {installer && (
-                  <div className="w-full max-w-[180px] min-w-0">
+                  <div className="flex-shrink-0">
                     <InstallerBarcode 
                       installerId={installer.id}
                       installerName={`${installer.firstName} ${installer.lastName}`.trim()}
