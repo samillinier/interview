@@ -3,6 +3,17 @@
 ## Current Issue
 Emails are not being sent because `RESEND_API_KEY` is not configured in Vercel environment variables.
 
+## Quick Start Options
+
+**Option 1: Use Resend's Free Domain (Fastest - 2 minutes)**
+- Use `onboarding@resend.dev` - works immediately, no DNS setup needed
+- See steps below
+
+**Option 2: Use Your Own Domain (Recommended - 15-30 minutes)**
+- Set up DNS records for your domain
+- Use `noreply@yourdomain.com` - more professional
+- See `SETUP_DNS_RESEND.md` for detailed DNS setup instructions
+
 ## Quick Fix (5 minutes)
 
 ### Step 1: Get Resend API Key

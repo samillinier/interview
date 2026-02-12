@@ -2177,6 +2177,16 @@ export default function InstallerProfileViewPage() {
                   </motion.div>
                 )}
               </div>
+              
+              {/* Barcode Section */}
+              {installer && (
+                <div className="mt-6">
+                  <InstallerBarcode 
+                    installerId={installer.id}
+                    installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
 

@@ -44,6 +44,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
+import { InstallerBarcode } from '@/components/InstallerBarcode'
 
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
@@ -2196,6 +2197,17 @@ export default function InstallerProfilePage() {
               </motion.div>
             )}
           </div>
+          
+          {/* Barcode Section */}
+          {installer && (
+            <div className="mt-6">
+              <InstallerBarcode 
+                installerId={installer.id}
+                installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+              />
+            </div>
+          )}
+          
           {installer && (installer.status === 'pending' || (installer.status !== 'passed' && installer.status !== 'qualified')) && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
