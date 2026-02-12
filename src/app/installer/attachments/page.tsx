@@ -75,6 +75,13 @@ const DOCUMENT_TYPES = [
     required: true
   },
   { 
+    id: 'workers_comp_certificate', 
+    name: "WORKERS' COMPENSATION CERTIFICATE",
+    description: 'Upload your workers compensation certificate',
+    icon: FileCheck,
+    required: false
+  },
+  { 
     id: 'lrrp', 
     name: 'Lead Renovator Certificate (LRRP)',
     description: 'Upload your Lead Renovator, Repair, and Painting certificate',

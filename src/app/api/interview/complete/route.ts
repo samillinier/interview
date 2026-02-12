@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
       hasLicense: extractedData.hasLicense,
       hasBusinessLicense: extractedData.hasBusinessLicense,
       isSunbizRegistered: extractedData.isSunbizRegistered,
-      flooringSpecialties: extractedData.flooringSpecialties,
       flooringSkills: extractedData.flooringSkills,
     })
 
@@ -64,9 +63,6 @@ export async function POST(request: NextRequest) {
         lastName: extractedData.lastName || interview.installer.lastName,
         phone: extractedData.phone || interview.installer.phone,
         yearsOfExperience: extractedData.yearsOfExperience,
-        flooringSpecialties: extractedData.flooringSpecialties
-          ? JSON.stringify(extractedData.flooringSpecialties)
-          : null,
         flooringSkills: extractedData.flooringSkills
           ? JSON.stringify(extractedData.flooringSkills)
           : null,
@@ -74,7 +70,7 @@ export async function POST(request: NextRequest) {
         crewSize: extractedData.crewSize,
         hasOwnTools: false, // Not currently asked in interview
         toolsDescription: null, // Not currently extracted
-        hasVehicle: false, // Not currently asked in interview
+        hasVehicle: extractedData.hasVehicle ?? (extractedData.vehicleDescription ? true : false), // Set to true if vehicle description is provided or explicitly extracted
         vehicleDescription: extractedData.vehicleDescription,
         serviceAreas: null, // Not currently extracted
         willingToTravel: extractedData.openToTravel ?? false,

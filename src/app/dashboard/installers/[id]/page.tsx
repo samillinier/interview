@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { 
   User, 
   Mail, 
@@ -17,6 +18,7 @@ import {
   ArrowLeft,
   LayoutDashboard,
   FileText,
+  FileCheck,
   Menu,
   X,
   Building2,
@@ -37,12 +39,169 @@ import {
   EyeOff,
   Lock,
   Bell,
-  BarChart3
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  Users,
+  Activity,
+  ExternalLink
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+
+const DOCUMENT_TYPES: Array<{
+  id: string
+  name: string
+  description: string
+  required: boolean
+}> = [
+  {
+    id: 'business_registration',
+    name: 'Business Registration',
+    description: 'Business registration certificate',
+    required: true,
+  },
+  {
+    id: 'w9',
+    name: 'W-9 Form',
+    description: 'Completed W-9 tax form',
+    required: true,
+  },
+  {
+    id: 'liability_insurance',
+    name: 'Liability Insurance',
+    description: 'General liability insurance certificate',
+    required: true,
+  },
+  {
+    id: 'workers_comp',
+    name: "Workers' Compensation Insurance",
+    description: 'Workers compensation insurance certificate',
+    required: true,
+  },
+  {
+    id: 'workers_comp_certificate',
+    name: "WORKERS' COMPENSATION CERTIFICATE",
+    description: 'Workers compensation certificate',
+    required: false,
+  },
+  {
+    id: 'lrrp',
+    name: 'Lead Renovator Certificate (LRRP)',
+    description: 'Lead Renovator, Repair, and Painting certificate',
+    required: false,
+  },
+]
+
+// Helper function to get expiration status
+function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
+  if (!expiryDate) return 'none'
+  
+  const expiry = new Date(expiryDate)
+  const today = new Date()
+  
+  // Set both dates to start of day for accurate comparison
+  today.setHours(0, 0, 0, 0)
+  expiry.setHours(0, 0, 0, 0)
+  
+  // Check if expired (past date) - compare full date including year, month, and day
+  if (expiry < today) {
+    return 'expired'
+  }
+  
+  // Calculate the difference in months between today and expiry date
+  const yearsDiff = expiry.getFullYear() - today.getFullYear()
+  const monthsDiff = expiry.getMonth() - today.getMonth()
+  const totalMonthsDiff = yearsDiff * 12 + monthsDiff
+  
+  // Adjust for day difference - if expiry day is before today's day in the same month, count as one less month
+  const daysDiff = expiry.getDate() - today.getDate()
+  const adjustedMonthsDiff = daysDiff < 0 ? totalMonthsDiff - 1 : totalMonthsDiff
+  
+  // If expiry is 0-3 months away, it's expiring soon
+  if (adjustedMonthsDiff >= 0 && adjustedMonthsDiff <= 3) {
+    return 'expiring'
+  }
+  
+  // If expiry is more than 3 months away, it's valid
+  return 'valid'
+}
+
+// Date Picker Component with Expiration Status
+function ExpirationDatePicker({ 
+  label, 
+  value, 
+  onChange, 
+  isEditing 
+}: { 
+  label: string
+  value: string
+  onChange: (value: string) => void
+  isEditing: boolean
+}) {
+  const status = getExpirationStatus(value)
+  
+  const getStatusColor = () => {
+    switch (status) {
+      case 'expired':
+        return 'border-red-500 bg-red-50'
+      case 'expiring':
+        return 'border-yellow-500 bg-yellow-50'
+      case 'valid':
+        return 'border-green-500 bg-green-50'
+      default:
+        return 'border-slate-200 bg-slate-50/50'
+    }
+  }
+  
+  const getStatusBadge = () => {
+    switch (status) {
+      case 'expired':
+        return <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-1 rounded-full">Expired</span>
+      case 'expiring':
+        return <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Expiring Soon</span>
+      case 'valid':
+        return <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Valid</span>
+      default:
+        return null
+    }
+  }
+  
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return 'N/A'
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+  
+  return (
+    <div className={`group relative p-4 rounded-xl border-2 ${getStatusColor()} hover:shadow-sm transition-all duration-200`}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
+        {getStatusBadge()}
+      </div>
+      {isEditing ? (
+        <input
+          type="date"
+          value={value ? new Date(value).toISOString().split('T')[0] : ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+        />
+      ) : (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-slate-400" />
+          <p className="font-semibold text-slate-900">{formatDate(value)}</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface InstallerProfile {
   id: string
@@ -50,6 +209,8 @@ interface InstallerProfile {
   lastName: string
   email: string
   phone?: string
+  digitalId?: string
+  workroom?: string
   username?: string
   status: string
   yearsOfExperience?: number
@@ -67,6 +228,16 @@ interface InstallerProfile {
   isSunbizRegistered?: boolean
   isSunbizActive?: boolean
   hasBusinessLicense?: boolean
+  feiEin?: string
+  employerLiabilityPolicyNumber?: string
+  llrpExpiry?: string
+  btrExpiry?: string
+  workersCompExemExpiry?: string
+  workersCompExemExpiryDates?: string
+  generalLiabilityExpiry?: string
+  automobileLiabilityExpiry?: string
+  automobileLiabilityExpiryDates?: string
+  employersLiabilityExpiry?: string
   canPassBackgroundCheck?: boolean
   backgroundCheckDetails?: string
   insuranceType?: string
@@ -98,6 +269,8 @@ interface InstallerProfile {
   companyCity?: string
   companyState?: string
   companyZipCode?: string
+  companyCounty?: string
+  companyAddress?: string
   // Carpet Installation
   wantsToAddCarpet?: boolean
   installsStretchInCarpet?: boolean
@@ -159,10 +332,197 @@ export default function InstallerProfileViewPage() {
 
   const [installer, setInstaller] = useState<InstallerProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  
+  // Editable fields
+  const [status, setStatus] = useState<string>('pending')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [digitalId, setDigitalId] = useState('')
+  const [workroom, setWorkroom] = useState('')
+  const [yearsOfExperience, setYearsOfExperience] = useState<number | undefined>(undefined)
+  const [flooringSpecialties, setFlooringSpecialties] = useState('')
+  const [flooringSkills, setFlooringSkills] = useState('')
+  const [hasOwnCrew, setHasOwnCrew] = useState<boolean>(false)
+  const [crewSize, setCrewSize] = useState<number | undefined>(undefined)
+  const [hasOwnTools, setHasOwnTools] = useState<boolean | undefined>(undefined)
+  const [toolsDescription, setToolsDescription] = useState('')
+  const [hasVehicle, setHasVehicle] = useState<boolean | undefined>(undefined)
+  const [vehicleDescription, setVehicleDescription] = useState('')
+  const [hasInsurance, setHasInsurance] = useState<boolean>(false)
+  const [insuranceType, setInsuranceType] = useState('')
+  const [hasLicense, setHasLicense] = useState<boolean | undefined>(undefined)
+  const [licenseNumber, setLicenseNumber] = useState('')
+  const [licenseExpiry, setLicenseExpiry] = useState('')
+  const [hasGeneralLiability, setHasGeneralLiability] = useState<boolean | undefined>(undefined)
+  const [hasCommercialAutoLiability, setHasCommercialAutoLiability] = useState<boolean | undefined>(undefined)
+  const [hasWorkersComp, setHasWorkersComp] = useState<boolean | undefined>(undefined)
+  const [hasWorkersCompExemption, setHasWorkersCompExemption] = useState<boolean | undefined>(undefined)
+  const [isSunbizRegistered, setIsSunbizRegistered] = useState<boolean | undefined>(undefined)
+  const [isSunbizActive, setIsSunbizActive] = useState<boolean | undefined>(undefined)
+  const [hasBusinessLicense, setHasBusinessLicense] = useState<boolean | undefined>(undefined)
+  const [feiEin, setFeiEin] = useState('')
+  const [employerLiabilityPolicyNumber, setEmployerLiabilityPolicyNumber] = useState('')
+  const [llrpExpiry, setLlrpExpiry] = useState('')
+  const [btrExpiry, setBtrExpiry] = useState('')
+  const [workersCompExemExpiry, setWorkersCompExemExpiry] = useState('')
+  const [workersCompExemExpiryDates, setWorkersCompExemExpiryDates] = useState<string[]>([])
+  const [generalLiabilityExpiry, setGeneralLiabilityExpiry] = useState('')
+  const [automobileLiabilityExpiry, setAutomobileLiabilityExpiry] = useState('')
+  const [automobileLiabilityExpiryDates, setAutomobileLiabilityExpiryDates] = useState<string[]>([])
+  const [employersLiabilityExpiry, setEmployersLiabilityExpiry] = useState('')
+  const [willingToTravel, setWillingToTravel] = useState<boolean | undefined>(undefined)
+  const [maxTravelDistance, setMaxTravelDistance] = useState<number | undefined>(undefined)
+  const [canStartImmediately, setCanStartImmediately] = useState<boolean | undefined>(undefined)
+  const [preferredStartDate, setPreferredStartDate] = useState('')
+  const [mondayToFridayAvailability, setMondayToFridayAvailability] = useState('')
+  const [saturdayAvailability, setSaturdayAvailability] = useState('')
+  const [availability, setAvailability] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [companyTitle, setCompanyTitle] = useState('')
+  const [companyStreetAddress, setCompanyStreetAddress] = useState('')
+  const [companyCity, setCompanyCity] = useState('')
+  const [companyState, setCompanyState] = useState('')
+  const [companyZipCode, setCompanyZipCode] = useState('')
+  const [companyCounty, setCompanyCounty] = useState('')
+  const [companyAddress, setCompanyAddress] = useState('')
+  const [wantsToAddCarpet, setWantsToAddCarpet] = useState<boolean | undefined>(undefined)
+  const [installsStretchInCarpet, setInstallsStretchInCarpet] = useState<boolean | undefined>(undefined)
+  const [dailyStretchInCarpetSqft, setDailyStretchInCarpetSqft] = useState<number | undefined>(undefined)
+  const [installsGlueDownCarpet, setInstallsGlueDownCarpet] = useState<boolean | undefined>(undefined)
+  const [wantsToAddHardwood, setWantsToAddHardwood] = useState<boolean | undefined>(undefined)
+  const [installsNailDownSolidHardwood, setInstallsNailDownSolidHardwood] = useState<boolean | undefined>(undefined)
+  const [dailyNailDownSolidHardwoodSqft, setDailyNailDownSolidHardwoodSqft] = useState<number | undefined>(undefined)
+  const [installsStapleDownEngineeredHardwood, setInstallsStapleDownEngineeredHardwood] = useState<boolean | undefined>(undefined)
+  const [wantsToAddLaminate, setWantsToAddLaminate] = useState<boolean | undefined>(undefined)
+  const [dailyLaminateSqft, setDailyLaminateSqft] = useState<number | undefined>(undefined)
+  const [installsLaminateOnStairs, setInstallsLaminateOnStairs] = useState<boolean | undefined>(undefined)
+  const [wantsToAddVinyl, setWantsToAddVinyl] = useState<boolean | undefined>(undefined)
+  const [installsSheetVinyl, setInstallsSheetVinyl] = useState<boolean | undefined>(undefined)
+  const [installsLuxuryVinylPlank, setInstallsLuxuryVinylPlank] = useState<boolean | undefined>(undefined)
+  const [dailyLuxuryVinylPlankSqft, setDailyLuxuryVinylPlankSqft] = useState<number | undefined>(undefined)
+  const [installsLuxuryVinylTile, setInstallsLuxuryVinylTile] = useState<boolean | undefined>(undefined)
+  const [installsVinylCompositionTile, setInstallsVinylCompositionTile] = useState<boolean | undefined>(undefined)
+  const [dailyVinylCompositionTileSqft, setDailyVinylCompositionTileSqft] = useState<number | undefined>(undefined)
+  const [wantsToAddTile, setWantsToAddTile] = useState<boolean | undefined>(undefined)
+  const [installsCeramicTile, setInstallsCeramicTile] = useState<boolean | undefined>(undefined)
+  const [dailyCeramicTileSqft, setDailyCeramicTileSqft] = useState<number | undefined>(undefined)
+  const [installsPorcelainTile, setInstallsPorcelainTile] = useState<boolean | undefined>(undefined)
+  const [dailyPorcelainTileSqft, setDailyPorcelainTileSqft] = useState<number | undefined>(undefined)
+  const [installsStoneTile, setInstallsStoneTile] = useState<boolean | undefined>(undefined)
+  const [dailyStoneTileSqft, setDailyStoneTileSqft] = useState<number | undefined>(undefined)
+  const [offersTileRemoval, setOffersTileRemoval] = useState<boolean | undefined>(undefined)
+  const [installsTileBacksplash, setInstallsTileBacksplash] = useState<boolean | undefined>(undefined)
+  const [dailyTileBacksplashSqft, setDailyTileBacksplashSqft] = useState<number | undefined>(undefined)
+  const [movesFurniture, setMovesFurniture] = useState<boolean | undefined>(undefined)
+  const [installsTrim, setInstallsTrim] = useState<boolean | undefined>(undefined)
+  const [notes, setNotes] = useState('')
   const [documents, setDocuments] = useState<any[]>([])
+  const [uploadingDocumentType, setUploadingDocumentType] = useState<string | null>(null)
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
+  const [staffMembers, setStaffMembers] = useState<any[]>([])
+  const [historicalData, setHistoricalData] = useState<any[]>([])
+  const [expandedHistory, setExpandedHistory] = useState<{ [key: string]: boolean }>({})
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [editingHistory, setEditingHistory] = useState<any | null>(null)
+  const [isSavingHistory, setIsSavingHistory] = useState(false)
+  // Staff Management
+  const [showStaffModal, setShowStaffModal] = useState(false)
+  const [editingStaff, setEditingStaff] = useState<any | null>(null)
+  const [isSavingStaff, setIsSavingStaff] = useState(false)
+  const [staffForm, setStaffForm] = useState({
+    firstName: '',
+    lastName: '',
+    digitalId: '',
+    email: '',
+    phone: '',
+    location: '',
+    title: '',
+    yearsOfExperience: '',
+    notes: '',
+    photoUrl: '',
+  })
+  const [staffPhotoFile, setStaffPhotoFile] = useState<File | null>(null)
+  const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState(false)
+  const [historyForm, setHistoryForm] = useState<any>({
+    year: new Date().getFullYear().toString(),
+    firstName: '',
+    lastName: '',
+    phone: '',
+    yearsOfExperience: '',
+    flooringSpecialties: '',
+    flooringSkills: '',
+    hasOwnCrew: undefined,
+    crewSize: '',
+    hasOwnTools: undefined,
+    toolsDescription: '',
+    hasVehicle: undefined,
+    vehicleDescription: '',
+    hasInsurance: undefined,
+    insuranceType: '',
+    hasLicense: undefined,
+    licenseNumber: '',
+    licenseExpiry: '',
+    hasGeneralLiability: undefined,
+    hasCommercialAutoLiability: undefined,
+    hasWorkersComp: undefined,
+    hasWorkersCompExemption: undefined,
+    isSunbizRegistered: undefined,
+    isSunbizActive: undefined,
+    hasBusinessLicense: undefined,
+    willingToTravel: undefined,
+    maxTravelDistance: '',
+    canStartImmediately: undefined,
+    preferredStartDate: '',
+    mondayToFridayAvailability: '',
+    saturdayAvailability: '',
+    availability: '',
+    companyName: '',
+    companyTitle: '',
+    companyStreetAddress: '',
+    companyCity: '',
+    companyState: '',
+    companyZipCode: '',
+    companyCounty: '',
+    companyAddress: '',
+    wantsToAddCarpet: undefined,
+    installsStretchInCarpet: undefined,
+    dailyStretchInCarpetSqft: '',
+    installsGlueDownCarpet: undefined,
+    wantsToAddHardwood: undefined,
+    installsNailDownSolidHardwood: undefined,
+    dailyNailDownSolidHardwoodSqft: '',
+    installsStapleDownEngineeredHardwood: undefined,
+    wantsToAddLaminate: undefined,
+    dailyLaminateSqft: '',
+    installsLaminateOnStairs: undefined,
+    wantsToAddVinyl: undefined,
+    installsSheetVinyl: undefined,
+    installsLuxuryVinylPlank: undefined,
+    dailyLuxuryVinylPlankSqft: '',
+    installsLuxuryVinylTile: undefined,
+    installsVinylCompositionTile: undefined,
+    dailyVinylCompositionTileSqft: '',
+    wantsToAddTile: undefined,
+    installsCeramicTile: undefined,
+    dailyCeramicTileSqft: '',
+    installsPorcelainTile: undefined,
+    dailyPorcelainTileSqft: '',
+    installsStoneTile: undefined,
+    dailyStoneTileSqft: '',
+    offersTileRemoval: undefined,
+    installsTileBacksplash: undefined,
+    dailyTileBacksplashSqft: '',
+    movesFurniture: undefined,
+    installsTrim: undefined,
+    notes: '',
+  })
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {
@@ -171,6 +531,119 @@ export default function InstallerProfileViewPage() {
       fetchInstallerProfile()
     }
   }, [sessionStatus, installerId, router])
+
+  // Initialize state when installer data is loaded
+  useEffect(() => {
+    if (installer && !isEditing) {
+      setStatus(installer.status || 'pending')
+      setFirstName(installer.firstName || '')
+      setLastName(installer.lastName || '')
+      setPhone(installer.phone || '')
+      setDigitalId(installer.digitalId || '')
+      setWorkroom(installer.workroom || '')
+      setYearsOfExperience(installer.yearsOfExperience)
+      setFlooringSpecialties(installer.flooringSpecialties || '')
+      setFlooringSkills(installer.flooringSkills || '')
+      setHasOwnCrew(installer.hasOwnCrew || false)
+      setCrewSize(installer.crewSize)
+      setHasOwnTools(installer.hasOwnTools)
+      setToolsDescription(installer.toolsDescription || '')
+      setHasVehicle(installer.hasVehicle)
+      setVehicleDescription(installer.vehicleDescription || '')
+      setHasInsurance(installer.hasInsurance || false)
+      setInsuranceType(installer.insuranceType || '')
+      setHasLicense(installer.hasLicense)
+      setLicenseNumber(installer.licenseNumber || '')
+      setLicenseExpiry(installer.licenseExpiry ? new Date(installer.licenseExpiry).toISOString().split('T')[0] : '')
+      setHasGeneralLiability(installer.hasGeneralLiability)
+      setHasCommercialAutoLiability(installer.hasCommercialAutoLiability)
+      setHasWorkersComp(installer.hasWorkersComp)
+      setHasWorkersCompExemption(installer.hasWorkersCompExemption)
+      setIsSunbizRegistered(installer.isSunbizRegistered)
+      setIsSunbizActive(installer.isSunbizActive)
+      setHasBusinessLicense(installer.hasBusinessLicense)
+      setFeiEin(installer.feiEin || '')
+      setEmployerLiabilityPolicyNumber(installer.employerLiabilityPolicyNumber || '')
+      setLlrpExpiry(installer.llrpExpiry ? new Date(installer.llrpExpiry).toISOString().split('T')[0] : '')
+      setBtrExpiry(installer.btrExpiry ? new Date(installer.btrExpiry).toISOString().split('T')[0] : '')
+      const parsedWorkersCompDates: string[] = (() => {
+        if (installer.workersCompExemExpiryDates) {
+          try {
+            const arr = JSON.parse(installer.workersCompExemExpiryDates)
+            if (Array.isArray(arr)) return arr.map((d) => String(d))
+          } catch {}
+        }
+        return installer.workersCompExemExpiry ? [new Date(installer.workersCompExemExpiry).toISOString().split('T')[0]] : []
+      })()
+      setWorkersCompExemExpiryDates(parsedWorkersCompDates)
+      setWorkersCompExemExpiry(
+        parsedWorkersCompDates[0] || (installer.workersCompExemExpiry ? new Date(installer.workersCompExemExpiry).toISOString().split('T')[0] : '')
+      )
+      setGeneralLiabilityExpiry(
+        installer.generalLiabilityExpiry ? new Date(installer.generalLiabilityExpiry).toISOString().split('T')[0] : ''
+      )
+      const parsedAutoDates: string[] = (() => {
+        if (installer.automobileLiabilityExpiryDates) {
+          try {
+            const arr = JSON.parse(installer.automobileLiabilityExpiryDates)
+            if (Array.isArray(arr)) return arr.map((d) => String(d))
+          } catch {}
+        }
+        return installer.automobileLiabilityExpiry ? [new Date(installer.automobileLiabilityExpiry).toISOString().split('T')[0]] : []
+      })()
+      setAutomobileLiabilityExpiryDates(parsedAutoDates)
+      setAutomobileLiabilityExpiry(parsedAutoDates[0] || (installer.automobileLiabilityExpiry ? new Date(installer.automobileLiabilityExpiry).toISOString().split('T')[0] : ''))
+      setEmployersLiabilityExpiry(
+        installer.employersLiabilityExpiry ? new Date(installer.employersLiabilityExpiry).toISOString().split('T')[0] : ''
+      )
+      setWillingToTravel(installer.willingToTravel)
+      setMaxTravelDistance(installer.maxTravelDistance)
+      setCanStartImmediately(installer.canStartImmediately)
+      setPreferredStartDate(installer.preferredStartDate ? new Date(installer.preferredStartDate).toISOString().split('T')[0] : '')
+      setMondayToFridayAvailability(installer.mondayToFridayAvailability || '')
+      setSaturdayAvailability(installer.saturdayAvailability || '')
+      setAvailability(installer.availability || '')
+      setCompanyName(installer.companyName || '')
+      setCompanyTitle(installer.companyTitle || '')
+      setCompanyStreetAddress(installer.companyStreetAddress || '')
+      setCompanyCity(installer.companyCity || '')
+      setCompanyState(installer.companyState || '')
+      setCompanyZipCode(installer.companyZipCode || '')
+      setCompanyCounty(installer.companyCounty || '')
+      setCompanyAddress(installer.companyAddress || '')
+      setWantsToAddCarpet(installer.wantsToAddCarpet)
+      setInstallsStretchInCarpet(installer.installsStretchInCarpet)
+      setDailyStretchInCarpetSqft(installer.dailyStretchInCarpetSqft)
+      setInstallsGlueDownCarpet(installer.installsGlueDownCarpet)
+      setWantsToAddHardwood(installer.wantsToAddHardwood)
+      setInstallsNailDownSolidHardwood(installer.installsNailDownSolidHardwood)
+      setDailyNailDownSolidHardwoodSqft(installer.dailyNailDownSolidHardwoodSqft)
+      setInstallsStapleDownEngineeredHardwood(installer.installsStapleDownEngineeredHardwood)
+      setWantsToAddLaminate(installer.wantsToAddLaminate)
+      setDailyLaminateSqft(installer.dailyLaminateSqft)
+      setInstallsLaminateOnStairs(installer.installsLaminateOnStairs)
+      setWantsToAddVinyl(installer.wantsToAddVinyl)
+      setInstallsSheetVinyl(installer.installsSheetVinyl)
+      setInstallsLuxuryVinylPlank(installer.installsLuxuryVinylPlank)
+      setDailyLuxuryVinylPlankSqft(installer.dailyLuxuryVinylPlankSqft)
+      setInstallsLuxuryVinylTile(installer.installsLuxuryVinylTile)
+      setInstallsVinylCompositionTile(installer.installsVinylCompositionTile)
+      setDailyVinylCompositionTileSqft(installer.dailyVinylCompositionTileSqft)
+      setWantsToAddTile(installer.wantsToAddTile)
+      setInstallsCeramicTile(installer.installsCeramicTile)
+      setDailyCeramicTileSqft(installer.dailyCeramicTileSqft)
+      setInstallsPorcelainTile(installer.installsPorcelainTile)
+      setDailyPorcelainTileSqft(installer.dailyPorcelainTileSqft)
+      setInstallsStoneTile(installer.installsStoneTile)
+      setDailyStoneTileSqft(installer.dailyStoneTileSqft)
+      setOffersTileRemoval(installer.offersTileRemoval)
+      setInstallsTileBacksplash(installer.installsTileBacksplash)
+      setDailyTileBacksplashSqft(installer.dailyTileBacksplashSqft)
+      setMovesFurniture(installer.movesFurniture)
+      setInstallsTrim(installer.installsTrim)
+      setNotes(installer.notes || '')
+    }
+  }, [installer, isEditing])
 
   const fetchInstallerProfile = async () => {
     try {
@@ -190,14 +663,41 @@ export default function InstallerProfileViewPage() {
       const data = await response.json()
       setInstaller(data.installer)
 
-      // Load documents
-      const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
-      if (docsResponse.ok) {
-        const docsContentType = docsResponse.headers.get('content-type')
-        if (docsContentType && docsContentType.includes('application/json')) {
-          const docsData = await docsResponse.json()
-          setDocuments(docsData.documents || [])
+      await refreshDocuments()
+
+      // Load staff members
+      const staffResponse = await fetch(`/api/installers/${installerId}/staff`)
+      if (staffResponse.ok) {
+        const staffContentType = staffResponse.headers.get('content-type')
+        if (staffContentType && staffContentType.includes('application/json')) {
+          const staffData = await staffResponse.json()
+          setStaffMembers(staffData.staffMembers || [])
         }
+      }
+
+      // Load historical data
+      const historyResponse = await fetch(`/api/installers/${installerId}/history`)
+      if (historyResponse.ok) {
+        const historyContentType = historyResponse.headers.get('content-type')
+        if (historyContentType && historyContentType.includes('application/json')) {
+          const historyData = await historyResponse.json()
+          console.log('Historical data loaded:', historyData)
+          setHistoricalData(historyData.history || [])
+        }
+      } else {
+        console.error('Failed to load historical data:', historyResponse.status, historyResponse.statusText)
+      }
+
+      // Check for expiring certificates/insurance and send notifications
+      try {
+        await fetch('/api/installers/check-expirations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ installerId }),
+        })
+      } catch (expirationError) {
+        // Don't block profile loading if expiration check fails
+        console.error('Error checking expirations:', expirationError)
       }
     } catch (err: any) {
       console.error('Error fetching installer profile:', err)
@@ -207,12 +707,757 @@ export default function InstallerProfileViewPage() {
     }
   }
 
+  const refreshDocuments = async () => {
+    if (!installerId) return
+    const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
+    if (docsResponse.ok) {
+      const docsContentType = docsResponse.headers.get('content-type')
+      if (docsContentType && docsContentType.includes('application/json')) {
+        const docsData = await docsResponse.json()
+        setDocuments(docsData.documents || [])
+      }
+    }
+  }
+
+  const handleUploadDocument = async (type: string, file: File) => {
+    if (!installerId || !file) return
+    try {
+      setUploadingDocumentType(type)
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', type)
+
+      const res = await fetch(`/api/installers/${installerId}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to upload document')
+      }
+
+      await refreshDocuments()
+      setSuccess('Attachment uploaded')
+      setTimeout(() => setSuccess(''), 2000)
+    } catch (e: any) {
+      console.error('Upload document error:', e)
+      setError(e?.message || 'Failed to upload document')
+    } finally {
+      setUploadingDocumentType(null)
+    }
+  }
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!installerId || !documentId) return
+    if (!confirm('Delete this document?')) return
+    try {
+      setDeletingDocumentId(documentId)
+      const res = await fetch(`/api/installers/${installerId}/documents/${documentId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to delete document')
+      }
+      await refreshDocuments()
+      setSuccess('Attachment deleted')
+      setTimeout(() => setSuccess(''), 2000)
+    } catch (e: any) {
+      console.error('Delete document error:', e)
+      setError(e?.message || 'Failed to delete document')
+    } finally {
+      setDeletingDocumentId(null)
+    }
+  }
+
   const handleLogout = () => {
     signOut({ callbackUrl: '/login' })
   }
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+  }
+
+  // Handle add historical data
+  const handleAddHistory = () => {
+    setEditingHistory(null)
+    setHistoryForm({
+      year: new Date().getFullYear().toString(),
+      firstName: '',
+      lastName: '',
+      phone: '',
+      yearsOfExperience: '',
+      flooringSpecialties: '',
+      flooringSkills: '',
+      hasOwnCrew: undefined,
+      crewSize: '',
+      hasOwnTools: undefined,
+      toolsDescription: '',
+      hasVehicle: undefined,
+      vehicleDescription: '',
+      hasInsurance: undefined,
+      insuranceType: '',
+      hasLicense: undefined,
+      licenseNumber: '',
+      licenseExpiry: '',
+      hasGeneralLiability: undefined,
+      hasCommercialAutoLiability: undefined,
+      hasWorkersComp: undefined,
+      hasWorkersCompExemption: undefined,
+      isSunbizRegistered: undefined,
+      isSunbizActive: undefined,
+      hasBusinessLicense: undefined,
+      willingToTravel: undefined,
+      maxTravelDistance: '',
+      canStartImmediately: undefined,
+      preferredStartDate: '',
+      mondayToFridayAvailability: '',
+      saturdayAvailability: '',
+      availability: '',
+      companyName: '',
+      companyTitle: '',
+      companyStreetAddress: '',
+      companyCity: '',
+      companyState: '',
+      companyZipCode: '',
+      companyCounty: '',
+      companyAddress: '',
+      wantsToAddCarpet: undefined,
+      installsStretchInCarpet: undefined,
+      dailyStretchInCarpetSqft: '',
+      installsGlueDownCarpet: undefined,
+      wantsToAddHardwood: undefined,
+      installsNailDownSolidHardwood: undefined,
+      dailyNailDownSolidHardwoodSqft: '',
+      installsStapleDownEngineeredHardwood: undefined,
+      wantsToAddLaminate: undefined,
+      dailyLaminateSqft: '',
+      installsLaminateOnStairs: undefined,
+      wantsToAddVinyl: undefined,
+      installsSheetVinyl: undefined,
+      installsLuxuryVinylPlank: undefined,
+      dailyLuxuryVinylPlankSqft: '',
+      installsLuxuryVinylTile: undefined,
+      installsVinylCompositionTile: undefined,
+      dailyVinylCompositionTileSqft: '',
+      wantsToAddTile: undefined,
+      installsCeramicTile: undefined,
+      dailyCeramicTileSqft: '',
+      installsPorcelainTile: undefined,
+      dailyPorcelainTileSqft: '',
+      installsStoneTile: undefined,
+      dailyStoneTileSqft: '',
+      offersTileRemoval: undefined,
+      installsTileBacksplash: undefined,
+      dailyTileBacksplashSqft: '',
+      movesFurniture: undefined,
+      installsTrim: undefined,
+      notes: '',
+    })
+    setShowHistoryModal(true)
+  }
+
+  // Handle edit historical data
+  const handleEditHistory = (history: any) => {
+    setEditingHistory(history)
+    setHistoryForm({
+      year: history.year.toString(),
+      firstName: history.firstName || '',
+      lastName: history.lastName || '',
+      phone: history.phone || '',
+      yearsOfExperience: history.yearsOfExperience?.toString() || '',
+      flooringSpecialties: history.flooringSpecialties || '',
+      flooringSkills: history.flooringSkills || '',
+      hasOwnCrew: history.hasOwnCrew,
+      crewSize: history.crewSize?.toString() || '',
+      hasOwnTools: history.hasOwnTools,
+      toolsDescription: history.toolsDescription || '',
+      hasVehicle: history.hasVehicle,
+      vehicleDescription: history.vehicleDescription || '',
+      hasInsurance: history.hasInsurance,
+      insuranceType: history.insuranceType || '',
+      hasLicense: history.hasLicense,
+      licenseNumber: history.licenseNumber || '',
+      licenseExpiry: history.licenseExpiry ? new Date(history.licenseExpiry).toISOString().split('T')[0] : '',
+      hasGeneralLiability: history.hasGeneralLiability,
+      hasCommercialAutoLiability: history.hasCommercialAutoLiability,
+      hasWorkersComp: history.hasWorkersComp,
+      hasWorkersCompExemption: history.hasWorkersCompExemption,
+      isSunbizRegistered: history.isSunbizRegistered,
+      isSunbizActive: history.isSunbizActive,
+      hasBusinessLicense: history.hasBusinessLicense,
+      willingToTravel: history.willingToTravel,
+      maxTravelDistance: history.maxTravelDistance?.toString() || '',
+      canStartImmediately: history.canStartImmediately,
+      preferredStartDate: history.preferredStartDate ? new Date(history.preferredStartDate).toISOString().split('T')[0] : '',
+      mondayToFridayAvailability: history.mondayToFridayAvailability || '',
+      saturdayAvailability: history.saturdayAvailability || '',
+      availability: history.availability || '',
+      companyName: history.companyName || '',
+      companyTitle: history.companyTitle || '',
+      companyStreetAddress: history.companyStreetAddress || '',
+      companyCity: history.companyCity || '',
+      companyState: history.companyState || '',
+      companyZipCode: history.companyZipCode || '',
+      companyCounty: history.companyCounty || '',
+      companyAddress: history.companyAddress || '',
+      wantsToAddCarpet: history.wantsToAddCarpet,
+      installsStretchInCarpet: history.installsStretchInCarpet,
+      dailyStretchInCarpetSqft: history.dailyStretchInCarpetSqft?.toString() || '',
+      installsGlueDownCarpet: history.installsGlueDownCarpet,
+      wantsToAddHardwood: history.wantsToAddHardwood,
+      installsNailDownSolidHardwood: history.installsNailDownSolidHardwood,
+      dailyNailDownSolidHardwoodSqft: history.dailyNailDownSolidHardwoodSqft?.toString() || '',
+      installsStapleDownEngineeredHardwood: history.installsStapleDownEngineeredHardwood,
+      wantsToAddLaminate: history.wantsToAddLaminate,
+      dailyLaminateSqft: history.dailyLaminateSqft?.toString() || '',
+      installsLaminateOnStairs: history.installsLaminateOnStairs,
+      wantsToAddVinyl: history.wantsToAddVinyl,
+      installsSheetVinyl: history.installsSheetVinyl,
+      installsLuxuryVinylPlank: history.installsLuxuryVinylPlank,
+      dailyLuxuryVinylPlankSqft: history.dailyLuxuryVinylPlankSqft?.toString() || '',
+      installsLuxuryVinylTile: history.installsLuxuryVinylTile,
+      installsVinylCompositionTile: history.installsVinylCompositionTile,
+      dailyVinylCompositionTileSqft: history.dailyVinylCompositionTileSqft?.toString() || '',
+      wantsToAddTile: history.wantsToAddTile,
+      installsCeramicTile: history.installsCeramicTile,
+      dailyCeramicTileSqft: history.dailyCeramicTileSqft?.toString() || '',
+      installsPorcelainTile: history.installsPorcelainTile,
+      dailyPorcelainTileSqft: history.dailyPorcelainTileSqft?.toString() || '',
+      installsStoneTile: history.installsStoneTile,
+      dailyStoneTileSqft: history.dailyStoneTileSqft?.toString() || '',
+      offersTileRemoval: history.offersTileRemoval,
+      installsTileBacksplash: history.installsTileBacksplash,
+      dailyTileBacksplashSqft: history.dailyTileBacksplashSqft?.toString() || '',
+      movesFurniture: history.movesFurniture,
+      installsTrim: history.installsTrim,
+      notes: history.notes || '',
+    })
+    setShowHistoryModal(true)
+  }
+
+  // Handle save historical data
+  const handleSaveHistory = async () => {
+    try {
+      setIsSavingHistory(true)
+      setError('')
+
+      const url = editingHistory
+        ? `/api/installers/${installerId}/history/${editingHistory.id}`
+        : `/api/installers/${installerId}/history`
+
+      const method = editingHistory ? 'PATCH' : 'POST'
+
+      const formData = { ...historyForm }
+      
+      // Convert empty strings to null/undefined
+      Object.keys(formData).forEach(key => {
+        if (formData[key] === '') {
+          formData[key] = null
+        }
+      })
+
+      // Parse numbers
+      if (formData.yearsOfExperience) formData.yearsOfExperience = parseInt(formData.yearsOfExperience)
+      if (formData.crewSize) formData.crewSize = parseInt(formData.crewSize)
+      if (formData.maxTravelDistance) formData.maxTravelDistance = parseInt(formData.maxTravelDistance)
+      if (formData.dailyStretchInCarpetSqft) formData.dailyStretchInCarpetSqft = parseInt(formData.dailyStretchInCarpetSqft)
+      if (formData.dailyNailDownSolidHardwoodSqft) formData.dailyNailDownSolidHardwoodSqft = parseInt(formData.dailyNailDownSolidHardwoodSqft)
+      if (formData.dailyLaminateSqft) formData.dailyLaminateSqft = parseInt(formData.dailyLaminateSqft)
+      if (formData.dailyLuxuryVinylPlankSqft) formData.dailyLuxuryVinylPlankSqft = parseInt(formData.dailyLuxuryVinylPlankSqft)
+      if (formData.dailyVinylCompositionTileSqft) formData.dailyVinylCompositionTileSqft = parseInt(formData.dailyVinylCompositionTileSqft)
+      if (formData.dailyCeramicTileSqft) formData.dailyCeramicTileSqft = parseInt(formData.dailyCeramicTileSqft)
+      if (formData.dailyPorcelainTileSqft) formData.dailyPorcelainTileSqft = parseInt(formData.dailyPorcelainTileSqft)
+      if (formData.dailyStoneTileSqft) formData.dailyStoneTileSqft = parseInt(formData.dailyStoneTileSqft)
+      if (formData.dailyTileBacksplashSqft) formData.dailyTileBacksplashSqft = parseInt(formData.dailyTileBacksplashSqft)
+
+      // Parse dates
+      if (formData.licenseExpiry) formData.licenseExpiry = new Date(formData.licenseExpiry).toISOString()
+      if (formData.preferredStartDate) formData.preferredStartDate = new Date(formData.preferredStartDate).toISOString()
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response:', text.substring(0, 200))
+        throw new Error('Server returned an error. Please try again.')
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save historical data')
+      }
+
+      // Refresh historical data
+      const historyResponse = await fetch(`/api/installers/${installerId}/history`)
+      if (historyResponse.ok) {
+        const historyContentType = historyResponse.headers.get('content-type')
+        if (historyContentType && historyContentType.includes('application/json')) {
+          const historyData = await historyResponse.json()
+          setHistoricalData(historyData.history || [])
+        }
+      }
+
+      setShowHistoryModal(false)
+      setEditingHistory(null)
+    } catch (err: any) {
+      console.error('Error saving historical data:', err)
+      setError(err.message || 'Failed to save historical data')
+    } finally {
+      setIsSavingHistory(false)
+    }
+  }
+
+  // Handle delete historical data
+  const handleDeleteHistory = async (historyId: string, year: number) => {
+    if (!confirm(`Are you sure you want to delete historical data for year ${year}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/installers/${installerId}/history/${historyId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete historical data')
+      }
+
+      // Refresh historical data
+      const historyResponse = await fetch(`/api/installers/${installerId}/history`)
+      if (historyResponse.ok) {
+        const historyContentType = historyResponse.headers.get('content-type')
+        if (historyContentType && historyContentType.includes('application/json')) {
+          const historyData = await historyResponse.json()
+          setHistoricalData(historyData.history || [])
+        }
+      }
+    } catch (err: any) {
+      console.error('Error deleting historical data:', err)
+      setError(err.message || 'Failed to delete historical data')
+    }
+  }
+
+  // Handle save installer profile
+  const handleSave = async () => {
+    try {
+      setIsSaving(true)
+      setError('')
+      setSuccess('')
+
+      const response = await fetch(`/api/installers/${installerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          firstName,
+          lastName,
+          phone,
+          digitalId: digitalId.trim() || null,
+          workroom: workroom.trim() || null,
+          yearsOfExperience,
+          flooringSpecialties,
+          flooringSkills,
+          hasOwnCrew,
+          crewSize,
+          hasOwnTools,
+          toolsDescription: hasOwnTools === false ? null : toolsDescription,
+          hasVehicle,
+          vehicleDescription: hasVehicle === false ? null : vehicleDescription,
+          hasInsurance,
+          insuranceType,
+          hasLicense,
+          licenseNumber,
+          licenseExpiry: licenseExpiry || null,
+          hasGeneralLiability,
+          hasCommercialAutoLiability,
+          hasWorkersComp,
+          hasWorkersCompExemption,
+          isSunbizRegistered,
+          isSunbizActive,
+          hasBusinessLicense,
+          feiEin,
+          employerLiabilityPolicyNumber,
+          llrpExpiry: llrpExpiry ? new Date(llrpExpiry).toISOString() : undefined,
+          btrExpiry: btrExpiry ? new Date(btrExpiry).toISOString() : undefined,
+          workersCompExemExpiryDates: Array.isArray(workersCompExemExpiryDates)
+            ? workersCompExemExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
+            : undefined,
+          workersCompExemExpiry:
+            Array.isArray(workersCompExemExpiryDates) && workersCompExemExpiryDates.length > 0
+              ? new Date(workersCompExemExpiryDates.slice().sort()[0]).toISOString()
+              : workersCompExemExpiry
+                ? new Date(workersCompExemExpiry).toISOString()
+                : undefined,
+          generalLiabilityExpiry: generalLiabilityExpiry ? new Date(generalLiabilityExpiry).toISOString() : undefined,
+          automobileLiabilityExpiryDates: Array.isArray(automobileLiabilityExpiryDates)
+            ? automobileLiabilityExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
+            : undefined,
+          automobileLiabilityExpiry:
+            Array.isArray(automobileLiabilityExpiryDates) && automobileLiabilityExpiryDates.length > 0
+              ? new Date(automobileLiabilityExpiryDates.slice().sort()[0]).toISOString()
+              : automobileLiabilityExpiry
+                ? new Date(automobileLiabilityExpiry).toISOString()
+                : undefined,
+          employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : undefined,
+          willingToTravel,
+          maxTravelDistance,
+          canStartImmediately,
+          preferredStartDate: preferredStartDate || null,
+          mondayToFridayAvailability,
+          saturdayAvailability,
+          availability,
+          companyName,
+          companyTitle,
+          companyStreetAddress,
+          companyCity,
+          companyState,
+          companyZipCode,
+          companyCounty,
+          companyAddress,
+          wantsToAddCarpet,
+          installsStretchInCarpet,
+          dailyStretchInCarpetSqft,
+          installsGlueDownCarpet,
+          wantsToAddHardwood,
+          installsNailDownSolidHardwood,
+          dailyNailDownSolidHardwoodSqft,
+          installsStapleDownEngineeredHardwood,
+          wantsToAddLaminate,
+          dailyLaminateSqft,
+          installsLaminateOnStairs,
+          wantsToAddVinyl,
+          installsSheetVinyl,
+          installsLuxuryVinylPlank,
+          dailyLuxuryVinylPlankSqft,
+          installsLuxuryVinylTile,
+          installsVinylCompositionTile,
+          dailyVinylCompositionTileSqft,
+          wantsToAddTile,
+          installsCeramicTile,
+          dailyCeramicTileSqft,
+          installsPorcelainTile,
+          dailyPorcelainTileSqft,
+          installsStoneTile,
+          dailyStoneTileSqft,
+          offersTileRemoval,
+          installsTileBacksplash,
+          dailyTileBacksplashSqft,
+          movesFurniture,
+          installsTrim,
+          notes,
+        }),
+      })
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response:', text.substring(0, 200))
+        throw new Error('Server returned an error. Please try again.')
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update installer')
+      }
+
+      const data = await response.json()
+      setInstaller(data.installer)
+      setSuccess('Profile updated successfully!')
+      setIsEditing(false)
+      
+      // Refresh data from server to ensure we have the latest
+      await fetchInstallerProfile()
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error saving installer profile:', err)
+      setError(err.message || 'Failed to update installer profile')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    // Reset to original values
+    if (installer) {
+      setStatus(installer.status || 'pending')
+      setFirstName(installer.firstName || '')
+      setLastName(installer.lastName || '')
+      setPhone(installer.phone || '')
+      setDigitalId(installer.digitalId || '')
+      setWorkroom(installer.workroom || '')
+      setYearsOfExperience(installer.yearsOfExperience)
+      setFlooringSpecialties(installer.flooringSpecialties || '')
+      setFlooringSkills(installer.flooringSkills || '')
+      setHasOwnCrew(installer.hasOwnCrew || false)
+      setCrewSize(installer.crewSize)
+      setHasOwnTools(installer.hasOwnTools)
+      setToolsDescription(installer.toolsDescription || '')
+      setHasVehicle(installer.hasVehicle)
+      setVehicleDescription(installer.vehicleDescription || '')
+      setHasInsurance(installer.hasInsurance || false)
+      setInsuranceType(installer.insuranceType || '')
+      setHasLicense(installer.hasLicense)
+      setLicenseNumber(installer.licenseNumber || '')
+      setLicenseExpiry(installer.licenseExpiry ? new Date(installer.licenseExpiry).toISOString().split('T')[0] : '')
+      setHasGeneralLiability(installer.hasGeneralLiability)
+      setHasCommercialAutoLiability(installer.hasCommercialAutoLiability)
+      setHasWorkersComp(installer.hasWorkersComp)
+      setHasWorkersCompExemption(installer.hasWorkersCompExemption)
+      setIsSunbizRegistered(installer.isSunbizRegistered)
+      setIsSunbizActive(installer.isSunbizActive)
+      setHasBusinessLicense(installer.hasBusinessLicense)
+      setFeiEin(installer.feiEin || '')
+      setEmployerLiabilityPolicyNumber(installer.employerLiabilityPolicyNumber || '')
+      setLlrpExpiry(installer.llrpExpiry ? new Date(installer.llrpExpiry).toISOString().split('T')[0] : '')
+      setBtrExpiry(installer.btrExpiry ? new Date(installer.btrExpiry).toISOString().split('T')[0] : '')
+      const parsedWorkersCompDates: string[] = (() => {
+        if (installer.workersCompExemExpiryDates) {
+          try {
+            const arr = JSON.parse(installer.workersCompExemExpiryDates)
+            if (Array.isArray(arr)) return arr.map((d) => String(d))
+          } catch {}
+        }
+        return installer.workersCompExemExpiry ? [new Date(installer.workersCompExemExpiry).toISOString().split('T')[0]] : []
+      })()
+      setWorkersCompExemExpiryDates(parsedWorkersCompDates)
+      setWorkersCompExemExpiry(
+        parsedWorkersCompDates[0] || (installer.workersCompExemExpiry ? new Date(installer.workersCompExemExpiry).toISOString().split('T')[0] : '')
+      )
+      setGeneralLiabilityExpiry(
+        installer.generalLiabilityExpiry ? new Date(installer.generalLiabilityExpiry).toISOString().split('T')[0] : ''
+      )
+      const parsedAutoDates: string[] = (() => {
+        if (installer.automobileLiabilityExpiryDates) {
+          try {
+            const arr = JSON.parse(installer.automobileLiabilityExpiryDates)
+            if (Array.isArray(arr)) return arr.map((d) => String(d))
+          } catch {}
+        }
+        return installer.automobileLiabilityExpiry ? [new Date(installer.automobileLiabilityExpiry).toISOString().split('T')[0]] : []
+      })()
+      setAutomobileLiabilityExpiryDates(parsedAutoDates)
+      setAutomobileLiabilityExpiry(parsedAutoDates[0] || (installer.automobileLiabilityExpiry ? new Date(installer.automobileLiabilityExpiry).toISOString().split('T')[0] : ''))
+      setEmployersLiabilityExpiry(
+        installer.employersLiabilityExpiry ? new Date(installer.employersLiabilityExpiry).toISOString().split('T')[0] : ''
+      )
+      setWillingToTravel(installer.willingToTravel)
+      setMaxTravelDistance(installer.maxTravelDistance)
+      setCanStartImmediately(installer.canStartImmediately)
+      setPreferredStartDate(installer.preferredStartDate ? new Date(installer.preferredStartDate).toISOString().split('T')[0] : '')
+      setMondayToFridayAvailability(installer.mondayToFridayAvailability || '')
+      setSaturdayAvailability(installer.saturdayAvailability || '')
+      setAvailability(installer.availability || '')
+      setCompanyName(installer.companyName || '')
+      setCompanyTitle(installer.companyTitle || '')
+      setCompanyStreetAddress(installer.companyStreetAddress || '')
+      setCompanyCity(installer.companyCity || '')
+      setCompanyState(installer.companyState || '')
+      setCompanyZipCode(installer.companyZipCode || '')
+      setCompanyCounty(installer.companyCounty || '')
+      setCompanyAddress(installer.companyAddress || '')
+      setWantsToAddCarpet(installer.wantsToAddCarpet)
+      setInstallsStretchInCarpet(installer.installsStretchInCarpet)
+      setDailyStretchInCarpetSqft(installer.dailyStretchInCarpetSqft)
+      setInstallsGlueDownCarpet(installer.installsGlueDownCarpet)
+      setWantsToAddHardwood(installer.wantsToAddHardwood)
+      setInstallsNailDownSolidHardwood(installer.installsNailDownSolidHardwood)
+      setDailyNailDownSolidHardwoodSqft(installer.dailyNailDownSolidHardwoodSqft)
+      setInstallsStapleDownEngineeredHardwood(installer.installsStapleDownEngineeredHardwood)
+      setWantsToAddLaminate(installer.wantsToAddLaminate)
+      setDailyLaminateSqft(installer.dailyLaminateSqft)
+      setInstallsLaminateOnStairs(installer.installsLaminateOnStairs)
+      setWantsToAddVinyl(installer.wantsToAddVinyl)
+      setInstallsSheetVinyl(installer.installsSheetVinyl)
+      setInstallsLuxuryVinylPlank(installer.installsLuxuryVinylPlank)
+      setDailyLuxuryVinylPlankSqft(installer.dailyLuxuryVinylPlankSqft)
+      setInstallsLuxuryVinylTile(installer.installsLuxuryVinylTile)
+      setInstallsVinylCompositionTile(installer.installsVinylCompositionTile)
+      setDailyVinylCompositionTileSqft(installer.dailyVinylCompositionTileSqft)
+      setWantsToAddTile(installer.wantsToAddTile)
+      setInstallsCeramicTile(installer.installsCeramicTile)
+      setDailyCeramicTileSqft(installer.dailyCeramicTileSqft)
+      setInstallsPorcelainTile(installer.installsPorcelainTile)
+      setDailyPorcelainTileSqft(installer.dailyPorcelainTileSqft)
+      setInstallsStoneTile(installer.installsStoneTile)
+      setDailyStoneTileSqft(installer.dailyStoneTileSqft)
+      setOffersTileRemoval(installer.offersTileRemoval)
+      setInstallsTileBacksplash(installer.installsTileBacksplash)
+      setDailyTileBacksplashSqft(installer.dailyTileBacksplashSqft)
+      setMovesFurniture(installer.movesFurniture)
+      setInstallsTrim(installer.installsTrim)
+      setNotes(installer.notes || '')
+    }
+    setIsEditing(false)
+    setError('')
+  }
+
+  // Staff Management Functions
+  const handleAddStaff = () => {
+    setEditingStaff(null)
+    setStaffForm({
+      firstName: '',
+      lastName: '',
+      digitalId: '',
+      email: '',
+      phone: '',
+      location: '',
+      title: '',
+      yearsOfExperience: '',
+      notes: '',
+      photoUrl: '',
+    })
+    setStaffPhotoFile(null)
+    setShowStaffModal(true)
+  }
+
+  const handleEditStaff = (staff: any) => {
+    setEditingStaff(staff)
+    setStaffForm({
+      firstName: staff.firstName || '',
+      lastName: staff.lastName || '',
+      digitalId: staff.digitalId || '',
+      email: staff.email || '',
+      phone: staff.phone || '',
+      location: staff.location || '',
+      title: staff.title || '',
+      yearsOfExperience: staff.yearsOfExperience?.toString() || '',
+      notes: staff.notes || '',
+      photoUrl: staff.photoUrl || '',
+    })
+    setStaffPhotoFile(null)
+    setShowStaffModal(true)
+  }
+
+  const handleDeleteStaff = async (staffId: string, staffName: string) => {
+    if (!confirm(`Are you sure you want to delete ${staffName}? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/installers/${installerId}/staff/${staffId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Refresh staff members
+        const staffResponse = await fetch(`/api/installers/${installerId}/staff`)
+        if (staffResponse.ok) {
+          const staffContentType = staffResponse.headers.get('content-type')
+          if (staffContentType && staffContentType.includes('application/json')) {
+            const staffData = await staffResponse.json()
+            setStaffMembers(staffData.staffMembers || [])
+          }
+        }
+        setSuccess('Staff member deleted successfully!')
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        const data = await response.json()
+        setError(data.error || 'Failed to delete staff member')
+      }
+    } catch (err: any) {
+      console.error('Error deleting staff member:', err)
+      setError('Failed to delete staff member. Please try again.')
+    }
+  }
+
+  const handleSaveStaff = async () => {
+    try {
+      setIsSavingStaff(true)
+      setError('')
+      setSuccess('')
+
+      let photoUrl = staffForm.photoUrl
+
+      // Upload photo if a new file is selected
+      if (staffPhotoFile) {
+        setIsUploadingStaffPhoto(true)
+        const formData = new FormData()
+        formData.append('photo', staffPhotoFile)
+        formData.append('installerId', installerId)
+        if (editingStaff) {
+          formData.append('staffMemberId', editingStaff.id)
+        }
+
+        const uploadResponse = await fetch(`/api/installers/${installerId}/staff/upload-photo`, {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json()
+          photoUrl = uploadData.photoUrl
+        } else {
+          throw new Error('Failed to upload photo')
+        }
+        setIsUploadingStaffPhoto(false)
+      }
+
+      const url = editingStaff
+        ? `/api/installers/${installerId}/staff/${editingStaff.id}`
+        : `/api/installers/${installerId}/staff`
+
+      const method = editingStaff ? 'PATCH' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...staffForm,
+          photoUrl,
+          yearsOfExperience: staffForm.yearsOfExperience ? parseInt(staffForm.yearsOfExperience) : null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save staff member')
+      }
+
+      // Refresh staff members
+      const staffResponse = await fetch(`/api/installers/${installerId}/staff`)
+      if (staffResponse.ok) {
+        const staffContentType = staffResponse.headers.get('content-type')
+        if (staffContentType && staffContentType.includes('application/json')) {
+          const staffData = await staffResponse.json()
+          setStaffMembers(staffData.staffMembers || [])
+        }
+      }
+
+      setShowStaffModal(false)
+      setEditingStaff(null)
+      setStaffForm({
+        firstName: '',
+        lastName: '',
+        digitalId: '',
+        email: '',
+        phone: '',
+        location: '',
+        title: '',
+        yearsOfExperience: '',
+        notes: '',
+        photoUrl: '',
+      })
+      setStaffPhotoFile(null)
+      setSuccess('Staff member saved successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error saving staff member:', err)
+      setError(err.message || 'Failed to save staff member')
+    } finally {
+      setIsSavingStaff(false)
+      setIsUploadingStaffPhoto(false)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -239,6 +1484,13 @@ export default function InstallerProfileViewPage() {
             Pending
           </span>
         )
+      case 'active':
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+            <CheckCircle2 className="w-4 h-4" />
+            Active
+          </span>
+        )
       default:
         return <span className="text-sm text-slate-500 capitalize">{status}</span>
     }
@@ -262,9 +1514,10 @@ export default function InstallerProfileViewPage() {
       installer.companyCity,
       installer.companyState,
       installer.companyZipCode,
+      installer.companyCounty,
+      installer.companyAddress,
       // Experience & Skills
       installer.yearsOfExperience,
-      installer.flooringSpecialties,
       installer.flooringSkills,
       installer.hasOwnCrew !== undefined,
       installer.crewSize,
@@ -425,15 +1678,6 @@ export default function InstallerProfileViewPage() {
             {sidebarOpen && <span>Installers</span>}
           </Link>
           <Link
-            href="/dashboard/jobs"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/jobs' || pathname?.startsWith('/dashboard/jobs') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Briefcase className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Jobs</span>}
-          </Link>
-          <Link
             href="/dashboard/analytics"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
@@ -538,12 +1782,6 @@ export default function InstallerProfileViewPage() {
             <UsersIcon className="w-5 h-5" />
             <span>Installers</span>
           </Link>
-          <Link href="/dashboard/jobs" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/jobs' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <Briefcase className="w-5 h-5" />
-            <span>Jobs</span>
-          </Link>
           <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
             pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
           }`}>
@@ -595,8 +1833,57 @@ export default function InstallerProfileViewPage() {
                 </button>
                 <div>
                   <h1 className="text-3xl font-bold text-slate-900 mb-1">Installer Profile</h1>
-                  <p className="text-sm text-slate-500">View installer details and information</p>
+                  <p className="text-sm text-slate-500">
+                    {isEditing ? 'Edit installer details and information' : 'View installer details and information'}
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {error && (
+                  <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    {error}
+                  </div>
+                )}
+                {success && (
+                  <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                    {success}
+                  </div>
+                )}
+                {!isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                    Edit Profile
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-6 py-2.5 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-green/30"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -642,6 +1929,15 @@ export default function InstallerProfileViewPage() {
                   >
                     <CheckCircle2 className="w-10 h-10 text-brand-green" />
                   </motion.div>
+                ) : installer.status === 'active' ? (
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                    className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-blue-500/10 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0"
+                  >
+                    <CheckCircle2 className="w-10 h-10 text-blue-600" />
+                  </motion.div>
                 ) : (
                   <motion.div 
                     initial={{ scale: 0 }}
@@ -661,6 +1957,47 @@ export default function InstallerProfileViewPage() {
                   >
                     {installer.firstName} {installer.lastName}
                   </motion.h2>
+                  {(() => {
+                    const companyNameToShow = (isEditing ? companyName : installer.companyName) || ''
+                    const workroomToShow = (isEditing ? workroom : installer.workroom) || ''
+                    if (!companyNameToShow && !workroomToShow) return null
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 mt-1 mb-1">
+                        {companyNameToShow && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                            <Building2 className="w-4 h-4 text-slate-500" />
+                            <span className="truncate max-w-[280px]">{companyNameToShow}</span>
+                          </span>
+                        )}
+                        {workroomToShow && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                            <MapPin className="w-4 h-4 text-slate-500" />
+                            <span>{workroomToShow}</span>
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  <div className="mt-1">
+                    {isEditing ? (
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={status}
+                          onChange={(e) => setStatus(e.target.value)}
+                          className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        >
+                          <option value="qualified">Qualified</option>
+                          <option value="failed">Not Qualified</option>
+                          <option value="pending">Pending</option>
+                          <option value="active">Active</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(installer.status)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -763,7 +2100,17 @@ export default function InstallerProfileViewPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">First Name</p>
-                    <p className="font-semibold text-slate-900 text-lg">{installer.firstName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter first name"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.firstName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -775,7 +2122,17 @@ export default function InstallerProfileViewPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Last Name</p>
-                    <p className="font-semibold text-slate-900 text-lg">{installer.lastName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter last name"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.lastName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -799,7 +2156,95 @@ export default function InstallerProfileViewPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Phone</p>
-                    <p className="font-semibold text-slate-900 text-lg">{installer.phone || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    {isEditing ? (
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter phone number"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.phone || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Digital ID</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={digitalId}
+                        onChange={(e) => setDigitalId(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="e.g., Installer ID, Badge #"
+                      />
+                    ) : (
+                      installer.digitalId ? (
+                        installer.digitalId.startsWith('http://') || installer.digitalId.startsWith('https://') ? (
+                          <a
+                            href={installer.digitalId}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-700 text-lg hover:underline transition-colors"
+                          >
+                            <span className="break-all">{installer.digitalId}</span>
+                            <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                          </a>
+                        ) : (
+                          <p className="font-semibold text-slate-900 text-lg">{installer.digitalId}</p>
+                        )
+                      ) : (
+                        <span className="text-slate-400 italic">Not provided</span>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Workroom</p>
+                    {isEditing ? (
+                      <select
+                        value={workroom}
+                        onChange={(e) => setWorkroom(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      >
+                        <option value="">Select workroom</option>
+                        {[
+                          'Albany',
+                          'Sarasota',
+                          'Tampa',
+                          'Naples',
+                          'Ocala',
+                          'Lakeland',
+                          'Panama City',
+                          'Gainesville',
+                          'Tallahassee',
+                          'Dothan',
+                        ].map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.workroom || <span className="text-slate-400 italic">Not provided</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -825,72 +2270,76 @@ export default function InstallerProfileViewPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Experience</p>
-                    <p className="font-semibold text-slate-900 text-lg">
-                      {installer.yearsOfExperience ? `${installer.yearsOfExperience} years` : <span className="text-slate-400 italic">Not specified</span>}
-                    </p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={yearsOfExperience || ''}
+                        onChange={(e) => setYearsOfExperience(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Years of experience"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.yearsOfExperience ? `${installer.yearsOfExperience} years` : <span className="text-slate-400 italic">Not specified</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {installer.flooringSpecialties && (() => {
-                try {
-                  const specialties = typeof installer.flooringSpecialties === 'string' 
-                    ? JSON.parse(installer.flooringSpecialties)
-                    : installer.flooringSpecialties
-                  const specialtiesList = Array.isArray(specialties) ? specialties : [specialties]
-                  return (
-                    <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                          <Briefcase className="w-5 h-5 text-brand-green" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Flooring Specialties</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Flooring Skills</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={flooringSkills}
+                        onChange={(e) => setFlooringSkills(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Comma-separated skills"
+                      />
+                    ) : installer.flooringSkills && installer.flooringSkills.trim() ? (() => {
+                      try {
+                        const skills = typeof installer.flooringSkills === 'string' 
+                          ? JSON.parse(installer.flooringSkills)
+                          : installer.flooringSkills
+                        const skillsList = Array.isArray(skills) ? skills : [skills]
+                        return (
                           <div className="flex flex-wrap gap-2">
-                            {specialtiesList.map((specialty: string, idx: number) => (
-                              <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green-dark">
-                                {specialty}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                } catch {
-                  return null
-                }
-              })()}
-
-              {installer.flooringSkills && (() => {
-                try {
-                  const skills = typeof installer.flooringSkills === 'string' 
-                    ? JSON.parse(installer.flooringSkills)
-                    : installer.flooringSkills
-                  const skillsList = Array.isArray(skills) ? skills : [skills]
-                  return (
-                    <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                          <Briefcase className="w-5 h-5 text-brand-green" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Flooring Skills</p>
-                          <div className="flex flex-wrap gap-2">
-                            {skillsList.map((skill: string, idx: number) => (
+                            {skillsList.filter((s: any) => s && s.trim()).map((skill: string, idx: number) => (
                               <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green-dark">
                                 {skill}
                               </span>
                             ))}
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                } catch {
-                  return null
-                }
-              })()}
+                        )
+                      } catch {
+                        // If not JSON, treat as comma-separated string
+                        const skills = installer.flooringSkills.split(',').map((s: string) => s.trim()).filter((s: string) => s)
+                        if (skills.length > 0) {
+                          return (
+                            <div className="flex flex-wrap gap-2">
+                              {skills.map((skill: string, idx: number) => (
+                                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green-dark">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          )
+                        }
+                        return <p className="font-semibold text-slate-900 text-lg">{installer.flooringSkills}</p>
+                      }
+                    })() : (
+                      <p className="font-semibold text-slate-900 text-lg"><span className="text-slate-400 italic">Not provided</span></p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                 <div className="flex items-start gap-3">
@@ -899,63 +2348,516 @@ export default function InstallerProfileViewPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Own Crew</p>
-                    <p className="font-semibold text-slate-900 text-lg">
-                      {installer.hasOwnCrew ? (
-                        `Yes${installer.crewSize ? ` (${installer.crewSize} members)` : ''}`
-                      ) : (
-                        <span className="text-slate-400 italic">No</span>
-                      )}
-                    </p>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasOwnCrew"
+                              checked={hasOwnCrew === true}
+                              onChange={() => setHasOwnCrew(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasOwnCrew"
+                              checked={hasOwnCrew === false}
+                              onChange={() => setHasOwnCrew(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                        {hasOwnCrew && (
+                          <div>
+                            <label className="block text-xs text-slate-600 mb-1">Crew Size</label>
+                            <input
+                              type="number"
+                              value={crewSize || ''}
+                              onChange={(e) => setCrewSize(e.target.value ? parseInt(e.target.value) : undefined)}
+                              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                              placeholder="Number of crew members"
+                              min="0"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.hasOwnCrew != null ? (
+                          installer.hasOwnCrew ? (
+                            `Yes${installer.crewSize ? ` (${installer.crewSize} members)` : ''}`
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {installer.companyName && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-5 h-5 text-brand-green" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Company Name</p>
-                      <p className="font-semibold text-slate-900 text-lg">{installer.companyName}</p>
-                    </div>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Company Name</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter company name"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.companyTitle && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                      <Briefcase className="w-5 h-5 text-brand-green" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Company Title</p>
-                      <p className="font-semibold text-slate-900 text-lg">{installer.companyTitle}</p>
-                    </div>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Company Title</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={companyTitle}
+                        onChange={(e) => setCompanyTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter company title"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyTitle || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.companyStreetAddress && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-5 h-5 text-brand-green" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Company Address</p>
-                      <p className="font-semibold text-slate-900 text-lg">
-                        {installer.companyStreetAddress}
-                        {installer.companyCity && `, ${installer.companyCity}`}
-                        {installer.companyState && `, ${installer.companyState}`}
-                        {installer.companyZipCode && ` ${installer.companyZipCode}`}
-                      </p>
-                    </div>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Address</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={companyStreetAddress}
+                        onChange={(e) => setCompanyStreetAddress(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Street address"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyStreetAddress || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
                   </div>
                 </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Company City</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={companyCity}
+                        onChange={(e) => setCompanyCity(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter city"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyCity || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">State</p>
+                    {isEditing ? (
+                      <select
+                        value={companyState}
+                        onChange={(e) => setCompanyState(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      >
+                        <option value="">Select a state</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="AR">Arkansas</option>
+                        <option value="CA">California</option>
+                        <option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option>
+                        <option value="DE">Delaware</option>
+                        <option value="FL">Florida</option>
+                        <option value="GA">Georgia</option>
+                        <option value="HI">Hawaii</option>
+                        <option value="ID">Idaho</option>
+                        <option value="IL">Illinois</option>
+                        <option value="IN">Indiana</option>
+                        <option value="IA">Iowa</option>
+                        <option value="KS">Kansas</option>
+                        <option value="KY">Kentucky</option>
+                        <option value="LA">Louisiana</option>
+                        <option value="ME">Maine</option>
+                        <option value="MD">Maryland</option>
+                        <option value="MA">Massachusetts</option>
+                        <option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option>
+                        <option value="MS">Mississippi</option>
+                        <option value="MO">Missouri</option>
+                        <option value="MT">Montana</option>
+                        <option value="NE">Nebraska</option>
+                        <option value="NV">Nevada</option>
+                        <option value="NH">New Hampshire</option>
+                        <option value="NJ">New Jersey</option>
+                        <option value="NM">New Mexico</option>
+                        <option value="NY">New York</option>
+                        <option value="NC">North Carolina</option>
+                        <option value="ND">North Dakota</option>
+                        <option value="OH">Ohio</option>
+                        <option value="OK">Oklahoma</option>
+                        <option value="OR">Oregon</option>
+                        <option value="PA">Pennsylvania</option>
+                        <option value="RI">Rhode Island</option>
+                        <option value="SC">South Carolina</option>
+                        <option value="SD">South Dakota</option>
+                        <option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option>
+                        <option value="UT">Utah</option>
+                        <option value="VT">Vermont</option>
+                        <option value="VA">Virginia</option>
+                        <option value="WA">Washington</option>
+                        <option value="WV">West Virginia</option>
+                        <option value="WI">Wisconsin</option>
+                        <option value="WY">Wyoming</option>
+                        <option value="DC">District of Columbia</option>
+                      </select>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyState || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Zip Code</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={companyZipCode}
+                        onChange={(e) => setCompanyZipCode(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter zip code"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyZipCode || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">County</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={companyCounty}
+                        onChange={(e) => setCompanyCounty(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter county"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.companyCounty || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+
+          {/* Staff/Crew Members Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                  <UsersIcon className="w-6 h-6 text-brand-green" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Team Members</h2>
+                  <p className="text-sm text-slate-500">Staff and crew members</p>
+                </div>
+              </div>
+              {staffMembers.length > 0 && (
+                <button
+                  onClick={handleAddStaff}
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Member</span>
+                </button>
               )}
+            </div>
+
+            {staffMembers.length === 0 ? (
+              <div className="text-center py-12">
+                <UsersIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500 mb-4">No team members added yet</p>
+                <button
+                  onClick={handleAddStaff}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add First Member</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {staffMembers.map((staff) => (
+                  <motion.div
+                    key={staff.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-slate-50 rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all relative"
+                  >
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      <button
+                        onClick={() => handleEditStaff(staff)}
+                        className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStaff(staff.id, `${staff.firstName} ${staff.lastName}`)}
+                        className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
+                        {staff.photoUrl ? (
+                          <Image
+                            src={staff.photoUrl}
+                            alt={`${staff.firstName} ${staff.lastName}`}
+                            width={64}
+                            height={64}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <User className="w-8 h-8 text-brand-green" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-slate-900 text-lg">
+                          {staff.firstName} {staff.lastName}
+                        </h3>
+                        {staff.title && (
+                          <p className="text-sm text-slate-600">{staff.title}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {staff.email && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Mail className="w-4 h-4 text-slate-400" />
+                          <span className="truncate">{staff.email}</span>
+                        </div>
+                      )}
+                      {staff.phone && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Phone className="w-4 h-4 text-slate-400" />
+                          <span>{staff.phone}</span>
+                        </div>
+                      )}
+                      {staff.location && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <MapPin className="w-4 h-4 text-slate-400" />
+                          <span>{staff.location}</span>
+                        </div>
+                      )}
+                      {staff.yearsOfExperience && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Briefcase className="w-4 h-4 text-slate-400" />
+                          <span>{staff.yearsOfExperience} years experience</span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Attachments */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Attachments</h2>
+                <p className="text-sm text-slate-500">Uploaded documents and files</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Paperclip className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-brand-green" />
+                Upload / Replace
+              </h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                {DOCUMENT_TYPES.map((docType) => {
+                  const existing = documents.find((d: any) => d?.type === docType.id)
+                  const isUploading = uploadingDocumentType === docType.id
+                  const isDeleting = deletingDocumentId === existing?.id
+
+                  const existingName = existing?.name || existing?.fileName || existing?.file_name
+                  const existingUrl = existing?.url || existing?.fileUrl || existing?.file_url
+
+                  return (
+                    <div
+                      key={docType.id}
+                      className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-900 truncate">{docType.name}</p>
+                            {docType.required && (
+                              <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
+                                Required
+                              </span>
+                            )}
+                            {existing ? (
+                              <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                                Uploaded
+                              </span>
+                            ) : (
+                              <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                                Missing
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
+                          {existingName && (
+                            <p className="text-xs text-slate-600 mt-2 truncate">
+                              <span className="font-semibold text-slate-700">Current:</span> {existingName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <label
+                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
+                            isUploading
+                              ? 'border-slate-200 text-slate-400 bg-white'
+                              : 'border-brand-green/30 text-brand-green bg-white hover:bg-brand-green/5'
+                          }`}
+                        >
+                          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                          <span>{existing ? 'Replace' : 'Upload'}</span>
+                          <input
+                            type="file"
+                            className="hidden"
+                            disabled={isUploading}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              e.currentTarget.value = ''
+                              if (!file) return
+                              await handleUploadDocument(docType.id, file)
+                            }}
+                          />
+                        </label>
+
+                        {existingUrl && (
+                          <a
+                            href={existingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                          >
+                            <Download className="w-4 h-4" />
+                            View
+                          </a>
+                        )}
+
+                        {existing?.id && (
+                          <button
+                            type="button"
+                            disabled={isDeleting}
+                            onClick={() => handleDeleteDocument(existing.id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-white text-red-700 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-3">
+                Allowed: PDF, DOC, DOCX, JPG, PNG (Max 10MB). Uploading replaces the existing file for that type.
+              </p>
             </div>
           </motion.div>
 
@@ -977,151 +2879,549 @@ export default function InstallerProfileViewPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-              {installer.hasInsurance !== undefined && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasInsurance"
+                              checked={hasInsurance === true}
+                              onChange={() => setHasInsurance(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasInsurance"
+                              checked={hasInsurance === false}
+                              onChange={() => setHasInsurance(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
                         <p className="font-semibold text-slate-900">
-                          {installer.hasInsurance ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
+                          {installer.hasInsurance != null ? (
+                            installer.hasInsurance ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
                           ) : (
-                            <span className="text-slate-400">No</span>
+                            <span className="text-slate-400">Not provided</span>
                           )}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.hasGeneralLiability !== undefined && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">General Liability</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">General Liability</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasGeneralLiability"
+                              checked={hasGeneralLiability === true}
+                              onChange={() => setHasGeneralLiability(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasGeneralLiability"
+                              checked={hasGeneralLiability === false}
+                              onChange={() => setHasGeneralLiability(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
                         <p className="font-semibold text-slate-900">
-                          {installer.hasGeneralLiability ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
+                          {installer.hasGeneralLiability != null ? (
+                            installer.hasGeneralLiability ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
                           ) : (
-                            <span className="text-slate-400">No</span>
+                            <span className="text-slate-400">Not provided</span>
                           )}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.hasCommercialAutoLiability !== undefined && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Car className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Commercial Auto Liability</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Car className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Commercial Auto Liability</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasCommercialAutoLiability"
+                              checked={hasCommercialAutoLiability === true}
+                              onChange={() => setHasCommercialAutoLiability(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasCommercialAutoLiability"
+                              checked={hasCommercialAutoLiability === false}
+                              onChange={() => setHasCommercialAutoLiability(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
                         <p className="font-semibold text-slate-900">
-                          {installer.hasCommercialAutoLiability ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
+                          {installer.hasCommercialAutoLiability != null ? (
+                            installer.hasCommercialAutoLiability ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
                           ) : (
-                            <span className="text-slate-400">No</span>
+                            <span className="text-slate-400">Not provided</span>
                           )}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.hasWorkersComp !== undefined && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Workers Compensation</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Workers Compensation</p>
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="hasWorkersComp"
+                                checked={hasWorkersComp === true}
+                                onChange={() => {
+                                  setHasWorkersComp(true)
+                                  setHasWorkersCompExemption(false)
+                                }}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900 font-medium">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="hasWorkersComp"
+                                checked={hasWorkersComp === false && !hasWorkersCompExemption}
+                                onChange={() => {
+                                  setHasWorkersComp(false)
+                                  setHasWorkersCompExemption(false)
+                                }}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900 font-medium">No</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="hasWorkersComp"
+                                checked={hasWorkersCompExemption === true}
+                                onChange={() => {
+                                  setHasWorkersComp(false)
+                                  setHasWorkersCompExemption(true)
+                                }}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900 font-medium">Exemption</span>
+                            </label>
+                          </div>
+                        </div>
+                      ) : (
                         <p className="font-semibold text-slate-900">
-                          {installer.hasWorkersComp ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
+                          {installer.hasWorkersComp != null ? (
+                            installer.hasWorkersComp ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : installer.hasWorkersCompExemption ? (
+                              <span className="text-warning-600 flex items-center gap-1">
+                                <AlertCircle className="w-4 h-4" /> Exemption
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
                           ) : (
-                            <span className="text-slate-400">No</span>
+                            <span className="text-slate-400">Not provided</span>
                           )}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.isSunbizRegistered !== undefined && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Sunbiz Registered</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">SunBiz Registered</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="isSunbizRegistered"
+                              checked={isSunbizRegistered === true}
+                              onChange={() => setIsSunbizRegistered(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="isSunbizRegistered"
+                              checked={isSunbizRegistered === false}
+                              onChange={() => setIsSunbizRegistered(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
                         <p className="font-semibold text-slate-900">
-                          {installer.isSunbizRegistered ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
+                          {installer.isSunbizRegistered != null ? (
+                            installer.isSunbizRegistered ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
                           ) : (
-                            <span className="text-slate-400">No</span>
+                            <span className="text-slate-400">Not provided</span>
                           )}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.hasBusinessLicense !== undefined && (
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Business License</p>
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <FileCheck className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">FEI / EIN</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={feiEin}
+                        onChange={(e) => setFeiEin(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Enter FEI / EIN"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900">{feiEin || <span className="text-slate-400">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <FileCheck className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Employer Liability Policy Number</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={employerLiabilityPolicyNumber}
+                        onChange={(e) => setEmployerLiabilityPolicyNumber(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Enter Employer Liability Policy Number"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900">{employerLiabilityPolicyNumber || <span className="text-slate-400">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Insurance & Certificate Expiry Dates - Full Width Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Insurance & Certificate Expiry Dates</h2>
+                <p className="text-sm text-slate-500">Manage insurance and certificate expiration dates</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Certificates Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-brand-green" />
+                  Certificates
+                </h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <ExpirationDatePicker
+                    label="LLRP"
+                    value={llrpExpiry}
+                    onChange={setLlrpExpiry}
+                    isEditing={isEditing}
+                  />
+                  <ExpirationDatePicker
+                    label="BTR"
+                    value={btrExpiry}
+                    onChange={setBtrExpiry}
+                    isEditing={isEditing}
+                  />
+                  <MultiExpirationDatePicker
+                    label="Workers Compensation Exem Certificate"
+                    values={workersCompExemExpiryDates}
+                    onChange={(next) => {
+                      setWorkersCompExemExpiryDates(next)
+                      setWorkersCompExemExpiry(next[0] || '')
+                    }}
+                    isEditing={isEditing}
+                    addLabel="Add certificate date"
+                  />
+                </div>
+              </div>
+
+              {/* Insurance Policies Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-brand-green" />
+                  Insurance Policies
+                </h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <ExpirationDatePicker
+                    label="General Liability"
+                    value={generalLiabilityExpiry}
+                    onChange={setGeneralLiabilityExpiry}
+                    isEditing={isEditing}
+                  />
+                  <MultiExpirationDatePicker
+                    label="Automobile Liability"
+                    values={automobileLiabilityExpiryDates}
+                    onChange={(next) => {
+                      setAutomobileLiabilityExpiryDates(next)
+                      setAutomobileLiabilityExpiry(next[0] || '')
+                    }}
+                    isEditing={isEditing}
+                    addLabel="Add policy date"
+                  />
+                  <ExpirationDatePicker
+                    label="Employer's Liability"
+                    value={employersLiabilityExpiry}
+                    onChange={setEmployersLiabilityExpiry}
+                    isEditing={isEditing}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* License & Background Check Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Business License</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasBusinessLicense"
+                              checked={hasBusinessLicense === true}
+                              onChange={() => setHasBusinessLicense(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasBusinessLicense"
+                              checked={hasBusinessLicense === false}
+                              onChange={() => setHasBusinessLicense(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
                         <p className="font-semibold text-slate-900">
-                          {installer.hasBusinessLicense ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
+                          {installer.hasBusinessLicense != null ? (
+                            installer.hasBusinessLicense ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
                           ) : (
-                            <span className="text-slate-400">No</span>
+                            <span className="text-slate-400">Not provided</span>
                           )}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {installer.hasLicense && installer.licenseNumber && (
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <FileCheck className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Insurance Type</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={insuranceType}
+                        onChange={(e) => setInsuranceType(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter insurance type"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.insuranceType || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has License</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasLicense"
+                              checked={hasLicense === true}
+                              onChange={() => setHasLicense(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasLicense"
+                              checked={hasLicense === false}
+                              onChange={() => setHasLicense(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
+                        <p className="font-semibold text-slate-900">
+                          {installer.hasLicense != null ? (
+                            installer.hasLicense ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
+                          ) : (
+                            <span className="text-slate-400">Not provided</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {isEditing || (installer.hasLicense && installer.licenseNumber) ? (
                 <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -1129,10 +3429,276 @@ export default function InstallerProfileViewPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">License Number</p>
-                      <p className="font-semibold text-slate-900 text-lg">{installer.licenseNumber}</p>
-                      {installer.licenseExpiry && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          Expires: {new Date(installer.licenseExpiry).toLocaleDateString()}
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={licenseNumber}
+                          onChange={(e) => setLicenseNumber(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                          placeholder="Enter license number"
+                        />
+                      ) : (
+                        <p className="font-semibold text-slate-900 text-lg">{installer.licenseNumber || <span className="text-slate-400 italic">Not provided</span>}</p>
+                      )}
+                      {(isEditing || installer.licenseExpiry) && (
+                        <div className="mt-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">License Expiry</p>
+                          {isEditing ? (
+                            <input
+                              type="date"
+                              value={licenseExpiry}
+                              onChange={(e) => setLicenseExpiry(e.target.value)}
+                              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            />
+                          ) : (
+                            installer.licenseExpiry && (
+                              <p className="text-xs text-slate-500">
+                                Expires: {new Date(installer.licenseExpiry).toLocaleDateString()}
+                              </p>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </motion.div>
+
+          {/* Availability Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Availability</h2>
+                <p className="text-sm text-slate-500">Work schedule and availability information</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Monday - Friday</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={mondayToFridayAvailability}
+                        onChange={(e) => setMondayToFridayAvailability(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter availability"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.mondayToFridayAvailability || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Saturday</p>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={saturdayAvailability}
+                        onChange={(e) => setSaturdayAvailability(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter availability"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.saturdayAvailability || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Tools & Equipment */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Tools & Equipment</h2>
+                <p className="text-sm text-slate-500">Tools and equipment information</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Wrench className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Wrench className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Own Tools</p>
+                      {isEditing ? (
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasOwnTools"
+                              checked={hasOwnTools === true}
+                              onChange={() => setHasOwnTools(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Yes</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="hasOwnTools"
+                              checked={hasOwnTools === false}
+                              onChange={() => {
+                                setHasOwnTools(false)
+                                setToolsDescription('')
+                              }}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">No</span>
+                          </label>
+                        </div>
+                      ) : (
+                        <p className="font-semibold text-slate-900">
+                          {installer.hasOwnTools != null ? (
+                            installer.hasOwnTools ? (
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
+                            )
+                          ) : (
+                            <span className="text-slate-400">Not provided</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {(isEditing ? hasOwnTools === true : installer.hasOwnTools === true) && (
+                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Wrench className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tools Description</p>
+                      {isEditing ? (
+                        <textarea
+                          value={toolsDescription}
+                          onChange={(e) => setToolsDescription(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
+                          placeholder="Describe your tools"
+                          rows={3}
+                        />
+                      ) : (
+                        <p className="font-semibold text-slate-900 text-lg">
+                          {installer.toolsDescription || <span className="text-slate-400 italic">Not provided</span>}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Car className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Has Vehicle</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasVehicle"
+                            checked={hasVehicle === true}
+                            onChange={() => setHasVehicle(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasVehicle"
+                            checked={hasVehicle === false}
+                              onChange={() => {
+                                setHasVehicle(false)
+                                setVehicleDescription('')
+                              }}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.hasVehicle != null ? (
+                          installer.hasVehicle ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {(isEditing ? hasVehicle === true : installer.hasVehicle === true) && (
+                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <Car className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Vehicle Description</p>
+                      {isEditing ? (
+                        <textarea
+                          value={vehicleDescription}
+                          onChange={(e) => setVehicleDescription(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
+                          placeholder="Describe your vehicle"
+                          rows={3}
+                        />
+                      ) : (
+                        <p className="font-semibold text-slate-900 text-lg">
+                          {installer.vehicleDescription || <span className="text-slate-400 italic">Not provided</span>}
                         </p>
                       )}
                     </div>
@@ -1141,152 +3707,6 @@ export default function InstallerProfileViewPage() {
               )}
             </div>
           </motion.div>
-
-          {/* Availability Information */}
-          {(installer.mondayToFridayAvailability || installer.saturdayAvailability) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Availability</h2>
-                  <p className="text-sm text-slate-500">Work schedule and availability information</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.mondayToFridayAvailability && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Clock className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Monday - Friday</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer.mondayToFridayAvailability}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.saturdayAvailability && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Saturday</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer.saturdayAvailability}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Tools & Equipment */}
-          {(installer.hasOwnTools !== undefined || installer.toolsDescription || installer.hasVehicle !== undefined || installer.vehicleDescription) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Tools & Equipment</h2>
-                  <p className="text-sm text-slate-500">Tools and equipment information</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Wrench className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.hasOwnTools !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                          <Wrench className="w-5 h-5 text-brand-green" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Own Tools</p>
-                          <p className="font-semibold text-slate-900">
-                            {installer.hasOwnTools ? (
-                              <span className="text-success-600 flex items-center gap-1">
-                                <CheckCircle2 className="w-4 h-4" /> Yes
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">No</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.toolsDescription && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Wrench className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tools Description</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer.toolsDescription}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.hasVehicle !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Car className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Has Vehicle</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.hasVehicle ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.vehicleDescription && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Car className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Vehicle Description</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer.vehicleDescription}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
 
           {/* Work History & Service Areas */}
           {(installer.previousEmployers || installer.serviceAreas) && (
@@ -1395,926 +3815,1585 @@ export default function InstallerProfileViewPage() {
           )}
 
           {/* Travel & Start Date Information */}
-          {(installer.willingToTravel !== undefined || installer.maxTravelDistance || installer.canStartImmediately !== undefined || installer.preferredStartDate || installer.travelLocations) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Travel & Start Date</h2>
-                  <p className="text-sm text-slate-500">Travel preferences and start date information</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Plane className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.willingToTravel !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Plane className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Willing to Travel</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.willingToTravel ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.maxTravelDistance && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Max Travel Distance (miles)</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer.maxTravelDistance} miles</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.travelLocations && (() => {
-                  try {
-                    const locations = typeof installer.travelLocations === 'string' 
-                      ? JSON.parse(installer.travelLocations)
-                      : installer.travelLocations
-                    const locationsList = Array.isArray(locations) ? locations : [locations]
-                    return (
-                      <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                            <Plane className="w-5 h-5 text-brand-green" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Travel Locations</p>
-                            <div className="flex flex-wrap gap-2">
-                              {locationsList.map((location: string, idx: number) => (
-                                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green-dark">
-                                  {location}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  } catch {
-                    return null
-                  }
-                })()}
-
-                {installer.canStartImmediately !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Clock className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Can Start Immediately</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.canStartImmediately ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.preferredStartDate && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Calendar className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Preferred Start Date</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {new Date(installer.preferredStartDate).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Carpet Installation Information */}
-          {(installer.wantsToAddCarpet !== undefined || installer.installsStretchInCarpet !== undefined || installer.dailyStretchInCarpetSqft || installer.installsGlueDownCarpet !== undefined) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Carpet Installation</h2>
-                  <p className="text-sm text-slate-500">Carpet installation capabilities and capacity</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Square className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.wantsToAddCarpet !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Carpet as Category</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.wantsToAddCarpet ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsStretchInCarpet !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Stretch-in Carpet</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsStretchInCarpet ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyStretchInCarpetSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Stretch-in Carpet Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyStretchInCarpetSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsGlueDownCarpet !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Glue Down Carpet</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsGlueDownCarpet ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Hardwood Installation Information */}
-          {(installer.wantsToAddHardwood !== undefined || installer.installsNailDownSolidHardwood !== undefined || installer.dailyNailDownSolidHardwoodSqft || installer.installsStapleDownEngineeredHardwood !== undefined) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Hardwood Installation</h2>
-                  <p className="text-sm text-slate-500">Hardwood installation capabilities and capacity</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Square className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.wantsToAddHardwood !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Hardwood as Category</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.wantsToAddHardwood ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsNailDownSolidHardwood !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Nail Down Solid Hardwood</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsNailDownSolidHardwood ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyNailDownSolidHardwoodSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Nail Down Solid Hardwood Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyNailDownSolidHardwoodSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsStapleDownEngineeredHardwood !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Staple-down Engineered Hardwood</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsStapleDownEngineeredHardwood ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Laminate Installation Information */}
-          {(installer.wantsToAddLaminate !== undefined || installer.dailyLaminateSqft || installer.installsLaminateOnStairs !== undefined) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.65 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Laminate Installation</h2>
-                  <p className="text-sm text-slate-500">Laminate installation capabilities and capacity</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Square className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.wantsToAddLaminate !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Laminate as Category</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.wantsToAddLaminate ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyLaminateSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Laminate Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyLaminateSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsLaminateOnStairs !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Laminate on Stairs</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsLaminateOnStairs ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Vinyl Installation Information */}
-          {(installer.wantsToAddVinyl !== undefined || installer.installsSheetVinyl !== undefined || installer.installsLuxuryVinylPlank !== undefined || installer.dailyLuxuryVinylPlankSqft || installer.installsLuxuryVinylTile !== undefined || installer.installsVinylCompositionTile !== undefined || installer.dailyVinylCompositionTileSqft) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Vinyl Installation</h2>
-                  <p className="text-sm text-slate-500">Vinyl installation capabilities and capacity</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Square className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.wantsToAddVinyl !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Vinyl as Category</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.wantsToAddVinyl ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsSheetVinyl !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Sheet Vinyl</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsSheetVinyl ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsLuxuryVinylPlank !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Luxury Vinyl Plank (LVP)</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsLuxuryVinylPlank ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyLuxuryVinylPlankSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily LVP Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyLuxuryVinylPlankSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsLuxuryVinylTile !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Luxury Vinyl Tile (LVT)</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsLuxuryVinylTile ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsVinylCompositionTile !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Vinyl Composition Tile (VCT)</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsVinylCompositionTile ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyVinylCompositionTileSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily VCT Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyVinylCompositionTileSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Tile Installation Information */}
-          {(installer.wantsToAddTile !== undefined || installer.installsCeramicTile !== undefined || installer.dailyCeramicTileSqft || installer.installsPorcelainTile !== undefined || installer.dailyPorcelainTileSqft || installer.installsStoneTile !== undefined || installer.dailyStoneTileSqft || installer.offersTileRemoval !== undefined || installer.installsTileBacksplash !== undefined || installer.dailyTileBacksplashSqft) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.75 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Tile Installation</h2>
-                  <p className="text-sm text-slate-500">Tile installation capabilities and capacity</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Square className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.wantsToAddTile !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Tile as Category</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.wantsToAddTile ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsCeramicTile !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Ceramic Tile</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsCeramicTile ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyCeramicTileSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Ceramic Tile Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyCeramicTileSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsPorcelainTile !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Porcelain Tile</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsPorcelainTile ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyPorcelainTileSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Porcelain Tile Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyPorcelainTileSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsStoneTile !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Stone Tile</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsStoneTile ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyStoneTileSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Stone Tile Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyStoneTileSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.offersTileRemoval !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Offers Tile Removal</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.offersTileRemoval ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsTileBacksplash !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Tile Backsplash</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsTileBacksplash ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.dailyTileBacksplashSqft && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Square className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Tile Backsplash Average</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.dailyTileBacksplashSqft.toLocaleString()} sq ft
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Additional Work Information */}
-          {(installer.movesFurniture !== undefined || installer.installsTrim !== undefined) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Additional Work</h2>
-                  <p className="text-sm text-slate-500">Additional services and capabilities</p>
-                </div>
-                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                  <Wrench className="w-6 h-6 text-brand-green" />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {installer.movesFurniture !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Wrench className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Moves Furniture</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.movesFurniture ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {installer.installsTrim !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Wrench className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Trim</p>
-                        <p className="font-semibold text-slate-900 text-lg">
-                          {installer.installsTrim ? (
-                            <span className="text-success-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-4 h-4" /> Yes
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">No</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Attachments */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.85 }}
+            transition={{ delay: 0.45 }}
             className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
           >
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Attachments</h2>
-                <p className="text-sm text-slate-500">Uploaded documents and files</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Travel & Start Date</h2>
+                <p className="text-sm text-slate-500">Travel preferences and start date information</p>
               </div>
               <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                <Paperclip className="w-6 h-6 text-brand-green" />
+                <Plane className="w-6 h-6 text-brand-green" />
               </div>
             </div>
 
-            {documents.length === 0 ? (
-              <div className="text-center py-12">
-                <Paperclip className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No documents uploaded yet</p>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{doc.type}</p>
-                        <p className="font-semibold text-slate-900 text-sm truncate">{doc.fileName}</p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {new Date(doc.uploadedAt).toLocaleDateString()}
-                        </p>
-                        {doc.fileUrl && (
-                          <a
-                            href={doc.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-brand-green hover:underline mt-2"
-                          >
-                            <Download className="w-3 h-3" />
-                            Download
-                          </a>
-                        )}
-                      </div>
-                    </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Plane className="w-5 h-5 text-brand-green" />
                   </div>
-                ))}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Willing to Travel</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="willingToTravel"
+                            checked={willingToTravel === true}
+                            onChange={() => setWillingToTravel(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="willingToTravel"
+                            checked={willingToTravel === false}
+                            onChange={() => setWillingToTravel(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.willingToTravel != null ? (
+                          installer.willingToTravel ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Max Travel Distance (miles)</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={maxTravelDistance || ''}
+                        onChange={(e) => setMaxTravelDistance(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter max distance in miles"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">{installer.maxTravelDistance ? `${installer.maxTravelDistance} miles` : <span className="text-slate-400 italic">Not provided</span>}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Can Start Immediately</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="canStartImmediately"
+                            checked={canStartImmediately === true}
+                            onChange={() => setCanStartImmediately(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="canStartImmediately"
+                            checked={canStartImmediately === false}
+                            onChange={() => setCanStartImmediately(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.canStartImmediately != null ? (
+                          installer.canStartImmediately ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Preferred Start Date</p>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={preferredStartDate}
+                        onChange={(e) => setPreferredStartDate(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.preferredStartDate ? (
+                          new Date(installer.preferredStartDate).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Carpet Installation Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Carpet Installation</h2>
+                <p className="text-sm text-slate-500">Carpet installation capabilities and capacity</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Square className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Carpet as Category</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddCarpet"
+                            checked={wantsToAddCarpet === true}
+                            onChange={() => setWantsToAddCarpet(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddCarpet"
+                            checked={wantsToAddCarpet === false}
+                            onChange={() => setWantsToAddCarpet(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.wantsToAddCarpet != null ? (
+                          installer.wantsToAddCarpet ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Stretch-in Carpet</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsStretchInCarpet"
+                            checked={installsStretchInCarpet === true}
+                            onChange={() => setInstallsStretchInCarpet(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsStretchInCarpet"
+                            checked={installsStretchInCarpet === false}
+                            onChange={() => setInstallsStretchInCarpet(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsStretchInCarpet != null ? (
+                          installer.installsStretchInCarpet ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Stretch-in Carpet Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyStretchInCarpetSqft || ''}
+                        onChange={(e) => setDailyStretchInCarpetSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyStretchInCarpetSqft ? (
+                          `${installer.dailyStretchInCarpetSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Glue Down Carpet</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsGlueDownCarpet"
+                            checked={installsGlueDownCarpet === true}
+                            onChange={() => setInstallsGlueDownCarpet(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsGlueDownCarpet"
+                            checked={installsGlueDownCarpet === false}
+                            onChange={() => setInstallsGlueDownCarpet(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsGlueDownCarpet != null ? (
+                          installer.installsGlueDownCarpet ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Hardwood Installation Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Hardwood Installation</h2>
+                <p className="text-sm text-slate-500">Hardwood installation capabilities and capacity</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Square className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Hardwood as Category</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddHardwood"
+                            checked={wantsToAddHardwood === true}
+                            onChange={() => setWantsToAddHardwood(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddHardwood"
+                            checked={wantsToAddHardwood === false}
+                            onChange={() => setWantsToAddHardwood(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.wantsToAddHardwood != null ? (
+                          installer.wantsToAddHardwood ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Nail Down Solid Hardwood</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsNailDownSolidHardwood"
+                            checked={installsNailDownSolidHardwood === true}
+                            onChange={() => setInstallsNailDownSolidHardwood(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsNailDownSolidHardwood"
+                            checked={installsNailDownSolidHardwood === false}
+                            onChange={() => setInstallsNailDownSolidHardwood(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsNailDownSolidHardwood != null ? (
+                          installer.installsNailDownSolidHardwood ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Nail Down Solid Hardwood Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyNailDownSolidHardwoodSqft || ''}
+                        onChange={(e) => setDailyNailDownSolidHardwoodSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyNailDownSolidHardwoodSqft ? (
+                          `${installer.dailyNailDownSolidHardwoodSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Staple-down Engineered Hardwood</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsStapleDownEngineeredHardwood"
+                            checked={installsStapleDownEngineeredHardwood === true}
+                            onChange={() => setInstallsStapleDownEngineeredHardwood(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsStapleDownEngineeredHardwood"
+                            checked={installsStapleDownEngineeredHardwood === false}
+                            onChange={() => setInstallsStapleDownEngineeredHardwood(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsStapleDownEngineeredHardwood != null ? (
+                          installer.installsStapleDownEngineeredHardwood ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Laminate Installation Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Laminate Installation</h2>
+                <p className="text-sm text-slate-500">Laminate installation capabilities and capacity</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Square className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Laminate as Category</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddLaminate"
+                            checked={wantsToAddLaminate === true}
+                            onChange={() => setWantsToAddLaminate(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddLaminate"
+                            checked={wantsToAddLaminate === false}
+                            onChange={() => setWantsToAddLaminate(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.wantsToAddLaminate != null ? (
+                          installer.wantsToAddLaminate ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Laminate Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyLaminateSqft || ''}
+                        onChange={(e) => setDailyLaminateSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyLaminateSqft ? (
+                          `${installer.dailyLaminateSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Laminate on Stairs</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsLaminateOnStairs"
+                            checked={installsLaminateOnStairs === true}
+                            onChange={() => setInstallsLaminateOnStairs(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsLaminateOnStairs"
+                            checked={installsLaminateOnStairs === false}
+                            onChange={() => setInstallsLaminateOnStairs(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsLaminateOnStairs != null ? (
+                          installer.installsLaminateOnStairs ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Vinyl Installation Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Vinyl Installation</h2>
+                <p className="text-sm text-slate-500">Vinyl installation capabilities and capacity</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Square className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Vinyl as Category</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddVinyl"
+                            checked={wantsToAddVinyl === true}
+                            onChange={() => setWantsToAddVinyl(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddVinyl"
+                            checked={wantsToAddVinyl === false}
+                            onChange={() => setWantsToAddVinyl(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.wantsToAddVinyl != null ? (
+                          installer.wantsToAddVinyl ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Sheet Vinyl</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsSheetVinyl"
+                            checked={installsSheetVinyl === true}
+                            onChange={() => setInstallsSheetVinyl(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsSheetVinyl"
+                            checked={installsSheetVinyl === false}
+                            onChange={() => setInstallsSheetVinyl(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsSheetVinyl != null ? (
+                          installer.installsSheetVinyl ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Luxury Vinyl Plank (LVP)</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsLuxuryVinylPlank"
+                            checked={installsLuxuryVinylPlank === true}
+                            onChange={() => setInstallsLuxuryVinylPlank(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsLuxuryVinylPlank"
+                            checked={installsLuxuryVinylPlank === false}
+                            onChange={() => setInstallsLuxuryVinylPlank(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsLuxuryVinylPlank != null ? (
+                          installer.installsLuxuryVinylPlank ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily LVP Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyLuxuryVinylPlankSqft || ''}
+                        onChange={(e) => setDailyLuxuryVinylPlankSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyLuxuryVinylPlankSqft ? (
+                          `${installer.dailyLuxuryVinylPlankSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Luxury Vinyl Tile (LVT)</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsLuxuryVinylTile"
+                            checked={installsLuxuryVinylTile === true}
+                            onChange={() => setInstallsLuxuryVinylTile(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsLuxuryVinylTile"
+                            checked={installsLuxuryVinylTile === false}
+                            onChange={() => setInstallsLuxuryVinylTile(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsLuxuryVinylTile != null ? (
+                          installer.installsLuxuryVinylTile ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Vinyl Composition Tile (VCT)</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsVinylCompositionTile"
+                            checked={installsVinylCompositionTile === true}
+                            onChange={() => setInstallsVinylCompositionTile(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsVinylCompositionTile"
+                            checked={installsVinylCompositionTile === false}
+                            onChange={() => setInstallsVinylCompositionTile(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsVinylCompositionTile != null ? (
+                          installer.installsVinylCompositionTile ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily VCT Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyVinylCompositionTileSqft || ''}
+                        onChange={(e) => setDailyVinylCompositionTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyVinylCompositionTileSqft ? (
+                          `${installer.dailyVinylCompositionTileSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Tile Installation Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Tile Installation</h2>
+                <p className="text-sm text-slate-500">Tile installation capabilities and capacity</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Square className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Add Tile as Category</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddTile"
+                            checked={wantsToAddTile === true}
+                            onChange={() => setWantsToAddTile(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddTile"
+                            checked={wantsToAddTile === false}
+                            onChange={() => setWantsToAddTile(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.wantsToAddTile != null ? (
+                          installer.wantsToAddTile ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Ceramic Tile</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsCeramicTile"
+                            checked={installsCeramicTile === true}
+                            onChange={() => setInstallsCeramicTile(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsCeramicTile"
+                            checked={installsCeramicTile === false}
+                            onChange={() => setInstallsCeramicTile(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsCeramicTile != null ? (
+                          installer.installsCeramicTile ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Ceramic Tile Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyCeramicTileSqft || ''}
+                        onChange={(e) => setDailyCeramicTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyCeramicTileSqft ? (
+                          `${installer.dailyCeramicTileSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Porcelain Tile</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsPorcelainTile"
+                            checked={installsPorcelainTile === true}
+                            onChange={() => setInstallsPorcelainTile(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsPorcelainTile"
+                            checked={installsPorcelainTile === false}
+                            onChange={() => setInstallsPorcelainTile(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsPorcelainTile != null ? (
+                          installer.installsPorcelainTile ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Porcelain Tile Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyPorcelainTileSqft || ''}
+                        onChange={(e) => setDailyPorcelainTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyPorcelainTileSqft ? (
+                          `${installer.dailyPorcelainTileSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Stone Tile</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsStoneTile"
+                            checked={installsStoneTile === true}
+                            onChange={() => setInstallsStoneTile(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsStoneTile"
+                            checked={installsStoneTile === false}
+                            onChange={() => setInstallsStoneTile(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsStoneTile != null ? (
+                          installer.installsStoneTile ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Stone Tile Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyStoneTileSqft || ''}
+                        onChange={(e) => setDailyStoneTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyStoneTileSqft ? (
+                          `${installer.dailyStoneTileSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Offers Tile Removal</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="offersTileRemoval"
+                            checked={offersTileRemoval === true}
+                            onChange={() => setOffersTileRemoval(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="offersTileRemoval"
+                            checked={offersTileRemoval === false}
+                            onChange={() => setOffersTileRemoval(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.offersTileRemoval != null ? (
+                          installer.offersTileRemoval ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Tile Backsplash</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsTileBacksplash"
+                            checked={installsTileBacksplash === true}
+                            onChange={() => setInstallsTileBacksplash(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsTileBacksplash"
+                            checked={installsTileBacksplash === false}
+                            onChange={() => setInstallsTileBacksplash(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsTileBacksplash != null ? (
+                          installer.installsTileBacksplash ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Tile Backsplash Average</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={dailyTileBacksplashSqft || ''}
+                        onChange={(e) => setDailyTileBacksplashSqft(e.target.value ? parseInt(e.target.value) : undefined)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Enter square footage"
+                        min="0"
+                      />
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.dailyTileBacksplashSqft ? (
+                          `${installer.dailyTileBacksplashSqft.toLocaleString()} sq ft`
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Additional Work Information */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Additional Work</h2>
+                <p className="text-sm text-slate-500">Additional services and capabilities</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Wrench className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Wrench className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Moves Furniture</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="movesFurniture"
+                            checked={movesFurniture === true}
+                            onChange={() => setMovesFurniture(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="movesFurniture"
+                            checked={movesFurniture === false}
+                            onChange={() => setMovesFurniture(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.movesFurniture != null ? (
+                          installer.movesFurniture ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Wrench className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Installs Trim</p>
+                    {isEditing ? (
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsTrim"
+                            checked={installsTrim === true}
+                            onChange={() => setInstallsTrim(true)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsTrim"
+                            checked={installsTrim === false}
+                            onChange={() => setInstallsTrim(false)}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900 font-medium">No</span>
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.installsTrim != null ? (
+                          installer.installsTrim ? (
+                            <span className="text-success-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 italic">Not provided</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           {/* Payment Information */}
@@ -2712,8 +5791,2565 @@ export default function InstallerProfileViewPage() {
               </div>
             )}
           </motion.div>
+
+          {/* Historical Data Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Historical Data</h2>
+                <p className="text-sm text-slate-500">Past years' profile information</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleAddHistory}
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Historical Data
+                </button>
+                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-brand-green" />
+                </div>
+              </div>
+            </div>
+
+            {historicalData.length === 0 ? (
+              <div className="bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 p-12 text-center">
+                <Calendar className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">No historical data</h3>
+                <p className="text-slate-500">This installer hasn't added any historical profile data yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {historicalData.map((history) => {
+                  const isExpanded = expandedHistory[history.id] || false
+                  return (
+                    <motion.div
+                      key={history.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden"
+                    >
+                      {/* Header - Always Visible */}
+                      <div className="w-full p-6 flex items-center justify-between hover:bg-slate-100 transition-colors">
+                        <button
+                          onClick={() => setExpandedHistory(prev => ({
+                            ...prev,
+                            [history.id]: !prev[history.id]
+                          }))}
+                          className="flex items-center gap-4 flex-1 text-left"
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                            <Calendar className="w-6 h-6 text-brand-green" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <h3 className="font-bold text-slate-900 text-xl mb-1">
+                              Year {history.year}
+                            </h3>
+                            {history.companyName && (
+                              <p className="text-sm text-slate-600">{history.companyName}</p>
+                            )}
+                            {history.firstName && history.lastName && (
+                              <p className="text-sm text-slate-500">{history.firstName} {history.lastName}</p>
+                            )}
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditHistory(history)
+                            }}
+                            className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteHistory(history.id, history.year)
+                            }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setExpandedHistory(prev => ({
+                              ...prev,
+                              [history.id]: !prev[history.id]
+                            }))}
+                            className="p-2 text-slate-400 hover:text-slate-600 transition-all"
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="w-5 h-5" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="p-6 pt-0 space-y-6">
+                            {/* Basic Information */}
+                            {(history.firstName || history.lastName || history.phone || history.yearsOfExperience || history.flooringSpecialties || history.flooringSkills) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <User className="w-5 h-5 text-brand-green" />
+                                  Basic Information
+                                </h4>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  {history.firstName && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">First Name</p>
+                                      <p className="font-semibold text-slate-900">{history.firstName}</p>
+                                    </div>
+                                  )}
+                                  {history.lastName && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Last Name</p>
+                                      <p className="font-semibold text-slate-900">{history.lastName}</p>
+                                    </div>
+                                  )}
+                                  {history.phone && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Phone</p>
+                                      <p className="font-semibold text-slate-900">{history.phone}</p>
+                                    </div>
+                                  )}
+                                  {history.yearsOfExperience && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Years of Experience</p>
+                                      <p className="font-semibold text-slate-900">{history.yearsOfExperience} years</p>
+                                    </div>
+                                  )}
+                                  {history.flooringSpecialties && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Flooring Specialties</p>
+                                      <p className="font-semibold text-slate-900">{history.flooringSpecialties}</p>
+                                    </div>
+                                  )}
+                                  {history.flooringSkills && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Flooring Skills</p>
+                                      <p className="font-semibold text-slate-900">{history.flooringSkills}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Company Information */}
+                            {(history.companyName || history.companyTitle || history.companyStreetAddress || history.companyCity || history.companyState || history.companyZipCode || history.companyCounty || history.companyAddress) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Building2 className="w-5 h-5 text-brand-green" />
+                                  Company Information
+                                </h4>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  {history.companyName && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Company Name</p>
+                                      <p className="font-semibold text-slate-900">{history.companyName}</p>
+                                    </div>
+                                  )}
+                                  {history.companyTitle && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Title</p>
+                                      <p className="font-semibold text-slate-900">{history.companyTitle}</p>
+                                    </div>
+                                  )}
+                                  {history.companyStreetAddress && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Street Address</p>
+                                      <p className="font-semibold text-slate-900">{history.companyStreetAddress}</p>
+                                    </div>
+                                  )}
+                                  {history.companyCity && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">City</p>
+                                      <p className="font-semibold text-slate-900">{history.companyCity}</p>
+                                    </div>
+                                  )}
+                                  {history.companyState && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">State</p>
+                                      <p className="font-semibold text-slate-900">{history.companyState}</p>
+                                    </div>
+                                  )}
+                                  {history.companyZipCode && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Zip Code</p>
+                                      <p className="font-semibold text-slate-900">{history.companyZipCode}</p>
+                                    </div>
+                                  )}
+                                  {history.companyCounty && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">County</p>
+                                      <p className="font-semibold text-slate-900">{history.companyCounty}</p>
+                                    </div>
+                                  )}
+                                  {history.companyAddress && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Full Address</p>
+                                      <p className="font-semibold text-slate-900">{history.companyAddress}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Crew & Equipment */}
+                            {(history.hasOwnCrew !== undefined || history.crewSize || history.hasOwnTools !== undefined || history.toolsDescription || history.hasVehicle !== undefined || history.vehicleDescription) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <UsersIcon className="w-5 h-5 text-brand-green" />
+                                  Crew & Equipment
+                                </h4>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  {history.hasOwnCrew !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Own Crew</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasOwnCrew ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.crewSize && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Crew Size</p>
+                                      <p className="font-semibold text-slate-900">{history.crewSize}</p>
+                                    </div>
+                                  )}
+                                  {history.hasOwnTools !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Own Tools</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasOwnTools ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.toolsDescription && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tools Description</p>
+                                      <p className="font-semibold text-slate-900">{history.toolsDescription}</p>
+                                    </div>
+                                  )}
+                                  {history.hasVehicle !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Vehicle</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasVehicle ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.vehicleDescription && (
+                                    <div className="md:col-span-2">
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Vehicle Description</p>
+                                      <p className="font-semibold text-slate-900">{history.vehicleDescription}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Insurance & Registration */}
+                            {(history.hasInsurance !== undefined || history.insuranceType || history.hasLicense !== undefined || history.licenseNumber || history.licenseExpiry || history.hasGeneralLiability !== undefined || history.hasCommercialAutoLiability !== undefined || history.hasWorkersComp !== undefined || history.hasWorkersCompExemption !== undefined || history.isSunbizRegistered !== undefined || history.isSunbizActive !== undefined || history.hasBusinessLicense !== undefined) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Shield className="w-5 h-5 text-brand-green" />
+                                  Insurance & Registration
+                                </h4>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  {history.hasInsurance !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasInsurance ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.insuranceType && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Insurance Type</p>
+                                      <p className="font-semibold text-slate-900">{history.insuranceType}</p>
+                                    </div>
+                                  )}
+                                  {history.hasLicense !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has License</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasLicense ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.licenseNumber && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">License Number</p>
+                                      <p className="font-semibold text-slate-900">{history.licenseNumber}</p>
+                                    </div>
+                                  )}
+                                  {history.licenseExpiry && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">License Expiry</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {new Date(history.licenseExpiry).toLocaleDateString('en-US', {
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.hasGeneralLiability !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">General Liability</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasGeneralLiability ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.hasCommercialAutoLiability !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Commercial Auto Liability</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasCommercialAutoLiability ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.hasWorkersComp !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Workers Comp</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasWorkersComp ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.hasWorkersCompExemption !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Workers Comp Exemption</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasWorkersCompExemption ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.isSunbizRegistered !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">SunBiz Registered</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.isSunbizRegistered ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.isSunbizActive !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">SunBiz Active</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.isSunbizActive ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.hasBusinessLicense !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Business License</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.hasBusinessLicense ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Travel & Availability */}
+                            {(history.willingToTravel !== undefined || history.maxTravelDistance || history.canStartImmediately !== undefined || history.preferredStartDate || history.mondayToFridayAvailability || history.saturdayAvailability || history.availability) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Plane className="w-5 h-5 text-brand-green" />
+                                  Travel & Availability
+                                </h4>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  {history.willingToTravel !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Willing to Travel</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.willingToTravel ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.maxTravelDistance && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Max Travel Distance</p>
+                                      <p className="font-semibold text-slate-900">{history.maxTravelDistance} miles</p>
+                                    </div>
+                                  )}
+                                  {history.canStartImmediately !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Can Start Immediately</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.canStartImmediately ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.preferredStartDate && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Preferred Start Date</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {new Date(history.preferredStartDate).toLocaleDateString('en-US', {
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.mondayToFridayAvailability && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Monday-Friday Availability</p>
+                                      <p className="font-semibold text-slate-900">{history.mondayToFridayAvailability}</p>
+                                    </div>
+                                  )}
+                                  {history.saturdayAvailability && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Saturday Availability</p>
+                                      <p className="font-semibold text-slate-900">{history.saturdayAvailability}</p>
+                                    </div>
+                                  )}
+                                  {history.availability && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Availability</p>
+                                      <p className="font-semibold text-slate-900">{history.availability}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Flooring Installation Capabilities */}
+                            {(history.wantsToAddCarpet !== undefined || history.installsStretchInCarpet !== undefined || history.dailyStretchInCarpetSqft || history.installsGlueDownCarpet !== undefined ||
+                              history.wantsToAddHardwood !== undefined || history.installsNailDownSolidHardwood !== undefined || history.dailyNailDownSolidHardwoodSqft || history.installsStapleDownEngineeredHardwood !== undefined ||
+                              history.wantsToAddLaminate !== undefined || history.dailyLaminateSqft || history.installsLaminateOnStairs !== undefined ||
+                              history.wantsToAddVinyl !== undefined || history.installsSheetVinyl !== undefined || history.installsLuxuryVinylPlank !== undefined || history.dailyLuxuryVinylPlankSqft || history.installsLuxuryVinylTile !== undefined || history.installsVinylCompositionTile !== undefined || history.dailyVinylCompositionTileSqft ||
+                              history.wantsToAddTile !== undefined || history.installsCeramicTile !== undefined || history.dailyCeramicTileSqft || history.installsPorcelainTile !== undefined || history.dailyPorcelainTileSqft || history.installsStoneTile !== undefined || history.dailyStoneTileSqft || history.offersTileRemoval !== undefined || history.installsTileBacksplash !== undefined || history.dailyTileBacksplashSqft) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Square className="w-5 h-5 text-brand-green" />
+                                  Flooring Installation Capabilities
+                                </h4>
+                                <div className="space-y-4">
+                                  {/* Carpet */}
+                                  {(history.wantsToAddCarpet !== undefined || history.installsStretchInCarpet !== undefined || history.dailyStretchInCarpetSqft || history.installsGlueDownCarpet !== undefined) && (
+                                    <div className="border-l-4 border-brand-green pl-4">
+                                      <h5 className="font-semibold text-slate-900 mb-2">Carpet</h5>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        {history.wantsToAddCarpet !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Wants to Add</p>
+                                            <p className="font-medium text-slate-900">{history.wantsToAddCarpet ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsStretchInCarpet !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Stretch-In</p>
+                                            <p className="font-medium text-slate-900">{history.installsStretchInCarpet ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyStretchInCarpetSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Stretch-In Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyStretchInCarpetSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.installsGlueDownCarpet !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Glue-Down</p>
+                                            <p className="font-medium text-slate-900">{history.installsGlueDownCarpet ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Hardwood */}
+                                  {(history.wantsToAddHardwood !== undefined || history.installsNailDownSolidHardwood !== undefined || history.dailyNailDownSolidHardwoodSqft || history.installsStapleDownEngineeredHardwood !== undefined) && (
+                                    <div className="border-l-4 border-brand-green pl-4">
+                                      <h5 className="font-semibold text-slate-900 mb-2">Hardwood</h5>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        {history.wantsToAddHardwood !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Wants to Add</p>
+                                            <p className="font-medium text-slate-900">{history.wantsToAddHardwood ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsNailDownSolidHardwood !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Nail-Down Solid</p>
+                                            <p className="font-medium text-slate-900">{history.installsNailDownSolidHardwood ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyNailDownSolidHardwoodSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Nail-Down Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyNailDownSolidHardwoodSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.installsStapleDownEngineeredHardwood !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Staple-Down Engineered</p>
+                                            <p className="font-medium text-slate-900">{history.installsStapleDownEngineeredHardwood ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Laminate */}
+                                  {(history.wantsToAddLaminate !== undefined || history.dailyLaminateSqft || history.installsLaminateOnStairs !== undefined) && (
+                                    <div className="border-l-4 border-brand-green pl-4">
+                                      <h5 className="font-semibold text-slate-900 mb-2">Laminate</h5>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        {history.wantsToAddLaminate !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Wants to Add</p>
+                                            <p className="font-medium text-slate-900">{history.wantsToAddLaminate ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyLaminateSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyLaminateSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.installsLaminateOnStairs !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs on Stairs</p>
+                                            <p className="font-medium text-slate-900">{history.installsLaminateOnStairs ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Vinyl */}
+                                  {(history.wantsToAddVinyl !== undefined || history.installsSheetVinyl !== undefined || history.installsLuxuryVinylPlank !== undefined || history.dailyLuxuryVinylPlankSqft || history.installsLuxuryVinylTile !== undefined || history.installsVinylCompositionTile !== undefined || history.dailyVinylCompositionTileSqft) && (
+                                    <div className="border-l-4 border-brand-green pl-4">
+                                      <h5 className="font-semibold text-slate-900 mb-2">Vinyl</h5>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        {history.wantsToAddVinyl !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Wants to Add</p>
+                                            <p className="font-medium text-slate-900">{history.wantsToAddVinyl ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsSheetVinyl !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Sheet Vinyl</p>
+                                            <p className="font-medium text-slate-900">{history.installsSheetVinyl ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsLuxuryVinylPlank !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Luxury Vinyl Plank</p>
+                                            <p className="font-medium text-slate-900">{history.installsLuxuryVinylPlank ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyLuxuryVinylPlankSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily LVP Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyLuxuryVinylPlankSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.installsLuxuryVinylTile !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Luxury Vinyl Tile</p>
+                                            <p className="font-medium text-slate-900">{history.installsLuxuryVinylTile ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsVinylCompositionTile !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Vinyl Composition Tile</p>
+                                            <p className="font-medium text-slate-900">{history.installsVinylCompositionTile ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyVinylCompositionTileSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily VCT Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyVinylCompositionTileSqft}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Tile */}
+                                  {(history.wantsToAddTile !== undefined || history.installsCeramicTile !== undefined || history.dailyCeramicTileSqft || history.installsPorcelainTile !== undefined || history.dailyPorcelainTileSqft || history.installsStoneTile !== undefined || history.dailyStoneTileSqft || history.offersTileRemoval !== undefined || history.installsTileBacksplash !== undefined || history.dailyTileBacksplashSqft) && (
+                                    <div className="border-l-4 border-brand-green pl-4">
+                                      <h5 className="font-semibold text-slate-900 mb-2">Tile</h5>
+                                      <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                        {history.wantsToAddTile !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Wants to Add</p>
+                                            <p className="font-medium text-slate-900">{history.wantsToAddTile ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsCeramicTile !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Ceramic Tile</p>
+                                            <p className="font-medium text-slate-900">{history.installsCeramicTile ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyCeramicTileSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Ceramic Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyCeramicTileSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.installsPorcelainTile !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Porcelain Tile</p>
+                                            <p className="font-medium text-slate-900">{history.installsPorcelainTile ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyPorcelainTileSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Porcelain Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyPorcelainTileSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.installsStoneTile !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Stone Tile</p>
+                                            <p className="font-medium text-slate-900">{history.installsStoneTile ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyStoneTileSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Stone Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyStoneTileSqft}</p>
+                                          </div>
+                                        )}
+                                        {history.offersTileRemoval !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Offers Tile Removal</p>
+                                            <p className="font-medium text-slate-900">{history.offersTileRemoval ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.installsTileBacksplash !== undefined && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Installs Tile Backsplash</p>
+                                            <p className="font-medium text-slate-900">{history.installsTileBacksplash ? 'Yes' : 'No'}</p>
+                                          </div>
+                                        )}
+                                        {history.dailyTileBacksplashSqft && (
+                                          <div>
+                                            <p className="text-xs text-slate-500 mb-1">Daily Backsplash Sqft</p>
+                                            <p className="font-medium text-slate-900">{history.dailyTileBacksplashSqft}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Additional Work */}
+                            {(history.movesFurniture !== undefined || history.installsTrim !== undefined) && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <Wrench className="w-5 h-5 text-brand-green" />
+                                  Additional Work
+                                </h4>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  {history.movesFurniture !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Moves Furniture</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.movesFurniture ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {history.installsTrim !== undefined && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Installs Trim</p>
+                                      <p className="font-semibold text-slate-900">
+                                        {history.installsTrim ? (
+                                          <span className="text-success-600 flex items-center gap-1">
+                                            <CheckCircle2 className="w-4 h-4" /> Yes
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400">No</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Notes */}
+                            {history.notes && (
+                              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                                <h4 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                  <FileText className="w-5 h-5 text-brand-green" />
+                                  Notes
+                                </h4>
+                                <p className="text-slate-700 whitespace-pre-wrap">{history.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Location Map (uses saved Address) */}
+          {(() => {
+            const street = (isEditing ? companyStreetAddress : installer.companyStreetAddress) || ''
+            const city = (isEditing ? companyCity : installer.companyCity) || ''
+            const state = (isEditing ? companyState : installer.companyState) || ''
+            const zip = (isEditing ? companyZipCode : installer.companyZipCode) || ''
+            const fallback = (isEditing ? companyAddress : installer.companyAddress) || ''
+
+            const parts = [street, city, state].map((p) => (p || '').trim()).filter(Boolean)
+            let addressForMap = parts.join(', ')
+            const zipTrimmed = (zip || '').trim()
+            if (zipTrimmed) addressForMap = `${addressForMap}${addressForMap ? ' ' : ''}${zipTrimmed}`
+            addressForMap = addressForMap.trim() || fallback.trim()
+
+            if (!addressForMap) return null
+
+            const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+            const mapsUrl = googleMapsApiKey
+              ? `https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(addressForMap)}`
+              : `https://www.google.com/maps?q=${encodeURIComponent(addressForMap)}&output=embed`
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.95 }}
+                className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-brand-green" />
+                    Location Map
+                  </h3>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-brand-green hover:text-brand-green-dark font-medium flex items-center gap-1"
+                  >
+                    Open in Google Maps
+                    <MapPin className="w-4 h-4" />
+                  </a>
+                </div>
+                <div className="w-full h-96 rounded-xl overflow-hidden border border-slate-200 relative">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={mapsUrl}
+                    title="Location Map"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-2 text-center">{addressForMap}</p>
+              </motion.div>
+            )
+          })()}
+
         </main>
       </div>
+
+      {/* Historical Data Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+          >
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {editingHistory ? `Edit Historical Data - Year ${editingHistory.year}` : 'Add Historical Data'}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">Enter profile information for a specific year</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowHistoryModal(false)
+                  setEditingHistory(null)
+                }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-6">
+                {/* Year Selection */}
+                <div className="bg-brand-green/5 rounded-xl p-4 border border-brand-green/20">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Year <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={historyForm.year}
+                    onChange={(e) => setHistoryForm({ ...historyForm, year: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="e.g., 2024, 2025"
+                    min="2000"
+                    max={new Date().getFullYear()}
+                    required
+                  />
+                  <p className="text-xs text-slate-500 mt-2">Enter the year this data represents (e.g., 2024, 2025)</p>
+                </div>
+
+                {/* Basic Information */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <User className="w-5 h-5 text-brand-green" />
+                    Basic Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        value={historyForm.firstName || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, firstName: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="First name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        value={historyForm.lastName || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, lastName: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Last name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
+                      <input
+                        type="tel"
+                        value={historyForm.phone || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, phone: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Years of Experience</label>
+                      <input
+                        type="number"
+                        value={historyForm.yearsOfExperience || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, yearsOfExperience: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Years"
+                        min="0"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Flooring Specialties</label>
+                      <input
+                        type="text"
+                        value={historyForm.flooringSpecialties || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, flooringSpecialties: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Comma-separated specialties"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Flooring Skills</label>
+                      <input
+                        type="text"
+                        value={historyForm.flooringSkills || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, flooringSkills: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Comma-separated skills"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Information */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-brand-green" />
+                    Company Information
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Company Name</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyName || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyName: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Company name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Title</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyTitle || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyTitle: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Job title"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Street Address</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyStreetAddress || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyStreetAddress: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Street address"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">City</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyCity || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyCity: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="City"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">State</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyState || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyState: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="State"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Zip Code</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyZipCode || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyZipCode: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Zip code"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">County</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyCounty || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyCounty: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="County"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Full Address</label>
+                      <input
+                        type="text"
+                        value={historyForm.companyAddress || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, companyAddress: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Full formatted address"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Crew & Equipment */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-brand-green" />
+                    Crew & Equipment
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Has Own Crew</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasOwnCrew"
+                            checked={historyForm.hasOwnCrew === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasOwnCrew: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasOwnCrew"
+                            checked={historyForm.hasOwnCrew === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasOwnCrew: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Crew Size</label>
+                      <input
+                        type="number"
+                        value={historyForm.crewSize || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, crewSize: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Number of crew members"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Has Own Tools</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasOwnTools"
+                            checked={historyForm.hasOwnTools === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasOwnTools: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasOwnTools"
+                            checked={historyForm.hasOwnTools === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasOwnTools: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Has Vehicle</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasVehicle"
+                            checked={historyForm.hasVehicle === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasVehicle: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasVehicle"
+                            checked={historyForm.hasVehicle === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasVehicle: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Tools Description</label>
+                      <textarea
+                        value={historyForm.toolsDescription || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, toolsDescription: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                        placeholder="Describe your tools"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Vehicle Description</label>
+                      <textarea
+                        value={historyForm.vehicleDescription || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, vehicleDescription: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                        placeholder="Describe your vehicle"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insurance & Registration */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-brand-green" />
+                    Insurance & Registration
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Has Insurance</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasInsurance"
+                            checked={historyForm.hasInsurance === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasInsurance: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasInsurance"
+                            checked={historyForm.hasInsurance === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasInsurance: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Insurance Type</label>
+                      <input
+                        type="text"
+                        value={historyForm.insuranceType || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, insuranceType: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Insurance type"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Has License</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasLicense"
+                            checked={historyForm.hasLicense === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasLicense: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasLicense"
+                            checked={historyForm.hasLicense === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasLicense: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">License Number</label>
+                      <input
+                        type="text"
+                        value={historyForm.licenseNumber || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, licenseNumber: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="License number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">License Expiry</label>
+                      <input
+                        type="date"
+                        value={historyForm.licenseExpiry || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, licenseExpiry: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">General Liability</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasGeneralLiability"
+                            checked={historyForm.hasGeneralLiability === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasGeneralLiability: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasGeneralLiability"
+                            checked={historyForm.hasGeneralLiability === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasGeneralLiability: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Commercial Auto Liability</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasCommercialAutoLiability"
+                            checked={historyForm.hasCommercialAutoLiability === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasCommercialAutoLiability: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasCommercialAutoLiability"
+                            checked={historyForm.hasCommercialAutoLiability === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasCommercialAutoLiability: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Workers Comp</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasWorkersComp"
+                            checked={historyForm.hasWorkersComp === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasWorkersComp: true, hasWorkersCompExemption: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasWorkersComp"
+                            checked={historyForm.hasWorkersComp === false && historyForm.hasWorkersCompExemption !== true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasWorkersComp: false, hasWorkersCompExemption: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasWorkersComp"
+                            checked={historyForm.hasWorkersCompExemption === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasWorkersComp: false, hasWorkersCompExemption: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Exemption</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">SunBiz Registered</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="isSunbizRegistered"
+                            checked={historyForm.isSunbizRegistered === true}
+                            onChange={() => setHistoryForm({ ...historyForm, isSunbizRegistered: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="isSunbizRegistered"
+                            checked={historyForm.isSunbizRegistered === false}
+                            onChange={() => setHistoryForm({ ...historyForm, isSunbizRegistered: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">SunBiz Active</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="isSunbizActive"
+                            checked={historyForm.isSunbizActive === true}
+                            onChange={() => setHistoryForm({ ...historyForm, isSunbizActive: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="isSunbizActive"
+                            checked={historyForm.isSunbizActive === false}
+                            onChange={() => setHistoryForm({ ...historyForm, isSunbizActive: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Business License</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasBusinessLicense"
+                            checked={historyForm.hasBusinessLicense === true}
+                            onChange={() => setHistoryForm({ ...historyForm, hasBusinessLicense: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="hasBusinessLicense"
+                            checked={historyForm.hasBusinessLicense === false}
+                            onChange={() => setHistoryForm({ ...historyForm, hasBusinessLicense: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Travel & Availability */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Plane className="w-5 h-5 text-brand-green" />
+                    Travel & Availability
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Willing to Travel</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="willingToTravel"
+                            checked={historyForm.willingToTravel === true}
+                            onChange={() => setHistoryForm({ ...historyForm, willingToTravel: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="willingToTravel"
+                            checked={historyForm.willingToTravel === false}
+                            onChange={() => setHistoryForm({ ...historyForm, willingToTravel: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Max Travel Distance (miles)</label>
+                      <input
+                        type="number"
+                        value={historyForm.maxTravelDistance || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, maxTravelDistance: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Miles"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Can Start Immediately</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="canStartImmediately"
+                            checked={historyForm.canStartImmediately === true}
+                            onChange={() => setHistoryForm({ ...historyForm, canStartImmediately: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="canStartImmediately"
+                            checked={historyForm.canStartImmediately === false}
+                            onChange={() => setHistoryForm({ ...historyForm, canStartImmediately: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Start Date</label>
+                      <input
+                        type="date"
+                        value={historyForm.preferredStartDate || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, preferredStartDate: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Monday-Friday Availability</label>
+                      <input
+                        type="text"
+                        value={historyForm.mondayToFridayAvailability || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, mondayToFridayAvailability: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="e.g., 8am-5pm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Saturday Availability</label>
+                      <input
+                        type="text"
+                        value={historyForm.saturdayAvailability || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, saturdayAvailability: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="e.g., 8am-12pm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Availability Type</label>
+                      <select
+                        value={historyForm.availability || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, availability: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      >
+                        <option value="">Select availability</option>
+                        <option value="full-time">Full-time</option>
+                        <option value="part-time">Part-time</option>
+                        <option value="contract">Contract</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Carpet Installation */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Square className="w-5 h-5 text-brand-green" />
+                    Carpet Installation
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Add Carpet as Category</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddCarpet"
+                            checked={historyForm.wantsToAddCarpet === true}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddCarpet: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddCarpet"
+                            checked={historyForm.wantsToAddCarpet === false}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddCarpet: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    {historyForm.wantsToAddCarpet === true && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Stretch-in Carpet</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsStretchInCarpet"
+                                checked={historyForm.installsStretchInCarpet === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsStretchInCarpet: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsStretchInCarpet"
+                                checked={historyForm.installsStretchInCarpet === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsStretchInCarpet: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Stretch-in Carpet Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyStretchInCarpetSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyStretchInCarpetSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Glue Down Carpet</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsGlueDownCarpet"
+                                checked={historyForm.installsGlueDownCarpet === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsGlueDownCarpet: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsGlueDownCarpet"
+                                checked={historyForm.installsGlueDownCarpet === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsGlueDownCarpet: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Hardwood Installation */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Square className="w-5 h-5 text-brand-green" />
+                    Hardwood Installation
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Add Hardwood as Category</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddHardwood"
+                            checked={historyForm.wantsToAddHardwood === true}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddHardwood: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddHardwood"
+                            checked={historyForm.wantsToAddHardwood === false}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddHardwood: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    {historyForm.wantsToAddHardwood === true && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Nail-Down Solid Hardwood</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsNailDownSolidHardwood"
+                                checked={historyForm.installsNailDownSolidHardwood === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsNailDownSolidHardwood: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsNailDownSolidHardwood"
+                                checked={historyForm.installsNailDownSolidHardwood === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsNailDownSolidHardwood: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Nail-Down Solid Hardwood Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyNailDownSolidHardwoodSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyNailDownSolidHardwoodSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Staple-Down Engineered Hardwood</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsStapleDownEngineeredHardwood"
+                                checked={historyForm.installsStapleDownEngineeredHardwood === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsStapleDownEngineeredHardwood: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsStapleDownEngineeredHardwood"
+                                checked={historyForm.installsStapleDownEngineeredHardwood === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsStapleDownEngineeredHardwood: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Laminate Installation */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Square className="w-5 h-5 text-brand-green" />
+                    Laminate Installation
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Add Laminate as Category</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddLaminate"
+                            checked={historyForm.wantsToAddLaminate === true}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddLaminate: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddLaminate"
+                            checked={historyForm.wantsToAddLaminate === false}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddLaminate: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    {historyForm.wantsToAddLaminate === true && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Laminate Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyLaminateSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyLaminateSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Laminate on Stairs</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsLaminateOnStairs"
+                                checked={historyForm.installsLaminateOnStairs === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsLaminateOnStairs: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsLaminateOnStairs"
+                                checked={historyForm.installsLaminateOnStairs === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsLaminateOnStairs: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Vinyl Installation */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Square className="w-5 h-5 text-brand-green" />
+                    Vinyl Installation
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Add Vinyl as Category</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddVinyl"
+                            checked={historyForm.wantsToAddVinyl === true}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddVinyl: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddVinyl"
+                            checked={historyForm.wantsToAddVinyl === false}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddVinyl: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    {historyForm.wantsToAddVinyl === true && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Sheet Vinyl</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsSheetVinyl"
+                                checked={historyForm.installsSheetVinyl === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsSheetVinyl: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsSheetVinyl"
+                                checked={historyForm.installsSheetVinyl === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsSheetVinyl: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Luxury Vinyl Plank (LVP)</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsLuxuryVinylPlank"
+                                checked={historyForm.installsLuxuryVinylPlank === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsLuxuryVinylPlank: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsLuxuryVinylPlank"
+                                checked={historyForm.installsLuxuryVinylPlank === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsLuxuryVinylPlank: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Luxury Vinyl Plank Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyLuxuryVinylPlankSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyLuxuryVinylPlankSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Luxury Vinyl Tile (LVT)</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsLuxuryVinylTile"
+                                checked={historyForm.installsLuxuryVinylTile === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsLuxuryVinylTile: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsLuxuryVinylTile"
+                                checked={historyForm.installsLuxuryVinylTile === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsLuxuryVinylTile: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Vinyl Composition Tile (VCT)</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsVinylCompositionTile"
+                                checked={historyForm.installsVinylCompositionTile === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsVinylCompositionTile: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsVinylCompositionTile"
+                                checked={historyForm.installsVinylCompositionTile === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsVinylCompositionTile: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Vinyl Composition Tile Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyVinylCompositionTileSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyVinylCompositionTileSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tile Installation */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Square className="w-5 h-5 text-brand-green" />
+                    Tile Installation
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Add Tile as Category</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddTile"
+                            checked={historyForm.wantsToAddTile === true}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddTile: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="wantsToAddTile"
+                            checked={historyForm.wantsToAddTile === false}
+                            onChange={() => setHistoryForm({ ...historyForm, wantsToAddTile: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    {historyForm.wantsToAddTile === true && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Ceramic Tile</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsCeramicTile"
+                                checked={historyForm.installsCeramicTile === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsCeramicTile: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsCeramicTile"
+                                checked={historyForm.installsCeramicTile === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsCeramicTile: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Ceramic Tile Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyCeramicTileSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyCeramicTileSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Porcelain Tile</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsPorcelainTile"
+                                checked={historyForm.installsPorcelainTile === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsPorcelainTile: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsPorcelainTile"
+                                checked={historyForm.installsPorcelainTile === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsPorcelainTile: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Porcelain Tile Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyPorcelainTileSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyPorcelainTileSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Stone Tile</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsStoneTile"
+                                checked={historyForm.installsStoneTile === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsStoneTile: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsStoneTile"
+                                checked={historyForm.installsStoneTile === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsStoneTile: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Stone Tile Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyStoneTileSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyStoneTileSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Offers Tile Removal</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="offersTileRemoval"
+                                checked={historyForm.offersTileRemoval === true}
+                                onChange={() => setHistoryForm({ ...historyForm, offersTileRemoval: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="offersTileRemoval"
+                                checked={historyForm.offersTileRemoval === false}
+                                onChange={() => setHistoryForm({ ...historyForm, offersTileRemoval: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Tile Backsplash</label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsTileBacksplash"
+                                checked={historyForm.installsTileBacksplash === true}
+                                onChange={() => setHistoryForm({ ...historyForm, installsTileBacksplash: true })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="installsTileBacksplash"
+                                checked={historyForm.installsTileBacksplash === false}
+                                onChange={() => setHistoryForm({ ...historyForm, installsTileBacksplash: false })}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900">No</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Daily Tile Backsplash Sqft</label>
+                          <input
+                            type="number"
+                            value={historyForm.dailyTileBacksplashSqft || ''}
+                            onChange={(e) => setHistoryForm({ ...historyForm, dailyTileBacksplashSqft: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            placeholder="Square feet per day"
+                            min="0"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional Work */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Wrench className="w-5 h-5 text-brand-green" />
+                    Additional Work
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Moves Furniture</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="movesFurniture"
+                            checked={historyForm.movesFurniture === true}
+                            onChange={() => setHistoryForm({ ...historyForm, movesFurniture: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="movesFurniture"
+                            checked={historyForm.movesFurniture === false}
+                            onChange={() => setHistoryForm({ ...historyForm, movesFurniture: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Installs Trim</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsTrim"
+                            checked={historyForm.installsTrim === true}
+                            onChange={() => setHistoryForm({ ...historyForm, installsTrim: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="installsTrim"
+                            checked={historyForm.installsTrim === false}
+                            onChange={() => setHistoryForm({ ...historyForm, installsTrim: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
+                  <textarea
+                    value={historyForm.notes || ''}
+                    onChange={(e) => setHistoryForm({ ...historyForm, notes: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                    placeholder="Additional notes about this year's data"
+                    rows={4}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+              <button
+                onClick={() => {
+                  setShowHistoryModal(false)
+                  setEditingHistory(null)
+                }}
+                className="px-6 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveHistory}
+                disabled={isSavingHistory || !historyForm.year}
+                className="px-6 py-2.5 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSavingHistory ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {editingHistory ? 'Update' : 'Add'} Historical Data
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Staff Member Modal */}
+      {showStaffModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between z-10">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {editingStaff ? 'Edit Team Member' : 'Add Team Member'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowStaffModal(false)
+                  setEditingStaff(null)
+                  setStaffForm({
+                    firstName: '',
+                    lastName: '',
+                    digitalId: '',
+                    email: '',
+                    phone: '',
+                    location: '',
+                    title: '',
+                    yearsOfExperience: '',
+                    notes: '',
+                    photoUrl: '',
+                  })
+                  setStaffPhotoFile(null)
+                }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Photo Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Photo</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center">
+                    {staffPhotoFile ? (
+                      <Image
+                        src={URL.createObjectURL(staffPhotoFile)}
+                        alt="Preview"
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : staffForm.photoUrl ? (
+                      <Image
+                        src={staffForm.photoUrl}
+                        alt="Current photo"
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-12 h-12 text-slate-400" />
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setStaffPhotoFile(file)
+                        }
+                      }}
+                      className="hidden"
+                      id="staff-photo-upload"
+                    />
+                    <label
+                      htmlFor="staff-photo-upload"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                    >
+                      <User className="w-4 h-4" />
+                      {staffPhotoFile || staffForm.photoUrl ? 'Change Photo' : 'Upload Photo'}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Basic Information */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">First Name *</label>
+                  <input
+                    type="text"
+                    value={staffForm.firstName}
+                    onChange={(e) => setStaffForm({ ...staffForm, firstName: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="First name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Last Name *</label>
+                  <input
+                    type="text"
+                    value={staffForm.lastName}
+                    onChange={(e) => setStaffForm({ ...staffForm, lastName: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="Last name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={staffForm.email}
+                    onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="Email address"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    value={staffForm.phone}
+                    onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Digital ID</label>
+                  <input
+                    type="text"
+                    value={staffForm.digitalId}
+                    onChange={(e) => setStaffForm({ ...staffForm, digitalId: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="e.g., Badge #, Employee ID, Internal ID"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Title</label>
+                  <input
+                    type="text"
+                    value={staffForm.title}
+                    onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="Job title"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Location</label>
+                  <input
+                    type="text"
+                    value={staffForm.location}
+                    onChange={(e) => setStaffForm({ ...staffForm, location: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="Location"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Years of Experience</label>
+                  <input
+                    type="number"
+                    value={staffForm.yearsOfExperience}
+                    onChange={(e) => setStaffForm({ ...staffForm, yearsOfExperience: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    placeholder="Years"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
+                <textarea
+                  value={staffForm.notes}
+                  onChange={(e) => setStaffForm({ ...staffForm, notes: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                  placeholder="Additional notes"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-white border-t border-slate-200 p-6 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowStaffModal(false)
+                  setEditingStaff(null)
+                  setStaffForm({
+                    firstName: '',
+                    lastName: '',
+                    digitalId: '',
+                    email: '',
+                    phone: '',
+                    location: '',
+                    title: '',
+                    yearsOfExperience: '',
+                    notes: '',
+                    photoUrl: '',
+                  })
+                  setStaffPhotoFile(null)
+                }}
+                className="px-6 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveStaff}
+                disabled={isSavingStaff || !staffForm.firstName || !staffForm.lastName}
+                className="px-6 py-2.5 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSavingStaff || isUploadingStaffPhoto ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {editingStaff ? 'Update' : 'Add'} Member
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

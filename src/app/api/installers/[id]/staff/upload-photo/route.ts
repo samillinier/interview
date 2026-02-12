@@ -5,11 +5,17 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) {
   try {
+    const params = context.params
+    const resolvedParams = params instanceof Promise ? await params : params
+    const installerId = resolvedParams.id
+
     const formData = await request.formData()
     const photo = formData.get('photo') as File | null
-    const installerId = formData.get('installerId') as string
 
     if (!photo || !installerId) {
       return NextResponse.json(
@@ -49,21 +55,21 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const fileExtension = photo.name.split('.').pop() || 'jpg'
     const timestamp = Date.now()
-    const baseFileName = `${installerId}-${timestamp}.${fileExtension}`
+    const baseFileName = `staff-${installerId}-${timestamp}.${fileExtension}`
 
     let photoUrl: string
 
     // Use Vercel Blob Storage in production, fallback to filesystem for local development
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       // Upload to Vercel Blob Storage
-      const blob = await put(`installers/${baseFileName}`, photo, {
+      const blob = await put(`staff/${baseFileName}`, photo, {
         access: 'public',
         token: process.env.BLOB_READ_WRITE_TOKEN,
       })
       photoUrl = blob.url
     } else {
       // Fallback to local filesystem for development
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'installers')
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'staff')
       if (!existsSync(uploadsDir)) {
         await mkdir(uploadsDir, { recursive: true })
       }
@@ -71,14 +77,8 @@ export async function POST(request: NextRequest) {
       const bytes = await photo.arrayBuffer()
       const buffer = Buffer.from(bytes)
       await writeFile(filePath, buffer)
-      photoUrl = `/uploads/installers/${baseFileName}`
+      photoUrl = `/uploads/staff/${baseFileName}`
     }
-
-    // Update installer with photo URL
-    await prisma.installer.update({
-      where: { id: installerId },
-      data: { photoUrl },
-    })
 
     return NextResponse.json({
       success: true,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       message: 'Photo uploaded successfully',
     })
   } catch (error: any) {
-    console.error('Error uploading photo:', error)
+    console.error('Error uploading staff photo:', error)
     return NextResponse.json(
       { error: 'Failed to upload photo' },
       { status: 500 }

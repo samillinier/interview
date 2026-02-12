@@ -75,6 +75,30 @@ export default function JobsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [notificationCount, setNotificationCount] = useState(0)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    } else if (status === 'authenticated') {
+      fetchNotificationCount()
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchNotificationCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [status, router])
+
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/count')
+      if (response.ok) {
+        const data = await response.json()
+        setNotificationCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error)
+    }
+  }
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -336,7 +360,11 @@ export default function JobsPage() {
             }`}
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/messages"

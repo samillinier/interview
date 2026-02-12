@@ -41,7 +41,6 @@ export function calculateScore(data: {
   hasLicense?: boolean
   hasBusinessLicense?: boolean
   isSunbizRegistered?: boolean
-  flooringSpecialties?: string[]
   flooringSkills?: string[]
 }): number {
   let score = 0

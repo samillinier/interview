@@ -20,6 +20,8 @@ model Installer {
   lastName              String
   email                 String    @unique
   phone                 String?
+  digitalId             String?   // Optional internal/digital identifier
+  workroom              String?   // Workroom (office/branch) location label
   
   // Work Experience
   yearsOfExperience     Int?
@@ -56,6 +58,18 @@ model Installer {
   isSunbizRegistered          Boolean   @default(false)
   isSunbizActive              Boolean   @default(false)
   hasBusinessLicense          Boolean   @default(false)
+  feiEin                     String?   // FEI / EIN (Federal Employer Identification Number)
+  employerLiabilityPolicyNumber String? // Employer Liability Policy Number
+  
+  // Insurance & Certificate Expiry Dates
+  llrpExpiry                 DateTime? // LLRP expiry date
+  btrExpiry                  DateTime? // BTR expiry date
+  workersCompExemExpiry      DateTime? // Workers Compensation Exemption Certificate expiry date
+  workersCompExemExpiryDates String?   // JSON array of workers comp certificate expiry dates (YYYY-MM-DD)
+  generalLiabilityExpiry     DateTime? // General Liability expiry date
+  automobileLiabilityExpiry   DateTime? // Automobile Liability expiry date
+  automobileLiabilityExpiryDates String? // JSON array of automobile liability policy expiry dates (YYYY-MM-DD)
+  employersLiabilityExpiry   DateTime? // Employer's Liability expiry date
   
   // Background Check
   canPassBackgroundCheck      Boolean?
@@ -76,7 +90,7 @@ model Installer {
   travelLocations             String?   // JSON array of locations
   
   // Prescreening Results
-  status                String    @default("pending") // pending, passed, failed, review
+  status                String    @default("pending") // pending, passed, failed, review, active
   passFailReason        String?
   overallScore          Int?      // 0-100
   
@@ -100,6 +114,8 @@ model Installer {
   companyCity                 String?
   companyState                String?
   companyZipCode              String?
+  companyCounty               String?
+  companyAddress              String?   // Full formatted address
   ndaAgreedAt                 DateTime?
   
   // Service Agreement
@@ -172,6 +188,8 @@ model Installer {
   communications        Communication[]
   notifications         Notification[]
   jobApplications       JobApplication[]
+  staffMembers          StaffMember[]
+  history               InstallerHistory[]
 }
 
 // Interview model - stores each prescreening interview
@@ -336,4 +354,155 @@ model JobApplication {
   @@index([installerId])
   @@index([jobId])
   @@index([status])
+}
+
+// Staff/Crew members working for an installer
+model StaffMember {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  installerId     String
+  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  
+  // Basic Information
+  firstName       String
+  lastName        String
+  digitalId       String?   // Optional internal/digital identifier
+  email           String?
+  phone           String?
+  location        String?   // City, State or full address
+  photoUrl        String?
+  
+  // Additional Information
+  title           String?   // Job title/role
+  yearsOfExperience Int?
+  notes           String?
+  
+  @@index([installerId])
+}
+
+// Historical Installer Data - stores past years' data
+model InstallerHistory {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  installerId           String
+  installer             Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  year                  Int       // Year this data is for (e.g., 2024, 2025)
+  
+  // Basic Information
+  firstName             String?
+  lastName              String?
+  phone                 String?
+  digitalId             String?
+  workroom              String?
+  
+  // Work Experience
+  yearsOfExperience     Int?
+  flooringSpecialties   String?
+  flooringSkills        String?
+  previousEmployers     String?
+  
+  // Crew & Equipment
+  hasOwnCrew            Boolean?
+  crewSize              Int?
+  hasOwnTools           Boolean?
+  hasVehicle            Boolean?
+  toolsDescription      String?
+  vehicleDescription    String?
+  
+  // Service Areas
+  serviceAreas          String?
+  willingToTravel       Boolean?
+  maxTravelDistance     Int?
+  
+  // Availability
+  availability          String?
+  canStartImmediately   Boolean?
+  preferredStartDate    DateTime?
+  mondayToFridayAvailability String?
+  saturdayAvailability  String?
+  
+  // Licensing & Insurance
+  hasInsurance          Boolean?
+  insuranceType         String?
+  hasLicense            Boolean?
+  licenseNumber         String?
+  licenseExpiry         DateTime?
+  hasGeneralLiability   Boolean?
+  hasCommercialAutoLiability Boolean?
+  hasWorkersComp        Boolean?
+  hasWorkersCompExemption Boolean?
+  isSunbizRegistered   Boolean?
+  isSunbizActive        Boolean?
+  hasBusinessLicense    Boolean?
+  
+  // Background Check
+  canPassBackgroundCheck Boolean?
+  backgroundCheckDetails String?
+
+  // Insurance & Certificate Expiry Dates (multi-policy support)
+  workersCompExemExpiryDates String?
+  automobileLiabilityExpiryDates String?
+  
+  // Company Information
+  companyName           String?
+  companyTitle          String?
+  companyStreetAddress  String?
+  companyCity           String?
+  companyState          String?
+  companyZipCode        String?
+  companyCounty         String?
+  companyAddress        String?
+  
+  // Carpet Installation
+  wantsToAddCarpet      Boolean?
+  installsStretchInCarpet Boolean?
+  dailyStretchInCarpetSqft Int?
+  installsGlueDownCarpet Boolean?
+  
+  // Hardwood Installation
+  wantsToAddHardwood    Boolean?
+  installsNailDownSolidHardwood Boolean?
+  dailyNailDownSolidHardwoodSqft Int?
+  installsStapleDownEngineeredHardwood Boolean?
+  
+  // Laminate Installation
+  wantsToAddLaminate    Boolean?
+  dailyLaminateSqft     Int?
+  installsLaminateOnStairs Boolean?
+  
+  // Vinyl Installation
+  wantsToAddVinyl       Boolean?
+  installsSheetVinyl    Boolean?
+  installsLuxuryVinylPlank Boolean?
+  dailyLuxuryVinylPlankSqft Int?
+  installsLuxuryVinylTile Boolean?
+  installsVinylCompositionTile Boolean?
+  dailyVinylCompositionTileSqft Int?
+  
+  // Tile Installation
+  wantsToAddTile        Boolean?
+  installsCeramicTile   Boolean?
+  dailyCeramicTileSqft  Int?
+  installsPorcelainTile Boolean?
+  dailyPorcelainTileSqft Int?
+  installsStoneTile     Boolean?
+  dailyStoneTileSqft    Int?
+  offersTileRemoval     Boolean?
+  installsTileBacksplash Boolean?
+  dailyTileBacksplashSqft Int?
+  
+  // Additional Work
+  movesFurniture        Boolean?
+  installsTrim          Boolean?
+  
+  // Notes
+  notes                 String?
+  
+  @@unique([installerId, year])
+  @@index([installerId])
+  @@index([year])
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { put } from '@vercel/blob'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -65,25 +66,33 @@ export async function POST(
       )
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
     // Generate unique filename
     const timestamp = Date.now()
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const fileName = `${installerId}_${type}_${timestamp}_${sanitizedFileName}`
-    const filePath = join(uploadsDir, fileName)
 
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    let fileUrl: string
 
-    // Create file URL
-    const fileUrl = `/uploads/documents/${fileName}`
+    // Use Vercel Blob Storage in production, fallback to filesystem for local development
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      // Upload to Vercel Blob Storage
+      const blob = await put(fileName, file, {
+        access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      })
+      fileUrl = blob.url
+    } else {
+      // Fallback to local filesystem for development
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents')
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true })
+      }
+      const filePath = join(uploadsDir, fileName)
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      await writeFile(filePath, buffer)
+      fileUrl = `/uploads/documents/${fileName}`
+    }
 
     // Delete existing document of the same type
     const existingDoc = await prisma.document.findFirst({
@@ -94,12 +103,15 @@ export async function POST(
     })
 
     if (existingDoc) {
-      // Delete old file
-      const oldFilePath = join(process.cwd(), 'public', existingDoc.url)
-      if (existsSync(oldFilePath)) {
-        const { unlink } = await import('fs/promises')
-        await unlink(oldFilePath).catch(() => {}) // Ignore errors if file doesn't exist
+      // Delete old file (only if using local filesystem)
+      if (!process.env.BLOB_READ_WRITE_TOKEN && existingDoc.url.startsWith('/uploads/')) {
+        const oldFilePath = join(process.cwd(), 'public', existingDoc.url)
+        if (existsSync(oldFilePath)) {
+          const { unlink } = await import('fs/promises')
+          await unlink(oldFilePath).catch(() => {}) // Ignore errors if file doesn't exist
+        }
       }
+      // Note: Vercel Blob Storage files are automatically managed, no need to delete manually
 
       // Update existing document
       const document = await prisma.document.update({

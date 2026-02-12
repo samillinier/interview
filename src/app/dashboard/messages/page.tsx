@@ -72,6 +72,7 @@ export default function MessagesPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [installers, setInstallers] = useState<Installer[]>([])
   const [selectedInstaller, setSelectedInstaller] = useState<Installer | null>(null)
+  const [notificationCount, setNotificationCount] = useState(0)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [isSending, setIsSending] = useState(false)
@@ -87,8 +88,24 @@ export default function MessagesPage() {
       router.push('/login')
     } else if (status === 'authenticated') {
       fetchInstallers()
+      fetchNotificationCount()
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchNotificationCount, 30000)
+      return () => clearInterval(interval)
     }
   }, [status, router])
+
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/count')
+      if (response.ok) {
+        const data = await response.json()
+        setNotificationCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error)
+    }
+  }
 
   useEffect(() => {
     if (status === 'authenticated' && installers.length > 0) {
@@ -357,7 +374,11 @@ export default function MessagesPage() {
             }`}
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/messages"

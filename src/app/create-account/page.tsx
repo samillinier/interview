@@ -78,6 +78,11 @@ function CreateAccountContent() {
       if (data.success) {
         setSuccess(true)
         setEmailSent(data.emailSent || false)
+        // If email failed to send but we have a verification URL, show it
+        if (!data.emailSent && data.emailError) {
+          console.error('Email sending failed:', data.emailError)
+          // Still show success page but log the error
+        }
         // Don't show verification URL - users must verify from email
       } else {
         setError(data.error || 'Failed to send verification email. Please try again.')

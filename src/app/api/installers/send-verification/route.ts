@@ -66,23 +66,35 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Generate verification URL - use localhost in development
+    // Generate verification URL - use production URL, never localhost in production
     const isDevelopment = process.env.NODE_ENV === 'development'
     const baseUrl = isDevelopment 
       ? 'http://localhost:3000'
-      : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000')
+      : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service.vercel.app')
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(installer.email)}`
+    
+    // Logo URL - using hosted logo from itswhitehat.com
+    const logoUrl = process.env.EMAIL_LOGO_URL || 'https://itswhitehat.com/wp-content/uploads/2026/02/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.webp'
 
     // Send email with verification link
     const resendApiKey = process.env.RESEND_API_KEY
     let emailSent = false
+    let emailError: string | null = null
+    
+    // Log email sending attempt
+    console.log('📧 Attempting to send verification email...')
+    console.log('   To:', installer.email)
+    console.log('   Resend API Key configured:', !!resendApiKey)
     
     // Try to send email if Resend is configured
     if (resendApiKey) {
       try {
         const resend = new Resend(resendApiKey)
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+        const fromEmail = process.env.RESEND_FROM_EMAIL || 'it@floorinteriorservices.com'
         const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+        
+        console.log('   From:', `${fromName} <${fromEmail}>`)
+        console.log('   Sending email via Resend...')
         
         const emailResult = await resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
@@ -95,9 +107,14 @@ export async function POST(request: NextRequest) {
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
               </head>
-              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+                <!-- Logo/Header Section -->
+                <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
+                  <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
+                </div>
+                
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                  <h1 style="color: #22c55e; margin-top: 0;">Verify Your Email</h1>
+                  <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Verify Your Email</h1>
                 </div>
                 
                 <p>Hi ${installer.firstName || 'there'},</p>
@@ -144,31 +161,56 @@ Floor Interior Service - Installer Portal
           `,
         })
 
-        console.log('✅ Email sent successfully via Resend:', emailResult)
+        console.log('✅ Email sent successfully via Resend!')
+        if (emailResult && typeof emailResult === 'object' && 'id' in emailResult) {
+          console.log('   Email ID:', (emailResult as any).id)
+        }
+        if (emailResult && typeof emailResult === 'object' && 'error' in emailResult) {
+          console.log('   Error:', (emailResult as any).error)
+        } else {
+          console.log('   Status: Sent')
+        }
         emailSent = true
-      } catch (emailError: any) {
-        console.error('❌ Error sending email via Resend:', emailError)
+      } catch (err: any) {
+        emailError = err.message || 'Unknown error'
+        console.error('❌ Error sending email via Resend:')
+        console.error('   Error:', err.message)
+        console.error('   Details:', err)
+        console.error('   Full error object:', JSON.stringify(err, null, 2))
+        
+        // Check for specific Resend errors
+        if (err.message?.includes('validation_error') || err.message?.includes('You can only send testing emails')) {
+          console.error('   ⚠️  Resend Free Tier Limitation:')
+          console.error('      - Free tier only allows sending to your account email')
+          console.error('      - To send to other recipients, verify a domain at: https://resend.com/domains')
+          console.error('      - Or upgrade your Resend plan')
+          emailError = 'Email sending is limited. Please verify a domain in Resend or contact support.'
+        }
         // Continue - we'll still return success and show URL in dev mode
       }
     } else {
       // No Resend API key - log for development
-      console.log('📧 Verification Email (Development Mode - No Resend API Key):')
-      console.log('To:', installer.email)
-      console.log('Subject: Verify your email to create your installer account')
-      console.log('Verification Link:', verificationUrl)
-      if (!Resend) {
-        console.log('💡 Install Resend: npm install resend')
-      }
-      console.log('💡 To send actual emails, add RESEND_API_KEY to your .env.local file')
+      console.log('⚠️  Resend API Key not configured')
+      console.log('📧 Verification Email (Development Mode):')
+      console.log('   To:', installer.email)
+      console.log('   Subject: Verify your email to create your installer account')
+      console.log('   Verification Link:', verificationUrl)
+      console.log('💡 To send actual emails:')
+      console.log('   1. Get API key from https://resend.com')
+      console.log('   2. Add RESEND_API_KEY to your .env.local file (or Vercel environment variables)')
+      console.log('   3. Restart your server')
     }
 
     return NextResponse.json({
       success: true,
       message: emailSent 
         ? 'Verification email sent! Check your inbox.' 
+        : emailError
+        ? `Email sending failed: ${emailError}. Use the verification link below.`
         : 'Verification link generated. Use the link below to verify your email.',
       email: installer.email,
       emailSent,
+      emailError: emailError || undefined,
       verificationUrl, // Always return URL so user can verify even without email
     })
   } catch (error: any) {

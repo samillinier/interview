@@ -152,7 +152,6 @@ export async function extractInterviewData(transcript: string): Promise<{
   email?: string
   phone?: string
   yearsOfExperience?: number
-  flooringSpecialties?: string[]
   flooringSkills?: string[]
   hasOwnCrew?: boolean
   crewSize?: number
@@ -165,6 +164,7 @@ export async function extractInterviewData(transcript: string): Promise<{
   hasBusinessLicense?: boolean
   isSunbizRegistered?: boolean
   canPassBackgroundCheck?: boolean
+  hasVehicle?: boolean
   vehicleDescription?: string
   openToTravel?: boolean
   travelLocations?: string[]
@@ -177,7 +177,7 @@ export async function extractInterviewData(transcript: string): Promise<{
     messages: [
       {
         role: 'system',
-        content: 'Extract structured data from this interview transcript. Return only valid JSON with the following fields: firstName, lastName, email, phone, yearsOfExperience, flooringSpecialties (array), flooringSkills (array - IMPORTANT: if the user selected flooring types like "Carpet, LVP, Hardwood", parse them into an array), hasOwnCrew (boolean), crewSize (number), hasInsurance (boolean), hasGeneralLiability (boolean), hasCommercialAutoLiability (boolean), hasWorkersComp (boolean), hasWorkersCompExemption (boolean), hasLicense (boolean), hasBusinessLicense (boolean), isSunbizRegistered (boolean), canPassBackgroundCheck (boolean), vehicleDescription (string), openToTravel (boolean), travelLocations (array), mondayToFridayAvailability (string - extract the answer about Monday-Friday availability, e.g. "Yes", "Available", "Regular basis"), saturdayAvailability (string - extract the answer about Saturday availability, e.g. "Yes", "Available", "Not available"). Only include fields that have values. For flooringSkills, if the answer is a comma-separated list, split it into an array.',
+        content: 'Extract structured data from this interview transcript. Return only valid JSON with the following fields: firstName, lastName, email, phone, yearsOfExperience, flooringSkills (array - IMPORTANT: if the user selected flooring types like "Carpet, LVP, Hardwood", parse them into an array), hasOwnCrew (boolean), crewSize (number), hasInsurance (boolean), hasGeneralLiability (boolean), hasCommercialAutoLiability (boolean), hasWorkersComp (boolean), hasWorkersCompExemption (boolean), hasLicense (boolean), hasBusinessLicense (boolean), isSunbizRegistered (boolean), canPassBackgroundCheck (boolean), hasVehicle (boolean - set to true if the user mentions having a vehicle or provides vehicle description), vehicleDescription (string), openToTravel (boolean), travelLocations (array), mondayToFridayAvailability (string - extract the answer about Monday-Friday availability, e.g. "Yes", "Available", "Regular basis"), saturdayAvailability (string - extract the answer about Saturday availability, e.g. "Yes", "Available", "Not available"). Only include fields that have values. For flooringSkills, if the answer is a comma-separated list, split it into an array.',
       },
       {
         role: 'user',

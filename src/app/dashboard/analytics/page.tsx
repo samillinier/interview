@@ -63,14 +63,31 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
       fetchAnalytics()
+      fetchNotificationCount()
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchNotificationCount, 30000)
+      return () => clearInterval(interval)
     }
   }, [status, router])
+
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/count')
+      if (response.ok) {
+        const data = await response.json()
+        setNotificationCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error)
+    }
+  }
 
   const fetchAnalytics = async () => {
     try {
@@ -194,7 +211,11 @@ export default function AnalyticsPage() {
             }`}
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/messages"
@@ -350,6 +371,8 @@ export default function AnalyticsPage() {
                               ? 'bg-green-500' 
                               : item.status === 'failed' 
                               ? 'bg-red-500' 
+                              : item.status === 'active'
+                              ? 'bg-blue-500'
                               : 'bg-yellow-500'
                           }`}
                         />

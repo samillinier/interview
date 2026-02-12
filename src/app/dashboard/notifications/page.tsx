@@ -77,14 +77,31 @@ export default function NotificationsPage() {
   
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
       fetchInstallers()
+      fetchNotificationCount()
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchNotificationCount, 30000)
+      return () => clearInterval(interval)
     }
   }, [status, router])
+
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await fetch('/api/notifications/count')
+      if (response.ok) {
+        const data = await response.json()
+        setNotificationCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error)
+    }
+  }
 
   const fetchInstallers = async () => {
     try {
@@ -264,7 +281,11 @@ export default function NotificationsPage() {
             }`}
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/messages"
@@ -373,7 +394,9 @@ export default function NotificationsPage() {
               : 'text-white/90 hover:bg-white/10'
           }`}>
             <Bell className="w-5 h-5" />
-            <span>Notifications</span>
+            <div className="flex items-center gap-2">
+              <span>Notifications</span>
+            </div>
           </Link>
           <Link href="/dashboard/messages" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
             pathname === '/dashboard/messages' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
@@ -441,27 +464,27 @@ export default function NotificationsPage() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-6 bg-brand-green/10 border-2 border-brand-green/30 rounded-2xl"
+              className="mb-6 p-4 bg-brand-green/10 border-2 border-brand-green/30 rounded-2xl max-w-full"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-brand-green rounded-full flex items-center justify-center">
-                    <Bell className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-900 mb-1">
-                      {selectedInstallers.length} installer{selectedInstallers.length !== 1 ? 's' : ''} selected
-                    </p>
-                    <p className="text-sm text-slate-600">Click "Create Notification" to compose and send your message</p>
-                  </div>
-                </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                 <button
                   onClick={() => setShowSendForm(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors shadow-lg"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors shadow-lg flex-shrink-0 w-full sm:w-auto text-sm sm:text-base order-2 sm:order-1"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   <span>Create Notification</span>
                 </button>
+                <div className="flex items-center gap-3 flex-1 min-w-0 order-1 sm:order-2">
+                  <div className="w-10 h-10 bg-brand-green rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 mb-1 text-sm sm:text-base">
+                      {selectedInstallers.length} installer{selectedInstallers.length !== 1 ? 's' : ''} selected
+                    </p>
+                    <p className="text-xs sm:text-sm text-slate-600">Click button to compose and send your message</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -640,6 +663,7 @@ export default function NotificationsPage() {
                     <option value="qualified">Qualified</option>
                     <option value="failed">Failed</option>
                     <option value="pending">Pending</option>
+                    <option value="active">Active</option>
                   </select>
                 </div>
               </div>
@@ -681,6 +705,8 @@ export default function NotificationsPage() {
                           ? 'bg-green-100 text-green-700'
                           : installer.status === 'failed'
                           ? 'bg-red-100 text-red-700'
+                          : installer.status === 'active'
+                          ? 'bg-blue-100 text-blue-700'
                           : 'bg-amber-100 text-amber-700'
                       }`}>
                         {installer.status}

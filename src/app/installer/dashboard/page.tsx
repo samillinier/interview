@@ -19,7 +19,10 @@ import {
   AlertCircle,
   ArrowRight,
   Paperclip,
-  CreditCard
+  CreditCard,
+  Shield,
+  FileCheck,
+  AlertTriangle
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -39,6 +42,46 @@ interface InstallerProfile {
   createdAt: string
   photoUrl?: string
   ndaAgreedAt?: string
+  llrpExpiry?: string
+  btrExpiry?: string
+  workersCompExemExpiry?: string
+  generalLiabilityExpiry?: string
+  automobileLiabilityExpiry?: string
+  employersLiabilityExpiry?: string
+}
+
+// Helper function to get expiration status
+function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
+  if (!expiryDate) return 'none'
+  
+  const expiry = new Date(expiryDate)
+  const today = new Date()
+  
+  // Set both dates to start of day for accurate comparison
+  today.setHours(0, 0, 0, 0)
+  expiry.setHours(0, 0, 0, 0)
+  
+  // Check if expired (past date) - compare full date including year, month, and day
+  if (expiry < today) {
+    return 'expired'
+  }
+  
+  // Calculate the difference in months between today and expiry date
+  const yearsDiff = expiry.getFullYear() - today.getFullYear()
+  const monthsDiff = expiry.getMonth() - today.getMonth()
+  const totalMonthsDiff = yearsDiff * 12 + monthsDiff
+  
+  // Adjust for day difference - if expiry day is before today's day in the same month, count as one less month
+  const daysDiff = expiry.getDate() - today.getDate()
+  const adjustedMonthsDiff = daysDiff < 0 ? totalMonthsDiff - 1 : totalMonthsDiff
+  
+  // If expiry is 0-3 months away, it's expiring soon
+  if (adjustedMonthsDiff >= 0 && adjustedMonthsDiff <= 3) {
+    return 'expiring'
+  }
+  
+  // If expiry is more than 3 months away, it's valid
+  return 'valid'
 }
 
 // Animated Number Component
@@ -106,6 +149,12 @@ export default function InstallerDashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [expiringItems, setExpiringItems] = useState<Array<{
+    name: string
+    expiryDate: string
+    status: 'expired' | 'expiring'
+  }>>([])
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     checkAuthAndLoadProfile()
@@ -181,6 +230,43 @@ export default function InstallerDashboardPage() {
       if (profileData.installer) {
         setInstaller(profileData.installer)
         setError('')
+        
+        // Check for expiring/expired items
+        const items: Array<{ name: string; expiryDate: string; status: 'expired' | 'expiring' }> = []
+        const expiryFields = [
+          { key: 'llrpExpiry', name: 'LLRP', value: profileData.installer.llrpExpiry },
+          { key: 'btrExpiry', name: 'BTR', value: profileData.installer.btrExpiry },
+          { key: 'workersCompExemExpiry', name: 'Workers Compensation Exem Certificate', value: profileData.installer.workersCompExemExpiry },
+          { key: 'generalLiabilityExpiry', name: 'General Liability', value: profileData.installer.generalLiabilityExpiry },
+          { key: 'automobileLiabilityExpiry', name: 'Automobile Liability', value: profileData.installer.automobileLiabilityExpiry },
+          { key: 'employersLiabilityExpiry', name: "Employer's Liability", value: profileData.installer.employersLiabilityExpiry },
+        ]
+        
+        expiryFields.forEach(({ name, value }) => {
+          if (value) {
+            const status = getExpirationStatus(value)
+            if (status === 'expired' || status === 'expiring') {
+              items.push({
+                name,
+                expiryDate: new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                status: status as 'expired' | 'expiring',
+              })
+            }
+          }
+        })
+        
+        setExpiringItems(items)
+        
+        // Fetch notification count
+        try {
+          const notificationResponse = await fetch(`/api/notifications/count?installerId=${installerId}`)
+          if (notificationResponse.ok) {
+            const notificationData = await notificationResponse.json()
+            setNotificationCount(notificationData.count || 0)
+          }
+        } catch (error) {
+          console.error('Error fetching notification count:', error)
+        }
         
         // Show NDA modal if user hasn't agreed yet
         if (!profileData.installer.ndaAgreedAt) {
@@ -289,13 +375,6 @@ export default function InstallerDashboardPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
-            href="/installer/jobs"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Briefcase className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Jobs</span>}
-          </Link>
-          <Link
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -314,7 +393,16 @@ export default function InstallerDashboardPage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+                {notificationCount > 0 && (
+                  <span className="bg-white text-brand-green text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
         </nav>
 
@@ -398,10 +486,6 @@ export default function InstallerDashboardPage() {
             <User className="w-5 h-5" />
             <span>Profile</span>
           </Link>
-          <Link href="/installer/jobs" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Briefcase className="w-5 h-5" />
-            <span>Jobs</span>
-          </Link>
           <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Paperclip className="w-5 h-5" />
             <span>Attachments</span>
@@ -412,7 +496,14 @@ export default function InstallerDashboardPage() {
           </Link>
           <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5" />
-            <span>Notifications</span>
+            <div className="flex items-center gap-2">
+              <span>Notifications</span>
+              {notificationCount > 0 && (
+                <span className="bg-white text-brand-green text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </div>
           </Link>
         </nav>
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -622,6 +713,79 @@ export default function InstallerDashboardPage() {
               </Link>
             </div>
           </motion.div>
+
+          {/* Insurance & Certificate Expiry Section */}
+          {expiringItems.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white rounded-xl shadow-lg border-2 border-yellow-200 p-6 mb-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Certificate & Insurance Expiry Alert</h2>
+                    <p className="text-sm text-slate-500">You have items that need attention</p>
+                  </div>
+                </div>
+                <Link
+                  href="/installer/profile"
+                  className="px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors font-medium flex items-center gap-2"
+                >
+                  Update Now
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                {expiringItems.map((item, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 + idx * 0.1 }}
+                    className={`p-4 rounded-lg border-2 ${
+                      item.status === 'expired'
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        {item.status === 'expired' ? (
+                          <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-900 mb-1">{item.name}</p>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <p className="text-sm text-slate-600">
+                              {item.status === 'expired' ? 'Expired' : 'Expires'} {item.expiryDate}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          item.status === 'expired'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}
+                      >
+                        {item.status === 'expired' ? 'Expired' : 'Expiring Soon'}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Account Info */}
           <motion.div
