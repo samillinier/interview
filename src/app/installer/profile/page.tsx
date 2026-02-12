@@ -2140,20 +2140,6 @@ export default function InstallerProfilePage() {
               </div>
             </div>
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-              {installer && installer.overallScore !== null && installer.overallScore !== undefined && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-right"
-                >
-                  <p className="text-sm text-slate-500 mb-2 font-medium uppercase tracking-wide">Overall Score</p>
-                  <div className="flex items-baseline gap-2 justify-end">
-                    <AnimatedNumber value={installer.overallScore} />
-                    <span className="text-xl text-slate-400 font-medium">/100</span>
-                  </div>
-                </motion.div>
-              )}
               {/* Barcode Section - Right Side */}
               {installer && (
                 <div className="flex-shrink-0">
