@@ -2069,7 +2069,7 @@ export default function InstallerProfilePage() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
             <div className="flex items-start gap-5">
               {/* Profile Photo on Left */}
-              <div className="flex flex-col items-center gap-3 flex-shrink-0">
+              <div className="flex-shrink-0">
                 <div className="relative group">
                   <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
                     {photoUrl ? (
@@ -2119,15 +2119,6 @@ export default function InstallerProfilePage() {
                     className="hidden"
                   />
                 </div>
-                {/* Barcode Section - Below Photo */}
-                {installer && (
-                  <div className="w-full max-w-[200px]">
-                    <InstallerBarcode 
-                      installerId={installer.id}
-                      installerName={`${installer.firstName} ${installer.lastName}`.trim()}
-                    />
-                  </div>
-                )}
               </div>
               <div className="flex-1 min-w-0">
                 <motion.h2 
@@ -2164,22 +2155,31 @@ export default function InstallerProfilePage() {
                 })()}
               </div>
             </div>
-            {installer && installer.overallScore !== null && installer.overallScore !== undefined && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 }}
-                className="flex items-center gap-4 flex-shrink-0"
-              >
-                <div className="text-right">
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {installer && installer.overallScore !== null && installer.overallScore !== undefined && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-right"
+                >
                   <p className="text-sm text-slate-500 mb-2 font-medium uppercase tracking-wide">Overall Score</p>
                   <div className="flex items-baseline gap-2 justify-end">
                     <AnimatedNumber value={installer.overallScore} />
                     <span className="text-xl text-slate-400 font-medium">/100</span>
                   </div>
+                </motion.div>
+              )}
+              {/* Barcode Section - Right Side */}
+              {installer && (
+                <div className="w-full max-w-[200px]">
+                  <InstallerBarcode 
+                    installerId={installer.id}
+                    installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+                  />
                 </div>
-              </motion.div>
-            )}
+              )}
+            </div>
           </div>
           
           {installer && (installer.status === 'pending' || (installer.status !== 'passed' && installer.status !== 'qualified')) && (

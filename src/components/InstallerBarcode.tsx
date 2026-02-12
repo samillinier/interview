@@ -99,12 +99,6 @@ export function InstallerBarcode({ installerId, installerName, className = '' }:
           />
         </div>
       </div>
-      
-      <div className="mt-2">
-        <p className="text-[10px] text-center text-slate-600 font-mono font-semibold tracking-wide">
-          {installerCode}
-        </p>
-      </div>
     </motion.div>
   )
 }
