@@ -56,12 +56,12 @@ export async function uploadFile(
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
       
-      // Vercel Blob v2 reads token from BLOB_READ_WRITE_TOKEN env var automatically
-      // Use folder prefix in the path
+      // Vercel Blob v2 - try with explicit token first, then fallback to env var
       const blob = await put(`${folder}/${fileName}`, buffer, {
         access: 'public',
         contentType: file.type || 'application/octet-stream',
         addRandomSuffix: false,
+        token: blobStoreToken, // Explicitly pass token
       })
 
       console.log('Successfully uploaded to Vercel Blob:', blob.url)
