@@ -2067,7 +2067,7 @@ export default function InstallerProfilePage() {
             className="bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-8 md:p-10 mb-6 backdrop-blur-sm"
           >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            <div className="flex items-start gap-5">
+            <div className="flex items-start gap-5 flex-1">
               {/* Profile Photo on Left */}
               <div className="flex-shrink-0">
                 <div className="relative group">
@@ -2102,22 +2102,6 @@ export default function InstallerProfilePage() {
                       <Camera className="w-6 h-6 text-white" />
                     )}
                   </label>
-                  {/* Change Photo Button */}
-                  <button
-                    onClick={() => document.getElementById('photo-upload-input')?.click()}
-                    className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 px-3 py-1 bg-brand-green text-white text-xs font-medium rounded-full shadow-lg hover:bg-brand-green-dark transition-colors whitespace-nowrap"
-                    disabled={isUploadingPhoto}
-                  >
-                    {isUploadingPhoto ? 'Uploading...' : photoUrl ? 'Change' : 'Add Photo'}
-                  </button>
-                  <input
-                    id="photo-upload-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    disabled={isUploadingPhoto}
-                    className="hidden"
-                  />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
@@ -2137,7 +2121,7 @@ export default function InstallerProfilePage() {
                   const workroomToShow = (isEditing ? workroom : installer?.workroom) || ''
                   if (!companyNameToShow && !workroomToShow) return null
                   return (
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1 mb-1">
                       {companyNameToShow && (
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
                           <Building2 className="w-4 h-4 text-slate-500" />
@@ -2155,7 +2139,7 @@ export default function InstallerProfilePage() {
                 })()}
               </div>
             </div>
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 flex-shrink-0">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {installer && installer.overallScore !== null && installer.overallScore !== undefined && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
