@@ -77,26 +77,8 @@ export function InstallerBarcode({ installerId, installerName, className = '' }:
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className={`bg-gradient-to-br from-white to-slate-50 rounded-xl border border-brand-green/20 shadow-sm p-3 ${className}`}
+      className={`flex flex-col items-center justify-center ${className}`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <div className="w-6 h-6 bg-brand-green/10 rounded-lg flex items-center justify-center">
-            <ScanLine className="w-3.5 h-3.5 text-brand-green" />
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900">Installer ID</h3>
-          </div>
-        </div>
-        <button
-          onClick={handleDownload}
-          className="p-1.5 hover:bg-brand-green/10 rounded-md transition-colors group"
-          title="Download Barcode"
-        >
-          <Download className="w-3.5 h-3.5 text-brand-green group-hover:text-brand-green-dark transition-colors" />
-        </button>
-      </div>
-      
       <div ref={barcodeRef} className="flex flex-col items-center justify-center bg-white rounded-lg p-2 border border-slate-200">
         <div className="scale-75 origin-center">
           <ReactBarcode
@@ -118,7 +100,7 @@ export function InstallerBarcode({ installerId, installerName, className = '' }:
         </div>
       </div>
       
-      <div className="mt-2 pt-2 border-t border-slate-200">
+      <div className="mt-2">
         <p className="text-[10px] text-center text-slate-600 font-mono font-semibold tracking-wide">
           {installerCode}
         </p>
