@@ -4268,6 +4268,7 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+              </div>
             </div>
 
             {/* Footer with Save/Cancel */}
@@ -4307,6 +4308,7 @@ export default function DashboardPage() {
                   )}
                 </button>
               </div>
+            </div>
             </div>
           </motion.div>
         </motion.div>
