@@ -40,8 +40,6 @@ export async function uploadFile(
       }
       
       const { put } = blobModule
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
       
       console.log('Attempting Vercel Blob upload:', {
         fileName: `${folder}/${fileName}`,
@@ -51,13 +49,26 @@ export async function uploadFile(
         tokenLength: blobStoreToken?.length,
         isProduction,
         isVercel,
+        fileType: file.constructor.name,
       })
+      
+      // Convert File to Buffer or use File directly
+      // Vercel Blob v2 can accept File, Blob, Buffer, or ArrayBuffer
+      let fileData: Buffer | Blob | File
+      if (file instanceof File) {
+        // Use File directly - Vercel Blob v2 supports File objects
+        fileData = file
+      } else {
+        // Fallback to Buffer for compatibility
+        const bytes = await file.arrayBuffer()
+        fileData = Buffer.from(bytes)
+      }
       
       // Vercel Blob v2 reads token from BLOB_READ_WRITE_TOKEN env var automatically
       // Use folder prefix in the path
-      const blob = await put(`${folder}/${fileName}`, buffer, {
+      const blob = await put(`${folder}/${fileName}`, fileData, {
         access: 'public',
-        contentType: file.type,
+        contentType: file.type || 'application/octet-stream',
         addRandomSuffix: false,
       })
 
