@@ -2001,36 +2001,53 @@ export default function InstallerProfileViewPage() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-8 md:p-10 mb-6 backdrop-blur-sm"
           >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
-              <div className="flex items-center gap-5 flex-1">
-                {installer.status === 'passed' || installer.status === 'qualified' ? (
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    className="w-20 h-20 bg-gradient-to-br from-brand-green/20 to-brand-green/10 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-green/30 flex-shrink-0"
-                  >
-                    <CheckCircle2 className="w-10 h-10 text-brand-green" />
-                  </motion.div>
-                ) : installer.status === 'active' ? (
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    className="w-20 h-20 bg-gradient-to-br from-blue-500/20 to-blue-500/10 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0"
-                  >
-                    <CheckCircle2 className="w-10 h-10 text-blue-600" />
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    className="w-20 h-20 bg-gradient-to-br from-danger-100 to-danger-200 rounded-2xl flex items-center justify-center shadow-lg shadow-danger-200/50 flex-shrink-0"
-                  >
-                    <XCircle className="w-10 h-10 text-danger-600" />
-                  </motion.div>
-                )}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
+              <div className="flex items-start gap-5 flex-1">
+                {/* Profile Photo on Left */}
+                <div className="flex flex-col items-center gap-3 flex-shrink-0">
+                  <div className="relative group">
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
+                      {(photoUrl || installer.photoUrl) ? (
+                        <Image
+                          src={photoUrl || installer.photoUrl || ''}
+                          alt={`${installer.firstName} ${installer.lastName}`}
+                          width={80}
+                          height={80}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Error loading image:', photoUrl || installer.photoUrl)
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <User className="w-10 h-10 text-brand-green" />
+                      )}
+                    </div>
+                    <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        disabled={isUploadingPhoto}
+                        className="hidden"
+                      />
+                      {isUploadingPhoto ? (
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-white" />
+                      )}
+                    </label>
+                  </div>
+                  {/* Barcode Section - Below Photo */}
+                  {installer && (
+                    <div className="w-full max-w-[200px]">
+                      <InstallerBarcode 
+                        installerId={installer.id}
+                        installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <motion.h2 
                     initial={{ opacity: 0, x: -20 }}
@@ -2100,90 +2117,6 @@ export default function InstallerProfileViewPage() {
                         <span className="text-xl text-slate-400 font-medium">/100</span>
                       </div>
                     </div>
-                    <div className="relative group">
-                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
-                        {(photoUrl || installer.photoUrl) ? (
-                          <Image
-                            src={photoUrl || installer.photoUrl || ''}
-                            alt={`${installer.firstName} ${installer.lastName}`}
-                            width={80}
-                            height={80}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              console.error('Error loading image:', photoUrl || installer.photoUrl)
-                              e.currentTarget.style.display = 'none'
-                            }}
-                          />
-                        ) : (
-                          <User className="w-10 h-10 text-brand-green" />
-                        )}
-                      </div>
-                      <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoUpload}
-                          disabled={isUploadingPhoto}
-                          className="hidden"
-                        />
-                        {isUploadingPhoto ? (
-                          <Loader2 className="w-6 h-6 text-white animate-spin" />
-                        ) : (
-                          <Camera className="w-6 h-6 text-white" />
-                        )}
-                      </label>
-                    </div>
-                  </motion.div>
-                )}
-                {(!installer.overallScore || installer.overallScore === null || installer.overallScore === undefined) && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="flex-shrink-0 ml-auto relative group"
-                  >
-                    {(photoUrl || installer.photoUrl) ? (
-                      <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-white shadow-xl ring-2 ring-brand-green/20">
-                        <Image
-                          src={photoUrl || installer.photoUrl || ''}
-                          alt={`${installer.firstName} ${installer.lastName}`}
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error('Error loading image:', photoUrl || installer.photoUrl)
-                            e.currentTarget.style.display = 'none'
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-brand-green/20 to-brand-green/10 border-4 border-white shadow-xl ring-2 ring-brand-green/20 flex items-center justify-center">
-                        <User className="w-12 h-12 text-brand-green" />
-                      </div>
-                    )}
-                    <label className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        disabled={isUploadingPhoto}
-                        className="hidden"
-                      />
-                      {isUploadingPhoto ? (
-                        <Loader2 className="w-8 h-8 text-white animate-spin" />
-                      ) : (
-                        <Camera className="w-8 h-8 text-white" />
-                      )}
-                    </label>
-                    {/* Barcode Section - Below Photo */}
-                    {installer && (
-                      <div className="mt-3 w-full max-w-[200px]">
-                        <InstallerBarcode 
-                          installerId={installer.id}
-                          installerName={`${installer.firstName} ${installer.lastName}`.trim()}
-                        />
-                      </div>
-                    )}
                   </motion.div>
                 )}
               </div>
