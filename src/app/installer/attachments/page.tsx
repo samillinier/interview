@@ -191,6 +191,12 @@ export default function AttachmentsPage() {
   const handleFileUpload = async (type: string, file: File) => {
     if (!installer) return
 
+    // Check file size limit (4MB to stay under Vercel's 4.5MB serverless limit)
+    if (file.size > 4 * 1024 * 1024) {
+      setError('File size must be less than 4MB. Please compress or use a smaller file.')
+      return
+    }
+
     setUploading({ ...uploading, [type]: true })
     setError('')
     setSuccess('')

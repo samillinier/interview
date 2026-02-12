@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { uploadFile, deleteFile } from '@/lib/storage'
 
+// Increase body size limit for this route (Vercel allows up to 4.5MB)
+export const maxDuration = 30
+export const runtime = 'nodejs'
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -35,6 +39,63 @@ export async function POST(
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
 
+    const contentType = request.headers.get('content-type') || ''
+    
+    // Handle JSON body (for client-side blob uploads)
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const { url, name, type } = body
+
+      if (!url || !type) {
+        return NextResponse.json(
+          { error: 'URL and type are required' },
+          { status: 400 }
+        )
+      }
+
+      // Delete existing document of the same type
+      const existingDoc = await prisma.document.findFirst({
+        where: {
+          installerId,
+          type,
+        },
+      })
+
+      if (existingDoc) {
+        // Delete old file from storage
+        try {
+          await deleteFile(existingDoc.url)
+        } catch (deleteError: any) {
+          console.error('Error deleting old file:', deleteError)
+          // Continue even if deletion fails
+        }
+
+        // Update existing document
+        const document = await prisma.document.update({
+          where: { id: existingDoc.id },
+          data: {
+            name: name || existingDoc.name,
+            url: url,
+          },
+        })
+
+        return NextResponse.json({ document })
+      } else {
+        // Create new document
+        const document = await prisma.document.create({
+          data: {
+            installerId,
+            type,
+            name: name || 'Document',
+            url: url,
+          },
+        })
+
+        return NextResponse.json({ document })
+      }
+    }
+
+    // Handle FormData (for server-side uploads)
     const formData = await request.formData()
     const file = formData.get('file') as File
     const type = formData.get('type') as string
@@ -46,10 +107,10 @@ export async function POST(
       )
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (max 4MB to stay under Vercel's 4.5MB serverless limit)
+    if (file.size > 4 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'File size must be less than 10MB' },
+        { error: 'File size must be less than 4MB. For larger files, please compress or split the file.' },
         { status: 400 }
       )
     }

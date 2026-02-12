@@ -721,6 +721,13 @@ export default function InstallerProfileViewPage() {
 
   const handleUploadDocument = async (type: string, file: File) => {
     if (!installerId || !file) return
+    
+    // Check file size limit (4MB to stay under Vercel's 4.5MB serverless limit)
+    if (file.size > 4 * 1024 * 1024) {
+      setError('File size must be less than 4MB. Please compress or use a smaller file.')
+      return
+    }
+    
     try {
       setUploadingDocumentType(type)
       const formData = new FormData()
