@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Calendar, Plus, Trash2 } from 'lucide-react'
 
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
@@ -88,7 +89,21 @@ export function MultiExpirationDatePicker({
   isEditing: boolean
   addLabel?: string
 }) {
-  const normalized = normalize(values || [])
+  // Use local state to track raw input values while typing
+  const [localValues, setLocalValues] = useState<string[]>(() => {
+    const normalized = normalize(values || [])
+    return normalized.length === 0 ? [''] : normalized
+  })
+
+  // Sync local state with prop values when they change externally (but not while user is typing)
+  useEffect(() => {
+    if (!isEditing) {
+      const normalized = normalize(values || [])
+      setLocalValues(normalized.length === 0 ? [''] : normalized)
+    }
+  }, [values, isEditing])
+
+  const normalized = normalize(localValues)
   const statuses = normalized.map((v) => getExpirationStatus(v))
   const overallStatus =
     statuses.includes('expired') ? 'expired' : statuses.includes('expiring') ? 'expiring' : statuses.includes('valid') ? 'valid' : 'none'
@@ -148,7 +163,8 @@ export function MultiExpirationDatePicker({
     )
   }
 
-  const ensureAtLeastOne = normalized.length === 0 ? [''] : normalized
+  // Ensure at least one empty string for input
+  const inputValues = localValues.length === 0 ? [''] : localValues
 
   return (
     <div className={`group relative p-4 rounded-xl border-2 ${borderBg} hover:shadow-sm transition-all duration-200`}>
@@ -158,25 +174,36 @@ export function MultiExpirationDatePicker({
       </div>
 
       <div className="space-y-2">
-        {ensureAtLeastOne.map((v, idx) => (
-          <div key={`${idx}-${v}`} className="flex items-center gap-2">
+        {inputValues.map((v, idx) => (
+          <div key={`${idx}-${v || ''}`} className="flex items-center gap-2">
             <input
               type="date"
-              value={v}
+              value={v || ''}
               max="2099-12-31"
               onChange={(e) => {
-                const next = [...ensureAtLeastOne]
+                // Update local state immediately for responsive typing
+                const next = [...inputValues]
                 next[idx] = e.target.value
-                onChange(normalize(next))
+                setLocalValues(next)
+              }}
+              onBlur={(e) => {
+                // Normalize and sync with parent only when user finishes editing
+                const next = [...inputValues]
+                next[idx] = e.target.value
+                const normalized = normalize(next)
+                setLocalValues(normalized.length === 0 ? [''] : normalized)
+                onChange(normalized)
               }}
               className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
             />
-            {ensureAtLeastOne.length > 1 && (
+            {inputValues.length > 1 && (
               <button
                 type="button"
                 onClick={() => {
-                  const next = ensureAtLeastOne.filter((_, i) => i !== idx)
-                  onChange(normalize(next))
+                  const next = inputValues.filter((_, i) => i !== idx)
+                  const normalized = normalize(next)
+                  setLocalValues(normalized.length === 0 ? [''] : normalized)
+                  onChange(normalized)
                 }}
                 className="p-2 text-slate-500 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
                 title="Remove"
@@ -189,7 +216,13 @@ export function MultiExpirationDatePicker({
 
         <button
           type="button"
-          onClick={() => onChange([...normalized, new Date().toISOString().split('T')[0]])}
+          onClick={() => {
+            const newDate = new Date().toISOString().split('T')[0]
+            const next = [...inputValues, newDate]
+            const normalized = normalize(next)
+            setLocalValues(normalized)
+            onChange(normalized)
+          }}
           className="inline-flex items-center gap-2 text-sm font-semibold text-brand-green hover:text-brand-green-dark"
         >
           <Plus className="w-4 h-4" />

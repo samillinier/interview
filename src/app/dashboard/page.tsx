@@ -151,6 +151,7 @@ export default function DashboardPage() {
     qualified: 0,
     notQualified: 0,
     pending: 0,
+    active: 0,
   })
   const [expirationStats, setExpirationStats] = useState({
     expired: 0,
@@ -364,6 +365,7 @@ export default function DashboardPage() {
         qualified: allInstallers.filter((i: Installer) => i.status === 'passed' || i.status === 'qualified').length,
         notQualified: allInstallers.filter((i: Installer) => i.status === 'failed').length,
         pending: allInstallers.filter((i: Installer) => i.status === 'pending').length,
+        active: allInstallers.filter((i: Installer) => i.status === 'active').length,
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
@@ -1237,78 +1239,101 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 hover:shadow-lg transition-all duration-300 group cursor-pointer"
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Total Applicants</p>
-                <p className="text-4xl font-bold text-slate-900 mb-1">{stats.total}</p>
-                <p className="text-xs text-slate-400">All registered installers</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Applicants</p>
+                <p className="text-2xl font-bold text-slate-900 mb-0.5">{stats.total}</p>
+                <p className="text-[10px] text-slate-400 truncate">All registered</p>
               </div>
-              <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <Users className="w-7 h-7 text-slate-700" />
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center group-hover:bg-slate-200 transition-colors flex-shrink-0 ml-2 shadow-md">
+                <Users className="w-5 h-5 text-slate-600" />
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+            className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow-lg border border-green-200/40 p-4 hover:shadow-xl hover:border-green-300/60 transition-all duration-200 group cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-green-600 uppercase tracking-wider mb-1">Qualified</p>
+                <p className="text-2xl font-bold text-green-600 mb-0.5">{stats.qualified}</p>
+                <p className="text-[10px] text-green-500/80">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
+              </div>
+              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center group-hover:bg-green-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-green-500/30">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-md border border-brand-green/20 p-6 hover:shadow-lg hover:border-brand-green/30 transition-all duration-300 group cursor-pointer"
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-brand-green uppercase tracking-wide mb-2">Qualified</p>
-                <p className="text-4xl font-bold text-brand-green mb-1">{stats.qualified}</p>
-                <p className="text-xs text-brand-green/70">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Not Qualified</p>
+                <p className="text-2xl font-bold text-red-600 mb-0.5">{stats.notQualified}</p>
+                <p className="text-[10px] text-red-500/80">{stats.total > 0 ? Math.round((stats.notQualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-16 h-16 bg-gradient-to-br from-brand-green to-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-brand-green/30">
-                <CheckCircle2 className="w-7 h-7 text-white" />
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center group-hover:bg-red-200 transition-colors flex-shrink-0 ml-2 shadow-md">
+                <XCircle className="w-5 h-5 text-red-600" />
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Pending Review</p>
+                <p className="text-2xl font-bold text-yellow-600 mb-0.5">{stats.pending}</p>
+                <p className="text-[10px] text-yellow-500/80">{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}% of total</p>
+              </div>
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-200 transition-colors flex-shrink-0 ml-2 shadow-md">
+                <Clock className="w-5 h-5 text-yellow-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 hover:shadow-lg transition-all duration-300 group cursor-pointer"
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+            onClick={() => {
+              setStatusFilter('active')
+              setCurrentPage(1)
+            }}
+            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-200/40 p-4 hover:shadow-xl hover:border-blue-300/60 transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Not Qualified</p>
-                <p className="text-4xl font-bold text-red-600 mb-1">{stats.notQualified}</p>
-                <p className="text-xs text-red-500">{stats.total > 0 ? Math.round((stats.notQualified / stats.total) * 100) : 0}% of total</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Active</p>
+                <p className="text-2xl font-bold text-blue-600 mb-0.5">{stats.active}</p>
+                <p className="text-[10px] text-blue-500/80">{stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <XCircle className="w-7 h-7 text-red-600" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 hover:shadow-lg transition-all duration-300 group cursor-pointer"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Pending Review</p>
-                <p className="text-4xl font-bold text-yellow-600 mb-1">{stats.pending}</p>
-                <p className="text-xs text-yellow-500">{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}% of total</p>
-              </div>
-              <div className="w-16 h-16 bg-yellow-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                <Clock className="w-7 h-7 text-yellow-600" />
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-blue-500/30">
+                <Activity className="w-5 h-5 text-white" />
               </div>
             </div>
           </motion.div>
