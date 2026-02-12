@@ -4269,7 +4269,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            </div>
 
             {/* Footer with Save/Cancel */}
             <div className="border-t border-slate-200 p-6 bg-white sticky bottom-0 z-10">
