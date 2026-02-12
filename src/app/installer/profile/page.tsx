@@ -3572,9 +3572,9 @@ export default function InstallerProfilePage() {
                               href={staff.digitalId}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 hover:underline truncate"
+                              className="text-blue-600 hover:text-blue-700 hover:underline"
                             >
-                              {staff.digitalId}
+                              Digital ID
                             </a>
                           ) : (
                             <span className="truncate">{staff.digitalId}</span>
