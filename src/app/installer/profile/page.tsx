@@ -144,6 +144,7 @@ function ExpirationDatePicker({
       {isEditing ? (
         <input
           type="date"
+          max="2099-12-31"
           value={value ? new Date(value).toISOString().split('T')[0] : ''}
           onChange={(e) => onChange(e.target.value)}
           className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
@@ -3626,6 +3627,7 @@ export default function InstallerProfilePage() {
                             />
                             <input
                               type="date"
+                              max="2099-12-31"
                               value={licenseExpiry}
                               onChange={(e) => setLicenseExpiry(e.target.value)}
                               className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
@@ -4200,6 +4202,7 @@ export default function InstallerProfilePage() {
                     {isEditing ? (
                       <input
                         type="date"
+                        max="2099-12-31"
                         value={preferredStartDate}
                         onChange={(e) => setPreferredStartDate(e.target.value)}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
@@ -6651,6 +6654,7 @@ export default function InstallerProfilePage() {
                       <label className="block text-sm font-semibold text-slate-700 mb-2">License Expiry</label>
                       <input
                         type="date"
+                        max="2099-12-31"
                         value={historyForm.licenseExpiry || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, licenseExpiry: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
@@ -6891,6 +6895,7 @@ export default function InstallerProfilePage() {
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Start Date</label>
                       <input
                         type="date"
+                        max="2099-12-31"
                         value={historyForm.preferredStartDate || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, preferredStartDate: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"

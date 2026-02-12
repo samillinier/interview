@@ -133,6 +133,7 @@ export function MultiExpirationDatePicker({
             <input
               type="date"
               value={v}
+              max="2099-12-31"
               onChange={(e) => {
                 const next = [...ensureAtLeastOne]
                 next[idx] = e.target.value
