@@ -524,13 +524,6 @@ export default function AttachmentsPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
-            href="/installer/jobs"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Briefcase className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Jobs</span>}
-          </Link>
-          <Link
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
           >

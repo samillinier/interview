@@ -485,10 +485,6 @@ export default function NotificationsPage() {
             <User className="w-5 h-5" />
             <span>Profile</span>
           </Link>
-          <Link href="/installer/jobs" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Briefcase className="w-5 h-5" />
-            <span>Jobs</span>
-          </Link>
           <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Paperclip className="w-5 h-5" />
             <span>Attachments</span>
