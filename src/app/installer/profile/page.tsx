@@ -494,6 +494,47 @@ export default function InstallerProfilePage() {
   const [movesFurniture, setMovesFurniture] = useState<boolean | undefined>(undefined)
   const [installsTrim, setInstallsTrim] = useState<boolean | undefined>(undefined)
   
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'passed':
+      case 'qualified':
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green">
+            <CheckCircle2 className="w-4 h-4" />
+            Qualified
+          </span>
+        )
+      case 'failed':
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-600">
+            <XCircle className="w-4 h-4" />
+            Not Qualified
+          </span>
+        )
+      case 'pending':
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-yellow-600">
+            <Clock className="w-4 h-4" />
+            Pending
+          </span>
+        )
+      case 'active':
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+            <CheckCircle2 className="w-4 h-4" />
+            Active
+          </span>
+        )
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-600">
+            <Clock className="w-4 h-4" />
+            {status || 'Unknown'}
+          </span>
+        )
+    }
+  }
+  
   // Calculate profile completion percentage
   const calculateProfileCompletion = (): number => {
     if (!installer) return 0
@@ -2137,6 +2178,11 @@ export default function InstallerProfilePage() {
                     </div>
                   )
                 })()}
+                <div className="mt-1">
+                  <div className="flex items-center gap-3">
+                    {installer && getStatusBadge(installer.status)}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
