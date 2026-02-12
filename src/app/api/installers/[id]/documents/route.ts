@@ -107,10 +107,10 @@ export async function POST(
       )
     }
 
-    // Validate file size (max 4MB to stay under Vercel's 4.5MB serverless limit)
-    if (file.size > 4 * 1024 * 1024) {
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'File size must be less than 4MB. For larger files, please compress or split the file.' },
+        { error: 'File size must be less than 10MB. For larger files, please compress or split the file.' },
         { status: 400 }
       )
     }

@@ -727,9 +727,9 @@ export default function DashboardPage() {
         const selectedAttachments = Object.entries(attachmentsToAdd).filter(([, file]) => Boolean(file)) as Array<[string, File]>
         for (const [type, file] of selectedAttachments) {
           try {
-            // Check file size limit (4MB to stay under Vercel's 4.5MB serverless limit)
-            if (file.size > 4 * 1024 * 1024) {
-              console.error(`Error uploading attachment ${type}: File size must be less than 4MB`)
+            // Check file size limit (max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+              console.error(`Error uploading attachment ${type}: File size must be less than 10MB`)
               continue
             }
             

@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Increase body size limit for file uploads
-  // Vercel serverless functions have a 4.5MB limit, but we can configure Next.js to handle up to that
+  // Note: Vercel Blob storage handles large files directly, so this limit mainly affects form data
   experimental: {
     serverActions: {
-      bodySizeLimit: '4.5mb',
+      bodySizeLimit: '10mb',
     },
   },
   images: {
