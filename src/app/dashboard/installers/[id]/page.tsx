@@ -55,6 +55,7 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerBarcode } from '@/components/InstallerBarcode'
 
 const DOCUMENT_TYPES: Array<{
   id: string
