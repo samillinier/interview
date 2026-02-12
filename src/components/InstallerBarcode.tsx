@@ -36,23 +36,23 @@ export function InstallerBarcode({ installerId, installerName, className = '' }:
     const img = new Image()
 
     img.onload = () => {
+      if (!ctx) return
+      
       canvas.width = img.width
       canvas.height = img.height + 60 // Extra space for text
-      ctx?.fillStyle = 'white'
-      ctx?.fillRect(0, 0, canvas.width, canvas.height)
-      ctx?.drawImage(img, 0, 30)
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 30)
       
       // Add text below barcode
-      if (ctx) {
-        ctx.fillStyle = '#1e293b'
-        ctx.font = 'bold 16px Arial'
-        ctx.textAlign = 'center'
-        ctx.fillText(installerCode, canvas.width / 2, canvas.height - 20)
-        if (installerName) {
-          ctx.font = '12px Arial'
-          ctx.fillStyle = '#64748b'
-          ctx.fillText(installerName, canvas.width / 2, canvas.height - 5)
-        }
+      ctx.fillStyle = '#1e293b'
+      ctx.font = 'bold 16px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText(installerCode, canvas.width / 2, canvas.height - 20)
+      if (installerName) {
+        ctx.font = '12px Arial'
+        ctx.fillStyle = '#64748b'
+        ctx.fillText(installerName, canvas.width / 2, canvas.height - 5)
       }
 
       canvas.toBlob((blob) => {
