@@ -2194,19 +2194,18 @@ export default function InstallerProfilePage() {
                     className="hidden"
                   />
                 </div>
+                {/* Barcode Section - Below Photo */}
+                {installer && (
+                  <div className="mt-3 w-full max-w-[200px]">
+                    <InstallerBarcode 
+                      installerId={installer.id}
+                      installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+                    />
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
-          
-          {/* Barcode Section */}
-          {installer && (
-            <div className="mt-6">
-              <InstallerBarcode 
-                installerId={installer.id}
-                installerName={`${installer.firstName} ${installer.lastName}`.trim()}
-              />
-            </div>
-          )}
           
           {installer && (installer.status === 'pending' || (installer.status !== 'passed' && installer.status !== 'qualified')) && (
             <motion.div 

@@ -74,56 +74,52 @@ export function InstallerBarcode({ installerId, installerName, className = '' }:
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className={`bg-gradient-to-br from-white to-slate-50 rounded-2xl border-2 border-brand-green/20 shadow-lg p-6 ${className}`}
+      className={`bg-gradient-to-br from-white to-slate-50 rounded-xl border border-brand-green/20 shadow-sm p-3 ${className}`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center">
-            <ScanLine className="w-5 h-5 text-brand-green" />
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 bg-brand-green/10 rounded-lg flex items-center justify-center">
+            <ScanLine className="w-3.5 h-3.5 text-brand-green" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Installer ID</h3>
-            <p className="text-xs text-slate-500">Scan to identify</p>
+            <h3 className="text-xs font-bold text-slate-900">Installer ID</h3>
           </div>
         </div>
         <button
           onClick={handleDownload}
-          className="p-2 hover:bg-brand-green/10 rounded-lg transition-colors group"
+          className="p-1.5 hover:bg-brand-green/10 rounded-md transition-colors group"
           title="Download Barcode"
         >
-          <Download className="w-5 h-5 text-brand-green group-hover:text-brand-green-dark transition-colors" />
+          <Download className="w-3.5 h-3.5 text-brand-green group-hover:text-brand-green-dark transition-colors" />
         </button>
       </div>
       
-      <div ref={barcodeRef} className="flex flex-col items-center justify-center bg-white rounded-xl p-4 border border-slate-200">
-        <div className="mb-2">
+      <div ref={barcodeRef} className="flex flex-col items-center justify-center bg-white rounded-lg p-2 border border-slate-200">
+        <div className="scale-75 origin-center">
           <ReactBarcode
             value={installerCode}
             format="CODE128"
-            width={2}
-            height={60}
+            width={1.5}
+            height={40}
             displayValue={true}
-            fontSize={14}
+            fontSize={10}
             fontOptions="bold"
             font="Arial"
             textAlign="center"
             textPosition="bottom"
-            textMargin={8}
-            margin={10}
+            textMargin={4}
+            margin={5}
             background="#ffffff"
             lineColor="#1e293b"
           />
         </div>
-        {installerName && (
-          <p className="text-xs text-slate-500 mt-2 font-medium">{installerName}</p>
-        )}
       </div>
       
-      <div className="mt-4 pt-4 border-t border-slate-200">
-        <p className="text-xs text-center text-slate-600 font-mono font-semibold tracking-wider">
+      <div className="mt-2 pt-2 border-t border-slate-200">
+        <p className="text-[10px] text-center text-slate-600 font-mono font-semibold tracking-wide">
           {installerCode}
         </p>
       </div>

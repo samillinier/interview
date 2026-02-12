@@ -2175,19 +2175,18 @@ export default function InstallerProfileViewPage() {
                         <Camera className="w-8 h-8 text-white" />
                       )}
                     </label>
+                    {/* Barcode Section - Below Photo */}
+                    {installer && (
+                      <div className="mt-3 w-full max-w-[200px]">
+                        <InstallerBarcode 
+                          installerId={installer.id}
+                          installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+                        />
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>
-              
-              {/* Barcode Section */}
-              {installer && (
-                <div className="mt-6">
-                  <InstallerBarcode 
-                    installerId={installer.id}
-                    installerName={`${installer.firstName} ${installer.lastName}`.trim()}
-                  />
-                </div>
-              )}
             </div>
           </motion.div>
 
