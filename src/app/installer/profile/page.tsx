@@ -2167,16 +2167,6 @@ export default function InstallerProfilePage() {
               </p>
             </motion.div>
           )}
-          {installer && installer.passFailReason && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="mt-4 p-5 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/60 shadow-sm"
-            >
-              <p className="text-sm text-slate-700 leading-relaxed font-medium">{installer?.passFailReason}</p>
-            </motion.div>
-          )}
         </motion.div>
 
           {/* Profile Information */}
