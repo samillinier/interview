@@ -2091,7 +2091,7 @@ export default function InstallerProfileViewPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
                 {installer.overallScore !== null && installer.overallScore !== undefined && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -2110,7 +2110,7 @@ export default function InstallerProfileViewPage() {
                 )}
                 {/* Barcode Section - Right Side */}
                 {installer && (
-                  <div className="w-full max-w-[200px]">
+                  <div className="w-full max-w-[180px] min-w-0">
                     <InstallerBarcode 
                       installerId={installer.id}
                       installerName={`${installer.firstName} ${installer.lastName}`.trim()}
