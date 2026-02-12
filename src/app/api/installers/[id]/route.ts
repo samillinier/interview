@@ -97,6 +97,43 @@ export async function GET(
   }
 }
 
+// Helper function to normalize date strings to YYYY-MM-DD format with validation
+function normalizeDateString(dateStr: string): string | null {
+  // If already in YYYY-MM-DD format, validate and return
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const d = new Date(dateStr + 'T00:00:00')
+    if (!Number.isNaN(d.getTime()) && d.getFullYear() >= 1000 && d.getFullYear() <= 2099) {
+      return dateStr
+    }
+  }
+  
+  // Try parsing as date
+  const d = new Date(dateStr)
+  if (Number.isNaN(d.getTime())) return null
+  
+  // Check if year is reasonable (not year 20 AD)
+  const year = d.getFullYear()
+  if (year < 1000 || year > 2099) {
+    // Try to fix common issues like "12/12/0020" -> "2020-12-12"
+    const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/)
+    if (match) {
+      const [, month, day, yearStr] = match
+      const fullYear = yearStr.length === 2 
+        ? (parseInt(yearStr) < 50 ? 2000 + parseInt(yearStr) : 1900 + parseInt(yearStr))
+        : parseInt(yearStr)
+      if (fullYear >= 1000 && fullYear <= 2099) {
+        const fixedDate = new Date(fullYear, parseInt(month) - 1, parseInt(day))
+        if (!Number.isNaN(fixedDate.getTime())) {
+          return fixedDate.toISOString().split('T')[0]
+        }
+      }
+    }
+    return null
+  }
+  
+  return d.toISOString().split('T')[0]
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -159,12 +196,8 @@ export async function PATCH(
           .filter((v) => typeof v === 'string')
           .map((v) => (v as string).trim())
           .filter(Boolean)
-          .map((v) => {
-            const d = new Date(v)
-            if (Number.isNaN(d.getTime())) return null
-            return d.toISOString().split('T')[0]
-          })
-          .filter(Boolean) as string[]
+          .map((v) => normalizeDateString(v))
+          .filter((v): v is string => v !== null) as string[]
 
         const uniq = Array.from(new Set(cleaned))
         uniq.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
@@ -193,12 +226,8 @@ export async function PATCH(
           .filter((v) => typeof v === 'string')
           .map((v) => (v as string).trim())
           .filter(Boolean)
-          .map((v) => {
-            const d = new Date(v)
-            if (Number.isNaN(d.getTime())) return null
-            return d.toISOString().split('T')[0]
-          })
-          .filter(Boolean) as string[]
+          .map((v) => normalizeDateString(v))
+          .filter((v): v is string => v !== null) as string[]
 
         const uniq = Array.from(new Set(cleaned))
         uniq.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())

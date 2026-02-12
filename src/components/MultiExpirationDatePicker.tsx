@@ -33,9 +33,39 @@ function normalize(values: string[]) {
     .map((v) => (v || '').trim())
     .filter(Boolean)
     .map((v) => {
-      // allow YYYY-MM-DD or ISO
+      // If already in YYYY-MM-DD format, validate and return
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+        const d = new Date(v + 'T00:00:00')
+        if (!Number.isNaN(d.getTime()) && d.getFullYear() >= 1000 && d.getFullYear() <= 2099) {
+          return v
+        }
+      }
+      
+      // Try parsing as date
       const d = new Date(v)
       if (Number.isNaN(d.getTime())) return null
+      
+      // Check if year is reasonable (not year 20 AD)
+      const year = d.getFullYear()
+      if (year < 1000 || year > 2099) {
+        // If year is too small, it might be a malformed date
+        // Try to fix common issues like "12/12/0020" -> "2020-12-12"
+        const match = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/)
+        if (match) {
+          const [, month, day, yearStr] = match
+          const fullYear = yearStr.length === 2 
+            ? (parseInt(yearStr) < 50 ? 2000 + parseInt(yearStr) : 1900 + parseInt(yearStr))
+            : parseInt(yearStr)
+          if (fullYear >= 1000 && fullYear <= 2099) {
+            const fixedDate = new Date(fullYear, parseInt(month) - 1, parseInt(day))
+            if (!Number.isNaN(fixedDate.getTime())) {
+              return fixedDate.toISOString().split('T')[0]
+            }
+          }
+        }
+        return null
+      }
+      
       return d.toISOString().split('T')[0]
     })
     .filter(Boolean) as string[]
