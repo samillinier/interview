@@ -1847,6 +1847,72 @@ export default function DashboardPage() {
                   {expandedSections.basic && (
                     <div className="px-5 pb-5 border-t border-slate-100">
                       <div className="pt-5 grid md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Photo</label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center">
+                          {installerPhotoPreview ? (
+                            <Image
+                              src={installerPhotoPreview}
+                              alt="Preview"
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-12 h-12 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <label className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white text-sm font-medium rounded-lg shadow-sm hover:bg-brand-green-dark transition-colors cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  // Validate file type
+                                  if (!file.type.startsWith('image/')) {
+                                    alert('Please upload an image file')
+                                    return
+                                  }
+                                  // Validate file size (max 10MB)
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    alert('Image size must be less than 10MB')
+                                    return
+                                  }
+                                  setInstallerPhotoFile(file)
+                                  // Create preview
+                                  const reader = new FileReader()
+                                  reader.onloadend = () => {
+                                    setInstallerPhotoPreview(reader.result as string)
+                                  }
+                                  reader.readAsDataURL(file)
+                                }
+                              }}
+                              className="hidden"
+                              id="installer-photo-upload"
+                            />
+                            {isUploadingInstallerPhoto ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-4 h-4" />
+                                <span>{installerPhotoPreview ? 'Change Photo' : 'Add Photo'}</span>
+                              </>
+                            )}
+                          </label>
+                          {installerPhotoFile && (
+                            <p className="text-xs text-slate-500 mt-2">
+                              {installerPhotoFile.name} ({(installerPhotoFile.size / 1024 / 1024).toFixed(2)} MB)
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">
                         First Name <span className="text-red-500">*</span>
@@ -1949,72 +2015,6 @@ export default function DashboardPage() {
                         placeholder="Years"
                         min="0"
                       />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Photo</label>
-                      <div className="flex items-center gap-4">
-                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center">
-                          {installerPhotoPreview ? (
-                            <Image
-                              src={installerPhotoPreview}
-                              alt="Preview"
-                              width={96}
-                              height={96}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-12 h-12 text-slate-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <label className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white text-sm font-medium rounded-lg shadow-sm hover:bg-brand-green-dark transition-colors cursor-pointer">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) {
-                                  // Validate file type
-                                  if (!file.type.startsWith('image/')) {
-                                    alert('Please upload an image file')
-                                    return
-                                  }
-                                  // Validate file size (max 10MB)
-                                  if (file.size > 10 * 1024 * 1024) {
-                                    alert('Image size must be less than 10MB')
-                                    return
-                                  }
-                                  setInstallerPhotoFile(file)
-                                  // Create preview
-                                  const reader = new FileReader()
-                                  reader.onloadend = () => {
-                                    setInstallerPhotoPreview(reader.result as string)
-                                  }
-                                  reader.readAsDataURL(file)
-                                }
-                              }}
-                              className="hidden"
-                              id="installer-photo-upload"
-                            />
-                            {isUploadingInstallerPhoto ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Uploading...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Camera className="w-4 h-4" />
-                                <span>{installerPhotoPreview ? 'Change Photo' : 'Add Photo'}</span>
-                              </>
-                            )}
-                          </label>
-                          {installerPhotoFile && (
-                            <p className="text-xs text-slate-500 mt-2">
-                              {installerPhotoFile.name} ({(installerPhotoFile.size / 1024 / 1024).toFixed(2)} MB)
-                            </p>
-                          )}
-                        </div>
-                      </div>
                     </div>
                       </div>
                     </div>
