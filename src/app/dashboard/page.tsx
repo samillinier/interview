@@ -140,6 +140,7 @@ export default function DashboardPage() {
   const [installers, setInstallers] = useState<Installer[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -373,7 +374,7 @@ export default function DashboardPage() {
     try {
       setIsLoading(true)
       const params = new URLSearchParams()
-      if (searchQuery) params.append('search', searchQuery)
+      if (debouncedSearchQuery.trim()) params.append('search', debouncedSearchQuery.trim())
       if (statusFilter !== 'all') params.append('status', statusFilter)
       params.append('page', page.toString())
       params.append('limit', itemsPerPage.toString())
@@ -965,13 +966,22 @@ export default function DashboardPage() {
     }
   }, [status, router])
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300) // Wait 300ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   useEffect(() => {
     if (status === 'authenticated') {
       fetchStats()
       fetchInstallers(1)
       setCurrentPage(1)
     }
-  }, [searchQuery, statusFilter])
+  }, [debouncedSearchQuery, statusFilter])
 
 
   const getInitials = (firstName: string, lastName: string) => {
