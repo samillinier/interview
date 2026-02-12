@@ -219,6 +219,9 @@ export default function DashboardPage() {
     team: false,
   })
   const [attachmentsToAdd, setAttachmentsToAdd] = useState<Record<string, File | null>>({})
+  const [installerPhotoFile, setInstallerPhotoFile] = useState<File | null>(null)
+  const [installerPhotoPreview, setInstallerPhotoPreview] = useState<string | null>(null)
+  const [isUploadingInstallerPhoto, setIsUploadingInstallerPhoto] = useState(false)
   const [newInstaller, setNewInstaller] = useState({
     // Basic Information
     firstName: '',
@@ -658,6 +661,32 @@ export default function DashboardPage() {
       const data = await response.json()
 
       if (response.ok && data.installer) {
+        // Upload installer photo if provided
+        if (installerPhotoFile) {
+          try {
+            setIsUploadingInstallerPhoto(true)
+            const photoFormData = new FormData()
+            photoFormData.append('photo', installerPhotoFile)
+            photoFormData.append('installerId', data.installer.id)
+
+            const photoResponse = await fetch('/api/installers/upload-photo', {
+              method: 'POST',
+              body: photoFormData,
+            })
+
+            if (photoResponse.ok) {
+              const photoData = await photoResponse.json()
+              // Photo URL is already saved in the database by the API
+              console.log('Installer photo uploaded successfully:', photoData.photoUrl)
+            }
+          } catch (photoError) {
+            console.error('Error uploading installer photo:', photoError)
+            // Don't fail the entire operation if photo upload fails
+          } finally {
+            setIsUploadingInstallerPhoto(false)
+          }
+        }
+
         // Create staff members if any were added
         if (staffMembersToAdd.length > 0) {
           for (const staff of staffMembersToAdd) {
@@ -726,6 +755,9 @@ export default function DashboardPage() {
         setShowAddModal(false)
         setStaffMembersToAdd([])
         setAttachmentsToAdd({})
+        setInstallerPhotoFile(null)
+        setInstallerPhotoPreview(null)
+        setIsUploadingInstallerPhoto(false)
         // Reset form
         setNewInstaller({
           firstName: '',
@@ -1917,6 +1949,72 @@ export default function DashboardPage() {
                         placeholder="Years"
                         min="0"
                       />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Photo</label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center">
+                          {installerPhotoPreview ? (
+                            <Image
+                              src={installerPhotoPreview}
+                              alt="Preview"
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-12 h-12 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <label className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white text-sm font-medium rounded-lg shadow-sm hover:bg-brand-green-dark transition-colors cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  // Validate file type
+                                  if (!file.type.startsWith('image/')) {
+                                    alert('Please upload an image file')
+                                    return
+                                  }
+                                  // Validate file size (max 10MB)
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    alert('Image size must be less than 10MB')
+                                    return
+                                  }
+                                  setInstallerPhotoFile(file)
+                                  // Create preview
+                                  const reader = new FileReader()
+                                  reader.onloadend = () => {
+                                    setInstallerPhotoPreview(reader.result as string)
+                                  }
+                                  reader.readAsDataURL(file)
+                                }
+                              }}
+                              className="hidden"
+                              id="installer-photo-upload"
+                            />
+                            {isUploadingInstallerPhoto ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-4 h-4" />
+                                <span>{installerPhotoPreview ? 'Change Photo' : 'Add Photo'}</span>
+                              </>
+                            )}
+                          </label>
+                          {installerPhotoFile && (
+                            <p className="text-xs text-slate-500 mt-2">
+                              {installerPhotoFile.name} ({(installerPhotoFile.size / 1024 / 1024).toFixed(2)} MB)
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                       </div>
                     </div>
