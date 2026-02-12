@@ -3564,6 +3564,23 @@ export default function InstallerProfilePage() {
                           <span>{staff.yearsOfExperience} years experience</span>
                         </div>
                       )}
+                      {staff.digitalId && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <CreditCard className="w-4 h-4 text-slate-400" />
+                          {staff.digitalId.startsWith('http://') || staff.digitalId.startsWith('https://') ? (
+                            <a
+                              href={staff.digitalId}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-700 hover:underline truncate"
+                            >
+                              {staff.digitalId}
+                            </a>
+                          ) : (
+                            <span className="truncate">{staff.digitalId}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
