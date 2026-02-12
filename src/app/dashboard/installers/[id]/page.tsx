@@ -48,7 +48,8 @@ import {
   Save,
   Users,
   Activity,
-  ExternalLink
+  ExternalLink,
+  Camera
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -452,6 +453,8 @@ export default function InstallerProfileViewPage() {
   })
   const [staffPhotoFile, setStaffPhotoFile] = useState<File | null>(null)
   const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [historyForm, setHistoryForm] = useState<any>({
     year: new Date().getFullYear().toString(),
     firstName: '',
@@ -544,6 +547,7 @@ export default function InstallerProfileViewPage() {
       setDigitalId(installer.digitalId || '')
       setWorkroom(installer.workroom || '')
       setYearsOfExperience(installer.yearsOfExperience)
+      setPhotoUrl(installer.photoUrl || null)
       setFlooringSpecialties(installer.flooringSpecialties || '')
       setFlooringSkills(installer.flooringSkills || '')
       setHasOwnCrew(installer.hasOwnCrew || false)
@@ -1206,6 +1210,7 @@ export default function InstallerProfileViewPage() {
       setDigitalId(installer.digitalId || '')
       setWorkroom(installer.workroom || '')
       setYearsOfExperience(installer.yearsOfExperience)
+      setPhotoUrl(installer.photoUrl || null)
       setFlooringSpecialties(installer.flooringSpecialties || '')
       setFlooringSkills(installer.flooringSkills || '')
       setHasOwnCrew(installer.hasOwnCrew || false)
@@ -1466,6 +1471,74 @@ export default function InstallerProfileViewPage() {
     } finally {
       setIsSavingStaff(false)
       setIsUploadingStaffPhoto(false)
+    }
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !installer) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image size must be less than 10MB')
+      return
+    }
+
+    setIsUploadingPhoto(true)
+    setError('')
+
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      formData.append('installerId', installer.id)
+
+      const response = await fetch('/api/installers/upload-photo', {
+        method: 'POST',
+        body: formData,
+      })
+
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response received:', text.substring(0, 500))
+        setError(`Server error: The server returned an HTML page instead of JSON.`)
+        setIsUploadingPhoto(false)
+        return
+      }
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || `Upload failed: ${response.status}`)
+        setSuccess('')
+        return
+      }
+
+      if (data.success && data.photoUrl) {
+        setPhotoUrl(data.photoUrl)
+        setInstaller({ ...installer, photoUrl: data.photoUrl })
+        setSuccess('Photo uploaded successfully!')
+        setError('')
+        // Refresh installer data
+        fetchInstallerProfile()
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError(data.error || 'Failed to upload photo')
+        setSuccess('')
+      }
+    } catch (err: any) {
+      console.error('Error uploading photo:', err)
+      setError('Failed to upload photo. Please try again.')
+    } finally {
+      setIsUploadingPhoto(false)
     }
   }
 
@@ -2026,59 +2099,82 @@ export default function InstallerProfileViewPage() {
                         <span className="text-xl text-slate-400 font-medium">/100</span>
                       </div>
                     </div>
-                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
-                      {installer.photoUrl ? (
-                        <Image
-                          src={installer.photoUrl}
-                          alt={`${installer.firstName} ${installer.lastName}`}
-                          width={80}
-                          height={80}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error('Error loading image:', installer.photoUrl)
-                            e.currentTarget.style.display = 'none'
-                          }}
+                    <div className="relative group">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
+                        {(photoUrl || installer.photoUrl) ? (
+                          <Image
+                            src={photoUrl || installer.photoUrl || ''}
+                            alt={`${installer.firstName} ${installer.lastName}`}
+                            width={80}
+                            height={80}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Error loading image:', photoUrl || installer.photoUrl)
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <User className="w-10 h-10 text-brand-green" />
+                        )}
+                      </div>
+                      <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          disabled={isUploadingPhoto}
+                          className="hidden"
                         />
-                      ) : (
-                        <User className="w-10 h-10 text-brand-green" />
-                      )}
+                        {isUploadingPhoto ? (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-white" />
+                        )}
+                      </label>
                     </div>
                   </motion.div>
                 )}
                 {(!installer.overallScore || installer.overallScore === null || installer.overallScore === undefined) && (
-                  installer.photoUrl ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex-shrink-0 ml-auto"
-                    >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex-shrink-0 ml-auto relative group"
+                  >
+                    {(photoUrl || installer.photoUrl) ? (
                       <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-white shadow-xl ring-2 ring-brand-green/20">
                         <Image
-                          src={installer.photoUrl}
+                          src={photoUrl || installer.photoUrl || ''}
                           alt={`${installer.firstName} ${installer.lastName}`}
                           width={96}
                           height={96}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            console.error('Error loading image:', installer.photoUrl)
+                            console.error('Error loading image:', photoUrl || installer.photoUrl)
                             e.currentTarget.style.display = 'none'
                           }}
                         />
                       </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex-shrink-0 ml-auto"
-                    >
+                    ) : (
                       <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-brand-green/20 to-brand-green/10 border-4 border-white shadow-xl ring-2 ring-brand-green/20 flex items-center justify-center">
                         <User className="w-12 h-12 text-brand-green" />
                       </div>
-                    </motion.div>
-                  )
+                    )}
+                    <label className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        disabled={isUploadingPhoto}
+                        className="hidden"
+                      />
+                      {isUploadingPhoto ? (
+                        <Loader2 className="w-8 h-8 text-white animate-spin" />
+                      ) : (
+                        <Camera className="w-8 h-8 text-white" />
+                      )}
+                    </label>
+                  </motion.div>
                 )}
               </div>
             </div>
