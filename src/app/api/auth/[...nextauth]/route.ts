@@ -1,13 +1,13 @@
 import NextAuth from 'next-auth'
 import AzureADProvider from 'next-auth/providers/azure-ad'
 
-// Allowed email addresses
+// Allowed email addresses (normalized to lowercase for consistent comparison)
 const ALLOWED_EMAILS = [
   'amunoz@fiscorponline.com',
   'aclass@fiscorponline.com',
   'sbiru@fiscorponline.com',
   'svudaru@fiscorponline.com',
-]
+].map(email => email.toLowerCase().trim())
 
 // Check if Azure AD is properly configured
 const isAzureADConfigured = 

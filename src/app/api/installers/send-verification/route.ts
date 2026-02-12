@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
     if (resendApiKey) {
       try {
         const resend = new Resend(resendApiKey)
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'it@floorinteriorservices.com'
+        // Use onboarding@resend.dev for free tier, or allow custom domain
+        const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
         const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
         
         console.log('   From:', `${fromName} <${fromEmail}>`)
@@ -161,22 +162,35 @@ Floor Interior Service - Installer Portal
           `,
         })
 
-        console.log('✅ Email sent successfully via Resend!')
-        if (emailResult && typeof emailResult === 'object' && 'id' in emailResult) {
-          console.log('   Email ID:', (emailResult as any).id)
-        }
-        if (emailResult && typeof emailResult === 'object' && 'error' in emailResult) {
-          console.log('   Error:', (emailResult as any).error)
+        // Check if email was actually sent successfully
+        if (emailResult && typeof emailResult === 'object') {
+          if ('error' in emailResult) {
+            // Resend returned an error
+            const error = (emailResult as any).error
+            emailError = error.message || JSON.stringify(error)
+            console.error('❌ Resend API returned error:', error)
+            throw new Error(error.message || 'Failed to send email')
+          } else if ('id' in emailResult) {
+            // Success - email was sent
+            console.log('✅ Email sent successfully via Resend!')
+            console.log('   Email ID:', (emailResult as any).id)
+            emailSent = true
+          } else {
+            // Unexpected response format
+            console.warn('⚠️  Unexpected Resend response format:', emailResult)
+            emailSent = true // Assume success if no error
+          }
         } else {
-          console.log('   Status: Sent')
+          console.warn('⚠️  Unexpected Resend response:', emailResult)
+          emailSent = true // Assume success
         }
-        emailSent = true
       } catch (err: any) {
         emailError = err.message || 'Unknown error'
         console.error('❌ Error sending email via Resend:')
         console.error('   Error:', err.message)
+        console.error('   Error Code:', err.code)
+        console.error('   Error Status:', err.statusCode)
         console.error('   Details:', err)
-        console.error('   Full error object:', JSON.stringify(err, null, 2))
         
         // Check for specific Resend errors
         if (err.message?.includes('validation_error') || err.message?.includes('You can only send testing emails')) {
@@ -185,6 +199,16 @@ Floor Interior Service - Installer Portal
           console.error('      - To send to other recipients, verify a domain at: https://resend.com/domains')
           console.error('      - Or upgrade your Resend plan')
           emailError = 'Email sending is limited. Please verify a domain in Resend or contact support.'
+        } else if (err.message?.includes('Invalid API key') || err.statusCode === 401) {
+          console.error('   ⚠️  Invalid Resend API Key')
+          console.error('      - Check that RESEND_API_KEY is set correctly in Vercel environment variables')
+          console.error('      - Get your API key from: https://resend.com/api-keys')
+          emailError = 'Invalid API key. Please check Resend configuration.'
+        } else if (err.message?.includes('domain') || err.message?.includes('not verified')) {
+          console.error('   ⚠️  Domain not verified')
+          console.error('      - Verify your domain at: https://resend.com/domains')
+          console.error('      - Or use onboarding@resend.dev for free tier')
+          emailError = 'Email domain not verified. Please verify your domain in Resend.'
         }
         // Continue - we'll still return success and show URL in dev mode
       }
