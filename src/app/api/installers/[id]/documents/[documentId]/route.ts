@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { unlink } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { deleteFile } from '@/lib/storage'
 
 export async function DELETE(
   request: NextRequest,
@@ -28,10 +26,12 @@ export async function DELETE(
       )
     }
 
-    // Delete file from filesystem
-    const filePath = join(process.cwd(), 'public', document.url)
-    if (existsSync(filePath)) {
-      await unlink(filePath).catch(() => {}) // Ignore errors if file doesn't exist
+    // Delete file from storage (handles both local and cloud storage)
+    try {
+      await deleteFile(document.url)
+    } catch (deleteError: any) {
+      console.error('Error deleting file from storage:', deleteError)
+      // Continue with database deletion even if file deletion fails
     }
 
     // Delete document from database
@@ -43,7 +43,10 @@ export async function DELETE(
   } catch (error: any) {
     console.error('Error deleting document:', error)
     return NextResponse.json(
-      { error: 'Failed to delete document' },
+      { 
+        error: error.message || 'Failed to delete document',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }

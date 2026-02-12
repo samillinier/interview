@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { put } from '@vercel/blob'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { uploadFile, deleteFile } from '@/lib/storage'
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,30 +45,32 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const fileExtension = photo.name.split('.').pop() || 'jpg'
-    const timestamp = Date.now()
-    const baseFileName = `${installerId}-${timestamp}.${fileExtension}`
+    const fileName = `${installerId}-${Date.now()}.${fileExtension}`
 
-    let photoUrl: string
-
-    // Use Vercel Blob Storage in production, fallback to filesystem for local development
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      // Upload to Vercel Blob Storage
-      const blob = await put(`installers/${baseFileName}`, photo, {
-        access: 'public',
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      })
-      photoUrl = blob.url
-    } else {
-      // Fallback to local filesystem for development
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'installers')
-      if (!existsSync(uploadsDir)) {
-        await mkdir(uploadsDir, { recursive: true })
+    // Delete old photo if exists
+    if (installer.photoUrl) {
+      try {
+        await deleteFile(installer.photoUrl)
+      } catch (deleteError: any) {
+        console.error('Error deleting old photo:', deleteError)
+        // Continue even if deletion fails
       }
-      const filePath = join(uploadsDir, baseFileName)
-      const bytes = await photo.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      await writeFile(filePath, buffer)
-      photoUrl = `/uploads/installers/${baseFileName}`
+    }
+
+    // Upload file using storage utility
+    let photoUrl: string
+    try {
+      const uploadResult = await uploadFile(photo, 'installers', fileName)
+      photoUrl = uploadResult.url
+    } catch (uploadError: any) {
+      console.error('Photo upload error:', uploadError)
+      return NextResponse.json(
+        { 
+          error: `Failed to upload photo: ${uploadError.message || 'Unknown error'}`,
+          details: process.env.NODE_ENV === 'development' ? uploadError.stack : undefined
+        },
+        { status: 500 }
+      )
     }
 
     // Update installer with photo URL
@@ -87,8 +86,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Error uploading photo:', error)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
-      { error: 'Failed to upload photo' },
+      { 
+        error: error.message || 'Failed to upload photo',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { put } from '@vercel/blob'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { uploadFile, deleteFile } from '@/lib/storage'
 
 export async function GET(
   request: NextRequest,
@@ -71,27 +68,37 @@ export async function POST(
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const fileName = `${installerId}_${type}_${timestamp}_${sanitizedFileName}`
 
+    // Upload file using storage utility (handles both local and cloud storage)
     let fileUrl: string
-
-    // Use Vercel Blob Storage in production, fallback to filesystem for local development
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      // Upload to Vercel Blob Storage
-      const blob = await put(fileName, file, {
-        access: 'public',
-        token: process.env.BLOB_READ_WRITE_TOKEN,
+    try {
+      const uploadResult = await uploadFile(file, 'documents', fileName)
+      fileUrl = uploadResult.url
+    } catch (uploadError: any) {
+      console.error('File upload error:', uploadError)
+      console.error('Upload error details:', {
+        message: uploadError.message,
+        code: uploadError.code,
+        statusCode: uploadError.statusCode,
+        stack: uploadError.stack,
       })
-      fileUrl = blob.url
-    } else {
-      // Fallback to local filesystem for development
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents')
-      if (!existsSync(uploadsDir)) {
-        await mkdir(uploadsDir, { recursive: true })
-      }
-      const filePath = join(uploadsDir, fileName)
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      await writeFile(filePath, buffer)
-      fileUrl = `/uploads/documents/${fileName}`
+      
+      // Return more detailed error for debugging
+      const errorMessage = uploadError.message || 'Unknown error occurred during file upload'
+      return NextResponse.json(
+        { 
+          error: `Failed to upload file: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? {
+            message: uploadError.message,
+            code: uploadError.code,
+            statusCode: uploadError.statusCode,
+            stack: uploadError.stack,
+          } : {
+            message: uploadError.message,
+            code: uploadError.code,
+          }
+        },
+        { status: 500 }
+      )
     }
 
     // Delete existing document of the same type
@@ -103,15 +110,13 @@ export async function POST(
     })
 
     if (existingDoc) {
-      // Delete old file (only if using local filesystem)
-      if (!process.env.BLOB_READ_WRITE_TOKEN && existingDoc.url.startsWith('/uploads/')) {
-        const oldFilePath = join(process.cwd(), 'public', existingDoc.url)
-        if (existsSync(oldFilePath)) {
-          const { unlink } = await import('fs/promises')
-          await unlink(oldFilePath).catch(() => {}) // Ignore errors if file doesn't exist
-        }
+      // Delete old file from storage
+      try {
+        await deleteFile(existingDoc.url)
+      } catch (deleteError: any) {
+        console.error('Error deleting old file:', deleteError)
+        // Continue even if deletion fails
       }
-      // Note: Vercel Blob Storage files are automatically managed, no need to delete manually
 
       // Update existing document
       const document = await prisma.document.update({
@@ -138,8 +143,12 @@ export async function POST(
     }
   } catch (error: any) {
     console.error('Error uploading document:', error)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
-      { error: 'Failed to upload document' },
+      { 
+        error: error.message || 'Failed to upload document',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { put } from '@vercel/blob'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { uploadFile } from '@/lib/storage'
 
 export async function POST(
   request: NextRequest,
@@ -54,30 +51,22 @@ export async function POST(
 
     // Generate unique filename
     const fileExtension = photo.name.split('.').pop() || 'jpg'
-    const timestamp = Date.now()
-    const baseFileName = `staff-${installerId}-${timestamp}.${fileExtension}`
+    const fileName = `staff-${installerId}-${Date.now()}.${fileExtension}`
 
+    // Upload file using storage utility
     let photoUrl: string
-
-    // Use Vercel Blob Storage in production, fallback to filesystem for local development
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      // Upload to Vercel Blob Storage
-      const blob = await put(`staff/${baseFileName}`, photo, {
-        access: 'public',
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      })
-      photoUrl = blob.url
-    } else {
-      // Fallback to local filesystem for development
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'staff')
-      if (!existsSync(uploadsDir)) {
-        await mkdir(uploadsDir, { recursive: true })
-      }
-      const filePath = join(uploadsDir, baseFileName)
-      const bytes = await photo.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      await writeFile(filePath, buffer)
-      photoUrl = `/uploads/staff/${baseFileName}`
+    try {
+      const uploadResult = await uploadFile(photo, 'staff', fileName)
+      photoUrl = uploadResult.url
+    } catch (uploadError: any) {
+      console.error('Staff photo upload error:', uploadError)
+      return NextResponse.json(
+        { 
+          error: `Failed to upload photo: ${uploadError.message || 'Unknown error'}`,
+          details: process.env.NODE_ENV === 'development' ? uploadError.stack : undefined
+        },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
@@ -87,8 +76,12 @@ export async function POST(
     })
   } catch (error: any) {
     console.error('Error uploading staff photo:', error)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
-      { error: 'Failed to upload photo' },
+      { 
+        error: error.message || 'Failed to upload photo',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
