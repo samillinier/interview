@@ -64,8 +64,8 @@ const DOCUMENT_TYPES: Array<{
   },
   {
     id: 'business_registration',
-    name: 'Business Registration',
-    description: 'Business registration certificate',
+    name: 'Business Tax Receipt',
+    description: 'Business tax receipt certificate',
     required: true,
   },
   {
@@ -1591,21 +1591,21 @@ export default function DashboardPage() {
                                   installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-500' :
                                   'bg-yellow-500'
                                 }`}>
-                                  {getInitials(installer.firstName, installer.lastName)}
-                                </div>
+                              {getInitials(installer.firstName, installer.lastName)}
+                            </div>
                               )}
-                              {/* Photo overlay - shows if available and loads successfully */}
-                              {installer.photoUrl && (
-                                <Image
-                                  src={installer.photoUrl}
-                                  alt={`${installer.firstName} ${installer.lastName}`}
-                                  width={48}
-                                  height={48}
+                            {/* Photo overlay - shows if available and loads successfully */}
+                            {installer.photoUrl && (
+                              <Image
+                                src={installer.photoUrl}
+                                alt={`${installer.firstName} ${installer.lastName}`}
+                                width={48}
+                                height={48}
                                   className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
-                                  }}
-                                />
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
+                              />
                               )}
                             </div>
                             {/* Checkmark badge */}
@@ -2484,7 +2484,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="text-left">
                         <h3 className="text-lg font-bold text-slate-900">Insurance & Registration</h3>
-                        <p className="text-sm text-slate-500">Insurance, licenses, and business registration</p>
+                        <p className="text-sm text-slate-500">Insurance, licenses, and business tax receipt</p>
                       </div>
                     </div>
                     {expandedSections.insurance ? (
@@ -4404,7 +4404,7 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              </div>
+            </div>
             </div>
 
             {/* Footer with Save/Cancel */}
@@ -4444,7 +4444,7 @@ export default function DashboardPage() {
                   )}
                 </button>
               </div>
-            </div>
+              </div>
             </div>
           </motion.div>
         </motion.div>

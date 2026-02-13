@@ -71,8 +71,8 @@ const DOCUMENT_TYPES: Array<{
   },
   {
     id: 'business_registration',
-    name: 'Business Registration',
-    description: 'Business registration certificate',
+    name: 'Business Tax Receipt',
+    description: 'Business tax receipt certificate',
     required: true,
   },
   {
@@ -2184,8 +2184,83 @@ export default function InstallerProfileViewPage() {
                         </select>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3">
-                        {getStatusBadge(installer.status)}
+                      <div className="flex flex-wrap items-center gap-2.5 mt-4">
+                        {(() => {
+                          const sunbizDoc = documents.find((d: any) => d?.type === 'sunbiz')
+                          const liabilityDoc = documents.find((d: any) => d?.type === 'liability_insurance')
+                          const businessTaxDoc = documents.find((d: any) => d?.type === 'business_registration')
+                          
+                          const badges = []
+                          
+                          if (sunbizDoc?.verificationLinkStatus) {
+                            badges.push({
+                              label: 'Sunbiz',
+                              status: sunbizDoc.verificationLinkStatus,
+                            })
+                          }
+                          
+                          if (liabilityDoc?.verificationLinkStatus) {
+                            badges.push({
+                              label: 'Liability Insurance',
+                              status: liabilityDoc.verificationLinkStatus,
+                            })
+                          }
+                          
+                          if (businessTaxDoc?.verificationLinkStatus) {
+                            badges.push({
+                              label: 'Business Tax Receipt',
+                              status: businessTaxDoc.verificationLinkStatus,
+                            })
+                          }
+                          
+                          return badges.map((badge) => {
+                            const statusConfig = {
+                              active: {
+                                bg: 'bg-green-50',
+                                text: 'text-green-700',
+                                border: 'border-green-200',
+                                icon: CheckCircle2,
+                                iconColor: 'text-green-600',
+                              },
+                              expired: {
+                                bg: 'bg-red-50',
+                                text: 'text-red-700',
+                                border: 'border-red-200',
+                                icon: XCircle,
+                                iconColor: 'text-red-600',
+                              },
+                              pending: {
+                                bg: 'bg-yellow-50',
+                                text: 'text-yellow-700',
+                                border: 'border-yellow-200',
+                                icon: Clock,
+                                iconColor: 'text-yellow-600',
+                              },
+                            }
+                            
+                            const config = statusConfig[badge.status as keyof typeof statusConfig] || {
+                              bg: 'bg-slate-50',
+                              text: 'text-slate-600',
+                              border: 'border-slate-200',
+                              icon: AlertCircle,
+                              iconColor: 'text-slate-500',
+                            }
+                            
+                            const Icon = config.icon
+                            
+                            return (
+                              <div
+                                key={badge.label}
+                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bg} ${config.border} ${config.text} shadow-sm transition-all hover:shadow-md`}
+                              >
+                                <Icon className={`w-3.5 h-3.5 ${config.iconColor} flex-shrink-0`} />
+                                <span className="text-xs font-semibold capitalize">{badge.label}</span>
+                                <span className="text-xs font-medium opacity-75">•</span>
+                                <span className="text-xs font-bold capitalize">{badge.status}</span>
+                              </div>
+                            )
+                          })
+                        })()}
                       </div>
                     )}
                   </div>
@@ -2914,7 +2989,7 @@ export default function InstallerProfileViewPage() {
                   const existingUrl = existing?.url || existing?.fileUrl || existing?.file_url
 
                   // Only show verification link feature for specific document types
-                  const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration'
+                  const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance'
                   
                   const isEditingLink = hasVerificationLinkFeature && editingVerificationLink === existing?.id
                   const verificationLink = hasVerificationLinkFeature ? (existing?.verificationLink || verificationLinks[existing?.id]?.link || '') : ''
@@ -2965,15 +3040,12 @@ export default function InstallerProfileViewPage() {
                               </span>
                             )}
                           </div>
-                          {!hasActiveVerificationLink && (
-                            <>
-                              <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
-                              {existingName && (
-                                <p className="text-xs text-slate-600 mt-2 truncate">
-                                  <span className="font-semibold text-slate-700">Current:</span> {existingName}
-                                </p>
-                              )}
-                            </>
+                          {/* Always show description and file name */}
+                          <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
+                          {existingName && (
+                            <p className="text-xs text-slate-600 mt-2 truncate">
+                              <span className="font-semibold text-slate-700">Current:</span> {existingName}
+                            </p>
                           )}
                           
                           {/* Verification Link Section - Only for specific document types */}
@@ -3043,43 +3115,24 @@ export default function InstallerProfileViewPage() {
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
-                                  {verificationLink ? (
-                                    <button
-                                      onClick={() => {
-                                        setEditingVerificationLink(existing.id)
-                                        if (!verificationLinks[existing.id]) {
-                                          setVerificationLinks({
-                                            ...verificationLinks,
-                                            [existing.id]: {
-                                              link: verificationLink,
-                                              status: verificationLinkStatus,
-                                            },
-                                          })
-                                        }
-                                      }}
-                                      className="text-xs text-brand-green hover:text-brand-green-dark"
-                                    >
-                                      <Edit2 className="w-3 h-3" />
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        setEditingVerificationLink(existing.id)
-                                        if (!verificationLinks[existing.id]) {
-                                          setVerificationLinks({
-                                            ...verificationLinks,
-                                            [existing.id]: {
-                                              link: '',
-                                              status: '',
-                                            },
-                                          })
-                                        }
-                                      }}
-                                      className="text-xs text-brand-green hover:text-brand-green-dark"
-                                    >
-                                      <Edit2 className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setEditingVerificationLink(existing.id)
+                                      if (!verificationLinks[existing.id]) {
+                                        setVerificationLinks({
+                                          ...verificationLinks,
+                                          [existing.id]: {
+                                            link: verificationLink,
+                                            status: verificationLinkStatus,
+                                          },
+                                        })
+                                      }
+                                    }}
+                                    className="text-xs text-brand-green hover:text-brand-green-dark flex-shrink-0"
+                                    title="Edit verification link"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -3121,6 +3174,33 @@ export default function InstallerProfileViewPage() {
                             <Download className="w-4 h-4" />
                             View
                           </a>
+                        )}
+
+                        {existing?.id && hasVerificationLinkFeature && verificationLink && (
+                          <a
+                            href={verificationLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                            title={verificationLink}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Link
+                          </a>
+                        )}
+
+                        {existing?.id && hasVerificationLinkFeature && verificationLink && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              alert(`Verification Link:\n\n${verificationLink}`)
+                            }}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                            title="See verification link"
+                          >
+                            <Eye className="w-4 h-4" />
+                            See Link
+                          </button>
                         )}
 
                         {existing?.id && (

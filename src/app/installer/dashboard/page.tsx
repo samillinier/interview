@@ -155,6 +155,7 @@ export default function InstallerDashboardPage() {
     status: 'expired' | 'expiring'
   }>>([])
   const [notificationCount, setNotificationCount] = useState(0)
+  const [documents, setDocuments] = useState<any[]>([])
 
   useEffect(() => {
     checkAuthAndLoadProfile()
@@ -256,6 +257,20 @@ export default function InstallerDashboardPage() {
         })
         
         setExpiringItems(items)
+        
+        // Fetch documents
+        try {
+          const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
+          if (docsResponse.ok) {
+            const docsContentType = docsResponse.headers.get('content-type')
+            if (docsContentType && docsContentType.includes('application/json')) {
+              const docsData = await docsResponse.json()
+              setDocuments(docsData.documents || [])
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching documents:', error)
+        }
         
         // Fetch notification count
         try {
@@ -555,7 +570,7 @@ export default function InstallerDashboardPage() {
                     : installer.email.split('@')[0]
                   }!
                 </h2>
-                <p className="text-white/90">
+                <p className="text-white/90 mb-4">
                   {installer.status === 'passed' || installer.status === 'qualified' 
                     ? 'Your application has been approved. You can now manage your profile and view opportunities.'
                     : installer.status === 'pending'
@@ -563,6 +578,85 @@ export default function InstallerDashboardPage() {
                     : 'Thank you for your interest. Please check back for updates.'
                   }
                 </p>
+                {/* Document Status Badges */}
+                <div className="flex flex-wrap items-center gap-2.5 mt-4">
+                  {(() => {
+                    const sunbizDoc = documents.find((d: any) => d?.type === 'sunbiz')
+                    const liabilityDoc = documents.find((d: any) => d?.type === 'liability_insurance')
+                    const businessTaxDoc = documents.find((d: any) => d?.type === 'business_registration')
+                    
+                    const badges = []
+                    
+                    if (sunbizDoc?.verificationLinkStatus) {
+                      badges.push({
+                        label: 'Sunbiz',
+                        status: sunbizDoc.verificationLinkStatus,
+                      })
+                    }
+                    
+                    if (liabilityDoc?.verificationLinkStatus) {
+                      badges.push({
+                        label: 'Liability Insurance',
+                        status: liabilityDoc.verificationLinkStatus,
+                      })
+                    }
+                    
+                    if (businessTaxDoc?.verificationLinkStatus) {
+                      badges.push({
+                        label: 'Business Tax Receipt',
+                        status: businessTaxDoc.verificationLinkStatus,
+                      })
+                    }
+                    
+                    return badges.map((badge) => {
+                      const statusConfig = {
+                        active: {
+                          bg: 'bg-white/20',
+                          text: 'text-white',
+                          border: 'border-white/30',
+                          icon: CheckCircle2,
+                          iconColor: 'text-white',
+                        },
+                        expired: {
+                          bg: 'bg-red-500/20',
+                          text: 'text-white',
+                          border: 'border-red-300/30',
+                          icon: XCircle,
+                          iconColor: 'text-white',
+                        },
+                        pending: {
+                          bg: 'bg-yellow-500/20',
+                          text: 'text-white',
+                          border: 'border-yellow-300/30',
+                          icon: Clock,
+                          iconColor: 'text-white',
+                        },
+                      }
+                      
+                      const config = statusConfig[badge.status as keyof typeof statusConfig] || {
+                        bg: 'bg-white/10',
+                        text: 'text-white/80',
+                        border: 'border-white/20',
+                        icon: AlertCircle,
+                        iconColor: 'text-white/80',
+                      }
+                      
+                      const Icon = config.icon
+                      
+                      return (
+                        <div
+                          key={badge.label}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bg} ${config.border} ${config.text} shadow-sm transition-all hover:shadow-md backdrop-blur-sm`}
+                        >
+                          <Icon className={`w-3.5 h-3.5 ${config.iconColor} flex-shrink-0`} />
+                          <span className="text-xs font-semibold capitalize">{badge.label}</span>
+                          <span className="text-xs font-medium opacity-75">•</span>
+                          <span className="text-xs font-bold capitalize">{badge.status}</span>
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 {installer.status === 'passed' || installer.status === 'qualified' ? (

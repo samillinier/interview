@@ -58,8 +58,8 @@ const DOCUMENT_TYPES = [
   },
   { 
     id: 'business_registration', 
-    name: 'Business Registration',
-    description: 'Upload your business registration certificate',
+    name: 'Business Tax Receipt',
+    description: 'Upload your business tax receipt certificate',
     icon: Building2,
     required: true
   },
@@ -195,6 +195,8 @@ export default function AttachmentsPage() {
             fileUrl: doc.url,
             uploadedAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
             fileSize: doc.fileSize || doc.size,
+            verificationLink: doc.verificationLink || null,
+            verificationLinkStatus: doc.verificationLinkStatus || null,
           }))
           setDocuments(mappedDocuments)
         }
@@ -640,7 +642,7 @@ export default function AttachmentsPage() {
               const isUploading = uploading[docType.id]
               
               // Only show verification link feature for specific document types
-              const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration'
+              const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance'
               const hasActiveVerificationLink = hasVerificationLinkFeature && existingDoc?.verificationLink && existingDoc?.verificationLinkStatus === 'active'
 
               return (
@@ -693,17 +695,19 @@ export default function AttachmentsPage() {
                             </span>
                           </div>
                         )}
-                        {hasVerificationLinkFeature && existingDoc?.verificationLink && (
+                        {hasVerificationLinkFeature && existingDoc?.verificationLinkStatus && (
                           <div className="mt-2 flex items-center gap-2">
-                            <a
-                              href={existingDoc.verificationLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-brand-green hover:underline flex items-center gap-1"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Verification Link
-                            </a>
+                            {existingDoc?.verificationLink && (
+                              <a
+                                href={existingDoc.verificationLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-brand-green hover:underline flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Verification Link
+                              </a>
+                            )}
                             <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
                               existingDoc.verificationLinkStatus === 'active'
                                 ? 'bg-green-100 text-green-700' 
@@ -713,7 +717,7 @@ export default function AttachmentsPage() {
                                 ? 'bg-yellow-100 text-yellow-700'
                                 : 'bg-slate-100 text-slate-600'
                             }`}>
-                              {existingDoc.verificationLinkStatus || 'No status'}
+                              {existingDoc.verificationLinkStatus}
                             </span>
                           </div>
                         )}

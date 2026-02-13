@@ -351,6 +351,7 @@ export default function InstallerProfilePage() {
   const [showStaffModal, setShowStaffModal] = useState(false)
   const [editingStaff, setEditingStaff] = useState<any | null>(null)
   const [failedImageLoads, setFailedImageLoads] = useState<Set<string>>(new Set())
+  const [documents, setDocuments] = useState<any[]>([])
   
   // Historical Data Management
   const [historicalData, setHistoricalData] = useState<any[]>([])
@@ -982,9 +983,27 @@ export default function InstallerProfilePage() {
     if (installer?.id) {
       fetchStaffMembers()
       fetchHistoricalData()
+      fetchDocuments()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [installer?.id])
+
+  // Fetch documents
+  const fetchDocuments = async () => {
+    if (!installer?.id) return
+    try {
+      const response = await fetch(`/api/installers/${installer.id}/documents`)
+      if (response.ok) {
+        const docsContentType = response.headers.get('content-type')
+        if (docsContentType && docsContentType.includes('application/json')) {
+          const docsData = await response.json()
+          setDocuments(docsData.documents || [])
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching documents:', err)
+    }
+  }
 
   // Fetch historical data
   const fetchHistoricalData = async () => {
@@ -2206,12 +2225,87 @@ export default function InstallerProfilePage() {
                   )
                 })()}
                 <div className="mt-1">
-                  <div className="flex items-center gap-3">
-                    {installer && getStatusBadge(installer.status)}
+                  <div className="flex flex-wrap items-center gap-2.5 mt-4">
+                    {(() => {
+                      const sunbizDoc = documents.find((d: any) => d?.type === 'sunbiz')
+                      const liabilityDoc = documents.find((d: any) => d?.type === 'liability_insurance')
+                      const businessTaxDoc = documents.find((d: any) => d?.type === 'business_registration')
+                      
+                      const badges = []
+                      
+                      if (sunbizDoc?.verificationLinkStatus) {
+                        badges.push({
+                          label: 'Sunbiz',
+                          status: sunbizDoc.verificationLinkStatus,
+                        })
+                      }
+                      
+                      if (liabilityDoc?.verificationLinkStatus) {
+                        badges.push({
+                          label: 'Liability Insurance',
+                          status: liabilityDoc.verificationLinkStatus,
+                        })
+                      }
+                      
+                      if (businessTaxDoc?.verificationLinkStatus) {
+                        badges.push({
+                          label: 'Business Tax Receipt',
+                          status: businessTaxDoc.verificationLinkStatus,
+                        })
+                      }
+                      
+                      return badges.map((badge) => {
+                        const statusConfig = {
+                          active: {
+                            bg: 'bg-green-50',
+                            text: 'text-green-700',
+                            border: 'border-green-200',
+                            icon: CheckCircle2,
+                            iconColor: 'text-green-600',
+                          },
+                          expired: {
+                            bg: 'bg-red-50',
+                            text: 'text-red-700',
+                            border: 'border-red-200',
+                            icon: XCircle,
+                            iconColor: 'text-red-600',
+                          },
+                          pending: {
+                            bg: 'bg-yellow-50',
+                            text: 'text-yellow-700',
+                            border: 'border-yellow-200',
+                            icon: Clock,
+                            iconColor: 'text-yellow-600',
+                          },
+                        }
+                        
+                        const config = statusConfig[badge.status as keyof typeof statusConfig] || {
+                          bg: 'bg-slate-50',
+                          text: 'text-slate-600',
+                          border: 'border-slate-200',
+                          icon: AlertCircle,
+                          iconColor: 'text-slate-500',
+                        }
+                        
+                        const Icon = config.icon
+                        
+                        return (
+                          <div
+                            key={badge.label}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bg} ${config.border} ${config.text} shadow-sm transition-all hover:shadow-md`}
+                          >
+                            <Icon className={`w-3.5 h-3.5 ${config.iconColor} flex-shrink-0`} />
+                            <span className="text-xs font-semibold capitalize">{badge.label}</span>
+                            <span className="text-xs font-medium opacity-75">•</span>
+                            <span className="text-xs font-bold capitalize">{badge.status}</span>
+                          </div>
+                        )
+                      })
+                    })()}
+                  </div>
+            </div>
                   </div>
                 </div>
-              </div>
-            </div>
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Barcode Section - Right Side */}
               {installer && (
@@ -2220,9 +2314,9 @@ export default function InstallerProfilePage() {
                     installerId={installer.id}
                     installerName={`${installer.firstName} ${installer.lastName}`.trim()}
                   />
-                </div>
+                  </div>
               )}
-            </div>
+                </div>
           </div>
         </motion.div>
 
@@ -2955,14 +3049,14 @@ export default function InstallerProfilePage() {
                   Insurance Coverage
                 </h3>
 
-                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-5 h-5 text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
+                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                          <Shield className="w-5 h-5 text-brand-green" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
                         {isEditing ? (
                           <div className="flex items-center gap-4">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -2990,21 +3084,21 @@ export default function InstallerProfilePage() {
                           <p className="font-semibold text-slate-900">
                             {hasInsurance !== undefined ? (
                               hasInsurance ? (
-                                <span className="text-success-600 flex items-center gap-1">
-                                  <CheckCircle2 className="w-4 h-4" /> Yes
-                                </span>
-                              ) : (
-                                <span className="text-slate-400">No</span>
+                              <span className="text-success-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-4 h-4" /> Yes
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No</span>
                               )
                             ) : (
                               <span className="text-slate-400">Not provided</span>
                             )}
                           </p>
                         )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
                 <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                   <div className="flex items-center justify-between">
@@ -3207,7 +3301,7 @@ export default function InstallerProfilePage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-brand-green" />
-                  Business Registration
+                  Business Tax Receipt
                 </h3>
 
                 <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
