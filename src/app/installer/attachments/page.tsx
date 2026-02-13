@@ -44,6 +44,8 @@ interface Document {
   fileUrl: string
   uploadedAt: string
   fileSize?: number
+  verificationLink?: string | null
+  verificationLinkStatus?: string | null
 }
 
 const DOCUMENT_TYPES = [
