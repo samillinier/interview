@@ -359,11 +359,11 @@ export default function AnalyticsPage() {
                           transition={{ duration: 0.5, delay: index * 0.1 }}
                           className={`h-2 rounded-full ${
                             item.status === 'passed' || item.status === 'qualified' 
-                              ? 'bg-green-500' 
+                              ? 'bg-blue-500' 
                               : item.status === 'failed' 
                               ? 'bg-red-500' 
                               : item.status === 'active'
-                              ? 'bg-blue-500'
+                              ? 'bg-brand-green'
                               : 'bg-yellow-500'
                           }`}
                         />

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { deleteFile } from '@/lib/storage'
 
-export async function DELETE(
+export async function PATCH(
   request: NextRequest,
-  context: { 
-    params: Promise<{ id: string; documentId: string }> | { id: string; documentId: string }
-  }
+  context: { params: Promise<{ id: string; documentId: string }> | { id: string; documentId: string } }
 ) {
   try {
     const params = context.params
@@ -14,39 +11,38 @@ export async function DELETE(
     const installerId = resolvedParams.id
     const documentId = resolvedParams.documentId
 
-    // Find document
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
+    const body = await request.json()
+    const { verificationLink, verificationLinkStatus } = body
+
+    // Verify document belongs to installer
+    const document = await prisma.document.findFirst({
+      where: {
+        id: documentId,
+        installerId,
+      },
     })
 
-    if (!document || document.installerId !== installerId) {
+    if (!document) {
       return NextResponse.json(
         { error: 'Document not found' },
         { status: 404 }
       )
     }
 
-    // Delete file from storage (handles both local and cloud storage)
-    try {
-      await deleteFile(document.url)
-    } catch (deleteError: any) {
-      console.error('Error deleting file from storage:', deleteError)
-      // Continue with database deletion even if file deletion fails
-    }
-
-    // Delete document from database
-    await prisma.document.delete({
+    // Update document with verification link
+    const updatedDocument = await prisma.document.update({
       where: { id: documentId },
+      data: {
+        verificationLink: verificationLink !== undefined ? (verificationLink === '' ? null : verificationLink) : document.verificationLink,
+        verificationLinkStatus: verificationLinkStatus !== undefined ? (verificationLinkStatus === '' ? null : verificationLinkStatus) : document.verificationLinkStatus,
+      },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ document: updatedDocument })
   } catch (error: any) {
-    console.error('Error deleting document:', error)
+    console.error('Error updating document verification link:', error)
     return NextResponse.json(
-      { 
-        error: error.message || 'Failed to delete document',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
+      { error: error.message || 'Failed to update verification link' },
       { status: 500 }
     )
   }

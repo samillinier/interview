@@ -693,11 +693,11 @@ export default function NotificationsPage() {
                       </div>
                       <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                         installer.status === 'passed' || installer.status === 'qualified'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-blue-100 text-blue-700'
                           : installer.status === 'failed'
                           ? 'bg-red-100 text-red-700'
                           : installer.status === 'active'
-                          ? 'bg-blue-100 text-blue-700'
+                          ? 'bg-brand-green/10 text-brand-green-dark'
                           : 'bg-amber-100 text-amber-700'
                       }`}>
                         {installer.status}

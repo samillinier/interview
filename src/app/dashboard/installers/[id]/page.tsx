@@ -64,6 +64,12 @@ const DOCUMENT_TYPES: Array<{
   required: boolean
 }> = [
   {
+    id: 'sunbiz',
+    name: 'Sunbiz',
+    description: 'Sunbiz registration document',
+    required: false,
+  },
+  {
     id: 'business_registration',
     name: 'Business Registration',
     description: 'Business registration certificate',
@@ -428,6 +434,8 @@ export default function InstallerProfileViewPage() {
   const [documents, setDocuments] = useState<any[]>([])
   const [uploadingDocumentType, setUploadingDocumentType] = useState<string | null>(null)
   const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
+  const [editingVerificationLink, setEditingVerificationLink] = useState<string | null>(null)
+  const [verificationLinks, setVerificationLinks] = useState<{ [key: string]: { link: string; status: string } }>({})
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
   const [staffMembers, setStaffMembers] = useState<any[]>([])
   const [failedImageLoads, setFailedImageLoads] = useState<Set<string>>(new Set())
@@ -460,7 +468,10 @@ export default function InstallerProfileViewPage() {
     year: new Date().getFullYear().toString(),
     firstName: '',
     lastName: '',
+    email: '',
     phone: '',
+    digitalId: '',
+    workroom: '',
     yearsOfExperience: '',
     flooringSpecialties: '',
     flooringSkills: '',
@@ -482,6 +493,18 @@ export default function InstallerProfileViewPage() {
     isSunbizRegistered: undefined,
     isSunbizActive: undefined,
     hasBusinessLicense: undefined,
+    feiEin: '',
+    employerLiabilityPolicyNumber: '',
+    llrpExpiry: '',
+    btrExpiry: '',
+    generalLiabilityExpiry: '',
+    automobileLiabilityExpiry: '',
+    employersLiabilityExpiry: '',
+    canPassBackgroundCheck: undefined,
+    backgroundCheckDetails: '',
+    serviceAreas: '',
+    travelLocations: '',
+    previousEmployers: '',
     willingToTravel: undefined,
     maxTravelDistance: '',
     canStartImmediately: undefined,
@@ -722,6 +745,17 @@ export default function InstallerProfileViewPage() {
       if (docsContentType && docsContentType.includes('application/json')) {
         const docsData = await docsResponse.json()
         setDocuments(docsData.documents || [])
+        // Initialize verification links state
+        const linksState: { [key: string]: { link: string; status: string } } = {}
+        docsData.documents?.forEach((doc: any) => {
+          if (doc.id) {
+            linksState[doc.id] = {
+              link: doc.verificationLink || '',
+              status: doc.verificationLinkStatus || '',
+            }
+          }
+        })
+        setVerificationLinks(linksState)
       }
     }
   }
@@ -782,6 +816,28 @@ export default function InstallerProfileViewPage() {
       setError(e?.message || 'Failed to delete document')
     } finally {
       setDeletingDocumentId(null)
+    }
+  }
+
+  const handleUpdateVerificationLink = async (documentId: string, link: string, status: string) => {
+    if (!installerId) return
+    try {
+      const res = await fetch(`/api/installers/${installerId}/documents/${documentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationLink: link, verificationLinkStatus: status }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to update verification link')
+      }
+      await refreshDocuments()
+      setEditingVerificationLink(null)
+      setSuccess('Verification link updated')
+      setTimeout(() => setSuccess(''), 2000)
+    } catch (e: any) {
+      console.error('Update verification link error:', e)
+      setError(e?.message || 'Failed to update verification link')
     }
   }
 
@@ -879,7 +935,10 @@ export default function InstallerProfileViewPage() {
       year: history.year.toString(),
       firstName: history.firstName || '',
       lastName: history.lastName || '',
+      email: history.email || '',
       phone: history.phone || '',
+      digitalId: history.digitalId || '',
+      workroom: history.workroom || '',
       yearsOfExperience: history.yearsOfExperience?.toString() || '',
       flooringSpecialties: history.flooringSpecialties || '',
       flooringSkills: history.flooringSkills || '',
@@ -901,6 +960,18 @@ export default function InstallerProfileViewPage() {
       isSunbizRegistered: history.isSunbizRegistered,
       isSunbizActive: history.isSunbizActive,
       hasBusinessLicense: history.hasBusinessLicense,
+      feiEin: history.feiEin || '',
+      employerLiabilityPolicyNumber: history.employerLiabilityPolicyNumber || '',
+      llrpExpiry: history.llrpExpiry ? new Date(history.llrpExpiry).toISOString().split('T')[0] : '',
+      btrExpiry: history.btrExpiry ? new Date(history.btrExpiry).toISOString().split('T')[0] : '',
+      generalLiabilityExpiry: history.generalLiabilityExpiry ? new Date(history.generalLiabilityExpiry).toISOString().split('T')[0] : '',
+      automobileLiabilityExpiry: history.automobileLiabilityExpiry ? new Date(history.automobileLiabilityExpiry).toISOString().split('T')[0] : '',
+      employersLiabilityExpiry: history.employersLiabilityExpiry ? new Date(history.employersLiabilityExpiry).toISOString().split('T')[0] : '',
+      canPassBackgroundCheck: history.canPassBackgroundCheck,
+      backgroundCheckDetails: history.backgroundCheckDetails || '',
+      serviceAreas: history.serviceAreas || '',
+      travelLocations: history.travelLocations || '',
+      previousEmployers: history.previousEmployers || '',
       willingToTravel: history.willingToTravel,
       maxTravelDistance: history.maxTravelDistance?.toString() || '',
       canStartImmediately: history.canStartImmediately,
@@ -989,6 +1060,11 @@ export default function InstallerProfileViewPage() {
       // Parse dates
       if (formData.licenseExpiry) formData.licenseExpiry = new Date(formData.licenseExpiry).toISOString()
       if (formData.preferredStartDate) formData.preferredStartDate = new Date(formData.preferredStartDate).toISOString()
+      if (formData.llrpExpiry) formData.llrpExpiry = new Date(formData.llrpExpiry).toISOString()
+      if (formData.btrExpiry) formData.btrExpiry = new Date(formData.btrExpiry).toISOString()
+      if (formData.generalLiabilityExpiry) formData.generalLiabilityExpiry = new Date(formData.generalLiabilityExpiry).toISOString()
+      if (formData.automobileLiabilityExpiry) formData.automobileLiabilityExpiry = new Date(formData.automobileLiabilityExpiry).toISOString()
+      if (formData.employersLiabilityExpiry) formData.employersLiabilityExpiry = new Date(formData.employersLiabilityExpiry).toISOString()
 
       const response = await fetch(url, {
         method,
@@ -1124,7 +1200,7 @@ export default function InstallerProfileViewPage() {
           willingToTravel,
           maxTravelDistance,
           canStartImmediately,
-          preferredStartDate: preferredStartDate || null,
+          preferredStartDate: preferredStartDate ? new Date(preferredStartDate).toISOString() : null,
           mondayToFridayAvailability,
           saturdayAvailability,
           availability,
@@ -1548,7 +1624,7 @@ export default function InstallerProfileViewPage() {
       case 'passed':
       case 'qualified':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
             <CheckCircle2 className="w-4 h-4" />
             Qualified
           </span>
@@ -1569,7 +1645,7 @@ export default function InstallerProfileViewPage() {
         )
       case 'active':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green-dark">
             <CheckCircle2 className="w-4 h-4" />
             Active
           </span>
@@ -2006,7 +2082,18 @@ export default function InstallerProfileViewPage() {
                 {/* Profile Photo on Left */}
                 <div className="flex-shrink-0">
                   <div className="relative group">
-                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
+                    {/* Status-based border color */}
+                    <div className={`w-20 h-20 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
+                      installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                      installer.status === 'passed' || installer.status === 'qualified' ? 'ring-4 ring-blue-500' :
+                      installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
+                      'ring-4 ring-yellow-500'
+                    } ${!(photoUrl || installer.photoUrl) ? (
+                      installer.status === 'active' ? 'bg-brand-green/10' :
+                      installer.status === 'passed' || installer.status === 'qualified' ? 'bg-blue-100' :
+                      installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-100' :
+                      'bg-yellow-100'
+                    ) : ''}`}>
                       {(photoUrl || installer.photoUrl) ? (
                         <Image
                           src={photoUrl || installer.photoUrl || ''}
@@ -2020,9 +2107,22 @@ export default function InstallerProfileViewPage() {
                           }}
                         />
                       ) : (
-                        <User className="w-10 h-10 text-brand-green" />
+                        <User className={`w-10 h-10 ${
+                          installer.status === 'active' ? 'text-brand-green-dark' :
+                          installer.status === 'passed' || installer.status === 'qualified' ? 'text-blue-600' :
+                          installer.status === 'failed' || installer.status === 'notQualified' ? 'text-red-600' :
+                          'text-yellow-600'
+                        }`} />
                       )}
                     </div>
+                    {/* Checkmark badge */}
+                    {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
+                      <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-lg z-20 ${
+                        installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
+                      }`}>
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                      </div>
+                    )}
                     <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
                       <input
                         type="file"
@@ -2092,30 +2192,14 @@ export default function InstallerProfileViewPage() {
                 </div>
               </div>
               <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-                {installer.overallScore !== null && installer.overallScore !== undefined && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-right"
-                  >
-                    <p className="text-sm text-slate-500 mb-2 font-medium uppercase tracking-wide">Overall Score</p>
-                    <div className="flex items-baseline gap-2 justify-end">
-                      <span className="text-5xl font-bold bg-gradient-to-br from-brand-green to-brand-green-dark bg-clip-text text-transparent">
-                        {installer.overallScore}
-                      </span>
-                      <span className="text-xl text-slate-400 font-medium">/100</span>
-                    </div>
-                  </motion.div>
-                )}
                 {/* Barcode Section - Right Side */}
                 {installer && (
                   <div className="flex-shrink-0">
                     <InstallerBarcode 
                       installerId={installer.id}
                       installerName={`${installer.firstName} ${installer.lastName}`.trim()}
-                    />
-                  </div>
+                        />
+                      </div>
                 )}
               </div>
             </div>
@@ -2241,7 +2325,7 @@ export default function InstallerProfileViewPage() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-700 text-lg hover:underline transition-colors"
                           >
-                            <span className="break-all">{installer.digitalId}</span>
+                            <span>Digital ID</span>
                             <ExternalLink className="w-4 h-4 flex-shrink-0" />
                           </a>
                         ) : (
@@ -2829,14 +2913,29 @@ export default function InstallerProfileViewPage() {
                   const existingName = existing?.name || existing?.fileName || existing?.file_name
                   const existingUrl = existing?.url || existing?.fileUrl || existing?.file_url
 
+                  // Only show verification link feature for specific document types
+                  const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration'
+                  
+                  const isEditingLink = hasVerificationLinkFeature && editingVerificationLink === existing?.id
+                  const verificationLink = hasVerificationLinkFeature ? (existing?.verificationLink || verificationLinks[existing?.id]?.link || '') : ''
+                  const verificationLinkStatus = hasVerificationLinkFeature ? (existing?.verificationLinkStatus || verificationLinks[existing?.id]?.status || '') : ''
+                  const hasActiveVerificationLink = hasVerificationLinkFeature && verificationLink && verificationLinkStatus === 'active'
+
                   return (
                     <div
                       key={docType.id}
-                      className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                      className={`p-4 rounded-xl border transition-colors ${
+                        hasActiveVerificationLink 
+                          ? 'border-brand-green/50 bg-brand-green/5 hover:bg-brand-green/10' 
+                          : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
+                            {hasActiveVerificationLink && (
+                              <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0" />
+                            )}
                             <p className="font-bold text-slate-900 truncate">{docType.name}</p>
                             {docType.required && (
                               <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
@@ -2852,12 +2951,138 @@ export default function InstallerProfileViewPage() {
                                 Missing
                               </span>
                             )}
+                            {existing?.id && hasVerificationLinkFeature && verificationLinkStatus && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full capitalize font-semibold ${
+                                verificationLinkStatus === 'active'
+                                  ? 'bg-green-100 text-green-700' 
+                                  : verificationLinkStatus === 'expired'
+                                  ? 'bg-red-100 text-red-700'
+                                  : verificationLinkStatus === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {verificationLinkStatus}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
-                          {existingName && (
-                            <p className="text-xs text-slate-600 mt-2 truncate">
-                              <span className="font-semibold text-slate-700">Current:</span> {existingName}
-                            </p>
+                          {!hasActiveVerificationLink && (
+                            <>
+                              <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
+                              {existingName && (
+                                <p className="text-xs text-slate-600 mt-2 truncate">
+                                  <span className="font-semibold text-slate-700">Current:</span> {existingName}
+                                </p>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* Verification Link Section - Only for specific document types */}
+                          {existing?.id && hasVerificationLinkFeature && (
+                            <div className="mt-3 space-y-2">
+                              {isEditingLink ? (
+                                <div className="space-y-2">
+                                  <input
+                                    type="url"
+                                    placeholder="Enter verification link"
+                                    value={verificationLinks[existing.id]?.link || ''}
+                                    onChange={(e) => {
+                                      setVerificationLinks({
+                                        ...verificationLinks,
+                                        [existing.id]: {
+                                          link: e.target.value,
+                                          status: verificationLinks[existing.id]?.status || '',
+                                        },
+                                      })
+                                    }}
+                                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-white"
+                                  />
+                                  <div className="flex items-center gap-3">
+                                    <select
+                                      value={verificationLinks[existing.id]?.status || ''}
+                                      onChange={(e) => {
+                                        setVerificationLinks({
+                                          ...verificationLinks,
+                                          [existing.id]: {
+                                            link: verificationLinks[existing.id]?.link || '',
+                                            status: e.target.value,
+                                          },
+                                        })
+                                      }}
+                                      className="px-3 py-1 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-white"
+                                    >
+                                      <option value="">Select status</option>
+                                      <option value="active">Active</option>
+                                      <option value="expired">Expired</option>
+                                      <option value="pending">Pending</option>
+                                    </select>
+                                    <button
+                                      onClick={() => {
+                                        const linkData = verificationLinks[existing.id] || { link: '', status: '' }
+                                        handleUpdateVerificationLink(existing.id, linkData.link, linkData.status)
+                                      }}
+                                      className="px-3 py-1 text-xs bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingVerificationLink(null)
+                                        setVerificationLinks({
+                                          ...verificationLinks,
+                                          [existing.id]: {
+                                            link: verificationLink,
+                                            status: verificationLinkStatus,
+                                          },
+                                        })
+                                      }}
+                                      className="px-3 py-1 text-xs bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {verificationLink ? (
+                                    <button
+                                      onClick={() => {
+                                        setEditingVerificationLink(existing.id)
+                                        if (!verificationLinks[existing.id]) {
+                                          setVerificationLinks({
+                                            ...verificationLinks,
+                                            [existing.id]: {
+                                              link: verificationLink,
+                                              status: verificationLinkStatus,
+                                            },
+                                          })
+                                        }
+                                      }}
+                                      className="text-xs text-brand-green hover:text-brand-green-dark"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setEditingVerificationLink(existing.id)
+                                        if (!verificationLinks[existing.id]) {
+                                          setVerificationLinks({
+                                            ...verificationLinks,
+                                            [existing.id]: {
+                                              link: '',
+                                              status: '',
+                                            },
+                                          })
+                                        }
+                                      }}
+                                      className="text-xs text-brand-green hover:text-brand-green-dark"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -6821,6 +7046,16 @@ export default function InstallerProfileViewPage() {
                       />
                     </div>
                     <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={historyForm.email || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, email: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Email address"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
                       <input
                         type="tel"
@@ -6828,6 +7063,26 @@ export default function InstallerProfileViewPage() {
                         onChange={(e) => setHistoryForm({ ...historyForm, phone: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Digital ID</label>
+                      <input
+                        type="text"
+                        value={historyForm.digitalId || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, digitalId: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Digital ID or Badge #"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Workroom</label>
+                      <input
+                        type="text"
+                        value={historyForm.workroom || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, workroom: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Workroom location"
                       />
                     </div>
                     <div>
@@ -7317,6 +7572,121 @@ export default function InstallerProfileViewPage() {
                         </label>
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">FEI / EIN</label>
+                      <input
+                        type="text"
+                        value={historyForm.feiEin || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, feiEin: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="FEI/EIN number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Employer Liability Policy Number</label>
+                      <input
+                        type="text"
+                        value={historyForm.employerLiabilityPolicyNumber || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, employerLiabilityPolicyNumber: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Policy number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">LRRP Expiry</label>
+                      <input
+                        type="date"
+                        max="2099-12-31"
+                        value={historyForm.llrpExpiry || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, llrpExpiry: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">BTR Expiry</label>
+                      <input
+                        type="date"
+                        max="2099-12-31"
+                        value={historyForm.btrExpiry || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, btrExpiry: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">General Liability Expiry</label>
+                      <input
+                        type="date"
+                        max="2099-12-31"
+                        value={historyForm.generalLiabilityExpiry || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, generalLiabilityExpiry: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Automobile Liability Expiry</label>
+                      <input
+                        type="date"
+                        max="2099-12-31"
+                        value={historyForm.automobileLiabilityExpiry || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, automobileLiabilityExpiry: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Employers Liability Expiry</label>
+                      <input
+                        type="date"
+                        max="2099-12-31"
+                        value={historyForm.employersLiabilityExpiry || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, employersLiabilityExpiry: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Background Check */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-brand-green" />
+                    Background Check
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Can Pass Background Check</label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="canPassBackgroundCheck"
+                            checked={historyForm.canPassBackgroundCheck === true}
+                            onChange={() => setHistoryForm({ ...historyForm, canPassBackgroundCheck: true })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">Yes</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="canPassBackgroundCheck"
+                            checked={historyForm.canPassBackgroundCheck === false}
+                            onChange={() => setHistoryForm({ ...historyForm, canPassBackgroundCheck: false })}
+                            className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                          />
+                          <span className="text-slate-900">No</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Background Check Details</label>
+                      <textarea
+                        value={historyForm.backgroundCheckDetails || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, backgroundCheckDetails: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                        placeholder="Background check details"
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -7430,6 +7800,36 @@ export default function InstallerProfileViewPage() {
                         <option value="part-time">Part-time</option>
                         <option value="contract">Contract</option>
                       </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Service Areas</label>
+                      <input
+                        type="text"
+                        value={historyForm.serviceAreas || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, serviceAreas: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Service areas (comma-separated)"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Travel Locations</label>
+                      <input
+                        type="text"
+                        value={historyForm.travelLocations || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, travelLocations: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        placeholder="Travel locations (comma-separated)"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Previous Employers</label>
+                      <textarea
+                        value={historyForm.previousEmployers || ''}
+                        onChange={(e) => setHistoryForm({ ...historyForm, previousEmployers: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                        placeholder="Previous employers"
+                        rows={3}
+                      />
                     </div>
                   </div>
                 </div>

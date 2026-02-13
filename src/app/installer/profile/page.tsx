@@ -499,7 +499,7 @@ export default function InstallerProfilePage() {
       case 'passed':
       case 'qualified':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
             <CheckCircle2 className="w-4 h-4" />
             Qualified
           </span>
@@ -520,7 +520,7 @@ export default function InstallerProfilePage() {
         )
       case 'active':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green-dark">
             <CheckCircle2 className="w-4 h-4" />
             Active
           </span>
@@ -641,6 +641,7 @@ export default function InstallerProfilePage() {
   const [hasOwnTools, setHasOwnTools] = useState<boolean | undefined>(undefined)
   const [toolsDescription, setToolsDescription] = useState('')
   const [hasVehicle, setHasVehicle] = useState<boolean | undefined>(undefined)
+  const [hasInsurance, setHasInsurance] = useState<boolean | undefined>(undefined)
   const [hasGeneralLiability, setHasGeneralLiability] = useState<boolean | undefined>(undefined)
   const [hasCommercialAutoLiability, setHasCommercialAutoLiability] = useState<boolean | undefined>(undefined)
   const [hasWorkersComp, setHasWorkersComp] = useState<boolean | undefined>(undefined)
@@ -858,6 +859,7 @@ export default function InstallerProfilePage() {
         const hasVehicleValue = profileData.installer.hasVehicle ?? 
           (profileData.installer.vehicleDescription && profileData.installer.vehicleDescription.trim().length > 0 ? true : false)
         setHasVehicle(hasVehicleValue)
+        setHasInsurance(profileData.installer.hasInsurance)
         setHasGeneralLiability(profileData.installer.hasGeneralLiability)
         setHasCommercialAutoLiability(profileData.installer.hasCommercialAutoLiability)
         setHasWorkersComp(profileData.installer.hasWorkersComp)
@@ -1521,6 +1523,7 @@ export default function InstallerProfilePage() {
           hasOwnTools: hasOwnTools,
           toolsDescription: hasOwnTools === false ? null : toolsDescription.trim() || undefined,
           hasVehicle: hasVehicle,
+          hasInsurance: hasInsurance,
           hasGeneralLiability: hasGeneralLiability,
           hasCommercialAutoLiability: hasCommercialAutoLiability,
           hasWorkersComp: hasWorkersComp,
@@ -2112,7 +2115,18 @@ export default function InstallerProfilePage() {
               {/* Profile Photo on Left */}
               <div className="flex-shrink-0">
                 <div className="relative group">
-                  <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-brand-green/30 shadow-lg flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
+                  {/* Status-based border color */}
+                  <div className={`w-20 h-20 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
+                    installer && installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                    installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'ring-4 ring-blue-500' :
+                    installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'ring-4 ring-red-500' :
+                    'ring-4 ring-yellow-500'
+                  } ${!photoUrl ? (
+                    installer && installer.status === 'active' ? 'bg-brand-green/10' :
+                    installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'bg-blue-100' :
+                    installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'bg-red-100' :
+                    'bg-yellow-100'
+                  ) : ''}`}>
                     {photoUrl ? (
                       <Image
                         src={photoUrl}
@@ -2125,9 +2139,22 @@ export default function InstallerProfilePage() {
                         }}
                       />
                     ) : (
-                      <User className="w-10 h-10 text-brand-green" />
+                      <User className={`w-10 h-10 ${
+                        installer && installer.status === 'active' ? 'text-brand-green-dark' :
+                        installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'text-blue-600' :
+                        installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'text-red-600' :
+                        'text-yellow-600'
+                      }`} />
                     )}
                   </div>
+                  {/* Checkmark badge */}
+                  {installer && (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
+                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-lg z-20 ${
+                      installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
+                    }`}>
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                   {/* Photo Upload Overlay */}
                   <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
                     <input
@@ -2197,22 +2224,6 @@ export default function InstallerProfilePage() {
               )}
             </div>
           </div>
-          
-          {installer && (installer.status === 'pending' || (installer.status !== 'passed' && installer.status !== 'qualified')) && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="pt-4 border-t border-slate-200/60"
-            >
-              <p className="text-base text-slate-700 font-medium">
-                {installer && (installer.status === 'pending'
-                  ? '⏳ Application under review'
-                  : '📋 Please check back for updates')
-                }
-              </p>
-            </motion.div>
-          )}
         </motion.div>
 
           {/* Profile Information */}
@@ -2944,29 +2955,56 @@ export default function InstallerProfilePage() {
                   Insurance Coverage
                 </h3>
 
-                {installer && installer.hasInsurance !== undefined && (
-                  <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                          <Shield className="w-5 h-5 text-brand-green" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
+                <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                        <Shield className="w-5 h-5 text-brand-green" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Has Insurance</p>
+                        {isEditing ? (
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="hasInsurance"
+                                checked={hasInsurance === true}
+                                onChange={() => setHasInsurance(true)}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900 font-medium">Yes</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="hasInsurance"
+                                checked={hasInsurance === false}
+                                onChange={() => setHasInsurance(false)}
+                                className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                              />
+                              <span className="text-slate-900 font-medium">No</span>
+                            </label>
+                          </div>
+                        ) : (
                           <p className="font-semibold text-slate-900">
-                            {installer && installer.hasInsurance ? (
-                              <span className="text-success-600 flex items-center gap-1">
-                                <CheckCircle2 className="w-4 h-4" /> Yes
-                              </span>
+                            {hasInsurance !== undefined ? (
+                              hasInsurance ? (
+                                <span className="text-success-600 flex items-center gap-1">
+                                  <CheckCircle2 className="w-4 h-4" /> Yes
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">No</span>
+                              )
                             ) : (
-                              <span className="text-slate-400">No</span>
+                              <span className="text-slate-400">Not provided</span>
                             )}
                           </p>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                   <div className="flex items-center justify-between">

@@ -191,6 +191,12 @@ export default function PaymentPage() {
         }),
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to update payment information' }))
+        setError(errorData.error || errorData.details || 'Failed to update payment information')
+        return
+      }
+
       const data = await response.json()
 
       if (data.installer) {

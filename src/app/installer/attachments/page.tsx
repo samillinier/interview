@@ -22,7 +22,8 @@ import {
   Download,
   Trash2,
   CreditCard,
-  Briefcase
+  Briefcase,
+  ExternalLink
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -46,6 +47,13 @@ interface Document {
 }
 
 const DOCUMENT_TYPES = [
+  { 
+    id: 'sunbiz', 
+    name: 'Sunbiz',
+    description: 'Upload your Sunbiz registration document',
+    icon: Building2,
+    required: false
+  },
   { 
     id: 'business_registration', 
     name: 'Business Registration',
@@ -177,7 +185,16 @@ export default function AttachmentsPage() {
         const docsContentType = docsResponse.headers.get('content-type')
         if (docsContentType && docsContentType.includes('application/json')) {
           const docsData = await docsResponse.json()
-          setDocuments(docsData.documents || [])
+          // Map API response fields to frontend expected fields
+          const mappedDocuments = (docsData.documents || []).map((doc: any) => ({
+            id: doc.id,
+            type: doc.type,
+            fileName: doc.name || 'Document',
+            fileUrl: doc.url,
+            uploadedAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
+            fileSize: doc.fileSize || doc.size,
+          }))
+          setDocuments(mappedDocuments)
         }
       }
     } catch (err: any) {
@@ -219,7 +236,16 @@ export default function AttachmentsPage() {
       }
 
       if (data.document) {
-        setDocuments([...documents.filter(d => d.type !== type), data.document])
+        // Map API response fields to frontend expected fields
+        const mappedDocument = {
+          id: data.document.id,
+          type: data.document.type,
+          fileName: data.document.name || file.name,
+          fileUrl: data.document.url,
+          uploadedAt: data.document.createdAt || data.document.uploadedAt || new Date().toISOString(),
+          fileSize: data.document.fileSize || file.size,
+        }
+        setDocuments([...documents.filter(d => d.type !== type), mappedDocument])
         setSuccess(`${DOCUMENT_TYPES.find(dt => dt.id === type)?.name} uploaded successfully!`)
         setTimeout(() => setSuccess(''), 3000)
       }
@@ -610,13 +636,21 @@ export default function AttachmentsPage() {
               const Icon = docType.icon
               const existingDoc = documents.find(d => d.type === docType.id)
               const isUploading = uploading[docType.id]
+              
+              // Only show verification link feature for specific document types
+              const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration'
+              const hasActiveVerificationLink = hasVerificationLinkFeature && existingDoc?.verificationLink && existingDoc?.verificationLinkStatus === 'active'
 
               return (
                 <motion.div
                   key={docType.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 backdrop-blur-sm"
+                  className={`bg-white rounded-2xl shadow-lg border p-6 backdrop-blur-sm ${
+                    hasActiveVerificationLink 
+                      ? 'border-brand-green/50 bg-brand-green/5' 
+                      : 'border-slate-200/60'
+                  }`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4 flex-1">
@@ -627,6 +661,9 @@ export default function AttachmentsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
+                          {hasActiveVerificationLink && (
+                            <CheckCircle2 className="w-5 h-5 text-brand-green flex-shrink-0" />
+                          )}
                           <h3 className="text-lg font-bold text-slate-900">{docType.name}</h3>
                           {docType.required && (
                             <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
@@ -638,7 +675,44 @@ export default function AttachmentsPage() {
                         {existingDoc && (
                           <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
                             <CheckCircle2 className="w-4 h-4 text-success-600" />
-                            <span>Uploaded on {new Date(existingDoc.uploadedAt).toLocaleDateString()}</span>
+                            <span>
+                              Uploaded on {
+                                existingDoc.uploadedAt 
+                                  ? (() => {
+                                      try {
+                                        const date = new Date(existingDoc.uploadedAt)
+                                        return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
+                                      } catch {
+                                        return 'Unknown date'
+                                      }
+                                    })()
+                                  : 'Unknown date'
+                              }
+                            </span>
+                          </div>
+                        )}
+                        {hasVerificationLinkFeature && existingDoc?.verificationLink && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <a
+                              href={existingDoc.verificationLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-brand-green hover:underline flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Verification Link
+                            </a>
+                            <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                              existingDoc.verificationLinkStatus === 'active'
+                                ? 'bg-green-100 text-green-700' 
+                                : existingDoc.verificationLinkStatus === 'expired'
+                                ? 'bg-red-100 text-red-700'
+                                : existingDoc.verificationLinkStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {existingDoc.verificationLinkStatus || 'No status'}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -663,8 +737,32 @@ export default function AttachmentsPage() {
                           href={existingDoc.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          download={existingDoc.fileName}
                           className="p-2 text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"
-                          title="Download"
+                          title={`Download ${existingDoc.fileName}`}
+                          onClick={(e) => {
+                            // If the URL is a blob URL or needs special handling, download it programmatically
+                            if (existingDoc.fileUrl && !existingDoc.fileUrl.startsWith('http')) {
+                              e.preventDefault()
+                              // For blob URLs or relative paths, fetch and download
+                              fetch(existingDoc.fileUrl)
+                                .then(res => res.blob())
+                                .then(blob => {
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = existingDoc.fileName || 'document'
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                })
+                                .catch(err => {
+                                  console.error('Error downloading file:', err)
+                                  setError('Failed to download file. Please try again.')
+                                })
+                            }
+                          }}
                         >
                           <Download className="w-5 h-5" />
                         </a>

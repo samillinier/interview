@@ -57,6 +57,12 @@ const DOCUMENT_TYPES: Array<{
   required: boolean
 }> = [
   {
+    id: 'sunbiz',
+    name: 'Sunbiz',
+    description: 'Sunbiz registration document',
+    required: false,
+  },
+  {
     id: 'business_registration',
     name: 'Business Registration',
     description: 'Business registration certificate',
@@ -998,7 +1004,7 @@ export default function DashboardPage() {
       case 'passed':
       case 'qualified':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
             <CheckCircle2 className="w-4 h-4" />
             Qualified
           </span>
@@ -1019,7 +1025,7 @@ export default function DashboardPage() {
         )
       case 'active':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green-dark">
             <CheckCircle2 className="w-4 h-4" />
             Active
           </span>
@@ -1263,15 +1269,15 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
             whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow-lg border border-green-200/40 p-4 hover:shadow-xl hover:border-green-300/60 transition-all duration-200 group cursor-pointer"
+            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-200/40 p-4 hover:shadow-xl hover:border-blue-300/60 transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-green-600 uppercase tracking-wider mb-1">Qualified</p>
-                <p className="text-2xl font-bold text-green-600 mb-0.5">{stats.qualified}</p>
-                <p className="text-[10px] text-green-500/80">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
+                <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Qualified</p>
+                <p className="text-2xl font-bold text-blue-600 mb-0.5">{stats.qualified}</p>
+                <p className="text-[10px] text-blue-500/80">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center group-hover:bg-green-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-green-500/30">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-blue-500/30">
                 <CheckCircle2 className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -1324,15 +1330,15 @@ export default function DashboardPage() {
               setStatusFilter('active')
               setCurrentPage(1)
             }}
-            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-200/40 p-4 hover:shadow-xl hover:border-blue-300/60 transition-all duration-200 group cursor-pointer"
+            className="bg-gradient-to-br from-brand-green/10 to-brand-green/5 rounded-lg shadow-lg border border-brand-green/30 p-4 hover:shadow-xl hover:border-brand-green/50 transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Active</p>
-                <p className="text-2xl font-bold text-blue-600 mb-0.5">{stats.active}</p>
-                <p className="text-[10px] text-blue-500/80">{stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total</p>
+                <p className="text-[10px] font-semibold text-brand-green-dark uppercase tracking-wider mb-1">Active</p>
+                <p className="text-2xl font-bold text-brand-green-dark mb-0.5">{stats.active}</p>
+                <p className="text-[10px] text-brand-green/80">{stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-blue-500/30">
+              <div className="w-10 h-10 bg-brand-green rounded-lg flex items-center justify-center group-hover:bg-brand-green-dark transition-colors flex-shrink-0 ml-2 shadow-lg shadow-brand-green/30">
                 <Activity className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -1569,23 +1575,46 @@ export default function DashboardPage() {
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-gradient-to-br from-brand-green to-emerald-600 shadow-md group-hover:ring-brand-green/40 transition-all">
-                            {/* Fallback initials - always present */}
-                            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-sm">
-                              {getInitials(installer.firstName, installer.lastName)}
+                          <div className="relative">
+                            {/* Status-based border color */}
+                            <div className={`relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md transition-all ${
+                              installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                              installer.status === 'passed' || installer.status === 'qualified' ? 'ring-4 ring-blue-500' :
+                              installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
+                              'ring-4 ring-yellow-500'
+                            }`}>
+                              {/* Fallback initials - only show when no photo */}
+                              {!installer.photoUrl && (
+                                <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${
+                                  installer.status === 'active' ? 'bg-brand-green' :
+                                  installer.status === 'passed' || installer.status === 'qualified' ? 'bg-blue-500' :
+                                  installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-500' :
+                                  'bg-yellow-500'
+                                }`}>
+                                  {getInitials(installer.firstName, installer.lastName)}
+                                </div>
+                              )}
+                              {/* Photo overlay - shows if available and loads successfully */}
+                              {installer.photoUrl && (
+                                <Image
+                                  src={installer.photoUrl}
+                                  alt={`${installer.firstName} ${installer.lastName}`}
+                                  width={48}
+                                  height={48}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              )}
                             </div>
-                            {/* Photo overlay - shows if available and loads successfully */}
-                            {installer.photoUrl && (
-                              <Image
-                                src={installer.photoUrl}
-                                alt={`${installer.firstName} ${installer.lastName}`}
-                                width={48}
-                                height={48}
-                                className="relative w-full h-full object-cover z-10"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none'
-                                }}
-                              />
+                            {/* Checkmark badge */}
+                            {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
+                              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${
+                                installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
+                              }`}>
+                                <CheckCircle2 className="w-3 h-3 text-white" />
+                              </div>
                             )}
                           </div>
                           <div>
@@ -1792,72 +1821,153 @@ export default function DashboardPage() {
               <div className="max-w-6xl mx-auto">
                 {/* Photo Upload Section - Top Left */}
                 <div className="mb-6">
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                    <label className="block text-sm font-semibold text-slate-700 mb-4">Photo</label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center">
-                        {installerPhotoPreview ? (
-                          <Image
-                            src={installerPhotoPreview}
-                            alt="Preview"
-                            width={96}
-                            height={96}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-12 h-12 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <label className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white text-sm font-medium rounded-lg shadow-sm hover:bg-brand-green-dark transition-colors cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0]
-                              if (file) {
-                                // Validate file type
-                                if (!file.type.startsWith('image/')) {
-                                  alert('Please upload an image file')
-                                  return
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative bg-gradient-to-br from-brand-green/5 via-white to-brand-green/10 rounded-2xl border-2 border-brand-green/20 shadow-xl p-6 overflow-hidden"
+                  >
+                    {/* Decorative Pattern Background */}
+                    <div className="absolute inset-0 opacity-10">
+                      {/* Grid Pattern */}
+                      <div 
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: `
+                            linear-gradient(to right, rgba(34, 197, 94, 0.1) 1px, transparent 1px),
+                            linear-gradient(to bottom, rgba(34, 197, 94, 0.1) 1px, transparent 1px)
+                          `,
+                          backgroundSize: '20px 20px'
+                        }}
+                      />
+                      {/* Circular Pattern Overlay */}
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-brand-green/20 to-transparent rounded-full blur-3xl -mr-32 -mt-32" />
+                      <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-brand-green/15 to-transparent rounded-full blur-2xl -ml-24 -mb-24" />
+                      {/* Diagonal Lines Pattern */}
+                      <div 
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(34, 197, 94, 0.03) 10px, rgba(34, 197, 94, 0.03) 20px)'
+                        }}
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-6">
+                        {/* Photo Circle with Enhanced Styling */}
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          className="relative group"
+                        >
+                          <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-xl ring-4 ring-brand-green/20 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                            {installerPhotoPreview ? (
+                              <>
+                                <Image
+                                  src={installerPhotoPreview}
+                                  alt="Preview"
+                                  width={112}
+                                  height={112}
+                                  className="w-full h-full object-cover"
+                                />
+                                {/* Overlay on hover */}
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Camera className="w-6 h-6 text-white" />
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-green/20 to-brand-green/10 flex items-center justify-center">
+                                  <User className="w-8 h-8 text-brand-green" />
+                                </div>
+                                {/* Animated ring indicator */}
+                                <div className="absolute inset-0 rounded-full border-2 border-brand-green/30 animate-pulse" />
+                              </div>
+                            )}
+                          </div>
+                          {/* Decorative circles around photo */}
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-green rounded-full border-2 border-white shadow-md animate-pulse" />
+                          <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-brand-green/60 rounded-full border-2 border-white shadow-md" />
+                        </motion.div>
+
+                        {/* Upload Button Section */}
+                        <div className="flex-1 space-y-3">
+                          <label className="group relative inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer overflow-hidden">
+                            {/* Shimmer effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                            
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  // Validate file type
+                                  if (!file.type.startsWith('image/')) {
+                                    alert('Please upload an image file')
+                                    return
+                                  }
+                                  // Validate file size (max 10MB)
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    alert('Image size must be less than 10MB')
+                                    return
+                                  }
+                                  setInstallerPhotoFile(file)
+                                  // Create preview
+                                  const reader = new FileReader()
+                                  reader.onloadend = () => {
+                                    setInstallerPhotoPreview(reader.result as string)
+                                  }
+                                  reader.readAsDataURL(file)
                                 }
-                                // Validate file size (max 10MB)
-                                if (file.size > 10 * 1024 * 1024) {
-                                  alert('Image size must be less than 10MB')
-                                  return
-                                }
-                                setInstallerPhotoFile(file)
-                                // Create preview
-                                const reader = new FileReader()
-                                reader.onloadend = () => {
-                                  setInstallerPhotoPreview(reader.result as string)
-                                }
-                                reader.readAsDataURL(file)
-                              }
-                            }}
-                            className="hidden"
-                            id="installer-photo-upload"
-                          />
-                          {isUploadingInstallerPhoto ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Uploading...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Camera className="w-4 h-4" />
-                              <span>{installerPhotoPreview ? 'Change Photo' : 'Add Photo'}</span>
-                            </>
+                              }}
+                              className="hidden"
+                              id="installer-photo-upload"
+                            />
+                            {isUploadingInstallerPhoto ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                                <span className="relative z-10">Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-4 h-4 relative z-10" />
+                                <span className="relative z-10">{installerPhotoPreview ? 'Change Photo' : 'Add Photo'}</span>
+                              </>
+                            )}
+                          </label>
+                          
+                          {/* File info with enhanced styling */}
+                          {installerPhotoFile && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm rounded-lg border border-brand-green/20 shadow-sm"
+                            >
+                              <div className="w-2 h-2 bg-brand-green rounded-full animate-pulse" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-slate-900 truncate">{installerPhotoFile.name}</p>
+                                <p className="text-xs text-slate-500">
+                                  {(installerPhotoFile.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </motion.div>
                           )}
-                        </label>
-                        {installerPhotoFile && (
-                          <p className="text-xs text-slate-500 mt-2">
-                            {installerPhotoFile.name} ({(installerPhotoFile.size / 1024 / 1024).toFixed(2)} MB)
-                          </p>
-                        )}
+                          
+                          {/* Helper text */}
+                          {!installerPhotoFile && (
+                            <p className="text-xs text-slate-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-brand-green rounded-full" />
+                              Recommended: Square image, max 10MB
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+
+                    {/* Corner decorative elements */}
+                    <div className="absolute top-2 right-2 w-16 h-16 border-t-2 border-r-2 border-brand-green/20 rounded-tr-2xl" />
+                    <div className="absolute bottom-2 left-2 w-12 h-12 border-b-2 border-l-2 border-brand-green/20 rounded-bl-2xl" />
+                  </motion.div>
                 </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
@@ -2039,6 +2149,7 @@ export default function DashboardPage() {
                           className={selectClassName}
                         >
                           <option value="pending">Pending</option>
+                          <option value="active">Active</option>
                           <option value="passed">Qualified</option>
                           <option value="failed">Not Qualified</option>
                         </select>
@@ -4297,7 +4408,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Footer with Save/Cancel */}
-            <div className="border-t border-slate-200 p-6 bg-white sticky bottom-0 z-10">
+            <div className="border-t border-slate-200 p-6 bg-white/95 backdrop-blur-md sticky bottom-0 z-10 shadow-lg shadow-black/5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-6xl mx-auto">
                 <div className="flex items-center justify-between sm:justify-start gap-3">
                   <div className="text-sm">

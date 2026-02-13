@@ -234,18 +234,20 @@ model InterviewResponse {
 
 // Documents uploaded by installers
 model Document {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
   
-  installerId     String
-  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  installerId           String
+  installer             Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
   
-  type            String    // insurance, license, certification, other
-  name            String
-  url             String
-  verified        Boolean   @default(false)
-  verifiedAt      DateTime?
-  expiryDate      DateTime?
+  type                  String    // insurance, license, certification, other
+  name                  String
+  url                   String
+  verified              Boolean   @default(false)
+  verifiedAt            DateTime?
+  expiryDate            DateTime?
+  verificationLink      String?
+  verificationLinkStatus String?  // active, expired, pending
 }
 
 // Communications log

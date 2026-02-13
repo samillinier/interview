@@ -237,7 +237,7 @@ export async function PATCH(
       }
       
       // Convert date strings to Date objects for expiry date fields
-      const dateFields = ['llrpExpiry', 'btrExpiry', 'workersCompExemExpiry', 'generalLiabilityExpiry', 'automobileLiabilityExpiry', 'employersLiabilityExpiry']
+      const dateFields = ['llrpExpiry', 'btrExpiry', 'workersCompExemExpiry', 'generalLiabilityExpiry', 'automobileLiabilityExpiry', 'employersLiabilityExpiry', 'paymentAuthorizationDate', 'preferredStartDate']
       for (const field of dateFields) {
         if (data[field] !== undefined) {
           if (data[field] === null || data[field] === '') {
