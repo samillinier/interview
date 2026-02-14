@@ -51,9 +51,10 @@ export async function POST(request: NextRequest) {
       const audioBuffer = await generateSpeech(firstQuestion.text)
       audioBase64 = Buffer.from(audioBuffer).toString('base64')
       console.log('Speech generated successfully')
-    } catch (error) {
-      console.error('Error generating speech (continuing without audio):', error)
+    } catch (error: any) {
+      console.error('Error generating speech (continuing without audio):', error?.message || error)
       // Continue without audio - the interview can still work with text
+      // This is not a critical error - the interview can proceed with text-only
     }
 
     const response = {

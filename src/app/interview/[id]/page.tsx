@@ -588,7 +588,16 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         body: formData,
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }))
+        throw new Error(errorData.error || `Server error: ${response.status}`)
+      }
+
       const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to process response')
+      }
 
       if (data.success) {
         // Add user message
@@ -634,8 +643,9 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
           await completeInterview()
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing response:', error)
+      alert(`Error: ${error?.message || 'Failed to process response. Please try again.'}`)
     } finally {
       setIsProcessing(false)
     }

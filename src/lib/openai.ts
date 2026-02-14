@@ -126,23 +126,42 @@ IMPORTANT RULES:
     })
   }
 
-  const openai = getOpenAIClient()
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages,
-    temperature: 0.7,
-    max_tokens: 150,
-  })
+  try {
+    // Check if API key is configured
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-your-openai-api-key-here') {
+      throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.')
+    }
+    
+    const openai = getOpenAIClient()
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages,
+      temperature: 0.7,
+      max_tokens: 150,
+    })
 
-  const response = completion.choices[0]?.message?.content || ''
-  const shouldMoveToNextQuestion = !isLastQuestion && actualNextIndex < questions.length && !isClosingQuestion
+    const response = completion.choices[0]?.message?.content || ''
+    const shouldMoveToNextQuestion = !isLastQuestion && actualNextIndex < questions.length && !isClosingQuestion
 
-  const extractedInfo: Record<string, any> = {}
-  
-  return {
-    response: response.trim(),
-    shouldMoveToNextQuestion,
-    extractedInfo: Object.keys(extractedInfo).length > 0 ? extractedInfo : undefined,
+    const extractedInfo: Record<string, any> = {}
+    
+    return {
+      response: response.trim(),
+      shouldMoveToNextQuestion,
+      extractedInfo: Object.keys(extractedInfo).length > 0 ? extractedInfo : undefined,
+    }
+  } catch (error: any) {
+    console.error('Error generating interview response:', error?.message || error)
+    if (error?.message?.includes('API key')) {
+      throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables and restart the server.')
+    }
+    if (error?.status === 401) {
+      throw new Error('Invalid OpenAI API key. Please check your OPENAI_API_KEY environment variable.')
+    }
+    if (error?.status === 429) {
+      throw new Error('OpenAI API rate limit exceeded. Please try again later.')
+    }
+    throw new Error(`Failed to generate AI response: ${error?.message || 'Unknown error'}`)
   }
 }
 

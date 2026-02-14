@@ -138,6 +138,16 @@ function InstallerLoginContent() {
               </div>
             </div>
 
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => router.push('/installer/forgot-password')}
+                className="text-sm text-brand-green hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             {error && (
               <motion.div
                 initial={{ opacity: 0 }}

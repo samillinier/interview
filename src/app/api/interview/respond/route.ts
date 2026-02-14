@@ -119,12 +119,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate AI response with language
-    const aiResponse = await generateInterviewResponse(
-      updatedHistory,
-      currentQuestionIndex,
-      language as 'en' | 'es',
-      actualNextQuestionIndex
-    )
+    let aiResponse
+    try {
+      aiResponse = await generateInterviewResponse(
+        updatedHistory,
+        currentQuestionIndex,
+        language as 'en' | 'es',
+        actualNextQuestionIndex
+      )
+    } catch (error: any) {
+      console.error('Error generating AI response:', error?.message || error)
+      return NextResponse.json(
+        { 
+          error: error?.message || 'Failed to generate AI response',
+          details: 'The AI interview service is currently unavailable. Please try again later or contact support.'
+        },
+        { status: 500 }
+      )
+    }
 
     // Update conversation history with AI response
     updatedHistory.push({ role: 'assistant', content: aiResponse.response })
@@ -167,13 +179,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Generate speech for AI response
+    // Generate speech for AI response (optional - won't block if it fails)
     let audioBase64 = null
     try {
       const audioBuffer = await generateSpeech(aiResponse.response)
       audioBase64 = audioBuffer.toString('base64')
-    } catch (error) {
-      console.error('Error generating speech:', error)
+      console.log('AI response speech generated successfully')
+    } catch (error: any) {
+      console.error('Error generating speech (continuing without audio):', error?.message || error)
+      // Continue without audio - the interview can still work with text
+      // This is not a critical error - the interview can proceed with text-only
     }
 
     return NextResponse.json({

@@ -2298,14 +2298,14 @@ export default function InstallerProfilePage() {
                             <span className="text-xs font-semibold capitalize">{badge.label}</span>
                             <span className="text-xs font-medium opacity-75">•</span>
                             <span className="text-xs font-bold capitalize">{badge.status}</span>
-                          </div>
+              </div>
                         )
                       })
                     })()}
-                  </div>
             </div>
                   </div>
                 </div>
+                  </div>
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Barcode Section - Right Side */}
               {installer && (
@@ -2314,9 +2314,9 @@ export default function InstallerProfilePage() {
                     installerId={installer.id}
                     installerName={`${installer.firstName} ${installer.lastName}`.trim()}
                   />
-                  </div>
-              )}
                 </div>
+            )}
+          </div>
           </div>
         </motion.div>
 

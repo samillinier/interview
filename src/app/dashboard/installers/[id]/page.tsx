@@ -2274,7 +2274,7 @@ export default function InstallerProfileViewPage() {
                       installerId={installer.id}
                       installerName={`${installer.firstName} ${installer.lastName}`.trim()}
                         />
-                      </div>
+                    </div>
                 )}
               </div>
             </div>
