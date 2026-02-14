@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     const resendApiKey = process.env.RESEND_API_KEY
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+    // Use the same logo URL as verification email
     const logoUrl = process.env.EMAIL_LOGO_URL || 'https://itswhitehat.com/wp-content/uploads/2026/02/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.webp'
 
     if (resendApiKey) {
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
               <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
                 <!-- Logo/Header Section -->
                 <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-                  <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
+                  <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto; border: none; outline: none;" />
                 </div>
                 
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
