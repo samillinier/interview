@@ -49,6 +49,8 @@ interface Message {
   createdAt: string
   senderId?: string
   senderType?: string
+  attachmentUrl?: string
+  attachmentName?: string
   installer: {
     id: string
     firstName: string
