@@ -159,7 +159,7 @@ export default function MessagesPage() {
       allMessages.forEach((message) => {
         const installerId = message.installerId
         if (!conversationMap.has(installerId)) {
-          const installer = installersList.find(i => i.id === installerId) || {
+          const installer = installersList.find((i: any) => i.id === installerId) || {
             id: message.installer.id,
             firstName: message.installer.firstName,
             lastName: message.installer.lastName,
