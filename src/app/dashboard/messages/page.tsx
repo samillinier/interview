@@ -184,7 +184,7 @@ export default function MessagesPage() {
       })
       
       // Add installers who don't have messages yet
-      installersList.forEach(installer => {
+      installersList.forEach((installer: any) => {
         if (!conversationMap.has(installer.id)) {
           conversationMap.set(installer.id, {
             installer,
