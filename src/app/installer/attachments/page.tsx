@@ -114,6 +114,14 @@ export default function AttachmentsPage() {
   const [contractSignature, setContractSignature] = useState('')
   const [contractName, setContractName] = useState('')
   const [contractDate, setContractDate] = useState(new Date().toISOString().split('T')[0])
+  const [notificationCount, setNotificationCount] = useState(0)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
+    show: false,
+    documentId: null,
+    documentName: '',
+    documentType: '',
+  })
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     checkAuthAndLoadData()
@@ -175,6 +183,17 @@ export default function AttachmentsPage() {
       }
       const profileData = await profileResponse.json()
       setInstaller(profileData.installer)
+      
+      // Fetch notification count
+      try {
+        const notificationResponse = await fetch(`/api/notifications/count?installerId=${installerId}`)
+        if (notificationResponse.ok) {
+          const notificationData = await notificationResponse.json()
+          setNotificationCount(notificationData.count || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching notification count:', error)
+      }
       
       // Show contract modal if not signed yet
       if (!profileData.installer.serviceAgreementSignedAt) {
@@ -261,11 +280,26 @@ export default function AttachmentsPage() {
     }
   }
 
-  const handleDeleteDocument = async (documentId: string, type: string) => {
-    if (!installer || !confirm('Are you sure you want to delete this document?')) return
+  const handleDeleteClick = (documentId: string, documentName: string, documentType: string) => {
+    const docType = DOCUMENT_TYPES.find(dt => dt.id === documentType)
+    setDeleteConfirm({
+      show: true,
+      documentId,
+      documentName: documentName || docType?.name || 'this document',
+      documentType: docType?.name || documentType,
+    })
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ show: false, documentId: null, documentName: '', documentType: '' })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!installer || !deleteConfirm.documentId) return
 
     try {
-      const response = await fetch(`/api/installers/${installer.id}/documents/${documentId}`, {
+      setIsDeleting(true)
+      const response = await fetch(`/api/installers/${installer.id}/documents/${deleteConfirm.documentId}`, {
         method: 'DELETE',
       })
 
@@ -273,12 +307,15 @@ export default function AttachmentsPage() {
         throw new Error('Failed to delete document')
       }
 
-      setDocuments(documents.filter(d => d.id !== documentId))
+      setDocuments(documents.filter(d => d.id !== deleteConfirm.documentId))
       setSuccess('Document deleted successfully!')
       setTimeout(() => setSuccess(''), 3000)
+      setDeleteConfirm({ show: false, documentId: null, documentName: '', documentType: '' })
     } catch (err: any) {
       console.error('Error deleting document:', err)
       setError(err.message || 'Failed to delete document')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -565,14 +602,23 @@ export default function AttachmentsPage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Payment</span>}
+            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+                {notificationCount > 0 && (
+                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
         </nav>
 
@@ -786,7 +832,7 @@ export default function AttachmentsPage() {
                           />
                         </label>
                         <button
-                          onClick={() => handleDeleteDocument(existingDoc.id, docType.id)}
+                          onClick={() => handleDeleteClick(existingDoc.id, existingDoc.fileName, docType.id)}
                           className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
                           title="Delete"
                         >
@@ -840,6 +886,75 @@ export default function AttachmentsPage() {
           </div>
         </main>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-5 border-b border-red-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Delete Document</h3>
+                  <p className="text-sm text-slate-600 mt-0.5">This action cannot be undone</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <div className="mb-4">
+                <p className="text-slate-700 mb-3">
+                  Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteConfirm.documentName}</span>?
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium mb-1">Warning</p>
+                    <p>This will permanently remove the document and all associated data. You'll need to upload it again if needed.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-white hover:border-slate-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

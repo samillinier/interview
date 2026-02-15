@@ -303,6 +303,10 @@ model Notification {
   // Sender information
   senderId        String?
   senderType      String?   // admin, installer
+
+  // Optional attachment for message-type notifications
+  attachmentUrl   String?
+  attachmentName  String?
   
   @@index([installerId])
   @@index([type])

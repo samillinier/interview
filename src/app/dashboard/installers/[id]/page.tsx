@@ -433,7 +433,13 @@ export default function InstallerProfileViewPage() {
   const [notes, setNotes] = useState('')
   const [documents, setDocuments] = useState<any[]>([])
   const [uploadingDocumentType, setUploadingDocumentType] = useState<string | null>(null)
-  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
+    show: false,
+    documentId: null,
+    documentName: '',
+    documentType: '',
+  })
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editingVerificationLink, setEditingVerificationLink] = useState<string | null>(null)
   const [verificationLinks, setVerificationLinks] = useState<{ [key: string]: { link: string; status: string } }>({})
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
@@ -796,12 +802,25 @@ export default function InstallerProfileViewPage() {
     }
   }
 
-  const handleDeleteDocument = async (documentId: string) => {
-    if (!installerId || !documentId) return
-    if (!confirm('Delete this document?')) return
+  const handleDeleteClick = (documentId: string, documentName: string, documentType: string) => {
+    const docType = DOCUMENT_TYPES.find(dt => dt.id === documentType)
+    setDeleteConfirm({
+      show: true,
+      documentId,
+      documentName: documentName || docType?.name || 'this document',
+      documentType: docType?.name || documentType,
+    })
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ show: false, documentId: null, documentName: '', documentType: '' })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!installerId || !deleteConfirm.documentId) return
     try {
-      setDeletingDocumentId(documentId)
-      const res = await fetch(`/api/installers/${installerId}/documents/${documentId}`, {
+      setIsDeleting(true)
+      const res = await fetch(`/api/installers/${installerId}/documents/${deleteConfirm.documentId}`, {
         method: 'DELETE',
       })
       if (!res.ok) {
@@ -811,11 +830,12 @@ export default function InstallerProfileViewPage() {
       await refreshDocuments()
       setSuccess('Attachment deleted')
       setTimeout(() => setSuccess(''), 2000)
+      setDeleteConfirm({ show: false, documentId: null, documentName: '', documentType: '' })
     } catch (e: any) {
       console.error('Delete document error:', e)
       setError(e?.message || 'Failed to delete document')
     } finally {
-      setDeletingDocumentId(null)
+      setIsDeleting(false)
     }
   }
 
@@ -2983,7 +3003,7 @@ export default function InstallerProfileViewPage() {
                 {DOCUMENT_TYPES.map((docType) => {
                   const existing = documents.find((d: any) => d?.type === docType.id)
                   const isUploading = uploadingDocumentType === docType.id
-                  const isDeleting = deletingDocumentId === existing?.id
+                  const isDocumentDeleting = isDeleting && deleteConfirm.documentId === existing?.id
 
                   const existingName = existing?.name || existing?.fileName || existing?.file_name
                   const existingUrl = existing?.url || existing?.fileUrl || existing?.file_url
@@ -3206,11 +3226,11 @@ export default function InstallerProfileViewPage() {
                         {existing?.id && (
                           <button
                             type="button"
-                            disabled={isDeleting}
-                            onClick={() => handleDeleteDocument(existing.id)}
+                            disabled={isDocumentDeleting}
+                            onClick={() => handleDeleteClick(existing.id, existingName || '', docType.id)}
                             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-white text-red-700 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
                           >
-                            {isDeleting ? (
+                            {isDocumentDeleting ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <Trash2 className="w-4 h-4" />
@@ -8890,6 +8910,75 @@ export default function InstallerProfileViewPage() {
                   <>
                     <Save className="w-4 h-4" />
                     {editingStaff ? 'Update' : 'Add'} Member
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-5 border-b border-red-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Delete Document</h3>
+                  <p className="text-sm text-slate-600 mt-0.5">This action cannot be undone</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <div className="mb-4">
+                <p className="text-slate-700 mb-3">
+                  Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteConfirm.documentName}</span>?
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium mb-1">Warning</p>
+                    <p>This will permanently remove the document and all associated data. You'll need to upload it again if needed.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-white hover:border-slate-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete
                   </>
                 )}
               </button>

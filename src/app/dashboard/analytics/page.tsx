@@ -25,7 +25,12 @@ import {
   Download,
   Activity,
   PieChart,
-  CreditCard
+  CreditCard,
+  Shield,
+  Car,
+  Wrench,
+  AlertTriangle,
+  FileCheck
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -54,6 +59,125 @@ interface AnalyticsData {
   recentRegistrations: number
   accountsWithPhotos: number
   accountsWithPaymentInfo: number
+  // New analytics
+  insuranceCoverage?: {
+    generalLiability: number
+    commercialAuto: number
+    workersComp: number
+    workersCompExemption: number
+    sunbizRegistered: number
+    sunbizActive: number
+    businessLicense: number
+  }
+  certificateExpiry?: {
+    expiring30Days: number
+    expiring60Days: number
+    expiring90Days: number
+    expired: number
+  }
+  documentVerification?: {
+    total: number
+    verified: number
+    unverified: number
+    withActiveLink: number
+    withExpiredLink: number
+    withPendingLink: number
+  }
+  crewAnalytics?: {
+    withCrew: number
+    withoutCrew: number
+    averageCrewSize: number
+    totalWorkforce: number
+    withTools: number
+    withVehicles: number
+    totalStaffMembers: number
+  }
+  availabilityAnalytics?: {
+    fullTime: number
+    partTime: number
+    contract: number
+    canStartImmediately: number
+    willingToTravel: number
+    averageMaxTravelDistance: number
+  }
+  topServiceAreas?: { area: string; count: number }[]
+  workroomDistribution?: { workroom: string; count: number }[]
+  installationCapabilities?: {
+    multiCategory: {
+      twoPlus: number
+      threePlus: number
+      fourPlus: number
+    }
+    dailyCapacity: {
+      carpet: number
+      hardwood: number
+      laminate: number
+      vinyl: number
+      tile: number
+    }
+    stairInstallation: number
+  }
+  engagementAnalytics?: {
+    interviewCompletionRate: number
+    totalInterviews: number
+    completedInterviews: number
+    abandonedInterviews: number
+    averageInterviewDuration: number
+    documentUploadRate: number
+    totalDocuments: number
+    averageDocumentsPerInstaller: number
+  }
+  notificationEngagement?: {
+    total: number
+    read: number
+    unread: number
+    readRate: number
+    byType: {
+      notification: number
+      message: number
+      news: number
+      job: number
+    }
+  }
+  paymentAnalytics?: {
+    withPaymentInfo: number
+    paymentCompletionRate: number
+    emailVerified: number
+    emailVerificationRate: number
+    withPhotos: number
+    photoUploadRate: number
+    ndaAgreed: number
+    serviceAgreementSigned: number
+  }
+  jobAnalytics?: {
+    totalApplications: number
+    applicationStatus: {
+      pending: number
+      reviewed: number
+      accepted: number
+      rejected: number
+    }
+    applicationsPerInstaller: number
+  }
+  qualityAnalytics?: {
+    averageScore: number
+    scoreDistribution: {
+      excellent: number
+      good: number
+      fair: number
+      poor: number
+    }
+    averageScoreByStatus: {
+      qualified: number
+      notQualified: number
+    }
+  }
+  backgroundAnalytics?: {
+    canPassBackgroundCheck: number
+    cannotPassBackgroundCheck: number
+    backgroundCheckNotProvided: number
+    safetyCompliance: number
+  }
 }
 
 export default function AnalyticsPage() {
@@ -518,6 +642,462 @@ export default function AnalyticsPage() {
               </div>
             </motion.div>
           </div>
+
+          {/* New Analytics Sections */}
+          {analytics.insuranceCoverage && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Insurance & Compliance</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.insuranceCoverage.generalLiability}</h3>
+                      <p className="text-sm text-slate-600">General Liability</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                      <Car className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.insuranceCoverage.commercialAuto}</h3>
+                      <p className="text-sm text-slate-600">Commercial Auto</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.insuranceCoverage.workersComp}</h3>
+                      <p className="text-sm text-slate-600">Workers Comp</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                      <FileCheck className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.insuranceCoverage.sunbizActive}</h3>
+                      <p className="text-sm text-slate-600">Sunbiz Active</p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              {analytics.certificateExpiry && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-8"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">Certificate Expiry Tracking</h2>
+                    <AlertTriangle className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-red-50 rounded-xl border border-red-200">
+                      <h3 className="text-2xl font-bold text-red-600 mb-1">{analytics.certificateExpiry.expired}</h3>
+                      <p className="text-sm text-red-700 font-medium">Expired</p>
+                    </div>
+                    <div className="text-center p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                      <h3 className="text-2xl font-bold text-yellow-600 mb-1">{analytics.certificateExpiry.expiring30Days}</h3>
+                      <p className="text-sm text-yellow-700 font-medium">Expiring (30 days)</p>
+                    </div>
+                    <div className="text-center p-4 bg-orange-50 rounded-xl border border-orange-200">
+                      <h3 className="text-2xl font-bold text-orange-600 mb-1">{analytics.certificateExpiry.expiring60Days}</h3>
+                      <p className="text-sm text-orange-700 font-medium">Expiring (60 days)</p>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <h3 className="text-2xl font-bold text-blue-600 mb-1">{analytics.certificateExpiry.expiring90Days}</h3>
+                      <p className="text-sm text-blue-700 font-medium">Expiring (90 days)</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {analytics.crewAnalytics && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Crew & Capacity</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Users className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.crewAnalytics.totalWorkforce}</h3>
+                      <p className="text-sm text-slate-600">Total Workforce</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                      <Users className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.crewAnalytics.averageCrewSize.toFixed(1)}</h3>
+                      <p className="text-sm text-slate-600">Avg. Crew Size</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <Wrench className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.crewAnalytics.withTools}</h3>
+                      <p className="text-sm text-slate-600">With Own Tools</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <Car className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.crewAnalytics.withVehicles}</h3>
+                      <p className="text-sm text-slate-600">With Vehicles</p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {analytics.availabilityAnalytics && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Service & Availability</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">Availability Type</h2>
+                    <Calendar className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Full-Time</span>
+                      <span className="text-sm text-slate-600">{analytics.availabilityAnalytics.fullTime}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Part-Time</span>
+                      <span className="text-sm text-slate-600">{analytics.availabilityAnalytics.partTime}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Contract</span>
+                      <span className="text-sm text-slate-600">{analytics.availabilityAnalytics.contract}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Can Start Immediately</span>
+                      <span className="text-sm text-slate-600">{analytics.availabilityAnalytics.canStartImmediately}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Willing to Travel</span>
+                      <span className="text-sm text-slate-600">{analytics.availabilityAnalytics.willingToTravel}</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {analytics.topServiceAreas && analytics.topServiceAreas.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-slate-900">Top Service Areas</h2>
+                      <MapPin className="w-5 h-5 text-slate-400" />
+                    </div>
+                    <div className="space-y-3">
+                      {analytics.topServiceAreas.slice(0, 8).map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-700 truncate">{item.area}</span>
+                          <span className="text-sm text-slate-600">{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {analytics.engagementAnalytics && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Engagement & Communication</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.engagementAnalytics.interviewCompletionRate.toFixed(1)}%</h3>
+                      <p className="text-sm text-slate-600">Interview Completion</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.engagementAnalytics.documentUploadRate.toFixed(1)}%</h3>
+                      <p className="text-sm text-slate-600">Document Upload Rate</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        {analytics.notificationEngagement?.readRate.toFixed(1) || 0}%
+                      </h3>
+                      <p className="text-sm text-slate-600">Notification Read Rate</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        {analytics.engagementAnalytics.averageInterviewDuration.toFixed(1)}
+                      </h3>
+                      <p className="text-sm text-slate-600">Avg. Interview (min)</p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {analytics.paymentAnalytics && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Account Setup & Payment</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.paymentAnalytics.paymentCompletionRate.toFixed(1)}%</h3>
+                      <p className="text-sm text-slate-600">Payment Setup</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.paymentAnalytics.emailVerificationRate.toFixed(1)}%</h3>
+                      <p className="text-sm text-slate-600">Email Verified</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <User className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.paymentAnalytics.photoUploadRate.toFixed(1)}%</h3>
+                      <p className="text-sm text-slate-600">Profile Photos</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">{analytics.paymentAnalytics.serviceAgreementSigned}</h3>
+                      <p className="text-sm text-slate-600">Service Agreements</p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {analytics.qualityAnalytics && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Quality & Scoring</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">Score Distribution</h2>
+                    <BarChart3 className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Excellent (80-100)</span>
+                      <span className="text-sm text-slate-600">{analytics.qualityAnalytics.scoreDistribution.excellent}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Good (60-79)</span>
+                      <span className="text-sm text-slate-600">{analytics.qualityAnalytics.scoreDistribution.good}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Fair (40-59)</span>
+                      <span className="text-sm text-slate-600">{analytics.qualityAnalytics.scoreDistribution.fair}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Poor (&lt;40)</span>
+                      <span className="text-sm text-slate-600">{analytics.qualityAnalytics.scoreDistribution.poor}</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-slate-900">Average Scores</h2>
+                    <TrendingUp className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Overall Average</span>
+                      <span className="text-lg font-bold text-slate-900">{analytics.qualityAnalytics.averageScore.toFixed(1)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Qualified Average</span>
+                      <span className="text-lg font-bold text-green-600">{analytics.qualityAnalytics.averageScoreByStatus.qualified.toFixed(1)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">Not Qualified Average</span>
+                      <span className="text-lg font-bold text-red-600">{analytics.qualityAnalytics.averageScoreByStatus.notQualified.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

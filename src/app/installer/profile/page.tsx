@@ -1898,7 +1898,7 @@ export default function InstallerProfilePage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Payment</span>}
+            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/notifications"
@@ -2004,7 +2004,7 @@ export default function InstallerProfilePage() {
           </Link>
           <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <CreditCard className="w-5 h-5" />
-            <span>Payment</span>
+            <span>Account</span>
           </Link>
           <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5" />

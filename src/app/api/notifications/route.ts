@@ -5,7 +5,7 @@ import prisma from '@/lib/db'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { installerIds, type, title, content, priority, link, senderId, senderType } = body
+    const { installerIds, type, title, content, priority, link, senderId, senderType, attachmentUrl, attachmentName } = body
 
     if (!installerIds || !Array.isArray(installerIds) || installerIds.length === 0) {
       return NextResponse.json(
@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!title || !content) {
+    if (!title || (!content && !attachmentUrl)) {
       return NextResponse.json(
-        { error: 'Title and content are required' },
+        { error: 'Title and content (or attachment) are required' },
         { status: 400 }
       )
     }
@@ -29,11 +29,13 @@ export async function POST(request: NextRequest) {
             installerId,
             type: type || 'notification',
             title,
-            content,
+            content: content || '',
             priority: priority || 'normal',
             link: link || null,
             senderId: senderId || 'admin',
             senderType: senderType || 'admin',
+            attachmentUrl: attachmentUrl || null,
+            attachmentName: attachmentName || null,
           },
         })
       )

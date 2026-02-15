@@ -363,8 +363,24 @@ export default function DashboardPage() {
     try {
       // Fetch all installers to calculate stats accurately
       const allResponse = await fetch('/api/installers?limit=1000')
+      
+      if (!allResponse.ok) {
+        const errorData = await allResponse.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('API Error fetching stats:', allResponse.status, errorData)
+        setStats({
+          total: 0,
+          qualified: 0,
+          notQualified: 0,
+          pending: 0,
+          active: 0,
+        })
+        return
+      }
+      
       const allData = await allResponse.json()
       const allInstallers = allData.installers || []
+      
+      console.log('Stats - Total installers:', allData.pagination?.total || allInstallers.length)
       
       setStats({
         total: allData.pagination?.total || allInstallers.length,
@@ -373,8 +389,15 @@ export default function DashboardPage() {
         pending: allInstallers.filter((i: Installer) => i.status === 'pending').length,
         active: allInstallers.filter((i: Installer) => i.status === 'active').length,
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stats:', error)
+      setStats({
+        total: 0,
+        qualified: 0,
+        notQualified: 0,
+        pending: 0,
+        active: 0,
+      })
     }
   }
 
@@ -388,16 +411,32 @@ export default function DashboardPage() {
       params.append('limit', itemsPerPage.toString())
 
       const response = await fetch(`/api/installers?${params.toString()}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('API Error fetching installers:', response.status, errorData)
+        setInstallers([])
+        return
+      }
+      
       const data = await response.json()
+      console.log('Fetched installers:', data.installers?.length || 0, 'total:', data.pagination?.total || 0)
       setInstallers(data.installers || [])
       
       if (data.pagination) {
         setTotalPages(data.pagination.totalPages || 1)
         setTotalCount(data.pagination.total || 0)
         setCurrentPage(data.pagination.page || 1)
+      } else {
+        // If no pagination data, set defaults
+        setTotalPages(1)
+        setTotalCount(data.installers?.length || 0)
+        setCurrentPage(1)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching installers:', error)
+      console.error('Error details:', error.message || 'Network error')
+      setInstallers([])
     } finally {
       setIsLoading(false)
     }

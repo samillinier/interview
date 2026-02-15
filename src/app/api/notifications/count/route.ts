@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     // Otherwise, get count for all installers (admin view)
     const where: any = {
       isRead: false,
-      // Include notification, message, and news types
+      // Include notification, message, and news types (exclude 'job' as it's handled separately)
       type: {
         in: ['notification', 'message', 'news']
       }

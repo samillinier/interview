@@ -92,13 +92,13 @@ function ForgotPasswordContent() {
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
               <h2 className="text-xl font-bold text-primary-900 mb-2">
-                Check Your Email
-              </h2>
+                  Check Your Email
+                </h2>
               <p className="text-primary-600 mb-6">
-                We've sent a password reset link to <strong>{email}</strong>
-              </p>
+                  We've sent a password reset link to <strong>{email}</strong>
+                </p>
               <p className="text-sm text-primary-500 mb-6">
-                Click the link in the email to reset your password. The link will expire in 1 hour.
+                  Click the link in the email to reset your password. The link will expire in 1 hour.
               </p>
               {resetUrl && (
                 <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
@@ -120,8 +120,8 @@ function ForgotPasswordContent() {
                   <p className="text-xs font-semibold text-blue-800 mb-2">Email Sent:</p>
                   <p className="text-xs text-blue-700">
                     Please check your email inbox (and spam folder) for the password reset link.
-                  </p>
-                </div>
+                </p>
+              </div>
               )}
               <div className="space-y-3">
                 <button
@@ -147,14 +147,14 @@ function ForgotPasswordContent() {
                 <label className="block text-sm font-medium text-primary-700 mb-1">
                   Email Address
                 </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  required
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
+                    required
                   className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
-                />
+                  />
               </div>
 
               {error && (

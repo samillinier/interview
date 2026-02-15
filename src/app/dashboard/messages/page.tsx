@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -75,12 +75,16 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [isSending, setIsSending] = useState(false)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [messageContent, setMessageContent] = useState('')
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -107,10 +111,10 @@ export default function MessagesPage() {
   }
 
   useEffect(() => {
-    if (status === 'authenticated' && installers.length > 0) {
+    if (status === 'authenticated') {
       fetchAllMessages()
     }
-  }, [status, installers.length])
+  }, [status])
 
   useEffect(() => {
     if (selectedInstaller) {
@@ -128,20 +132,22 @@ export default function MessagesPage() {
 
   const fetchInstallers = async () => {
     try {
-      const response = await fetch('/api/installers')
+      // Fetch all installers by requesting a large limit
+      const response = await fetch('/api/installers?limit=1000')
       const data = await response.json()
-      setInstallers(data.installers || [])
+      const installersList = data.installers || []
+      setInstallers(installersList)
+      return installersList
     } catch (error) {
       console.error('Error fetching installers:', error)
+      return []
     }
   }
 
   const fetchAllMessages = async () => {
     try {
-      // Fetch installers first if not already loaded
-      if (installers.length === 0) {
-        await fetchInstallers()
-      }
+      // Always fetch fresh installers to ensure we have the latest data
+      const installersList = await fetchInstallers()
       
       const response = await fetch('/api/notifications?type=message')
       const data = await response.json()
@@ -153,12 +159,13 @@ export default function MessagesPage() {
       allMessages.forEach((message) => {
         const installerId = message.installerId
         if (!conversationMap.has(installerId)) {
-          const installer = installers.find(i => i.id === installerId) || {
+          const installer = installersList.find(i => i.id === installerId) || {
             id: message.installer.id,
             firstName: message.installer.firstName,
             lastName: message.installer.lastName,
             email: message.installer.email,
-            status: 'pending'
+            status: 'pending',
+            photoUrl: message.installer.photoUrl
           }
           conversationMap.set(installerId, {
             installer,
@@ -177,7 +184,7 @@ export default function MessagesPage() {
       })
       
       // Add installers who don't have messages yet
-      installers.forEach(installer => {
+      installersList.forEach(installer => {
         if (!conversationMap.has(installer.id)) {
           conversationMap.set(installer.id, {
             installer,
@@ -211,14 +218,74 @@ export default function MessagesPage() {
     }
   }
 
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB. Please compress or use a smaller file.')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
+    setSelectedFile(file)
+    setError('')
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFilePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreview(null)
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    setFilePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedInstaller || !messageContent.trim()) return
+    if (!selectedInstaller || (!messageContent.trim() && !selectedFile)) return
 
     setError('')
     setIsSending(true)
+    let attachmentUrl: string | null = null
+    let attachmentName: string | null = null
 
     try {
+      // Upload file if one is selected
+      if (selectedFile) {
+        setIsUploadingFile(true)
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+        formData.append('folder', 'messages')
+
+        const uploadResponse = await fetch('/api/messages/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json()
+          throw new Error(errorData.error || 'Failed to upload file.')
+        }
+
+        const uploadData = await uploadResponse.json()
+        attachmentUrl = uploadData.url
+        attachmentName = selectedFile.name
+        setIsUploadingFile(false)
+      }
+
+      // Send message with attachment
       const response = await fetch('/api/notifications', {
         method: 'POST',
         headers: {
@@ -228,10 +295,12 @@ export default function MessagesPage() {
           installerIds: [selectedInstaller.id],
           type: 'message',
           title: 'Message',
-          content: messageContent.trim(),
+          content: messageContent.trim() || (selectedFile ? `Sent ${selectedFile.name}` : ''),
           priority: 'normal',
           senderId: 'admin',
           senderType: 'admin',
+          attachmentUrl,
+          attachmentName,
         }),
       })
 
@@ -242,6 +311,11 @@ export default function MessagesPage() {
       }
 
       setMessageContent('')
+      setSelectedFile(null)
+      setFilePreview(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
       setSuccess('Message sent!')
       setTimeout(() => setSuccess(''), 3000)
       
@@ -252,6 +326,7 @@ export default function MessagesPage() {
       console.error('Error sending message:', err)
       setError(err.message || 'Failed to send message.')
       setTimeout(() => setError(''), 5000)
+      setIsUploadingFile(false)
     } finally {
       setIsSending(false)
     }
@@ -531,7 +606,7 @@ export default function MessagesPage() {
               {/* Messages */}
               <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 custom-scrollbar"
+                className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 custom-scrollbar bg-gradient-to-b from-slate-50 via-white to-slate-50"
               >
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
@@ -542,24 +617,30 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   <AnimatePresence>
-                    {messages.map((message) => {
+                    {messages.map((message, index) => {
                       const isFromAdmin = !message.senderId || message.senderId === 'admin'
+                      const showAvatar = !isFromAdmin && (index === 0 || messages[index - 1].senderId !== message.senderId)
                       return (
                         <motion.div
                           key={message.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`flex ${isFromAdmin ? 'justify-end' : 'justify-start'}`}
+                          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ 
+                            duration: 0.3,
+                            ease: [0.4, 0, 0.2, 1]
+                          }}
+                          className={`flex items-end gap-3 mb-4 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}
                         >
-                          <div className={`max-w-[70%] ${isFromAdmin ? '' : 'flex items-start gap-2'}`}>
-                            {!isFromAdmin && (
-                              <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20">
+                          {/* Avatar for installer messages */}
+                          {!isFromAdmin && (
+                            <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md">
                                 {message.installer?.photoUrl ? (
                                   <Image
                                     src={message.installer.photoUrl}
                                     alt={`${message.installer.firstName} ${message.installer.lastName}`}
-                                    width={32}
-                                    height={32}
+                                    width={40}
+                                    height={40}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
                                       e.currentTarget.style.display = 'none'
@@ -567,46 +648,115 @@ export default function MessagesPage() {
                                   />
                                 ) : null}
                                 <div className={`w-full h-full flex items-center justify-center ${
-                                  message.installer?.photoUrl ? 'absolute inset-0 bg-brand-green' : 'bg-brand-green'
+                                  message.installer?.photoUrl ? 'absolute inset-0 bg-gradient-to-br from-brand-green to-brand-green-dark' : 'bg-gradient-to-br from-brand-green to-brand-green-dark'
                                 }`}>
-                                  <span className="text-white font-semibold text-xs">
+                                  <span className="text-white font-bold text-sm">
                                     {message.installer ? getInitials(message.installer.firstName, message.installer.lastName) : 'I'}
                                   </span>
                                 </div>
                               </div>
-                            )}
-                          <div>
-                            <div className={`rounded-3xl px-6 py-5 shadow-lg ${
-                              isFromAdmin
-                                ? 'bg-gradient-to-br from-brand-green to-brand-green-dark text-white rounded-tr-sm'
-                                : 'bg-white text-slate-900 border-2 border-slate-200 rounded-tl-sm hover:border-slate-300 transition-colors'
-                            }`}>
-                              <p className={`text-lg leading-relaxed whitespace-pre-wrap font-medium ${
-                                isFromAdmin ? 'text-white' : 'text-slate-900'
-                              }`}>{message.content}</p>
+                            </div>
+                          )}
+
+                          {/* Message Bubble */}
+                          <div className={`flex flex-col ${isFromAdmin ? 'items-end' : 'items-start'} max-w-[75%] sm:max-w-[65%]`}>
+                            <motion.div
+                              whileHover={{ scale: 1.02 }}
+                              transition={{ duration: 0.2 }}
+                              className={`relative rounded-2xl px-5 py-3.5 shadow-xl ${
+                                isFromAdmin
+                                  ? 'bg-gradient-to-br from-brand-green via-brand-green to-brand-green-dark text-white rounded-br-md'
+                                  : 'bg-white text-slate-800 border border-slate-200/80 rounded-bl-md shadow-slate-200/50'
+                              }`}
+                              style={{
+                                boxShadow: isFromAdmin
+                                  ? '0 4px 12px rgba(34, 197, 94, 0.25), 0 2px 4px rgba(34, 197, 94, 0.15)'
+                                  : '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)'
+                              }}
+                            >
+                              {/* Message Tail */}
+                              {isFromAdmin ? (
+                                <div className="absolute -right-2 bottom-0 w-0 h-0 border-l-[12px] border-l-brand-green border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent" />
+                              ) : (
+                                <div className="absolute -left-2 bottom-0 w-0 h-0 border-r-[12px] border-r-white border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent" />
+                              )}
+                              
+                              {message.content && (
+                                <p className={`text-[15px] leading-relaxed whitespace-pre-wrap ${
+                                  isFromAdmin 
+                                    ? 'text-white font-medium' 
+                                    : 'text-slate-800 font-normal'
+                                }`}>
+                                  {message.content}
+                                </p>
+                              )}
+                              
+                              {message.attachmentUrl && (
+                                <div className={`mt-3 ${message.content ? 'mt-3' : ''}`}>
+                                  {message.attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                    <a
+                                      href={message.attachmentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-block rounded-lg overflow-hidden border-2 border-white/20 hover:border-white/40 transition-colors"
+                                    >
+                                      <img
+                                        src={message.attachmentUrl}
+                                        alt={message.attachmentName || 'Attachment'}
+                                        className="w-40 max-w-[160px] h-28 max-h-[112px] object-cover"
+                                        loading="lazy"
+                                      />
+                                    </a>
+                                  ) : (
+                                    <a
+                                      href={message.attachmentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                        isFromAdmin
+                                          ? 'bg-white/20 hover:bg-white/30 text-white'
+                                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                                      }`}
+                                    >
+                                      <Paperclip className="w-4 h-4" />
+                                      <span className="text-sm">{message.attachmentName || 'Download File'}</span>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                              
                               {message.link && (
                                 <a
                                   href={message.link}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`text-sm mt-3 inline-block font-medium ${
-                                    isFromAdmin ? 'text-white/90 hover:text-white underline' : 'text-brand-green hover:text-brand-green-dark underline'
+                                  className={`text-sm mt-3 inline-flex items-center gap-1.5 font-semibold transition-colors ${
+                                    isFromAdmin 
+                                      ? 'text-white/95 hover:text-white' 
+                                      : 'text-brand-green hover:text-brand-green-dark'
                                   }`}
                                 >
-                                  View Link →
+                                  <span>View Link</span>
+                                  <span className="text-xs">→</span>
                                 </a>
                               )}
-                            </div>
-                            <div className={`flex items-center gap-2 mt-2 px-3 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
-                              <span className="text-sm text-slate-500 font-medium">
+                            </motion.div>
+
+                            {/* Timestamp and Read Status */}
+                            <div className={`flex items-center gap-2 mt-1.5 px-2 ${isFromAdmin ? 'flex-row-reverse' : ''}`}>
+                              <span className="text-xs text-slate-500 font-medium">
                                 {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               {isFromAdmin && message.isRead && (
-                                <CheckCircle2 className="w-4 h-4 text-brand-green" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-brand-green" />
                               )}
                             </div>
                           </div>
-                          </div>
+
+                          {/* Spacer for admin messages to align properly */}
+                          {isFromAdmin && (
+                            <div className="w-10 flex-shrink-0" />
+                          )}
                         </motion.div>
                       )
                     })}
@@ -629,7 +779,57 @@ export default function MessagesPage() {
                     <p className="text-sm text-green-800">{success}</p>
                   </div>
                 )}
+                
+                {/* File Preview */}
+                {selectedFile && (
+                  <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {filePreview ? (
+                          <img
+                            src={filePreview}
+                            alt="Preview"
+                            className="w-12 h-12 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center">
+                            <Paperclip className="w-6 h-6 text-slate-500" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 truncate">{selectedFile.name}</p>
+                          <p className="text-xs text-slate-500">
+                            {(selectedFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="ml-3 p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4 text-slate-600" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleSendMessage} className="flex items-end gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center justify-center w-12 h-12 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition-colors flex-shrink-0"
+                    title="Attach file"
+                  >
+                    <Paperclip className="w-5 h-5 text-slate-600" />
+                  </button>
                   <div className="flex-1">
                     <textarea
                       value={messageContent}
@@ -647,10 +847,10 @@ export default function MessagesPage() {
                   </div>
                   <button
                     type="submit"
-                    disabled={isSending || !messageContent.trim()}
+                    disabled={isSending || isUploadingFile || (!messageContent.trim() && !selectedFile)}
                     className="flex items-center justify-center w-12 h-12 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
-                    {isSending ? (
+                    {isSending || isUploadingFile ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <Send className="w-5 h-5" />

@@ -55,10 +55,27 @@ export default function InstallerJobsPage() {
   const [jobTypeFilter, setJobTypeFilter] = useState('all')
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     fetchJobs()
+    fetchNotificationCount()
   }, [])
+
+  const fetchNotificationCount = async () => {
+    try {
+      const installerId = localStorage.getItem('installerId')
+      if (!installerId) return
+      
+      const response = await fetch(`/api/notifications/count?installerId=${installerId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setNotificationCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error)
+    }
+  }
 
   const fetchJobs = async () => {
     try {
@@ -224,14 +241,23 @@ export default function InstallerJobsPage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Payment</span>}
+            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+                {notificationCount > 0 && (
+                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
         </nav>
 

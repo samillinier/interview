@@ -122,11 +122,11 @@ export async function POST(request: NextRequest) {
     let aiResponse
     try {
       aiResponse = await generateInterviewResponse(
-        updatedHistory,
-        currentQuestionIndex,
-        language as 'en' | 'es',
-        actualNextQuestionIndex
-      )
+      updatedHistory,
+      currentQuestionIndex,
+      language as 'en' | 'es',
+      actualNextQuestionIndex
+    )
     } catch (error: any) {
       console.error('Error generating AI response:', error?.message || error)
       return NextResponse.json(

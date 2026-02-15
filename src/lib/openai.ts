@@ -132,23 +132,23 @@ IMPORTANT RULES:
       throw new Error('OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.')
     }
     
-    const openai = getOpenAIClient()
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      temperature: 0.7,
-      max_tokens: 150,
-    })
+  const openai = getOpenAIClient()
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages,
+    temperature: 0.7,
+    max_tokens: 150,
+  })
 
-    const response = completion.choices[0]?.message?.content || ''
-    const shouldMoveToNextQuestion = !isLastQuestion && actualNextIndex < questions.length && !isClosingQuestion
+  const response = completion.choices[0]?.message?.content || ''
+  const shouldMoveToNextQuestion = !isLastQuestion && actualNextIndex < questions.length && !isClosingQuestion
 
-    const extractedInfo: Record<string, any> = {}
-    
-    return {
-      response: response.trim(),
-      shouldMoveToNextQuestion,
-      extractedInfo: Object.keys(extractedInfo).length > 0 ? extractedInfo : undefined,
+  const extractedInfo: Record<string, any> = {}
+  
+  return {
+    response: response.trim(),
+    shouldMoveToNextQuestion,
+    extractedInfo: Object.keys(extractedInfo).length > 0 ? extractedInfo : undefined,
     }
   } catch (error: any) {
     console.error('Error generating interview response:', error?.message || error)

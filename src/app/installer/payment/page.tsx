@@ -61,6 +61,7 @@ export default function PaymentPage() {
   const [success, setSuccess] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
+  const [notificationCount, setNotificationCount] = useState(0)
 
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
     companyName: '',
@@ -138,6 +139,17 @@ export default function PaymentPage() {
       }
       const profileData = await profileResponse.json()
       setInstaller(profileData.installer)
+
+      // Fetch notification count
+      try {
+        const notificationResponse = await fetch(`/api/notifications/count?installerId=${installerId}`)
+        if (notificationResponse.ok) {
+          const notificationData = await notificationResponse.json()
+          setNotificationCount(notificationData.count || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching notification count:', error)
+      }
 
       // Load payment information
       setPaymentInfo({
@@ -307,14 +319,23 @@ export default function PaymentPage() {
             className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
           >
             <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Payment</span>}
+            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+                {notificationCount > 0 && (
+                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
         </nav>
 
@@ -352,7 +373,7 @@ export default function PaymentPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 mb-1">Account Information Form</h1>
-                <p className="text-sm text-slate-500">Set up direct deposit payment to your bank account</p>
+                <p className="text-sm text-slate-500">Manage your direct deposit and account information</p>
               </div>
               {!isEditing ? (
                 <button

@@ -51,11 +51,15 @@ export async function POST(
 
     // Parse request body
     const body = await request.json()
-    const { content } = body
+    const { content, attachmentUrl, attachmentName } = body
 
-    if (!content || !content.trim()) {
+    const trimmedContent = typeof content === 'string' ? content.trim() : ''
+    const trimmedAttachmentUrl = typeof attachmentUrl === 'string' ? attachmentUrl.trim() : ''
+    const trimmedAttachmentName = typeof attachmentName === 'string' ? attachmentName.trim() : ''
+
+    if (!trimmedContent && !trimmedAttachmentUrl) {
       return NextResponse.json(
-        { error: 'Message content is required' },
+        { error: 'Message content or attachment is required' },
         { status: 400 }
       )
     }
@@ -72,29 +76,19 @@ export async function POST(
       )
     }
 
-    // Create a message notification
-    // For admin to see, we'll create it with senderId as the installer's ID
-    const trimmedContent = content.trim()
-    
-    // Validate all required fields
-    if (!trimmedContent) {
-      return NextResponse.json(
-        { error: 'Message content cannot be empty' },
-        { status: 400 }
-      )
-    }
-    
     // Create notification - matching the exact pattern from /api/notifications/route.ts
     const notification = await prisma.notification.create({
       data: {
         installerId,
         type: 'message',
         title: 'Message',
-        content: trimmedContent,
+        content: trimmedContent || (trimmedAttachmentName ? `Sent ${trimmedAttachmentName}` : 'Sent an attachment'),
         priority: 'normal',
         link: null,
         senderId: installerId,
         senderType: 'installer',
+        attachmentUrl: trimmedAttachmentUrl || null,
+        attachmentName: trimmedAttachmentName || null,
       },
       include: {
         installer: {

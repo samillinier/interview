@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { motion } from 'framer-motion'
 import { 
   User, 
@@ -41,6 +41,8 @@ interface Notification {
   senderId?: string
   senderType?: 'admin' | 'installer'
   priority: 'low' | 'normal' | 'high' | 'urgent'
+  attachmentUrl?: string | null
+  attachmentName?: string | null
 }
 
 export default function NotificationsPage() {
@@ -54,7 +56,12 @@ export default function NotificationsPage() {
   const [isMarkingRead, setIsMarkingRead] = useState<string | null>(null)
   const [messageContent, setMessageContent] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [notificationCount, setNotificationCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     checkAuthAndLoadData()
@@ -65,6 +72,28 @@ export default function NotificationsPage() {
       loadNotifications()
     }
   }, [installer, activeTab])
+
+  // Only when the installer opens the Messages tab, automatically mark all unread messages as read
+  useEffect(() => {
+    if (!installer?.id) return
+    if (activeTab !== 'message') return
+
+    const markMessagesAsRead = async () => {
+      try {
+        await fetch(`/api/installers/${installer.id}/notifications/mark-all-read`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'message' }),
+        })
+        await loadNotifications()
+      } catch (e) {
+        console.error('Error marking messages as read:', e)
+      }
+    }
+
+    markMessagesAsRead()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [installer?.id, activeTab])
 
   useEffect(() => {
     if (activeTab === 'message') {
@@ -130,6 +159,17 @@ export default function NotificationsPage() {
       }
       const profileData = await profileResponse.json()
       setInstaller(profileData.installer)
+      
+      // Fetch notification count
+      try {
+        const notificationResponse = await fetch(`/api/notifications/count?installerId=${installerId}`)
+        if (notificationResponse.ok) {
+          const notificationData = await notificationResponse.json()
+          setNotificationCount(notificationData.count || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching notification count:', error)
+      }
     } catch (err: any) {
       console.error('Error loading data:', err)
       setError(err.message || 'Failed to load data')
@@ -142,6 +182,13 @@ export default function NotificationsPage() {
     if (!installer) return
 
     try {
+      // Update notification count
+      const countResponse = await fetch(`/api/notifications/count?installerId=${installer.id}`)
+      if (countResponse.ok) {
+        const countData = await countResponse.json()
+        setNotificationCount(countData.count || 0)
+      }
+      
       // Load all notifications (not filtered by type) so we can show unread counts
       const response = await fetch(`/api/installers/${installer.id}/notifications`)
       const contentType = response.headers.get('content-type')
@@ -196,23 +243,74 @@ export default function NotificationsPage() {
     }
   }
 
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB. Please compress or use a smaller file.')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
+    setSelectedFile(file)
+    setError('')
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onloadend = () => setFilePreview(reader.result as string)
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreview(null)
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    setFilePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!installer || !installer.id) {
       setError('Installer information not loaded. Please refresh the page.')
       return
     }
-    if (!messageContent.trim()) return
+    if (!messageContent.trim() && !selectedFile) return
 
     setIsSendingMessage(true)
     setError('')
 
     try {
-      console.log('Sending message to:', `/api/installers/${installer.id}/messages`)
-      console.log('Installer ID:', installer.id)
-      console.log('Message content:', messageContent.trim())
-      
-      let response
+      let attachmentUrl: string | null = null
+      let attachmentName: string | null = null
+
+      if (selectedFile) {
+        setIsUploadingFile(true)
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+        formData.append('folder', 'messages')
+
+        const uploadResponse = await fetch('/api/messages/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const uploadContentType = uploadResponse.headers.get('content-type') || ''
+        const uploadData = uploadContentType.includes('application/json') ? await uploadResponse.json() : null
+
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData?.error || 'Failed to upload file.')
+        }
+
+        attachmentUrl = uploadData?.url || null
+        attachmentName = selectedFile.name
+        setIsUploadingFile(false)
+      }
+
+      let response: Response
       try {
         response = await fetch(`/api/installers/${installer.id}/messages`, {
           method: 'POST',
@@ -221,6 +319,8 @@ export default function NotificationsPage() {
           },
           body: JSON.stringify({
             content: messageContent.trim(),
+            attachmentUrl,
+            attachmentName,
           }),
         })
       } catch (fetchError: any) {
@@ -264,6 +364,7 @@ export default function NotificationsPage() {
 
       // Clear input and refresh messages
       setMessageContent('')
+      handleRemoveFile()
       await loadNotifications()
       
       // Scroll to bottom to show new message
@@ -287,6 +388,7 @@ export default function NotificationsPage() {
       setTimeout(() => setError(''), 10000)
     } finally {
       setIsSendingMessage(false)
+      setIsUploadingFile(false)
     }
   }
 
@@ -296,7 +398,7 @@ export default function NotificationsPage() {
     router.push('/installer/login')
   }
 
-  const filteredNotifications = notifications.filter(n => {
+  const filteredNotifications = notifications.filter((n) => {
     if (activeTab === 'notification') return n.type === 'notification'
     if (activeTab === 'message') return n.type === 'message'
     if (activeTab === 'news') return n.type === 'news'
@@ -395,14 +497,23 @@ export default function NotificationsPage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Payment</span>}
+            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
           >
             <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Notifications</span>
+                {notificationCount > 0 && (
+                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
         </nav>
 
@@ -491,7 +602,7 @@ export default function NotificationsPage() {
           </Link>
           <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <CreditCard className="w-5 h-5" />
-            <span>Payment</span>
+            <span>Account</span>
           </Link>
           <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium">
             <Bell className="w-5 h-5" />
@@ -630,6 +741,13 @@ export default function NotificationsPage() {
                   >
                     {filteredNotifications.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((message) => {
                       const isFromAdmin = !message.senderId || message.senderId === 'admin' || message.senderType === 'admin'
+                      const attachmentUrl = message.attachmentUrl || null
+                      const attachmentName = message.attachmentName || null
+                      const isImageAttachment = Boolean(
+                        attachmentUrl &&
+                          (/\.(png|jpe?g|gif|webp|svg)$/i.test(attachmentName || '') ||
+                            /\.(png|jpe?g|gif|webp|svg)(\?|#|$)/i.test(attachmentUrl))
+                      )
                       return (
                         <motion.div
                           key={message.id}
@@ -652,6 +770,68 @@ export default function NotificationsPage() {
                                 <p className={`text-lg leading-relaxed whitespace-pre-wrap font-medium ${
                                   isFromAdmin ? 'text-slate-900' : 'text-white'
                                 }`}>{message.content}</p>
+
+                                {attachmentUrl && (
+                                  <div className={`mt-4 rounded-2xl p-4 border ${
+                                    isFromAdmin
+                                      ? 'bg-white/70 border-slate-200'
+                                      : 'bg-white/15 border-white/25'
+                                  }`}>
+                                    <div className="flex items-center gap-2">
+                                      <Paperclip className={`w-4 h-4 ${isFromAdmin ? 'text-slate-700' : 'text-white/90'}`} />
+                                      <span className={`text-sm font-semibold truncate ${isFromAdmin ? 'text-slate-800' : 'text-white'}`}>
+                                        {attachmentName || 'Attachment'}
+                                      </span>
+                                    </div>
+
+                                    {isImageAttachment && (
+                                      <a
+                                        href={attachmentUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className={`mt-3 inline-block rounded-xl overflow-hidden border hover:opacity-95 transition-opacity ${
+                                          isFromAdmin ? 'border-slate-200' : 'border-white/20'
+                                        }`}
+                                        title="Open image"
+                                      >
+                                        {/* Use <img> instead of next/image so external attachment hosts don't crash the page */}
+                                        <img
+                                          src={attachmentUrl}
+                                          alt={attachmentName || 'Attachment'}
+                                          className="w-44 max-w-[176px] h-32 max-h-[128px] object-cover"
+                                          loading="lazy"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      </a>
+                                    )}
+
+                                    <div className="mt-3 flex items-center gap-2">
+                                      <a
+                                        href={attachmentUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                          isFromAdmin
+                                            ? 'bg-slate-900 text-white hover:bg-slate-800'
+                                            : 'bg-white text-brand-green hover:bg-white/90'
+                                        }`}
+                                      >
+                                        View
+                                      </a>
+                                      <a
+                                        href={attachmentUrl}
+                                        download={attachmentName || undefined}
+                                        className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                          isFromAdmin
+                                            ? 'bg-white text-slate-900 border border-slate-200 hover:bg-slate-50'
+                                            : 'bg-white/15 text-white border border-white/25 hover:bg-white/20'
+                                        }`}
+                                      >
+                                        Download
+                                      </a>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                               <div className={`flex items-center gap-2 mt-2 px-3 ${isFromAdmin ? 'justify-start' : 'justify-end'}`}>
                                 <span className="text-sm text-slate-500 font-medium">
@@ -677,7 +857,51 @@ export default function NotificationsPage() {
                   </div>
                 )}
                 <form onSubmit={handleSendMessage} className="flex items-end gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center justify-center w-12 h-12 bg-white border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors flex-shrink-0"
+                    title="Attach a file"
+                    disabled={isSendingMessage || isUploadingFile}
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </button>
                   <div className="flex-1">
+                    {selectedFile && (
+                      <div className="mb-3 p-3 bg-white border border-slate-200 rounded-xl">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{selectedFile.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {(selectedFile.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveFile}
+                            className="text-xs font-bold text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        {filePreview && (
+                          <div className="mt-3 rounded-lg overflow-hidden border border-slate-200">
+                            <img
+                              src={filePreview}
+                              alt="Preview"
+                              className="w-full h-auto object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <textarea
                       value={messageContent}
                       onChange={(e) => setMessageContent(e.target.value)}
@@ -694,10 +918,10 @@ export default function NotificationsPage() {
                   </div>
                   <button
                     type="submit"
-                    disabled={isSendingMessage || !messageContent.trim()}
+                    disabled={isSendingMessage || isUploadingFile || (!messageContent.trim() && !selectedFile)}
                     className="flex items-center justify-center w-12 h-12 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
-                    {isSendingMessage ? (
+                    {isSendingMessage || isUploadingFile ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <Send className="w-5 h-5" />
