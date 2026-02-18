@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const jobs = await prisma.job.findMany({
       where,
       include: {
-        applications: installerId ? {
+        JobApplication: installerId ? {
           where: { installerId },
         } : true,
         _count: {
@@ -27,7 +27,13 @@ export async function GET(request: NextRequest) {
     })
 
     // If installerId provided, filter jobs by targetStatus
-    let filteredJobs = jobs
+    // Keep backwards compatibility for UI code expecting `job.applications`
+    const normalizedJobs: any[] = jobs.map((job: any) => ({
+      ...job,
+      applications: job.JobApplication || [],
+    }))
+
+    let filteredJobs = normalizedJobs
     if (installerId) {
       const installer = await prisma.installer.findUnique({
         where: { id: installerId },
@@ -35,7 +41,7 @@ export async function GET(request: NextRequest) {
       })
 
       if (installer) {
-        filteredJobs = jobs.filter(job => {
+        filteredJobs = normalizedJobs.filter(job => {
           if (!job.targetStatus || job.targetStatus === 'all') return true
           if (job.targetStatus === 'qualified' && (installer.status === 'passed' || installer.status === 'qualified')) return true
           if (job.targetStatus === 'passed' && installer.status === 'passed') return true
