@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const interview = await prisma.interview.findUnique({
       where: { id: interviewId },
       include: {
-        installer: true,
+        Installer: true,
         responses: true,
       },
     })
