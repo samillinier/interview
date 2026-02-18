@@ -55,7 +55,7 @@ export async function PATCH(
             status: true,
           },
         },
-        job: {
+        Job: {
           select: {
             title: true,
             location: true,
@@ -66,8 +66,8 @@ export async function PATCH(
 
     // Send notification to installer about status change
     const statusMessage = status === 'accepted' 
-      ? `Congratulations! Your application for "${updatedApplication.job.title}" in ${updatedApplication.job.location} has been accepted.`
-      : `Your application for "${updatedApplication.job.title}" in ${updatedApplication.job.location} has been reviewed.`
+      ? `Congratulations! Your application for "${updatedApplication.Job.title}" in ${updatedApplication.Job.location} has been accepted.`
+      : `Your application for "${updatedApplication.Job.title}" in ${updatedApplication.Job.location} has been reviewed.`
 
     await prisma.notification.create({
       data: {
