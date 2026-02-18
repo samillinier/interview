@@ -140,6 +140,7 @@ export async function POST(
     // Always create a new document record (all types support multiple uploads)
     const document = await prisma.document.create({
       data: {
+        id: crypto.randomUUID(),
         installerId,
         type,
         name: file.name,
