@@ -83,11 +83,13 @@ export async function GET(request: NextRequest) {
         try {
           await prisma.admin.upsert({
             where: { email: userEmail },
-            update: { isActive: true },
+            update: { isActive: true, updatedAt: new Date() },
             create: {
+              id: crypto.randomUUID(),
               email: userEmail,
               isActive: true,
               createdBy: 'system_fallback',
+              updatedAt: new Date(),
             },
           })
         } catch (error) {
