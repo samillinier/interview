@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       where: { id: interviewId },
       include: {
         Installer: true,
-        responses: true,
+        InterviewResponse: true,
       },
     })
 
