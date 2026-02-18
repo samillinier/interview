@@ -78,13 +78,13 @@ export async function POST(
         status: 'pending',
       },
       include: {
-        job: {
+        Job: {
           select: {
             title: true,
             location: true,
           },
         },
-        installer: {
+        Installer: {
           select: {
             firstName: true,
             lastName: true,
