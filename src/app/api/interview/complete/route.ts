@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build full transcript
-    const transcript = interview.responses
+    const transcript = interview.InterviewResponse
       .map((r) => `Q: ${r.questionText}\nA: ${r.answerText}`)
       .join('\n\n')
 
