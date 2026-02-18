@@ -35,8 +35,10 @@ export async function POST(request: NextRequest) {
     // Create new interview
     const interview = await prisma.interview.create({
       data: {
+        id: crypto.randomUUID(),
         installerId: installer.id,
         status: 'in_progress',
+        updatedAt: new Date(),
       },
     })
     console.log('Created interview:', interview.id)
