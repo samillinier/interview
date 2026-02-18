@@ -18,13 +18,13 @@ export async function GET(
     const job = await prisma.job.findUnique({
       where: { id: jobId },
       include: {
-        applications: installerId
+        JobApplication: installerId
           ? {
               where: {
                 installerId: installerId,
               },
               include: {
-                installer: {
+                Installer: {
                   select: {
                     id: true,
                     firstName: true,
@@ -39,7 +39,7 @@ export async function GET(
             }
           : {
               include: {
-                installer: {
+                Installer: {
                   select: {
                     id: true,
                     firstName: true,
@@ -65,9 +65,15 @@ export async function GET(
       )
     }
 
+    // Keep backwards compatibility for older UI code expecting `job.applications`
+    const normalizedJob: any = {
+      ...job,
+      applications: (job as any).JobApplication || [],
+    }
+
     return NextResponse.json({
       success: true,
-      job,
+      job: normalizedJob,
     })
   } catch (error: any) {
     console.error('Error fetching job:', error)

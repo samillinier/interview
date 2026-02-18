@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
           where: { installerId },
         } : true,
         _count: {
-          select: { applications: true },
+          select: { JobApplication: true },
         },
       },
       orderBy: { createdAt: 'desc' },
