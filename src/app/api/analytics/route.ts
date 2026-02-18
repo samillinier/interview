@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
         StaffMember: true,
         Notification: true,
         JobApplication: true,
+        Interview: true,
       },
     })
 
