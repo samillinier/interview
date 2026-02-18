@@ -76,7 +76,6 @@ export async function POST(
         jobId,
         installerId,
         status: 'pending',
-        updatedAt: new Date(),
       },
       include: {
         job: {
