@@ -28,7 +28,7 @@ export async function GET(
     const notifications = await prisma.notification.findMany({
       where,
       include: {
-        installer: {
+        Installer: {
           select: {
             id: true,
             firstName: true,
