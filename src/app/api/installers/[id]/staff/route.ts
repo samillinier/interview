@@ -60,7 +60,9 @@ export async function POST(
 
     const staffMember = await prisma.staffMember.create({
       data: {
+        id: crypto.randomUUID(),
         installerId,
+        updatedAt: new Date(),
         firstName,
         lastName,
         digitalId: digitalId || null,
