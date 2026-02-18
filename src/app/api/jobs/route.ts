@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
         eligibleInstallers.map((installer) =>
           prisma.notification.create({
             data: {
+              id: crypto.randomUUID(),
               installerId: installer.id,
               type: 'job',
               title: 'New Job Opportunity',
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
               link: `/installer/jobs`,
               senderId: 'admin',
               senderType: 'admin',
+              updatedAt: new Date(),
             },
           })
         )
