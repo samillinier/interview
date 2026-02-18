@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { ensureInstallerReferralCode } from '@/lib/referrals'
 
 export async function GET(
   request: NextRequest,
@@ -45,8 +46,32 @@ export async function GET(
         )
     }
 
+      // Ensure referral code exists (backfill for older installers)
+      let referralCode = installer.referralCode || null
+      try {
+        referralCode = await ensureInstallerReferralCode(installerId)
+      } catch (err) {
+        console.error('Failed to ensure referral code:', err)
+      }
+
+      // Basic referral stats
+      let referralsCount = 0
+      try {
+        referralsCount = await prisma.installer.count({
+          where: { referredByInstallerId: installerId },
+        })
+      } catch (err) {
+        console.error('Failed to compute referralsCount:', err)
+    }
+
       console.log('Installer found:', installer.email)
-    return NextResponse.json({ installer })
+      return NextResponse.json({
+        installer: {
+          ...installer,
+          referralCode,
+          referralsCount,
+        },
+      })
     } catch (dbError: any) {
       // Handle Prisma/database specific errors
       console.error('Database error fetching installer:', dbError)

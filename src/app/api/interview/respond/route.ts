@@ -4,7 +4,7 @@ import {
   generateInterviewResponse,
   generateSpeech,
 } from '@/lib/openai'
-import { getInterviewQuestions } from '@/lib/questions'
+import { getInterviewQuestions, WORKROOM_OPTIONS } from '@/lib/questions'
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,6 +52,26 @@ export async function POST(request: NextRequest) {
         console.log('Flooring skills saved:', skillsArray)
       } catch (error) {
         console.error('Error saving flooring skills:', error)
+      }
+    }
+    
+    // Save workroom if provided
+    if (currentQuestion.id === 'workroom' && userResponse && userResponse !== 'None') {
+      try {
+        // Extract workroom from response (could be just the name or full sentence)
+        const selectedWorkroom = WORKROOM_OPTIONS.find(opt => 
+          userResponse.toLowerCase().includes(opt.toLowerCase())
+        ) || userResponse.trim()
+        
+        await prisma.installer.update({
+          where: { id: interview.installerId },
+          data: {
+            workroom: selectedWorkroom,
+          },
+        })
+        console.log('Workroom saved:', selectedWorkroom)
+      } catch (error) {
+        console.error('Error saving workroom:', error)
       }
     }
     

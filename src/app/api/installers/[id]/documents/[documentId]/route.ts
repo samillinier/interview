@@ -76,8 +76,8 @@ export async function DELETE(
 
     // Delete the file from storage if it exists
     if (document.url) {
-      try {
-        await deleteFile(document.url)
+    try {
+      await deleteFile(document.url)
       } catch (storageError) {
         console.error('Error deleting file from storage:', storageError)
         // Continue with database deletion even if storage deletion fails

@@ -75,7 +75,7 @@ export async function POST(
         { status: 404 }
       )
     }
-
+    
     // Create notification - matching the exact pattern from /api/notifications/route.ts
     const notification = await prisma.notification.create({
       data: {

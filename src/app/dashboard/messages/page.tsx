@@ -9,6 +9,7 @@ import {
   Send, 
   Users, 
   LayoutDashboard,
+  Settings,
   Menu,
   X,
   LogOut,
@@ -456,6 +457,15 @@ export default function MessagesPage() {
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
           </Link>
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Settings</span>}
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -634,7 +644,7 @@ export default function MessagesPage() {
                           className={`flex items-end gap-3 mb-4 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}
                         >
                           {/* Avatar for installer messages */}
-                          {!isFromAdmin && (
+                            {!isFromAdmin && (
                             <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                               <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md">
                                 {message.installer?.photoUrl ? (
@@ -658,7 +668,7 @@ export default function MessagesPage() {
                                 </div>
                               </div>
                             </div>
-                          )}
+                            )}
 
                           {/* Message Bubble */}
                           <div className={`flex flex-col ${isFromAdmin ? 'items-end' : 'items-start'} max-w-[75%] sm:max-w-[65%]`}>
@@ -685,7 +695,7 @@ export default function MessagesPage() {
                               
                               {message.content && (
                                 <p className={`text-[15px] leading-relaxed whitespace-pre-wrap ${
-                                  isFromAdmin 
+                              isFromAdmin
                                     ? 'text-white font-medium' 
                                     : 'text-slate-800 font-normal'
                                 }`}>

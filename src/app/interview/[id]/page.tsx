@@ -14,7 +14,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import MessageBubble from '@/components/MessageBubble'
-import { getInterviewQuestions } from '@/lib/questions'
+import { getInterviewQuestions, WORKROOM_OPTIONS } from '@/lib/questions'
 import { getSupportedMimeType, isMobile, resumeAudioContext, isMediaRecorderSupported, isIOS } from '@/lib/utils'
 
 interface Message {
@@ -107,6 +107,9 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     'Stone Tile',
     'Carpet Tile',
   ]
+
+  // Workroom selection state
+  const [selectedWorkroom, setSelectedWorkroom] = useState<string>('')
 
   // Scroll to top when messages change (newest messages at top)
   useEffect(() => {
@@ -694,6 +697,12 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     await processResponse(undefined, response)
   }
 
+  // Handle workroom submission
+  const handleWorkroomSubmit = async () => {
+    const response = selectedWorkroom || 'None'
+    await processResponse(undefined, response)
+  }
+
   const completeInterview = async () => {
     try {
       const response = await fetch('/api/interview/complete', {
@@ -1086,8 +1095,40 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
+          {/* Workroom Selection UI */}
+          {questionType === 'workroom_selection' && (
+            <div className="space-y-4">
+              <div className="bg-primary-50 rounded-xl p-4">
+                <p className="text-sm text-slate-600 mb-4">Select the workroom you are applying to:</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {WORKROOM_OPTIONS.map((workroom) => (
+                    <button
+                      key={workroom}
+                      onClick={() => setSelectedWorkroom(workroom)}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                        selectedWorkroom === workroom
+                          ? 'bg-brand-green text-white'
+                          : 'bg-white text-slate-700 border border-primary-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {selectedWorkroom === workroom && '✓ '}
+                      {workroom}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleWorkroomSubmit}
+                disabled={isProcessing || isSpeaking || !selectedWorkroom}
+                className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
           {/* Pending Response Preview - for editing before sending */}
-          {pendingResponse !== null && questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' ? (
+          {pendingResponse !== null && questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' && questionType !== 'workroom_selection' ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1132,7 +1173,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 </button>
               </div>
             </motion.div>
-          ) : questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' ? (
+          ) : questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' && questionType !== 'workroom_selection' ? (
             <>
               {/* Mode toggle */}
               <div className="flex justify-center mb-4">

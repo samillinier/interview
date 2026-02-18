@@ -13,6 +13,7 @@ function CreateAccountContent() {
   const searchParams = useSearchParams()
   const installerId = searchParams.get('installerId')
   const emailParam = searchParams.get('email')
+  const ref = searchParams.get('ref')
   
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -70,6 +71,7 @@ function CreateAccountContent() {
         body: JSON.stringify({
           installerId,
           email,
+          referralCode: ref,
         }),
       })
 

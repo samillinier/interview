@@ -8,6 +8,7 @@ import {
   BarChart3,
   TrendingUp,
   Users,
+  Settings,
   CheckCircle2,
   XCircle,
   Clock,
@@ -340,6 +341,15 @@ export default function AnalyticsPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
+              pathname === '/dashboard/settings' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Settings</span>}
           </Link>
         </nav>
 

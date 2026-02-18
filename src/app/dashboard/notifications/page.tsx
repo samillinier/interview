@@ -9,6 +9,7 @@ import {
   Send, 
   Users, 
   LayoutDashboard,
+  Settings,
   Menu,
   X,
   LogOut,
@@ -63,6 +64,8 @@ export default function NotificationsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [installers, setInstallers] = useState<Installer[]>([])
   const [selectedInstallers, setSelectedInstallers] = useState<string[]>([])
+  const [allInstallersSelected, setAllInstallersSelected] = useState(false)
+  const [isSelectingAll, setIsSelectingAll] = useState(false)
   const [showSendForm, setShowSendForm] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -119,11 +122,16 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
+      // Selection should match the currently filtered installer set.
+      setSelectedInstallers([])
+      setAllInstallersSelected(false)
       fetchInstallers()
     }
   }, [searchQuery, filterStatus])
 
   const handleSelectInstaller = (installerId: string) => {
+    // Manual selection means we are no longer in "all installers selected" mode.
+    if (allInstallersSelected) setAllInstallersSelected(false)
     const newSelection = selectedInstallers.includes(installerId)
       ? selectedInstallers.filter(id => id !== installerId)
       : [...selectedInstallers, installerId]
@@ -136,11 +144,48 @@ export default function NotificationsPage() {
     }
   }
 
-  const handleSelectAll = () => {
-    if (selectedInstallers.length === installers.length) {
+  const fetchAllInstallerIds = async (): Promise<string[]> => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.append('search', searchQuery)
+    if (filterStatus !== 'all') params.append('status', filterStatus)
+    params.append('limit', '1000')
+
+    let page = 1
+    let totalPages = 1
+    const ids: string[] = []
+
+    while (page <= totalPages) {
+      params.set('page', String(page))
+      const res = await fetch(`/api/installers?${params.toString()}`)
+      const data = await res.json()
+      const batch = (data.installers || []).map((i: Installer) => i.id)
+      ids.push(...batch)
+      totalPages = data?.pagination?.totalPages || 1
+      page += 1
+    }
+
+    return Array.from(new Set(ids))
+  }
+
+  const handleSelectAll = async () => {
+    if (allInstallersSelected) {
       setSelectedInstallers([])
-    } else {
-      setSelectedInstallers(installers.map(i => i.id))
+      setAllInstallersSelected(false)
+      return
+    }
+
+    try {
+      setIsSelectingAll(true)
+      const ids = await fetchAllInstallerIds()
+      setSelectedInstallers(ids)
+      setAllInstallersSelected(true)
+      if (ids.length > 0 && !showSendForm) setShowSendForm(true)
+    } catch (e) {
+      console.error('Select all installers error:', e)
+      setError('Failed to select all installers. Please try again.')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setIsSelectingAll(false)
     }
   }
 
@@ -287,6 +332,15 @@ export default function NotificationsPage() {
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
           </Link>
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Settings</span>}
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -394,6 +448,12 @@ export default function NotificationsPage() {
           }`}>
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link href="/dashboard/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
+            pathname === '/dashboard/settings' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
+          }`}>
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            <span>Settings</span>
           </Link>
         </nav>
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -616,9 +676,19 @@ export default function NotificationsPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleSelectAll}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                    disabled={isSelectingAll}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {selectedInstallers.length === installers.length ? 'Deselect All' : 'Select All'}
+                    {isSelectingAll ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Selecting…
+                      </span>
+                    ) : allInstallersSelected ? (
+                      'Deselect All'
+                    ) : (
+                      'Select All'
+                    )}
                   </button>
                   <button
                     onClick={() => setShowSendForm(!showSendForm)}

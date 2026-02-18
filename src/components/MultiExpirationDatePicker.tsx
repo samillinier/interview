@@ -217,11 +217,9 @@ export function MultiExpirationDatePicker({
         <button
           type="button"
           onClick={() => {
-            const newDate = new Date().toISOString().split('T')[0]
-            const next = [...inputValues, newDate]
-            const normalized = normalize(next)
-            setLocalValues(normalized)
-            onChange(normalized)
+            // Add a new empty input so users can pick any date (avoids de-duping when "today"
+            // is already in the list and supports adding many dates easily).
+            setLocalValues([...inputValues, ''])
           }}
           className="inline-flex items-center gap-2 text-sm font-semibold text-brand-green hover:text-brand-green-dark"
         >

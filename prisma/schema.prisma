@@ -1,5 +1,3 @@
-// Prisma Schema for Installer Prescreening System
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,506 +7,391 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Installer model - stores all installer information
-model Installer {
-  id                    String    @id @default(cuid())
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  
-  // Basic Information
-  firstName             String
-  lastName              String
-  email                 String    @unique
-  phone                 String?
-  digitalId             String?   // Optional internal/digital identifier
-  workroom              String?   // Workroom (office/branch) location label
-  
-  // Work Experience
-  yearsOfExperience     Int?
-  flooringSpecialties   String?   // JSON array stored as string
-  previousEmployers     String?
-  
-  // Crew & Equipment
-  hasOwnCrew            Boolean   @default(false)
-  crewSize              Int?
-  hasOwnTools           Boolean   @default(false)
-  hasVehicle            Boolean   @default(false)
-  toolsDescription      String?
-  
-  // Service Areas
-  serviceAreas          String?   // JSON array of cities/regions
-  willingToTravel       Boolean   @default(false)
-  maxTravelDistance     Int?      // in miles
-  
-  // Availability
-  availability          String?   // full-time, part-time, contract
-  canStartImmediately   Boolean   @default(false)
-  preferredStartDate    DateTime?
-  
-  // Licensing & Insurance
-  hasInsurance          Boolean   @default(false)
-  insuranceType         String?
-  hasLicense            Boolean   @default(false)
-  licenseNumber         String?
-  licenseExpiry         DateTime?
-  hasGeneralLiability         Boolean   @default(false)
-  hasCommercialAutoLiability  Boolean   @default(false)
-  hasWorkersComp              Boolean   @default(false)
-  hasWorkersCompExemption     Boolean   @default(false)
-  isSunbizRegistered          Boolean   @default(false)
-  isSunbizActive              Boolean   @default(false)
-  hasBusinessLicense          Boolean   @default(false)
-  feiEin                     String?   // FEI / EIN (Federal Employer Identification Number)
-  employerLiabilityPolicyNumber String? // Employer Liability Policy Number
-  
-  // Insurance & Certificate Expiry Dates
-  llrpExpiry                 DateTime? // LLRP expiry date
-  btrExpiry                  DateTime? // BTR expiry date
-  workersCompExemExpiry      DateTime? // Workers Compensation Exemption Certificate expiry date
-  workersCompExemExpiryDates String?   // JSON array of workers comp certificate expiry dates (YYYY-MM-DD)
-  generalLiabilityExpiry     DateTime? // General Liability expiry date
-  automobileLiabilityExpiry   DateTime? // Automobile Liability expiry date
-  automobileLiabilityExpiryDates String? // JSON array of automobile liability policy expiry dates (YYYY-MM-DD)
-  employersLiabilityExpiry   DateTime? // Employer's Liability expiry date
-  
-  // Background Check
-  canPassBackgroundCheck      Boolean?
-  backgroundCheckDetails      String?
-  
-  // Vehicle
-  vehicleDescription          String?
-  
-  // Skills
-  flooringSkills              String?   // JSON array of skills
-  
-  // Schedule Availability
-  mondayToFridayAvailability  String?
-  saturdayAvailability        String?
-  
-  // Travel
-  openToTravel                Boolean   @default(false)
-  travelLocations             String?   // JSON array of locations
-  
-  // Prescreening Results
-  status                String    @default("pending") // pending, passed, failed, review, active
-  passFailReason        String?
-  overallScore          Int?      // 0-100
-  
-  // Notes & Follow-up
-  notes                 String?
-  followUpDate          DateTime?
-  followUpReason        String?
+model Admin {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  email     String   @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  createdBy String?
 
-  // Account Information
-  username                    String?   @unique
-  passwordHash                String?
-  emailVerificationToken      String?
-  emailVerifiedAt             DateTime?
-  passwordResetToken          String?
-  photoUrl                    String?
-  
-  // Company Information
-  companyName                 String?
-  companyTitle                String?
-  companyStreetAddress        String?
-  companyCity                 String?
-  companyState                String?
-  companyZipCode              String?
-  companyCounty               String?
-  companyAddress              String?   // Full formatted address
-  ndaAgreedAt                 DateTime?
-  
-  // Service Agreement
-  serviceAgreementSignedAt    DateTime?
-  serviceAgreementSignature   String?
-  serviceAgreementName        String?
-  serviceAgreementDate        DateTime?
-  
-  // Carpet Installation
-  wantsToAddCarpet            Boolean?
-  installsStretchInCarpet     Boolean?
-  dailyStretchInCarpetSqft    Int?
-  installsGlueDownCarpet      Boolean?
-  
-  // Hardwood Installation
-  wantsToAddHardwood          Boolean?
-  installsNailDownSolidHardwood Boolean?
-  dailyNailDownSolidHardwoodSqft Int?
-  installsStapleDownEngineeredHardwood Boolean?
-  
-  // Laminate Installation
-  wantsToAddLaminate          Boolean?
-  dailyLaminateSqft           Int?
-  installsLaminateOnStairs    Boolean?
-  
-  // Vinyl Installation
-  wantsToAddVinyl             Boolean?
-  installsSheetVinyl          Boolean?
-  installsLuxuryVinylPlank    Boolean?
-  dailyLuxuryVinylPlankSqft   Int?
-  installsLuxuryVinylTile     Boolean?
-  installsVinylCompositionTile Boolean?
-  dailyVinylCompositionTileSqft Int?
-  
-  // Tile Installation
-  wantsToAddTile              Boolean?
-  installsCeramicTile         Boolean?
-  dailyCeramicTileSqft        Int?
-  installsPorcelainTile      Boolean?
-  dailyPorcelainTileSqft     Int?
-  installsStoneTile           Boolean?
-  dailyStoneTileSqft          Int?
-  offersTileRemoval           Boolean?
-  installsTileBacksplash      Boolean?
-  dailyTileBacksplashSqft     Int?
-  
-  // Additional Work
-  movesFurniture              Boolean?
-  installsTrim                Boolean?
-  
-  // Payment Information
-  paymentCompanyName          String?
-  paymentContactPerson        String?
-  paymentPhoneNumber          String?
-  paymentBusinessAddress      String?
-  paymentEmailAddress         String?
-  paymentBankName             String?
-  paymentAccountName          String?
-  paymentAccountNumber         String?
-  paymentRoutingNumber        String?
-  paymentAccountType          String?
-  paymentAuthorizationName    String?
-  paymentAuthorizationSignature String?
-  paymentAuthorizationDate    DateTime?
-
-  
-  // Relationships
-  interviews            Interview[]
-  documents             Document[]
-  communications        Communication[]
-  notifications         Notification[]
-  jobApplications       JobApplication[]
-  staffMembers          StaffMember[]
-  history               InstallerHistory[]
+  @@index([email])
+  @@index([isActive])
 }
 
-// Interview model - stores each prescreening interview
-model Interview {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  installerId     String
-  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  
-  status          String    @default("in_progress") // in_progress, completed, abandoned
-  startedAt       DateTime  @default(now())
-  completedAt     DateTime?
-  
-  // Interview data
-  transcript      String?   // Full conversation transcript
-  extractedData   String?   // JSON of extracted information
-  aiAnalysis      String?   // AI's analysis and recommendations
-  
-  // Questions and Answers
-  responses       InterviewResponse[]
-}
-
-// Individual question responses
-model InterviewResponse {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  
-  interviewId     String
-  interview       Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  
-  questionId      String
-  questionText    String
-  answerText      String?
-  answerAudio     String?   // Path to audio file if voice response
-  
-  // AI extraction
-  extractedValue  String?
-  confidence      Float?    // 0-1 confidence score
-}
-
-// Documents uploaded by installers
-model Document {
-  id                    String    @id @default(cuid())
-  createdAt             DateTime  @default(now())
-  
-  installerId           String
-  installer             Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  
-  type                  String    // insurance, license, certification, other
-  name                  String
-  url                   String
-  verified              Boolean   @default(false)
-  verifiedAt            DateTime?
-  expiryDate            DateTime?
-  verificationLink      String?
-  verificationLinkStatus String?  // active, expired, pending
-}
-
-// Communications log
 model Communication {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  
-  installerId     String
-  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  
-  type            String    // email, sms, notification
-  subject         String?
-  content         String
-  status          String    @default("sent") // sent, delivered, failed
-  sentAt          DateTime  @default(now())
+  id          String    @id
+  createdAt   DateTime  @default(now())
+  installerId String
+  type        String
+  subject     String?
+  content     String
+  status      String    @default("sent")
+  sentAt      DateTime  @default(now())
+  Installer   Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
 }
 
-// Prescreening criteria configuration
-model ScreeningCriteria {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  name            String
-  description     String?
-  isActive        Boolean   @default(true)
-  
-  // Criteria rules (JSON)
-  rules           String    // JSON array of rules
-  
-  // Weights for scoring
-  weights         String?   // JSON object of field weights
+model Document {
+  id                     String    @id
+  createdAt              DateTime  @default(now())
+  installerId            String
+  type                   String
+  name                   String
+  url                    String
+  verified               Boolean   @default(false)
+  verifiedAt             DateTime?
+  expiryDate             DateTime?
+  verificationLink       String?
+  verificationLinkStatus String?
+  Installer              Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
 }
 
+model Installer {
+  id                                   String             @id
+  createdAt                            DateTime           @default(now())
+  updatedAt                            DateTime
+  firstName                            String
+  lastName                             String
+  email                                String             @unique
+  phone                                String?
+  yearsOfExperience                    Int?
+  flooringSpecialties                  String?
+  previousEmployers                    String?
+  hasOwnCrew                           Boolean            @default(false)
+  crewSize                             Int?
+  hasOwnTools                          Boolean            @default(false)
+  hasVehicle                           Boolean            @default(false)
+  toolsDescription                     String?
+  serviceAreas                         String?
+  willingToTravel                      Boolean            @default(false)
+  maxTravelDistance                    Int?
+  availability                         String?
+  canStartImmediately                  Boolean            @default(false)
+  preferredStartDate                   DateTime?
+  hasInsurance                         Boolean            @default(false)
+  insuranceType                        String?
+  hasLicense                           Boolean            @default(false)
+  licenseNumber                        String?
+  licenseExpiry                        DateTime?
+  hasGeneralLiability                  Boolean            @default(false)
+  hasCommercialAutoLiability           Boolean            @default(false)
+  hasWorkersComp                       Boolean            @default(false)
+  hasWorkersCompExemption              Boolean            @default(false)
+  isSunbizRegistered                   Boolean            @default(false)
+  isSunbizActive                       Boolean            @default(false)
+  hasBusinessLicense                   Boolean            @default(false)
+  canPassBackgroundCheck               Boolean?
+  backgroundCheckDetails               String?
+  vehicleDescription                   String?
+  flooringSkills                       String?
+  mondayToFridayAvailability           String?
+  saturdayAvailability                 String?
+  openToTravel                         Boolean            @default(false)
+  travelLocations                      String?
+  status                               String             @default("pending")
+  passFailReason                       String?
+  overallScore                         Int?
+  notes                                String?
+  followUpDate                         DateTime?
+  followUpReason                       String?
+  companyCity                          String?
+  companyName                          String?
+  companyState                         String?
+  companyStreetAddress                 String?
+  companyTitle                         String?
+  companyZipCode                       String?
+  dailyCeramicTileSqft                 Int?
+  dailyLaminateSqft                    Int?
+  dailyLuxuryVinylPlankSqft            Int?
+  dailyNailDownSolidHardwoodSqft       Int?
+  dailyPorcelainTileSqft               Int?
+  dailyStoneTileSqft                   Int?
+  dailyStretchInCarpetSqft             Int?
+  dailyTileBacksplashSqft              Int?
+  dailyVinylCompositionTileSqft        Int?
+  emailVerificationToken               String?
+  emailVerifiedAt                      DateTime?
+  installsCeramicTile                  Boolean?
+  installsGlueDownCarpet               Boolean?
+  installsLaminateOnStairs             Boolean?
+  installsLuxuryVinylPlank             Boolean?
+  installsLuxuryVinylTile              Boolean?
+  installsNailDownSolidHardwood        Boolean?
+  installsPorcelainTile                Boolean?
+  installsSheetVinyl                   Boolean?
+  installsStapleDownEngineeredHardwood Boolean?
+  installsStoneTile                    Boolean?
+  installsStretchInCarpet              Boolean?
+  installsTileBacksplash               Boolean?
+  installsTrim                         Boolean?
+  installsVinylCompositionTile         Boolean?
+  movesFurniture                       Boolean?
+  ndaAgreedAt                          DateTime?
+  offersTileRemoval                    Boolean?
+  passwordHash                         String?
+  passwordResetToken                   String?
+  paymentAccountName                   String?
+  paymentAccountNumber                 String?
+  paymentAccountType                   String?
+  paymentAuthorizationDate             DateTime?
+  paymentAuthorizationName             String?
+  paymentAuthorizationSignature        String?
+  paymentBankName                      String?
+  paymentBusinessAddress               String?
+  paymentCompanyName                   String?
+  paymentContactPerson                 String?
+  paymentEmailAddress                  String?
+  paymentPhoneNumber                   String?
+  paymentRoutingNumber                 String?
+  photoUrl                             String?
+  serviceAgreementDate                 DateTime?
+  serviceAgreementName                 String?
+  serviceAgreementSignature            String?
+  serviceAgreementSignedAt             DateTime?
+  username                             String?            @unique
+  wantsToAddCarpet                     Boolean?
+  wantsToAddHardwood                   Boolean?
+  wantsToAddLaminate                   Boolean?
+  wantsToAddTile                       Boolean?
+  wantsToAddVinyl                      Boolean?
+  companyAddress                       String?
+  companyCounty                        String?
+  employerLiabilityPolicyNumber        String?
+  feiEin                               String?
+  automobileLiabilityExpiry            DateTime?
+  btrExpiry                            DateTime?
+  employersLiabilityExpiry             DateTime?
+  generalLiabilityExpiry               DateTime?
+  llrpExpiry                           DateTime?
+  workersCompExemExpiry                DateTime?
+  automobileLiabilityExpiryDates       String?
+  workersCompExemExpiryDates           String?
+  digitalId                            String?
+  workroom                             String?
+  referralCode                         String?            @unique
+  referredByInstallerId                String?
+  remarks                              String?
+  Communication                        Communication[]
+  Document                             Document[]
+  Installer                            Installer?         @relation("InstallerToInstaller", fields: [referredByInstallerId], references: [id])
+  other_Installer                      Installer[]        @relation("InstallerToInstaller")
+  InstallerHistory                     InstallerHistory[]
+  Interview                            Interview[]
+  JobApplication                       JobApplication[]
+  Notification                         Notification[]
+  StaffMember                          StaffMember[]
 
-// Notifications for installers
-model Notification {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  installerId     String
-  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  
-  type            String    // notification, message, news, job
-  title           String
-  content         String
-  priority        String    @default("normal") // low, normal, high, urgent
-  link            String?
-  isRead          Boolean   @default(false)
-  readAt          DateTime?
-  
-  // Sender information
-  senderId        String?
-  senderType      String?   // admin, installer
+  @@index([referredByInstallerId])
+}
 
-  // Optional attachment for message-type notifications
-  attachmentUrl   String?
-  attachmentName  String?
-  
+model InstallerHistory {
+  id                                   String    @id
+  createdAt                            DateTime  @default(now())
+  updatedAt                            DateTime
+  installerId                          String
+  year                                 Int
+  firstName                            String?
+  lastName                             String?
+  phone                                String?
+  yearsOfExperience                    Int?
+  flooringSpecialties                  String?
+  flooringSkills                       String?
+  previousEmployers                    String?
+  hasOwnCrew                           Boolean?
+  crewSize                             Int?
+  hasOwnTools                          Boolean?
+  hasVehicle                           Boolean?
+  toolsDescription                     String?
+  vehicleDescription                   String?
+  serviceAreas                         String?
+  willingToTravel                      Boolean?
+  maxTravelDistance                    Int?
+  availability                         String?
+  canStartImmediately                  Boolean?
+  preferredStartDate                   DateTime?
+  mondayToFridayAvailability           String?
+  saturdayAvailability                 String?
+  hasInsurance                         Boolean?
+  insuranceType                        String?
+  hasLicense                           Boolean?
+  licenseNumber                        String?
+  licenseExpiry                        DateTime?
+  hasGeneralLiability                  Boolean?
+  hasCommercialAutoLiability           Boolean?
+  hasWorkersComp                       Boolean?
+  hasWorkersCompExemption              Boolean?
+  isSunbizRegistered                   Boolean?
+  isSunbizActive                       Boolean?
+  hasBusinessLicense                   Boolean?
+  canPassBackgroundCheck               Boolean?
+  backgroundCheckDetails               String?
+  companyName                          String?
+  companyTitle                         String?
+  companyStreetAddress                 String?
+  companyCity                          String?
+  companyState                         String?
+  companyZipCode                       String?
+  companyCounty                        String?
+  companyAddress                       String?
+  wantsToAddCarpet                     Boolean?
+  installsStretchInCarpet              Boolean?
+  dailyStretchInCarpetSqft             Int?
+  installsGlueDownCarpet               Boolean?
+  wantsToAddHardwood                   Boolean?
+  installsNailDownSolidHardwood        Boolean?
+  dailyNailDownSolidHardwoodSqft       Int?
+  installsStapleDownEngineeredHardwood Boolean?
+  wantsToAddLaminate                   Boolean?
+  dailyLaminateSqft                    Int?
+  installsLaminateOnStairs             Boolean?
+  wantsToAddVinyl                      Boolean?
+  installsSheetVinyl                   Boolean?
+  installsLuxuryVinylPlank             Boolean?
+  dailyLuxuryVinylPlankSqft            Int?
+  installsLuxuryVinylTile              Boolean?
+  installsVinylCompositionTile         Boolean?
+  dailyVinylCompositionTileSqft        Int?
+  wantsToAddTile                       Boolean?
+  installsCeramicTile                  Boolean?
+  dailyCeramicTileSqft                 Int?
+  installsPorcelainTile                Boolean?
+  dailyPorcelainTileSqft               Int?
+  installsStoneTile                    Boolean?
+  dailyStoneTileSqft                   Int?
+  offersTileRemoval                    Boolean?
+  installsTileBacksplash               Boolean?
+  dailyTileBacksplashSqft              Int?
+  movesFurniture                       Boolean?
+  installsTrim                         Boolean?
+  notes                                String?
+  automobileLiabilityExpiryDates       String?
+  workersCompExemExpiryDates           String?
+  digitalId                            String?
+  workroom                             String?
+  Installer                            Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@unique([installerId, year])
   @@index([installerId])
-  @@index([type])
-  @@index([isRead])
+  @@index([year])
 }
 
-// Jobs posted by admin
+model Interview {
+  id                String              @id
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  installerId       String
+  status            String              @default("in_progress")
+  startedAt         DateTime            @default(now())
+  completedAt       DateTime?
+  transcript        String?
+  extractedData     String?
+  aiAnalysis        String?
+  Installer         Installer           @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  InterviewResponse InterviewResponse[]
+}
+
+model InterviewResponse {
+  id             String    @id
+  createdAt      DateTime  @default(now())
+  interviewId    String
+  questionId     String
+  questionText   String
+  answerText     String?
+  answerAudio    String?
+  extractedValue String?
+  confidence     Float?
+  Interview      Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+}
+
 model Job {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  title           String
-  description     String
-  location        String
-  jobType         String    // full-time, part-time, contract, project
-  requirements    String?   // JSON array of requirements
-  skills          String?   // JSON array of required skills
-  payRange        String?   // e.g., "$50-75/hour" or "$5000-8000/project"
-  startDate       DateTime?
-  endDate         DateTime?
-  status          String    @default("active") // active, closed, filled
-  
-  // Who can see this job
-  targetStatus    String?   // passed, qualified, all - who can apply
-  
-  // Benefits (JSON array of selected benefits)
-  benefits        String?   // JSON array of benefits
-  
-  applications    JobApplication[]
-  
-  @@index([status])
+  id             String           @id
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  title          String
+  description    String
+  location       String
+  jobType        String
+  requirements   String?
+  skills         String?
+  payRange       String?
+  startDate      DateTime?
+  endDate        DateTime?
+  status         String           @default("active")
+  targetStatus   String?
+  benefits       String?
+  JobApplication JobApplication[]
+
   @@index([createdAt])
+  @@index([status])
 }
 
-// Job applications from installers
 model JobApplication {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  
-  jobId           String
-  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  installerId     String
-  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  
-  status          String    @default("pending") // pending, reviewed, accepted, rejected
-  notes           String?
-  
+  id          String    @id
+  createdAt   DateTime  @default(now())
+  jobId       String
+  installerId String
+  status      String    @default("pending")
+  notes       String?
+  Installer   Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  Job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   @@unique([jobId, installerId])
   @@index([installerId])
   @@index([jobId])
   @@index([status])
 }
 
-// Staff/Crew members working for an installer
-model StaffMember {
-  id              String    @id @default(cuid())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  installerId     String
-  installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  
-  // Basic Information
-  firstName       String
-  lastName        String
-  digitalId       String?   // Optional internal/digital identifier
-  email           String?
-  phone           String?
-  location        String?   // City, State or full address
-  photoUrl        String?
-  
-  // Additional Information
-  title           String?   // Job title/role
-  yearsOfExperience Int?
-  notes           String?
-  
+model Notification {
+  id             String    @id
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime
+  installerId    String
+  type           String
+  title          String
+  content        String
+  isRead         Boolean   @default(false)
+  readAt         DateTime?
+  priority       String    @default("normal")
+  link           String?
+  senderId       String?
+  senderType     String?
+  attachmentName String?
+  attachmentUrl  String?
+  Installer      Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
   @@index([installerId])
+  @@index([isRead])
+  @@index([type])
 }
 
-// Historical Installer Data - stores past years' data
-model InstallerHistory {
-  id                    String    @id @default(cuid())
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  
-  installerId           String
-  installer             Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
-  year                  Int       // Year this data is for (e.g., 2024, 2025)
-  
-  // Basic Information
-  firstName             String?
-  lastName              String?
-  phone                 String?
-  digitalId             String?
-  workroom              String?
-  
-  // Work Experience
-  yearsOfExperience     Int?
-  flooringSpecialties   String?
-  flooringSkills        String?
-  previousEmployers     String?
-  
-  // Crew & Equipment
-  hasOwnCrew            Boolean?
-  crewSize              Int?
-  hasOwnTools           Boolean?
-  hasVehicle            Boolean?
-  toolsDescription      String?
-  vehicleDescription    String?
-  
-  // Service Areas
-  serviceAreas          String?
-  willingToTravel       Boolean?
-  maxTravelDistance     Int?
-  
-  // Availability
-  availability          String?
-  canStartImmediately   Boolean?
-  preferredStartDate    DateTime?
-  mondayToFridayAvailability String?
-  saturdayAvailability  String?
-  
-  // Licensing & Insurance
-  hasInsurance          Boolean?
-  insuranceType         String?
-  hasLicense            Boolean?
-  licenseNumber         String?
-  licenseExpiry         DateTime?
-  hasGeneralLiability   Boolean?
-  hasCommercialAutoLiability Boolean?
-  hasWorkersComp        Boolean?
-  hasWorkersCompExemption Boolean?
-  isSunbizRegistered   Boolean?
-  isSunbizActive        Boolean?
-  hasBusinessLicense    Boolean?
-  
-  // Background Check
-  canPassBackgroundCheck Boolean?
-  backgroundCheckDetails String?
+model ScreeningCriteria {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  rules       String
+  weights     String?
+}
 
-  // Insurance & Certificate Expiry Dates (multi-policy support)
-  workersCompExemExpiryDates String?
-  automobileLiabilityExpiryDates String?
-  
-  // Company Information
-  companyName           String?
-  companyTitle          String?
-  companyStreetAddress  String?
-  companyCity           String?
-  companyState          String?
-  companyZipCode        String?
-  companyCounty         String?
-  companyAddress        String?
-  
-  // Carpet Installation
-  wantsToAddCarpet      Boolean?
-  installsStretchInCarpet Boolean?
-  dailyStretchInCarpetSqft Int?
-  installsGlueDownCarpet Boolean?
-  
-  // Hardwood Installation
-  wantsToAddHardwood    Boolean?
-  installsNailDownSolidHardwood Boolean?
-  dailyNailDownSolidHardwoodSqft Int?
-  installsStapleDownEngineeredHardwood Boolean?
-  
-  // Laminate Installation
-  wantsToAddLaminate    Boolean?
-  dailyLaminateSqft     Int?
-  installsLaminateOnStairs Boolean?
-  
-  // Vinyl Installation
-  wantsToAddVinyl       Boolean?
-  installsSheetVinyl    Boolean?
-  installsLuxuryVinylPlank Boolean?
-  dailyLuxuryVinylPlankSqft Int?
-  installsLuxuryVinylTile Boolean?
-  installsVinylCompositionTile Boolean?
-  dailyVinylCompositionTileSqft Int?
-  
-  // Tile Installation
-  wantsToAddTile        Boolean?
-  installsCeramicTile   Boolean?
-  dailyCeramicTileSqft  Int?
-  installsPorcelainTile Boolean?
-  dailyPorcelainTileSqft Int?
-  installsStoneTile     Boolean?
-  dailyStoneTileSqft    Int?
-  offersTileRemoval     Boolean?
-  installsTileBacksplash Boolean?
-  dailyTileBacksplashSqft Int?
-  
-  // Additional Work
-  movesFurniture        Boolean?
-  installsTrim          Boolean?
-  
-  // Notes
-  notes                 String?
-  
-  @@unique([installerId, year])
+model StaffMember {
+  id                String    @id
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime
+  installerId       String
+  firstName         String
+  lastName          String
+  email             String?
+  phone             String?
+  location          String?
+  photoUrl          String?
+  title             String?
+  yearsOfExperience Int?
+  notes             String?
+  digitalId         String?
+  Installer         Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
   @@index([installerId])
-  @@index([year])
 }

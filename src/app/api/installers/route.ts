@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { generateUniqueReferralCode } from '@/lib/referrals'
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,12 +54,6 @@ export async function GET(request: NextRequest) {
     // Get installers
     const installers = await prisma.installer.findMany({
       where,
-      include: {
-        interviews: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -73,10 +68,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching installers:', error)
+    console.error('Error details:', error.message, error.stack)
     return NextResponse.json(
-      { error: 'Failed to fetch installers' },
+      { error: 'Failed to fetch installers', details: error.message },
       { status: 500 }
     )
   }
@@ -231,6 +227,13 @@ export async function POST(request: NextRequest) {
         // Additional Work
         movesFurniture: data.movesFurniture,
         installsTrim: data.installsTrim,
+    }
+
+    // Ensure new installers always get a referral code (for affiliate/referral links)
+    try {
+      installerCreateData.referralCode = await generateUniqueReferralCode()
+    } catch (err) {
+      console.error('Failed to generate referral code for new installer:', err)
     }
 
     const installer = await prisma.installer.create({

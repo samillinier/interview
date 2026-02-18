@@ -21,7 +21,8 @@ export async function uploadFile(
   fileName: string
 ): Promise<UploadResult> {
   // Check if we have Vercel Blob configured (try blob first if token exists)
-  const blobStoreToken = process.env.BLOB_READ_WRITE_TOKEN
+  const blobStoreToken =
+    process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN
   const isProduction = process.env.NODE_ENV === 'production'
   const isVercel = process.env.VERCEL === '1'
   const isDevelopment = process.env.NODE_ENV === 'development'
@@ -87,7 +88,9 @@ export async function uploadFile(
       
       // In production/Vercel, don't fallback to local storage - throw error instead
       if (isProduction || isVercel) {
-        throw new Error(`Vercel Blob upload failed: ${error.message || 'Unknown error'}. Please check your BLOB_READ_WRITE_TOKEN environment variable.`)
+        throw new Error(
+          `Vercel Blob upload failed: ${error.message || 'Unknown error'}. Please check your BLOB_READ_WRITE_TOKEN (or VERCEL_BLOB_READ_WRITE_TOKEN) environment variable.`
+        )
       }
       
       // Only fallback to local in development if blob fails
@@ -102,7 +105,9 @@ export async function uploadFile(
   // Use local filesystem (development only, when no token or blob failed)
   // Check if we're in a serverless environment - if so, don't use local storage
   if ((isProduction || isVercel) && !isDevelopment) {
-    throw new Error('File upload failed: No storage configured. Please set BLOB_READ_WRITE_TOKEN environment variable.')
+    throw new Error(
+      'File upload failed: No storage configured. Please set BLOB_READ_WRITE_TOKEN (or VERCEL_BLOB_READ_WRITE_TOKEN) environment variable.'
+    )
   }
 
   const uploadsDir = join(process.cwd(), 'public', 'uploads', folder)

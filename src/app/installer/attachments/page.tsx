@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { upload } from '@vercel/blob/client'
 import { 
   User, 
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   X,
   LogOut,
   Upload,
+  Plus,
   FileCheck,
   Loader2,
   CheckCircle2,
@@ -31,6 +33,9 @@ import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
+// All document types now support multiple uploads
+const MULTI_DOCUMENT_TYPES = new Set() // Empty set - all types are multi now
+
 const dancingScript = Dancing_Script({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -40,9 +45,12 @@ const dancingScript = Dancing_Script({
 interface Document {
   id: string
   type: string
+  name?: string
   fileName: string
   fileUrl: string
+  url?: string
   uploadedAt: string
+  createdAt?: string
   fileSize?: number
   verificationLink?: string | null
   verificationLinkStatus?: string | null
@@ -78,6 +86,13 @@ const DOCUMENT_TYPES = [
     required: true
   },
   { 
+    id: 'auto_insurance', 
+    name: 'Auto Insurance',
+    description: 'Upload your auto insurance certificate / policy',
+    icon: Shield,
+    required: false
+  },
+  { 
     id: 'workers_comp', 
     name: "Workers' Compensation Insurance",
     description: 'Upload your workers compensation insurance certificate',
@@ -89,6 +104,20 @@ const DOCUMENT_TYPES = [
     name: "WORKERS' COMPENSATION CERTIFICATE",
     description: 'Upload your workers compensation certificate',
     icon: FileCheck,
+    required: false
+  },
+  { 
+    id: 'lead_firm_certificate', 
+    name: 'Lead Firm Certificate',
+    description: 'Upload your Lead Firm Certificate',
+    icon: FileCheck,
+    required: false
+  },
+  { 
+    id: 'employers_liability', 
+    name: "Employer's Liability Insurance",
+    description: "Upload your employer's liability insurance certificate",
+    icon: Shield,
     required: false
   },
   { 
@@ -122,6 +151,7 @@ export default function AttachmentsPage() {
     documentType: '',
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
 
   useEffect(() => {
     checkAuthAndLoadData()
@@ -210,9 +240,12 @@ export default function AttachmentsPage() {
           const mappedDocuments = (docsData.documents || []).map((doc: any) => ({
             id: doc.id,
             type: doc.type,
+            name: doc.name || 'Document',
             fileName: doc.name || 'Document',
             fileUrl: doc.url,
+            url: doc.url,
             uploadedAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
+            createdAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
             fileSize: doc.fileSize || doc.size,
             verificationLink: doc.verificationLink || null,
             verificationLinkStatus: doc.verificationLinkStatus || null,
@@ -229,11 +262,22 @@ export default function AttachmentsPage() {
   }
 
   const handleFileUpload = async (type: string, file: File) => {
-    if (!installer) return
+    if (!installer) {
+      setError('Installer information not available. Please refresh the page.')
+      return
+    }
 
-    // Check file size limit (max 10MB)
+    // Allow up to 10MB (uploads go direct-to-Blob to avoid serverless body limits)
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB. Please compress or use a smaller file.')
+      setError('File size must be less than 10MB. Please compress or upload a smaller version.')
+      return
+    }
+
+    // Validate file type
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!allowedExtensions.includes(fileExtension)) {
+      setError('Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG')
       return
     }
 
@@ -242,19 +286,34 @@ export default function AttachmentsPage() {
     setSuccess('')
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('type', type)
-      formData.append('installerId', installer.id)
+      // 1) Direct upload to Vercel Blob
+      const timestamp = Date.now()
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const blobPath = `documents/${installer.id}_${type}_${timestamp}_${sanitizedFileName}`
 
+      const blob = await upload(blobPath, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
+      })
+
+      // 2) Save URL in DB
       const response = await fetch(`/api/installers/${installer.id}/documents`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: blob.url, name: file.name, type }),
       })
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response from documents API:', text.substring(0, 200))
+        throw new Error(`Upload failed (HTTP ${response.status}). Please try again.`)
+      }
 
       const data = await response.json()
 
       if (!response.ok) {
+        console.error('Upload failed:', data)
         throw new Error(data.error || 'Failed to upload document')
       }
 
@@ -264,17 +323,29 @@ export default function AttachmentsPage() {
           id: data.document.id,
           type: data.document.type,
           fileName: data.document.name || file.name,
-          fileUrl: data.document.url,
+          fileUrl: data.document.url || blob.url,
           uploadedAt: data.document.createdAt || data.document.uploadedAt || new Date().toISOString(),
           fileSize: data.document.fileSize || file.size,
         }
-        setDocuments([...documents.filter(d => d.type !== type), mappedDocument])
+        if (MULTI_DOCUMENT_TYPES.has(type)) {
+          // Append new document for multi-document types
+          setDocuments([mappedDocument, ...documents])
+        } else {
+          // Replace existing for single-document types
+          setDocuments([...documents.filter(d => d.type !== type), mappedDocument])
+        }
         setSuccess(`${DOCUMENT_TYPES.find(dt => dt.id === type)?.name} uploaded successfully!`)
         setTimeout(() => setSuccess(''), 3000)
+        
+        // Reset file input
+        const fileInput = fileInputRefs.current[type]
+        if (fileInput) {
+          fileInput.value = ''
+        }
       }
     } catch (err: any) {
       console.error('Error uploading document:', err)
-      setError(err.message || 'Failed to upload document')
+      setError(err.message || 'Failed to upload document. Please try again.')
     } finally {
       setUploading({ ...uploading, [type]: false })
     }
@@ -605,6 +676,13 @@ export default function AttachmentsPage() {
             {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
+            href="/installer/referrals"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <ExternalLink className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -684,7 +762,9 @@ export default function AttachmentsPage() {
           <div className="grid gap-6">
             {DOCUMENT_TYPES.map((docType) => {
               const Icon = docType.icon
-              const existingDoc = documents.find(d => d.type === docType.id)
+              const isMulti = true // All document types now support multiple uploads
+              const matchingDocs = documents.filter((d) => d.type === docType.id)
+              const existingDoc = matchingDocs[0] // For display purposes, show first doc
               const isUploading = uploading[docType.id]
               
               // Only show verification link feature for specific document types
@@ -719,6 +799,28 @@ export default function AttachmentsPage() {
                             <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
                               Required
                             </span>
+                          )}
+                          {isMulti && (
+                            <label
+                              className={`ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                                isUploading ? 'opacity-60 cursor-not-allowed' : 'border-brand-green/30 text-brand-green hover:bg-brand-green/10'
+                              }`}
+                              title="Add another file"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span className="text-xs font-semibold">Add</span>
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) handleFileUpload(docType.id, file)
+                                  e.target.value = ''
+                                }}
+                                className="hidden"
+                                disabled={isUploading}
+                              />
+                            </label>
                           )}
                         </div>
                         <p className="text-sm text-slate-500 mb-2">{docType.description}</p>
@@ -771,75 +873,70 @@ export default function AttachmentsPage() {
                     </div>
                   </div>
 
-                  {existingDoc ? (
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900 truncate">{existingDoc.fileName}</p>
-                          {existingDoc.fileSize && (
-                            <p className="text-xs text-slate-500">
-                              {(existingDoc.fileSize / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          )}
-                        </div>
+                  {matchingDocs.length > 0 ? (
+                    <div className="space-y-3">
+                      {matchingDocs.map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-slate-900 truncate">{doc.name || doc.fileName}</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  {doc.fileSize && (
+                                    <p className="text-xs text-slate-500">
+                                      {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                  )}
+                                {(doc.uploadedAt || doc.createdAt) && (
+                                  <p className="text-xs text-slate-500">
+                                    • {(() => {
+                                      try {
+                                        const dateStr = doc.uploadedAt || doc.createdAt
+                                        if (!dateStr) return 'Unknown date'
+                                        const date = new Date(dateStr)
+                                        return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
+                                      } catch {
+                                        return 'Unknown date'
+                                      }
+                                    })()}
+                                  </p>
+                                )}
+                                  {hasVerificationLinkFeature && doc.verificationLink && (
+                                    <a
+                                      href={doc.verificationLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-brand-green hover:underline inline-flex items-center gap-1"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      Verification Link
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={doc.url || doc.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={doc.name || doc.fileName}
+                                className="p-2 text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"
+                                title="View / Download"
+                              >
+                                <Download className="w-5 h-5" />
+                              </a>
+                              <button
+                                onClick={() => handleDeleteClick(doc.id, doc.name || doc.fileName, docType.id)}
+                                className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={existingDoc.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          download={existingDoc.fileName}
-                          className="p-2 text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"
-                          title={`Download ${existingDoc.fileName}`}
-                          onClick={(e) => {
-                            // If the URL is a blob URL or needs special handling, download it programmatically
-                            if (existingDoc.fileUrl && !existingDoc.fileUrl.startsWith('http')) {
-                              e.preventDefault()
-                              // For blob URLs or relative paths, fetch and download
-                              fetch(existingDoc.fileUrl)
-                                .then(res => res.blob())
-                                .then(blob => {
-                                  const url = window.URL.createObjectURL(blob)
-                                  const a = document.createElement('a')
-                                  a.href = url
-                                  a.download = existingDoc.fileName || 'document'
-                                  document.body.appendChild(a)
-                                  a.click()
-                                  window.URL.revokeObjectURL(url)
-                                  document.body.removeChild(a)
-                                })
-                                .catch(err => {
-                                  console.error('Error downloading file:', err)
-                                  setError('Failed to download file. Please try again.')
-                                })
-                            }
-                          }}
-                        >
-                          <Download className="w-5 h-5" />
-                        </a>
-                        <label className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer" title="Replace">
-                          <Upload className="w-5 h-5" />
-                          <input
-                            type="file"
-                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0]
-                              if (file) handleFileUpload(docType.id, file)
-                            }}
-                            className="hidden"
-                            disabled={isUploading}
-                          />
-                        </label>
-                        <button
-                          onClick={() => handleDeleteClick(existingDoc.id, existingDoc.fileName, docType.id)}
-                          className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
                   ) : (
                     <label className="block">
                       <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-brand-green transition-colors cursor-pointer bg-slate-50/50">
@@ -870,13 +967,21 @@ export default function AttachmentsPage() {
                           if (file) {
                             if (file.size > 10 * 1024 * 1024) {
                               setError('File size must be less than 10MB')
+                              e.target.value = ''
                               return
                             }
                             handleFileUpload(docType.id, file)
                           }
+                          // Reset input to allow re-uploading the same file
+                          e.target.value = ''
                         }}
                         className="hidden"
                         disabled={isUploading}
+                        ref={(el) => {
+                          if (el) {
+                            fileInputRefs.current[docType.id] = el
+                          }
+                        }}
                       />
                     </label>
                   )}

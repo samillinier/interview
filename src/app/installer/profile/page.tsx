@@ -277,6 +277,8 @@ interface InstallerProfile {
   companyCounty?: string
   companyAddress?: string
   ndaAgreedAt?: string
+  referralCode?: string
+  referralsCount?: number
   // Carpet Installation
   wantsToAddCarpet?: boolean
   installsStretchInCarpet?: boolean
@@ -1901,6 +1903,13 @@ export default function InstallerProfilePage() {
             {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
+            href="/installer/referrals"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <ExternalLink className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -2005,6 +2014,10 @@ export default function InstallerProfilePage() {
           <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <CreditCard className="w-5 h-5" />
             <span>Account</span>
+          </Link>
+          <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+            <ExternalLink className="w-5 h-5" />
+            <span>Referrals</span>
           </Link>
           <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5" />
@@ -2135,7 +2148,7 @@ export default function InstallerProfilePage() {
               <div className="flex-shrink-0">
                 <div className="relative group">
                   {/* Status-based border color */}
-                  <div className={`w-20 h-20 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
+                  <div className={`w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
                     installer && installer.status === 'active' ? 'ring-4 ring-brand-green' :
                     installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'ring-4 ring-blue-500' :
                     installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'ring-4 ring-red-500' :
@@ -2150,15 +2163,15 @@ export default function InstallerProfilePage() {
                       <Image
                         src={photoUrl}
                         alt="Profile Photo"
-                        width={80}
-                        height={80}
+                        width={112}
+                        height={112}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none'
                         }}
                       />
                     ) : (
-                      <User className={`w-10 h-10 ${
+                      <User className={`w-14 h-14 ${
                         installer && installer.status === 'active' ? 'text-brand-green-dark' :
                         installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'text-blue-600' :
                         installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'text-red-600' :
@@ -2168,10 +2181,10 @@ export default function InstallerProfilePage() {
                   </div>
                   {/* Checkmark badge */}
                   {installer && (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
-                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-lg z-20 ${
+                    <div className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white ${
                       installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
                     }`}>
-                      <CheckCircle2 className="w-4 h-4 text-white" />
+                      <CheckCircle2 className="w-5 h-5 text-white" />
                     </div>
                   )}
                   {/* Photo Upload Overlay */}

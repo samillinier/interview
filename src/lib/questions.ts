@@ -57,6 +57,13 @@ export const INTERVIEW_QUESTIONS_EN = [
     required: false,
   },
   {
+    id: 'workroom',
+    text: 'Which workroom are you applying to? Please select from: Albany, Sarasota, Tampa, Naples, Ocala, Lakeland, Panama City, Gainesville, Tallahassee, or Dothan.',
+    field: 'workroom',
+    required: true,
+    type: 'workroom_selection', // Special type for interactive UI
+  },
+  {
     id: 'workers_comp_exemption',
     text: "If you work independently without employees, do you have a Worker's Compensation Exemption on file?",
     field: 'hasWorkersCompExemption',
@@ -188,6 +195,13 @@ export const INTERVIEW_QUESTIONS_ES = [
     required: false,
   },
   {
+    id: 'workroom',
+    text: '¿A qué sala de trabajo está aplicando? Por favor seleccione de: Albany, Sarasota, Tampa, Naples, Ocala, Lakeland, Panama City, Gainesville, Tallahassee, o Dothan.',
+    field: 'workroom',
+    required: true,
+    type: 'workroom_selection', // Special type for interactive UI
+  },
+  {
     id: 'workers_comp_exemption',
     text: "Si trabaja de forma independiente sin empleados, ¿tiene una Exención de Compensación para Trabajadores archivada?",
     field: 'hasWorkersCompExemption',
@@ -261,6 +275,20 @@ export const INTERVIEW_QUESTIONS_ES = [
     required: false,
   },
 ]
+
+// Workroom options available for selection
+export const WORKROOM_OPTIONS = [
+  'Albany',
+  'Sarasota',
+  'Tampa',
+  'Naples',
+  'Ocala',
+  'Lakeland',
+  'Panama City',
+  'Gainesville',
+  'Tallahassee',
+  'Dothan',
+] as const
 
 // Helper function to get questions by language
 export function getInterviewQuestions(language: 'en' | 'es' = 'en') {

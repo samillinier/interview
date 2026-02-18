@@ -6,6 +6,10 @@ import { uploadFile, deleteFile } from '@/lib/storage'
 export const maxDuration = 30
 export const runtime = 'nodejs'
 
+// All document types now support multiple uploads
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024 // 10MB
+const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'])
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -53,46 +57,16 @@ export async function POST(
         )
       }
 
-      // Delete existing document of the same type
-      const existingDoc = await prisma.document.findFirst({
-        where: {
+      // Always create a new document record (all types support multiple uploads)
+      const document = await prisma.document.create({
+        data: {
           installerId,
           type,
+          name: name || 'Document',
+          url,
         },
       })
-
-      if (existingDoc) {
-        // Delete old file from storage
-        try {
-          await deleteFile(existingDoc.url)
-        } catch (deleteError: any) {
-          console.error('Error deleting old file:', deleteError)
-          // Continue even if deletion fails
-        }
-
-        // Update existing document
-        const document = await prisma.document.update({
-          where: { id: existingDoc.id },
-          data: {
-            name: name || existingDoc.name,
-            url: url,
-          },
-        })
-
-        return NextResponse.json({ document })
-      } else {
-        // Create new document
-        const document = await prisma.document.create({
-          data: {
-            installerId,
-            type,
-            name: name || 'Document',
-            url: url,
-          },
-        })
-
-        return NextResponse.json({ document })
-      }
+      return NextResponse.json({ document })
     }
 
     // Handle FormData (for server-side uploads)
@@ -108,16 +82,16 @@ export async function POST(
     }
 
     // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: 'File size must be less than 10MB. For larger files, please compress or split the file.' },
+        { error: 'File size must be less than 10MB. Please compress or upload a smaller version.' },
         { status: 400 }
       )
     }
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', 'image/jpg']
-    if (!allowedTypes.includes(file.type)) {
+    // Validate file type (prefer extension since some browsers send empty/unknown MIME types)
+    const ext = file.name?.split('.').pop()?.toLowerCase() || ''
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
       return NextResponse.json(
         { error: 'Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG' },
         { status: 400 }
@@ -162,46 +136,16 @@ export async function POST(
       )
     }
 
-    // Delete existing document of the same type
-    const existingDoc = await prisma.document.findFirst({
-      where: {
+    // Always create a new document record (all types support multiple uploads)
+    const document = await prisma.document.create({
+      data: {
         installerId,
         type,
+        name: file.name,
+        url: fileUrl,
       },
     })
-
-    if (existingDoc) {
-      // Delete old file from storage
-      try {
-        await deleteFile(existingDoc.url)
-      } catch (deleteError: any) {
-        console.error('Error deleting old file:', deleteError)
-        // Continue even if deletion fails
-      }
-
-      // Update existing document
-      const document = await prisma.document.update({
-        where: { id: existingDoc.id },
-        data: {
-          name: file.name,
-          url: fileUrl,
-        },
-      })
-
-      return NextResponse.json({ document })
-    } else {
-      // Create new document
-      const document = await prisma.document.create({
-        data: {
-          installerId,
-          type,
-          name: file.name,
-          url: fileUrl,
-        },
-      })
-
-      return NextResponse.json({ document })
-    }
+    return NextResponse.json({ document })
   } catch (error: any) {
     console.error('Error uploading document:', error)
     console.error('Error stack:', error.stack)

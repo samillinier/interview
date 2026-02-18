@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
 import { Resend } from 'resend'
+import { ensureInstallerReferralCode, resolveReferrerInstallerId } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, installerId } = await request.json()
+    const { email, installerId, referralCode } = await request.json()
 
     if (!email && !installerId) {
       return NextResponse.json(
@@ -27,12 +28,14 @@ export async function POST(request: NextRequest) {
       
       // If installer doesn't exist, create a new one
       if (!installer) {
+        const referredByInstallerId = await resolveReferrerInstallerId(referralCode)
         installer = await prisma.installer.create({
           data: {
             email,
             firstName: '',
             lastName: '',
             status: 'pending',
+            referredByInstallerId,
           },
         })
       }
@@ -51,6 +54,13 @@ export async function POST(request: NextRequest) {
         { error: 'Account already exists. Please log in instead.' },
         { status: 400 }
       )
+    }
+
+    // Ensure this installer has a referral code for sharing
+    try {
+      await ensureInstallerReferralCode(installer.id)
+    } catch (err) {
+      console.error('Failed to ensure referral code:', err)
     }
 
     // Generate verification token

@@ -21,7 +21,8 @@ import {
   CreditCard,
   FileText,
   Users,
-  Building2
+  Building2,
+  ExternalLink
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -234,6 +235,13 @@ export default function InstallerJobDetailPage() {
           >
             <CreditCard className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Account</span>}
+          </Link>
+          <Link
+            href="/installer/referrals"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <ExternalLink className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Referrals</span>}
           </Link>
           <Link
             href="/installer/notifications"

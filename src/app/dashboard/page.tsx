@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { upload } from '@vercel/blob/client'
 import { 
   Users, 
   CheckCircle2, 
@@ -42,7 +43,8 @@ import {
   AlertTriangle,
   FileCheck,
   Paperclip,
-  Activity
+  Activity,
+  Settings
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -81,6 +83,12 @@ const DOCUMENT_TYPES: Array<{
     required: true,
   },
   {
+    id: 'auto_insurance',
+    name: 'Auto Insurance',
+    description: 'Auto insurance certificate / policy',
+    required: false,
+  },
+  {
     id: 'workers_comp',
     name: "Workers' Compensation Insurance",
     description: 'Workers compensation insurance certificate',
@@ -90,6 +98,18 @@ const DOCUMENT_TYPES: Array<{
     id: 'workers_comp_certificate',
     name: "WORKERS' COMPENSATION CERTIFICATE",
     description: 'Workers compensation certificate',
+    required: false,
+  },
+  {
+    id: 'lead_firm_certificate',
+    name: 'Lead Firm Certificate',
+    description: 'Lead Firm Certificate',
+    required: false,
+  },
+  {
+    id: 'employers_liability',
+    name: "Employer's Liability Insurance",
+    description: "Employer's liability insurance certificate",
     required: false,
   },
   {
@@ -145,6 +165,7 @@ export default function DashboardPage() {
   const pathname = usePathname()
   const [installers, setInstallers] = useState<Installer[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [hasLoadedInstallersOnce, setHasLoadedInstallersOnce] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -415,7 +436,7 @@ export default function DashboardPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         console.error('API Error fetching installers:', response.status, errorData)
-        setInstallers([])
+        // Keep the previous list to avoid UI flicker while typing/searching
         return
       }
       
@@ -436,9 +457,10 @@ export default function DashboardPage() {
     } catch (error: any) {
       console.error('Error fetching installers:', error)
       console.error('Error details:', error.message || 'Network error')
-      setInstallers([])
+      // Keep the previous list to avoid UI flicker while typing/searching
     } finally {
       setIsLoading(false)
+      setHasLoadedInstallersOnce(true)
     }
   }
 
@@ -775,18 +797,25 @@ export default function DashboardPage() {
         const selectedAttachments = Object.entries(attachmentsToAdd).filter(([, file]) => Boolean(file)) as Array<[string, File]>
         for (const [type, file] of selectedAttachments) {
           try {
-            // Check file size limit (max 10MB)
+            // Allow up to 10MB (uploads go direct-to-Blob to avoid serverless body limits)
             if (file.size > 10 * 1024 * 1024) {
               console.error(`Error uploading attachment ${type}: File size must be less than 10MB`)
               continue
             }
-            
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('type', type)
+
+            const timestamp = Date.now()
+            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+            const blobPath = `documents/${data.installer.id}_${type}_${timestamp}_${sanitizedFileName}`
+
+            const blob = await upload(blobPath, file, {
+              access: 'public',
+              handleUploadUrl: '/api/blob/upload',
+            })
+
             const uploadResponse = await fetch(`/api/installers/${data.installer.id}/documents`, {
               method: 'POST',
-              body: formData,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: blob.url, name: file.name, type }),
             })
             if (!uploadResponse.ok) {
               const err = await uploadResponse.json().catch(() => ({}))
@@ -1074,7 +1103,9 @@ export default function DashboardPage() {
     }
   }
 
-  if (status === 'loading' || isLoading) {
+  // Only show the full-page loader on the very first load.
+  // When searching/filtering, we keep the UI stable and (optionally) show inline loading indicators.
+  if (status === 'loading' || (isLoading && !hasLoadedInstallersOnce)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -1168,6 +1199,15 @@ export default function DashboardPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Settings</span>}
           </Link>
         </nav>
 
@@ -1547,6 +1587,11 @@ export default function DashboardPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
               />
+              {isLoading && hasLoadedInstallersOnce && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+                </div>
+              )}
             </div>
             <select
               value={statusFilter}

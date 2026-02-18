@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { upload } from '@vercel/blob/client'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { 
   User, 
@@ -17,6 +18,7 @@ import {
   LogOut,
   ArrowLeft,
   LayoutDashboard,
+  Settings,
   FileText,
   FileCheck,
   Menu,
@@ -49,7 +51,8 @@ import {
   Users,
   Activity,
   ExternalLink,
-  Camera
+  Camera,
+  StickyNote
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -88,6 +91,12 @@ const DOCUMENT_TYPES: Array<{
     required: true,
   },
   {
+    id: 'auto_insurance',
+    name: 'Auto Insurance',
+    description: 'Auto insurance certificate / policy',
+    required: false,
+  },
+  {
     id: 'workers_comp',
     name: "Workers' Compensation Insurance",
     description: 'Workers compensation insurance certificate',
@@ -97,6 +106,18 @@ const DOCUMENT_TYPES: Array<{
     id: 'workers_comp_certificate',
     name: "WORKERS' COMPENSATION CERTIFICATE",
     description: 'Workers compensation certificate',
+    required: false,
+  },
+  {
+    id: 'lead_firm_certificate',
+    name: 'Lead Firm Certificate',
+    description: 'Lead Firm Certificate',
+    required: false,
+  },
+  {
+    id: 'employers_liability',
+    name: "Employer's Liability Insurance",
+    description: "Employer's liability insurance certificate",
     required: false,
   },
   {
@@ -271,6 +292,7 @@ interface InstallerProfile {
   followUpDate?: string
   followUpReason?: string
   passFailReason?: string
+  remarks?: string  // JSON array of remarks
   photoUrl?: string
   companyName?: string
   companyTitle?: string
@@ -385,6 +407,7 @@ export default function InstallerProfileViewPage() {
   const [automobileLiabilityExpiry, setAutomobileLiabilityExpiry] = useState('')
   const [automobileLiabilityExpiryDates, setAutomobileLiabilityExpiryDates] = useState<string[]>([])
   const [employersLiabilityExpiry, setEmployersLiabilityExpiry] = useState('')
+  const [complianceOpen, setComplianceOpen] = useState(false)
   const [willingToTravel, setWillingToTravel] = useState<boolean | undefined>(undefined)
   const [maxTravelDistance, setMaxTravelDistance] = useState<number | undefined>(undefined)
   const [canStartImmediately, setCanStartImmediately] = useState<boolean | undefined>(undefined)
@@ -431,6 +454,14 @@ export default function InstallerProfileViewPage() {
   const [movesFurniture, setMovesFurniture] = useState<boolean | undefined>(undefined)
   const [installsTrim, setInstallsTrim] = useState<boolean | undefined>(undefined)
   const [notes, setNotes] = useState('')
+  const [remarks, setRemarks] = useState<Array<{date: string | null, note: string, createdAt: string}>>([])
+  const [remarkDate, setRemarkDate] = useState('')
+  const [remarkNote, setRemarkNote] = useState('')
+  const [showRemarkPopover, setShowRemarkPopover] = useState(false)
+  const [showRemarkDate, setShowRemarkDate] = useState(false)
+  const [showAddRemarkForm, setShowAddRemarkForm] = useState(false)
+  const [isSavingRemark, setIsSavingRemark] = useState(false)
+  const [deleteRemarkConfirm, setDeleteRemarkConfirm] = useState<{ show: boolean; index: number | null }>({ show: false, index: null })
   const [documents, setDocuments] = useState<any[]>([])
   const [uploadingDocumentType, setUploadingDocumentType] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
@@ -678,6 +709,21 @@ export default function InstallerProfileViewPage() {
       setMovesFurniture(installer.movesFurniture)
       setInstallsTrim(installer.installsTrim)
       setNotes(installer.notes || '')
+      // Parse remarks from JSON string
+      if (installer.remarks) {
+        try {
+          const parsedRemarks = JSON.parse(installer.remarks)
+          if (Array.isArray(parsedRemarks)) {
+            setRemarks(parsedRemarks.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
+          } else {
+            setRemarks([])
+          }
+        } catch {
+          setRemarks([])
+        }
+      } else {
+        setRemarks([])
+      }
     }
   }, [installer, isEditing])
 
@@ -766,24 +812,207 @@ export default function InstallerProfileViewPage() {
     }
   }
 
-  const handleUploadDocument = async (type: string, file: File) => {
+    type ComplianceStatusKey = 'active' | 'inactive' | 'missing' | 'expired' | 'na'
+
+    const getLatestDocExpiryForType = (type: string): string => {
+      const docs = (documents || []).filter((d: any) => d?.type === type)
+      if (!docs.length) return ''
+      const sorted = [...docs].sort((a: any, b: any) => {
+        const aTime = new Date(a?.createdAt || a?.uploadedAt || 0).getTime()
+        const bTime = new Date(b?.createdAt || b?.uploadedAt || 0).getTime()
+        return bTime - aTime
+      })
+      const latest = sorted[0]
+      if (!latest?.expiryDate) return ''
+      try {
+        return new Date(latest.expiryDate).toISOString().split('T')[0]
+      } catch {
+        return ''
+      }
+    }
+
+    const hasDoc = (type: string) => (documents || []).some((d: any) => d?.type === type)
+
+    const getLatestDocStatusForType = (type: string): ComplianceStatusKey | null => {
+      const docs = (documents || []).filter((d: any) => d?.type === type)
+      if (!docs.length) return null
+      const sorted = [...docs].sort((a: any, b: any) => {
+        const aTime = new Date(a?.createdAt || a?.uploadedAt || 0).getTime()
+        const bTime = new Date(b?.createdAt || b?.uploadedAt || 0).getTime()
+        return bTime - aTime
+      })
+      const latest = sorted[0]
+      const raw = (latest?.verificationLinkStatus || '').toString().toLowerCase()
+      if (!raw) return null
+      if (raw === 'active') return 'active'
+      if (raw === 'inactive') return 'inactive'
+      if (raw === 'missing') return 'missing'
+      if (raw === 'expired') return 'expired'
+      if (raw === 'na' || raw === 'n/a') return 'na'
+      return null
+    }
+
+    const statusTextFromKey = (k: ComplianceStatusKey): string => {
+      if (k === 'na') return 'N/A'
+      if (k === 'inactive') return 'Inactive'
+      if (k === 'missing') return 'Missing'
+      if (k === 'expired') return 'Expired'
+      return 'Active'
+    }
+
+    const formatExpiryDate = (dateStr: string | undefined | null): string | null => {
+      if (!dateStr || dateStr === 'N/A' || dateStr.trim() === '') return null
+      try {
+        const date = new Date(dateStr)
+        if (isNaN(date.getTime())) return null
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      } catch {
+        return null
+      }
+    }
+
+    const statusFromExpiry = (expiry: string | undefined, missingIs: 'inactive' | 'missing' = 'inactive'): ComplianceStatusKey => {
+      if (!expiry) return missingIs
+      const s = getExpirationStatus(expiry)
+      if (s === 'expired') return 'expired'
+      if (s === 'none') return missingIs
+      return 'active'
+    }
+
+    const complianceRows = useMemo(() => {
+      // Get manual status overrides from attachments (verificationLinkStatus)
+      const sunbizOverride = getLatestDocStatusForType('sunbiz')
+      const lrrpOverride = getLatestDocStatusForType('lrrp')
+      const leadFirmOverride = getLatestDocStatusForType('lead_firm_certificate')
+      const btrOverride = getLatestDocStatusForType('business_registration')
+      const workersCompOverride =
+        getLatestDocStatusForType('workers_comp_certificate') || getLatestDocStatusForType('workers_comp')
+      const liabilityOverride = getLatestDocStatusForType('liability_insurance')
+      const autoOverride = getLatestDocStatusForType('auto_insurance')
+      const employersLiabilityOverride = getLatestDocStatusForType('employers_liability')
+
+      // Helper to get status: use manual override if set, otherwise check if document exists
+      const getStatus = (override: ComplianceStatusKey | null, hasDocument: boolean, defaultIfNoDoc: ComplianceStatusKey = 'missing'): ComplianceStatusKey => {
+        if (override !== null) return override
+        return hasDocument ? 'inactive' : defaultIfNoDoc
+      }
+
+      return [
+        {
+          key: 'sunbiz',
+          name: 'Sunbiz (Business Registration)',
+          statusKey: getStatus(sunbizOverride, hasDoc('sunbiz'), 'missing'),
+          statusText: statusTextFromKey(getStatus(sunbizOverride, hasDoc('sunbiz'), 'missing')),
+          date: 'N/A',
+        },
+        {
+          key: 'lrrp',
+          name: 'LLRP (Lead Renovator)',
+          statusKey: getStatus(lrrpOverride, hasDoc('lrrp'), 'missing'),
+          statusText: statusTextFromKey(getStatus(lrrpOverride, hasDoc('lrrp'), 'missing')),
+          date: llrpExpiry || '',
+        },
+        {
+          key: 'lead_firm_certificate',
+          name: 'Lead Firm Certificate',
+          statusKey: getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'), 'missing'),
+          statusText: statusTextFromKey(getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'), 'missing')),
+          date: getLatestDocExpiryForType('lead_firm_certificate') || '',
+        },
+        {
+          key: 'business_registration',
+          name: 'Business Tax Receipt (BTR)',
+          statusKey: getStatus(btrOverride, hasDoc('business_registration'), 'missing'),
+          statusText: statusTextFromKey(getStatus(btrOverride, hasDoc('business_registration'), 'missing')),
+          date: btrExpiry || (hasDoc('business_registration') ? 'N/A' : ''),
+        },
+        {
+          key: 'workers_comp',
+          name: "Workers' Compensation",
+          statusKey: hasWorkersCompExemption === false 
+            ? ('na' as const)
+            : getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'), 'missing'),
+          statusText: hasWorkersCompExemption === false
+            ? 'N/A'
+            : statusTextFromKey(getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'), 'missing')),
+          date: (workersCompExemExpiryDates || []).filter(Boolean)[0] || '',
+        },
+        {
+          key: 'general_liability',
+          name: 'General Liability Insurance',
+          statusKey: getStatus(liabilityOverride, hasDoc('liability_insurance'), 'missing'),
+          statusText: statusTextFromKey(getStatus(liabilityOverride, hasDoc('liability_insurance'), 'missing')),
+          date: generalLiabilityExpiry || '',
+        },
+        {
+          key: 'auto_liability',
+          name: 'Automobile Liability Insurance',
+          statusKey: hasCommercialAutoLiability === false
+            ? ('na' as const)
+            : getStatus(autoOverride, hasDoc('auto_insurance'), 'missing'),
+          statusText: hasCommercialAutoLiability === false
+            ? 'N/A'
+            : statusTextFromKey(getStatus(autoOverride, hasDoc('auto_insurance'), 'missing')),
+          date: (automobileLiabilityExpiryDates || []).filter(Boolean)[0] || '',
+        },
+        {
+          key: 'employers_liability',
+          name: "Employer's Liability Insurance",
+          statusKey: employerLiabilityPolicyNumber
+            ? getStatus(employersLiabilityOverride, hasDoc('employers_liability'), 'missing')
+            : ('na' as const),
+          statusText: employerLiabilityPolicyNumber
+            ? statusTextFromKey(getStatus(employersLiabilityOverride, hasDoc('employers_liability'), 'missing'))
+            : 'N/A',
+          date: employerLiabilityPolicyNumber ? (employersLiabilityExpiry || '') : 'N/A',
+        },
+      ] as const
+    }, [
+      documents,
+      isSunbizRegistered,
+      isSunbizActive,
+      llrpExpiry,
+      btrExpiry,
+      workersCompExemExpiryDates,
+      hasWorkersCompExemption,
+      hasGeneralLiability,
+      generalLiabilityExpiry,
+      hasCommercialAutoLiability,
+      automobileLiabilityExpiryDates,
+      employerLiabilityPolicyNumber,
+      employersLiabilityExpiry,
+    ])
+
+    const complianceCounts = useMemo(() => {
+      const base = { active: 0, inactive: 0, missing: 0, expired: 0, na: 0 }
+      for (const r of complianceRows) base[r.statusKey]++
+      return base
+    }, [complianceRows])
+
+    const handleUploadDocument = async (type: string, file: File) => {
     if (!installerId || !file) return
     
-    // Validate file size (max 10MB)
+    // Allow up to 10MB (uploads go direct-to-Blob to avoid serverless body limits)
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB. Please compress or use a smaller file.')
+      setError('File size must be less than 10MB. Please compress or upload a smaller version.')
       return
     }
     
     try {
       setUploadingDocumentType(type)
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('type', type)
+      const timestamp = Date.now()
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const blobPath = `documents/${installerId}_${type}_${timestamp}_${sanitizedFileName}`
+
+      const blob = await upload(blobPath, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
+      })
 
       const res = await fetch(`/api/installers/${installerId}/documents`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: blob.url, name: file.name, type }),
       })
 
       if (!res.ok) {
@@ -858,6 +1087,27 @@ export default function InstallerProfileViewPage() {
     } catch (e: any) {
       console.error('Update verification link error:', e)
       setError(e?.message || 'Failed to update verification link')
+    }
+  }
+
+  const handleUpdateDocumentStatus = async (documentId: string, status: string) => {
+    if (!installerId) return
+    try {
+      const res = await fetch(`/api/installers/${installerId}/documents/${documentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationLinkStatus: status }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to update status')
+      }
+      await refreshDocuments()
+      setSuccess('Status updated')
+      setTimeout(() => setSuccess(''), 2000)
+    } catch (e: any) {
+      console.error('Update status error:', e)
+      setError(e?.message || 'Failed to update status')
     }
   }
 
@@ -1293,6 +1543,95 @@ export default function InstallerProfileViewPage() {
       setError(err.message || 'Failed to update installer profile')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  // Handle save remark
+  const handleSaveRemark = async () => {
+    try {
+      setIsSavingRemark(true)
+      setError('')
+      
+      // Create new remark object
+      const newRemark = {
+        date: remarkDate || null,
+        note: remarkNote.trim(),
+        createdAt: new Date().toISOString()
+      }
+      
+      // Add to existing remarks
+      const updatedRemarks = [...remarks, newRemark]
+      
+      const response = await fetch(`/api/installers/${installerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          remarks: JSON.stringify(updatedRemarks),
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save remark')
+      }
+
+      const data = await response.json()
+      setInstaller(data.installer)
+      setRemarks(updatedRemarks)
+      setRemarkDate('')
+      setRemarkNote('')
+      setShowRemarkDate(false)
+      setShowAddRemarkForm(false)
+      setSuccess('Remark saved successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error saving remark:', err)
+      setError(err.message || 'Failed to save remark')
+    } finally {
+      setIsSavingRemark(false)
+    }
+  }
+
+  // Handle delete remark - show confirmation modal
+  const handleDeleteRemark = (index: number) => {
+    setDeleteRemarkConfirm({ show: true, index })
+  }
+
+  // Confirm and execute delete
+  const confirmDeleteRemark = async () => {
+    if (deleteRemarkConfirm.index === null) return
+
+    try {
+      setIsSavingRemark(true)
+      setError('')
+      
+      // Remove remark at index
+      const updatedRemarks = remarks.filter((_, i) => i !== deleteRemarkConfirm.index)
+      
+      const response = await fetch(`/api/installers/${installerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          remarks: updatedRemarks.length > 0 ? JSON.stringify(updatedRemarks) : null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete remark')
+      }
+
+      const data = await response.json()
+      setInstaller(data.installer)
+      setRemarks(updatedRemarks)
+      setDeleteRemarkConfirm({ show: false, index: null })
+      setSuccess('Remark deleted successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error deleting remark:', err)
+      setError(err.message || 'Failed to delete remark')
+    } finally {
+      setIsSavingRemark(false)
     }
   }
 
@@ -1883,6 +2222,15 @@ export default function InstallerProfileViewPage() {
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
           </Link>
+          <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Settings</span>}
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -1975,6 +2323,12 @@ export default function InstallerProfileViewPage() {
             <MessageSquare className="w-5 h-5" />
             <span>Messages</span>
           </Link>
+          <Link href="/dashboard/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+            pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+          }`}>
+            <Settings className="w-5 h-5" />
+            <span>Settings</span>
+          </Link>
         </nav>
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className="flex items-center gap-3 mb-4">
@@ -2028,6 +2382,224 @@ export default function InstallerProfileViewPage() {
                     {success}
                   </div>
                 )}
+                
+                {/* Admin Remark - Hover Popover */}
+                <div 
+                  className="relative"
+                  onMouseEnter={() => setShowRemarkPopover(true)}
+                  onMouseLeave={() => setShowRemarkPopover(false)}
+                >
+                  <button
+                    onClick={() => setShowRemarkPopover(!showRemarkPopover)}
+                    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-medium ${
+                      remarks.length > 0 
+                        ? 'bg-brand-green/10 text-brand-green border-2 border-brand-green/30' 
+                        : 'bg-slate-100 text-slate-700'
+                    }`}
+                    title="Admin Remark"
+                  >
+                    <StickyNote className="w-5 h-5" />
+                    {remarks.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-green rounded-full border-2 border-white" />
+                    )}
+                  </button>
+                  
+                  {showRemarkPopover && (
+                    <>
+                      {/* Blur backdrop */}
+                      <div 
+                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+                        onClick={() => setShowRemarkPopover(false)}
+                      />
+                      
+                      {/* Popover - Made bigger and nicer */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="absolute right-0 top-full mt-2 w-[520px] max-h-[650px] bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 flex flex-col overflow-hidden"
+                      >
+                        {/* Header with gradient */}
+                        <div className="bg-gradient-to-r from-brand-green/10 to-brand-green/5 px-6 py-4 border-b border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-brand-green/20 flex items-center justify-center">
+                                <StickyNote className="w-5 h-5 text-brand-green" />
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-bold text-slate-900">Admin Remarks</h3>
+                                <p className="text-xs text-slate-500">{remarks.length} {remarks.length === 1 ? 'remark' : 'remarks'}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setShowRemarkPopover(false)}
+                              className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                            >
+                              <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Content area */}
+                        <div className="flex-1 overflow-hidden flex flex-col p-6">
+                        
+                        {/* Display all saved remarks */}
+                        <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
+                          {remarks.length > 0 ? (
+                            remarks.map((remark, index) => (
+                              <div key={index} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative">
+                                <div className="flex items-start justify-between mb-2">
+                                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                    Remark #{remarks.length - index}
+                                  </p>
+                                  <button
+                                    onClick={() => setDeleteRemarkConfirm({ show: true, index })}
+                                    disabled={isSavingRemark}
+                                    className="p-1.5 hover:bg-red-100 rounded-lg transition-colors text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Delete remark"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                {remark.date && (
+                                  <p className="text-sm text-slate-700 mb-2">
+                                    <span className="font-semibold">Date:</span>{' '}
+                                    {new Date(remark.date).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                )}
+                                <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                  <span className="font-semibold">Note:</span>{' '}
+                                  {remark.note}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-2">
+                                  {new Date(remark.createdAt).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8 text-slate-400">
+                              <StickyNote className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No remarks yet</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Show "Add remark" button if form is hidden */}
+                        {!showAddRemarkForm && (
+                          <motion.button
+                            type="button"
+                            onClick={() => setShowAddRemarkForm(true)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl hover:shadow-lg transition-all font-medium shadow-md"
+                          >
+                            <Plus className="w-5 h-5" />
+                            Add Remark
+                          </motion.button>
+                        )}
+                        
+                        {/* Show form when "Add remark" is clicked */}
+                        {showAddRemarkForm && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-4 bg-slate-50 rounded-xl p-4 border border-slate-200"
+                          >
+                            {/* Date field - hidden by default, shown when admin clicks "Add Date" */}
+                            {showRemarkDate && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                              >
+                                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-brand-green" />
+                                  Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={remarkDate}
+                                  onChange={(e) => setRemarkDate(e.target.value)}
+                                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 shadow-sm"
+                                />
+                              </motion.div>
+                            )}
+                            
+                            {/* Show "Add Date" button if date field is hidden */}
+                            {!showRemarkDate && (
+                              <button
+                                type="button"
+                                onClick={() => setShowRemarkDate(true)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5 transition-all"
+                              >
+                                <Calendar className="w-4 h-4" />
+                                Add Date (Optional)
+                              </button>
+                            )}
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-brand-green" />
+                                Note
+                              </label>
+                              <textarea
+                                value={remarkNote}
+                                onChange={(e) => setRemarkNote(e.target.value)}
+                                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none shadow-sm"
+                                placeholder="Enter admin note..."
+                                rows={5}
+                              />
+                            </div>
+                            
+                            <div className="flex gap-3 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowAddRemarkForm(false)
+                                  setRemarkDate('')
+                                  setRemarkNote('')
+                                  setShowRemarkDate(false)
+                                }}
+                                className="flex-1 px-4 py-2.5 border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition-colors font-medium"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  await handleSaveRemark()
+                                }}
+                                disabled={isSavingRemark || !remarkNote.trim()}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                              >
+                                {isSavingRemark ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Save className="w-4 h-4" />
+                                    Save Remark
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </div>
+                
                 {!isEditing ? (
                   <button
                     onClick={() => setIsEditing(true)}
@@ -2103,7 +2675,7 @@ export default function InstallerProfileViewPage() {
                 <div className="flex-shrink-0">
                   <div className="relative group">
                     {/* Status-based border color */}
-                    <div className={`w-20 h-20 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
+                    <div className={`w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
                       installer.status === 'active' ? 'ring-4 ring-brand-green' :
                       installer.status === 'passed' || installer.status === 'qualified' ? 'ring-4 ring-blue-500' :
                       installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
@@ -2118,8 +2690,8 @@ export default function InstallerProfileViewPage() {
                         <Image
                           src={photoUrl || installer.photoUrl || ''}
                           alt={`${installer.firstName} ${installer.lastName}`}
-                          width={80}
-                          height={80}
+                          width={112}
+                          height={112}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             console.error('Error loading image:', photoUrl || installer.photoUrl)
@@ -2127,7 +2699,7 @@ export default function InstallerProfileViewPage() {
                           }}
                         />
                       ) : (
-                        <User className={`w-10 h-10 ${
+                        <User className={`w-14 h-14 ${
                           installer.status === 'active' ? 'text-brand-green-dark' :
                           installer.status === 'passed' || installer.status === 'qualified' ? 'text-blue-600' :
                           installer.status === 'failed' || installer.status === 'notQualified' ? 'text-red-600' :
@@ -2137,10 +2709,10 @@ export default function InstallerProfileViewPage() {
                     </div>
                     {/* Checkmark badge */}
                     {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
-                      <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-lg z-20 ${
+                      <div className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-20 border-2 border-white ${
                         installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
                       }`}>
-                        <CheckCircle2 className="w-4 h-4 text-white" />
+                        <CheckCircle2 className="w-5 h-5 text-white" />
                       </div>
                     )}
                     <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
@@ -2204,84 +2776,100 @@ export default function InstallerProfileViewPage() {
                         </select>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-2.5 mt-4">
-                        {(() => {
-                          const sunbizDoc = documents.find((d: any) => d?.type === 'sunbiz')
-                          const liabilityDoc = documents.find((d: any) => d?.type === 'liability_insurance')
-                          const businessTaxDoc = documents.find((d: any) => d?.type === 'business_registration')
-                          
-                          const badges = []
-                          
-                          if (sunbizDoc?.verificationLinkStatus) {
-                            badges.push({
-                              label: 'Sunbiz',
-                              status: sunbizDoc.verificationLinkStatus,
-                            })
-                          }
-                          
-                          if (liabilityDoc?.verificationLinkStatus) {
-                            badges.push({
-                              label: 'Liability Insurance',
-                              status: liabilityDoc.verificationLinkStatus,
-                            })
-                          }
-                          
-                          if (businessTaxDoc?.verificationLinkStatus) {
-                            badges.push({
-                              label: 'Business Tax Receipt',
-                              status: businessTaxDoc.verificationLinkStatus,
-                            })
-                          }
-                          
-                          return badges.map((badge) => {
-                            const statusConfig = {
-                              active: {
-                                bg: 'bg-green-50',
-                                text: 'text-green-700',
-                                border: 'border-green-200',
-                                icon: CheckCircle2,
-                                iconColor: 'text-green-600',
-                              },
-                              expired: {
-                                bg: 'bg-red-50',
-                                text: 'text-red-700',
-                                border: 'border-red-200',
-                                icon: XCircle,
-                                iconColor: 'text-red-600',
-                              },
-                              pending: {
-                                bg: 'bg-yellow-50',
-                                text: 'text-yellow-700',
-                                border: 'border-yellow-200',
-                                icon: Clock,
-                                iconColor: 'text-yellow-600',
-                              },
-                            }
-                            
-                            const config = statusConfig[badge.status as keyof typeof statusConfig] || {
-                              bg: 'bg-slate-50',
-                              text: 'text-slate-600',
-                              border: 'border-slate-200',
-                              icon: AlertCircle,
-                              iconColor: 'text-slate-500',
-                            }
-                            
-                            const Icon = config.icon
-                            
-                            return (
-                              <div
-                                key={badge.label}
-                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bg} ${config.border} ${config.text} shadow-sm transition-all hover:shadow-md`}
-                              >
-                                <Icon className={`w-3.5 h-3.5 ${config.iconColor} flex-shrink-0`} />
-                                <span className="text-xs font-semibold capitalize">{badge.label}</span>
-                                <span className="text-xs font-medium opacity-75">•</span>
-                                <span className="text-xs font-bold capitalize">{badge.status}</span>
-                              </div>
-                            )
-                          })
-                        })()}
+                      <>
+                      {/* Collapsible compliance status + filter */}
+                      <div className="mt-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setComplianceOpen((v) => !v)}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                            title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
+                          >
+                            <BarChart3 className="w-4 h-4 text-brand-green" />
+                            <span>Compliance Status</span>
+                            {complianceOpen ? (
+                              <ChevronUp className="w-4 h-4 text-slate-500" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-slate-500" />
+                            )}
+                          </button>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-bold">
+                              Active {complianceCounts.active}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold">
+                              Expired {complianceCounts.expired}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 font-bold">
+                              Missing {complianceCounts.missing}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                              Inactive {complianceCounts.inactive}
+                            </span>
+                          </div>
+                        </div>
+
+                        {complianceOpen && (
+                          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="divide-y divide-slate-100">
+                              {complianceRows.map((row) => {
+                                const badgeClasses =
+                                  row.statusKey === 'active'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : row.statusKey === 'expired'
+                                      ? 'bg-red-50 text-red-700 border-red-200'
+                                      : row.statusKey === 'inactive'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                        : row.statusKey === 'na'
+                                          ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                          : 'bg-slate-50 text-slate-700 border-slate-200'
+
+                                const formattedDate = formatExpiryDate(row.date)
+                                const dateStatus = row.date ? getExpirationStatus(row.date) : 'none'
+                                
+                                // Get color class based on date status
+                                const getDateColorClass = () => {
+                                  switch (dateStatus) {
+                                    case 'expired':
+                                      return 'text-red-600 font-semibold'
+                                    case 'expiring':
+                                      return 'text-yellow-600 font-semibold'
+                                    case 'valid':
+                                      return 'text-green-600 font-semibold'
+                                    default:
+                                      return 'text-slate-500'
+                                  }
+                                }
+
+                                return (
+                                  <div key={row.key} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-4">
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-slate-900 truncate">{row.name}</p>
+                                      {formattedDate && (
+                                        <p className={`text-sm mt-1 ${getDateColorClass()}`}>{formattedDate}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-bold ${badgeClasses}`}>
+                                        {row.statusText}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+
+                              {!complianceRows.length && (
+                                <div className="px-4 py-6 text-sm text-slate-600">
+                                  No compliance items available.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -3001,15 +3589,19 @@ export default function InstallerProfileViewPage() {
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
                 {DOCUMENT_TYPES.map((docType) => {
-                  const existing = documents.find((d: any) => d?.type === docType.id)
+                  const isMulti = true // All document types now support multiple uploads
+                  const matchingDocs = documents.filter((d: any) => d?.type === docType.id)
+                  const existing = matchingDocs[0] // For display purposes, show first doc
                   const isUploading = uploadingDocumentType === docType.id
                   const isDocumentDeleting = isDeleting && deleteConfirm.documentId === existing?.id
+                  const hasAnyForType = isMulti ? matchingDocs.length > 0 : Boolean(existing)
 
                   const existingName = existing?.name || existing?.fileName || existing?.file_name
                   const existingUrl = existing?.url || existing?.fileUrl || existing?.file_url
+                  const docStatus = existing?.verificationLinkStatus || ''
 
                   // Only show verification link feature for specific document types
-                  const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance'
+                  const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance' || docType.id === 'employers_liability'
                   
                   const isEditingLink = hasVerificationLinkFeature && editingVerificationLink === existing?.id
                   const verificationLink = hasVerificationLinkFeature ? (existing?.verificationLink || verificationLinks[existing?.id]?.link || '') : ''
@@ -3037,7 +3629,7 @@ export default function InstallerProfileViewPage() {
                                 Required
                               </span>
                             )}
-                            {existing ? (
+                            {hasAnyForType ? (
                               <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
                                 Uploaded
                               </span>
@@ -3046,17 +3638,23 @@ export default function InstallerProfileViewPage() {
                                 Missing
                               </span>
                             )}
-                            {existing?.id && hasVerificationLinkFeature && verificationLinkStatus && (
+                            {existing?.id && docStatus && (
                               <span className={`text-xs px-2 py-0.5 rounded-full capitalize font-semibold ${
-                                verificationLinkStatus === 'active'
+                                docStatus === 'active'
                                   ? 'bg-green-100 text-green-700' 
-                                  : verificationLinkStatus === 'expired'
+                                  : docStatus === 'inactive'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : docStatus === 'missing'
+                                  ? 'bg-slate-100 text-slate-700'
+                                  : docStatus === 'expired'
                                   ? 'bg-red-100 text-red-700'
-                                  : verificationLinkStatus === 'pending'
+                                  : docStatus === 'pending'
                                   ? 'bg-yellow-100 text-yellow-700'
+                                  : docStatus === 'na'
+                                  ? 'bg-slate-100 text-slate-700'
                                   : 'bg-slate-100 text-slate-600'
                               }`}>
-                                {verificationLinkStatus}
+                                {docStatus === 'na' ? 'N/A' : docStatus}
                               </span>
                             )}
                           </div>
@@ -3064,8 +3662,69 @@ export default function InstallerProfileViewPage() {
                           <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
                           {existingName && (
                             <p className="text-xs text-slate-600 mt-2 truncate">
-                              <span className="font-semibold text-slate-700">Current:</span> {existingName}
+                              <span className="font-semibold text-slate-700">{isMulti ? 'Latest:' : 'Current:'}</span> {existingName}
                             </p>
+                          )}
+
+                          {/* Multi-upload list (all document types now support multiple uploads) */}
+                          {matchingDocs.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {matchingDocs.map((doc: any) => {
+                                const docName = doc?.name || doc?.fileName || doc?.file_name || 'Document'
+                                const docUrl = doc?.url || doc?.fileUrl || doc?.file_url
+                                const deletingThis = isDeleting && deleteConfirm.documentId === doc?.id
+                                return (
+                                  <div key={doc.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+                                    <p className="text-xs text-slate-700 font-semibold truncate flex-1">
+                                      {docName}
+                                    </p>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {doc?.id && (
+                                        <div className="relative">
+                                          <select
+                                            value={doc?.verificationLinkStatus || ''}
+                                            onChange={(e) => handleUpdateDocumentStatus(doc.id, e.target.value)}
+                                            className="appearance-none pl-2.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                                            title="Set status"
+                                          >
+                                            <option value="">Status</option>
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                            <option value="missing">Missing</option>
+                                            <option value="na">N/A</option>
+                                          </select>
+                                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                        </div>
+                                      )}
+                                      {docUrl && (
+                                        <a
+                                          href={docUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                          View
+                                        </a>
+                                      )}
+                                      <button
+                                        type="button"
+                                        disabled={deletingThis}
+                                        onClick={() => handleDeleteClick(doc.id, docName, docType.id)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-200 bg-white text-red-700 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                                      >
+                                        {deletingThis ? (
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        )}
+                                        Delete
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
                           )}
                           
                           {/* Verification Link Section - Only for specific document types */}
@@ -3104,6 +3763,9 @@ export default function InstallerProfileViewPage() {
                                     >
                                       <option value="">Select status</option>
                                       <option value="active">Active</option>
+                                      <option value="inactive">Inactive</option>
+                                      <option value="missing">Missing</option>
+                                      <option value="na">N/A</option>
                                       <option value="expired">Expired</option>
                                       <option value="pending">Pending</option>
                                     </select>
@@ -3169,7 +3831,7 @@ export default function InstallerProfileViewPage() {
                           }`}
                         >
                           {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                          <span>{existing ? 'Replace' : 'Upload'}</span>
+                          <span>{isMulti ? 'Add' : existing ? 'Replace' : 'Upload'}</span>
                           <input
                             type="file"
                             className="hidden"
@@ -3184,17 +3846,6 @@ export default function InstallerProfileViewPage() {
                           />
                         </label>
 
-                        {existingUrl && (
-                          <a
-                            href={existingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                            View
-                          </a>
-                        )}
 
                         {existing?.id && hasVerificationLinkFeature && verificationLink && (
                           <a
@@ -3222,29 +3873,13 @@ export default function InstallerProfileViewPage() {
                             See Link
                           </button>
                         )}
-
-                        {existing?.id && (
-                          <button
-                            type="button"
-                            disabled={isDocumentDeleting}
-                            onClick={() => handleDeleteClick(existing.id, existingName || '', docType.id)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-white text-red-700 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
-                          >
-                            {isDocumentDeleting ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                            Delete
-                          </button>
-                        )}
                       </div>
                     </div>
                   )
                 })}
               </div>
               <p className="text-[11px] text-slate-500 mt-3">
-                Allowed: PDF, DOC, DOCX, JPG, PNG (Max 10MB). Uploading replaces the existing file for that type.
+                Allowed: PDF, DOC, DOCX, JPG, PNG (Max 10MB). All document types support multiple uploads.
               </p>
             </div>
           </motion.div>
@@ -8910,6 +9545,83 @@ export default function InstallerProfileViewPage() {
                   <>
                     <Save className="w-4 h-4" />
                     {editingStaff ? 'Update' : 'Add'} Member
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Remark Confirmation Modal */}
+      {deleteRemarkConfirm.show && deleteRemarkConfirm.index !== null && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-5 border-b border-red-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Delete Remark</h3>
+                  <p className="text-sm text-slate-600 mt-0.5">This action cannot be undone</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <p className="text-slate-700 leading-relaxed mb-4">
+                Are you sure you want to delete this remark? This action cannot be undone and the remark will be permanently removed.
+              </p>
+              {remarks[deleteRemarkConfirm.index] && (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Remark Preview</p>
+                  {remarks[deleteRemarkConfirm.index].date && (
+                    <p className="text-xs text-slate-600 mb-2">
+                      <span className="font-semibold">Date:</span> {new Date(remarks[deleteRemarkConfirm.index].date!).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  )}
+                  <p className="text-sm text-slate-700 line-clamp-3">
+                    <span className="font-semibold">Note:</span> {remarks[deleteRemarkConfirm.index].note}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setDeleteRemarkConfirm({ show: false, index: null })}
+                disabled={isSavingRemark}
+                className="px-5 py-2.5 border-2 border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteRemark}
+                disabled={isSavingRemark}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-red-600/20"
+              >
+                {isSavingRemark ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Remark
                   </>
                 )}
               </button>
