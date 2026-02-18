@@ -59,9 +59,9 @@ export async function POST(request: NextRequest) {
     await prisma.installer.update({
       where: { id: interview.installerId },
       data: {
-        firstName: extractedData.firstName || interview.installer.firstName,
-        lastName: extractedData.lastName || interview.installer.lastName,
-        phone: extractedData.phone || interview.installer.phone,
+        firstName: extractedData.firstName || interview.Installer.firstName,
+        lastName: extractedData.lastName || interview.Installer.lastName,
+        phone: extractedData.phone || interview.Installer.phone,
         yearsOfExperience: extractedData.yearsOfExperience,
         flooringSkills: extractedData.flooringSkills
           ? JSON.stringify(extractedData.flooringSkills)
