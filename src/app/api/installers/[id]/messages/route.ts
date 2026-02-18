@@ -93,7 +93,7 @@ export async function POST(
         attachmentName: trimmedAttachmentName || null,
       },
       include: {
-        installer: {
+        Installer: {
           select: {
             id: true,
             firstName: true,
