@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     
     await prisma.interviewResponse.create({
       data: {
+        id: crypto.randomUUID(),
         interviewId,
         questionId: currentQuestion.id,
         questionText: currentQuestion.text,
