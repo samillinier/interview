@@ -44,7 +44,7 @@ export async function PATCH(
         notes: notes || null,
       },
       include: {
-        installer: {
+        Installer: {
           select: {
             id: true,
             firstName: true,
