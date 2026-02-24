@@ -33,6 +33,7 @@ import {
   Plus,
   Building2,
   Shield,
+  ShieldAlert,
   Car,
   Plane,
   Square,
@@ -44,7 +45,8 @@ import {
   FileCheck,
   Paperclip,
   Activity,
-  Settings
+  Settings,
+  StickyNote
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -204,26 +206,26 @@ export default function DashboardPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
-  const [notificationCount, setNotificationCount] = useState(0)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
-  // Fetch notification count
-  const fetchNotificationCount = async () => {
+  // Fetch pending approvals count
+  const fetchPendingApprovalsCount = async () => {
     try {
-      const response = await fetch('/api/notifications/count')
+      const response = await fetch('/api/admin/change-requests/count')
       if (response.ok) {
         const data = await response.json()
-        setNotificationCount(data.count || 0)
+        setPendingApprovalsCount(data.count || 0)
       }
     } catch (error) {
-      console.error('Error fetching notification count:', error)
+      console.error('Error fetching pending approvals count:', error)
     }
   }
 
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchNotificationCount()
+      fetchPendingApprovalsCount()
       // Refresh count every 30 seconds
-      const interval = setInterval(fetchNotificationCount, 30000)
+      const interval = setInterval(fetchPendingApprovalsCount, 30000)
       return () => clearInterval(interval)
     }
   }, [status])
@@ -1142,7 +1144,7 @@ export default function DashboardPage() {
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
                 <p className="text-xs text-primary-500">Admin Dashboard</p>
               </div>
             )}
@@ -1172,6 +1174,24 @@ export default function DashboardPage() {
             {sidebarOpen && <span>Installers</span>}
           </Link>
           <Link
+            href="/dashboard/approvals"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Approvals</span>
+                {pendingApprovalsCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {pendingApprovalsCount}
+                  </span>
+                )}
+              </div>
+            )}
+          </Link>
+          <Link
             href="/dashboard/analytics"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
@@ -1199,6 +1219,15 @@ export default function DashboardPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/remarks"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <StickyNote className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Remarks</span>}
           </Link>
           <Link
             href="/dashboard/settings"
@@ -1268,7 +1297,7 @@ export default function DashboardPage() {
               />
             </div>
             <div>
-              <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+              <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
               <p className="text-xs text-primary-500">Admin Dashboard</p>
             </div>
           </div>
@@ -1287,6 +1316,20 @@ export default function DashboardPage() {
           <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Users className="w-5 h-5" />
             <span>Installers</span>
+          </Link>
+          <Link
+            href="/dashboard/approvals"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5" />
+            <span>Approvals</span>
+            {pendingApprovalsCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                {pendingApprovalsCount}
+              </span>
+            )}
           </Link>
           <Link href="/dashboard/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5" />

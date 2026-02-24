@@ -31,13 +31,11 @@ export async function POST(request: NextRequest) {
         const referredByInstallerId = await resolveReferrerInstallerId(referralCode)
         installer = await prisma.installer.create({
           data: {
-            id: crypto.randomUUID(),
             email,
             firstName: '',
             lastName: '',
             status: 'pending',
             referredByInstallerId,
-            updatedAt: new Date(),
           },
         })
       }

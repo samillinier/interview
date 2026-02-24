@@ -8,9 +8,9 @@ datasource db {
 }
 
 model Admin {
-  id        String   @id
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   email     String   @unique
   name      String?
   isActive  Boolean  @default(true)
@@ -21,7 +21,7 @@ model Admin {
 }
 
 model Communication {
-  id          String    @id
+  id          String    @id @default(cuid())
   createdAt   DateTime  @default(now())
   installerId String
   type        String
@@ -33,7 +33,7 @@ model Communication {
 }
 
 model Document {
-  id                     String    @id
+  id                     String    @id @default(cuid())
   createdAt              DateTime  @default(now())
   installerId            String
   type                   String
@@ -48,48 +48,48 @@ model Document {
 }
 
 model Installer {
-  id                                   String             @id
-  createdAt                            DateTime           @default(now())
-  updatedAt                            DateTime
+  id                                   String                   @id @default(cuid())
+  createdAt                            DateTime                 @default(now())
+  updatedAt                            DateTime                 @updatedAt
   firstName                            String
   lastName                             String
-  email                                String             @unique
+  email                                String                   @unique
   phone                                String?
   yearsOfExperience                    Int?
   flooringSpecialties                  String?
   previousEmployers                    String?
-  hasOwnCrew                           Boolean            @default(false)
+  hasOwnCrew                           Boolean                  @default(false)
   crewSize                             Int?
-  hasOwnTools                          Boolean            @default(false)
-  hasVehicle                           Boolean            @default(false)
+  hasOwnTools                          Boolean                  @default(false)
+  hasVehicle                           Boolean                  @default(false)
   toolsDescription                     String?
   serviceAreas                         String?
-  willingToTravel                      Boolean            @default(false)
+  willingToTravel                      Boolean                  @default(false)
   maxTravelDistance                    Int?
   availability                         String?
-  canStartImmediately                  Boolean            @default(false)
+  canStartImmediately                  Boolean                  @default(false)
   preferredStartDate                   DateTime?
-  hasInsurance                         Boolean            @default(false)
+  hasInsurance                         Boolean                  @default(false)
   insuranceType                        String?
-  hasLicense                           Boolean            @default(false)
+  hasLicense                           Boolean                  @default(false)
   licenseNumber                        String?
   licenseExpiry                        DateTime?
-  hasGeneralLiability                  Boolean            @default(false)
-  hasCommercialAutoLiability           Boolean            @default(false)
-  hasWorkersComp                       Boolean            @default(false)
-  hasWorkersCompExemption              Boolean            @default(false)
-  isSunbizRegistered                   Boolean            @default(false)
-  isSunbizActive                       Boolean            @default(false)
-  hasBusinessLicense                   Boolean            @default(false)
+  hasGeneralLiability                  Boolean                  @default(false)
+  hasCommercialAutoLiability           Boolean                  @default(false)
+  hasWorkersComp                       Boolean                  @default(false)
+  hasWorkersCompExemption              Boolean                  @default(false)
+  isSunbizRegistered                   Boolean                  @default(false)
+  isSunbizActive                       Boolean                  @default(false)
+  hasBusinessLicense                   Boolean                  @default(false)
   canPassBackgroundCheck               Boolean?
   backgroundCheckDetails               String?
   vehicleDescription                   String?
   flooringSkills                       String?
   mondayToFridayAvailability           String?
   saturdayAvailability                 String?
-  openToTravel                         Boolean            @default(false)
+  openToTravel                         Boolean                  @default(false)
   travelLocations                      String?
-  status                               String             @default("pending")
+  status                               String                   @default("pending")
   passFailReason                       String?
   overallScore                         Int?
   notes                                String?
@@ -149,7 +149,7 @@ model Installer {
   serviceAgreementName                 String?
   serviceAgreementSignature            String?
   serviceAgreementSignedAt             DateTime?
-  username                             String?            @unique
+  username                             String?                  @unique
   wantsToAddCarpet                     Boolean?
   wantsToAddHardwood                   Boolean?
   wantsToAddLaminate                   Boolean?
@@ -169,26 +169,27 @@ model Installer {
   workersCompExemExpiryDates           String?
   digitalId                            String?
   workroom                             String?
-  referralCode                         String?            @unique
+  referralCode                         String?                  @unique
   referredByInstallerId                String?
   remarks                              String?
   Communication                        Communication[]
   Document                             Document[]
-  Installer                            Installer?         @relation("InstallerToInstaller", fields: [referredByInstallerId], references: [id])
-  other_Installer                      Installer[]        @relation("InstallerToInstaller")
+  Installer                            Installer?               @relation("InstallerToInstaller", fields: [referredByInstallerId], references: [id])
+  other_Installer                      Installer[]              @relation("InstallerToInstaller")
   InstallerHistory                     InstallerHistory[]
   Interview                            Interview[]
   JobApplication                       JobApplication[]
   Notification                         Notification[]
+  InstallerChangeRequest               InstallerChangeRequest[]
   StaffMember                          StaffMember[]
 
   @@index([referredByInstallerId])
 }
 
 model InstallerHistory {
-  id                                   String    @id
+  id                                   String    @id @default(cuid())
   createdAt                            DateTime  @default(now())
-  updatedAt                            DateTime
+  updatedAt                            DateTime  @updatedAt
   installerId                          String
   year                                 Int
   firstName                            String?
@@ -277,9 +278,9 @@ model InstallerHistory {
 }
 
 model Interview {
-  id                String              @id
+  id                String              @id @default(cuid())
   createdAt         DateTime            @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime            @updatedAt
   installerId       String
   status            String              @default("in_progress")
   startedAt         DateTime            @default(now())
@@ -292,7 +293,7 @@ model Interview {
 }
 
 model InterviewResponse {
-  id             String    @id
+  id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
   interviewId    String
   questionId     String
@@ -305,9 +306,9 @@ model InterviewResponse {
 }
 
 model Job {
-  id             String           @id
+  id             String           @id @default(cuid())
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @updatedAt
   title          String
   description    String
   location       String
@@ -327,7 +328,7 @@ model Job {
 }
 
 model JobApplication {
-  id          String    @id
+  id          String    @id @default(cuid())
   createdAt   DateTime  @default(now())
   jobId       String
   installerId String
@@ -343,9 +344,9 @@ model JobApplication {
 }
 
 model Notification {
-  id             String    @id
+  id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime  @updatedAt
   installerId    String
   type           String
   title          String
@@ -365,10 +366,30 @@ model Notification {
   @@index([type])
 }
 
+model InstallerChangeRequest {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  installerId     String
+  status          String    @default("pending") // pending | approved | rejected
+  source          String? // e.g. profile | payment | attachments
+  payload         Json
+  submittedBy     String? // installer email/username
+  reviewedBy      String? // admin email
+  reviewedAt      DateTime?
+  rejectionReason String?
+
+  Installer Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([installerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model ScreeningCriteria {
-  id          String   @id
+  id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
   name        String
   description String?
   isActive    Boolean  @default(true)
@@ -377,9 +398,9 @@ model ScreeningCriteria {
 }
 
 model StaffMember {
-  id                String    @id
+  id                String    @id @default(cuid())
   createdAt         DateTime  @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime  @updatedAt
   installerId       String
   firstName         String
   lastName          String

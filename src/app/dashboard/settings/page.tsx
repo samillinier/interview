@@ -25,6 +25,7 @@ import {
   MessageSquare,
   Bell,
   BarChart3,
+  StickyNote,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
@@ -171,7 +172,9 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteClick = (adminId: string, adminEmail: string) => {
+  const handleDeleteClick = (adminId: string, adminEmail: string, e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     setDeleteConfirm({
       show: true,
       adminId,
@@ -181,10 +184,14 @@ export default function SettingsPage() {
 
   const handleDeleteCancel = () => {
     setDeleteConfirm({ show: false, adminId: null, adminEmail: '' })
+    setError('')
   }
 
   const handleDeleteConfirm = async () => {
-    if (!deleteConfirm.adminId) return
+    if (!deleteConfirm.adminId) {
+      setError('No admin selected for deletion')
+      return
+    }
 
     setIsDeleting({ ...isDeleting, [deleteConfirm.adminId]: true })
     setError('')
@@ -200,15 +207,23 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Failed to delete admin')
       }
 
-      setSuccess('Admin removed successfully!')
+      const result = await response.json()
+      setSuccess(result.message || 'Admin removed successfully!')
       setDeleteConfirm({ show: false, adminId: null, adminEmail: '' })
       await fetchAdmins()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       console.error('Error deleting admin:', err)
-      setError(err.message || 'Failed to delete admin')
+      setError(err.message || 'Failed to delete admin. Please try again.')
+      // Keep modal open on error so user can try again
     } finally {
       setIsDeleting({ ...isDeleting, [deleteConfirm.adminId]: false })
+    }
+  }
+
+  const handleModalBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      handleDeleteCancel()
     }
   }
 
@@ -245,7 +260,7 @@ export default function SettingsPage() {
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
                 <p className="text-xs text-primary-500">Admin Dashboard</p>
               </div>
             )}
@@ -298,6 +313,15 @@ export default function SettingsPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/remarks"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <StickyNote className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Remarks</span>}
           </Link>
           <Link
             href="/dashboard/settings"
@@ -367,7 +391,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+              <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
               <p className="text-xs text-primary-500">Admin Dashboard</p>
             </div>
           </div>
@@ -553,10 +577,11 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleDeleteClick(admin.id, admin.email)}
-                    disabled={isDeleting[admin.id]}
+                    onClick={(e) => handleDeleteClick(admin.id, admin.email, e)}
+                    disabled={isDeleting[admin.id] || deleteConfirm.show}
                     className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Remove admin"
+                    type="button"
                   >
                     {isDeleting[admin.id] ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -670,10 +695,15 @@ export default function SettingsPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={handleModalBackdropClick}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
           >
             {/* Header */}
@@ -701,6 +731,15 @@ export default function SettingsPage() {
                   <p>This will immediately revoke their access to the admin dashboard. They will no longer be able to sign in.</p>
                 </div>
               </div>
+              {error && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
+                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-medium mb-1">Error</p>
+                    <p>{error}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -709,6 +748,7 @@ export default function SettingsPage() {
                 onClick={handleDeleteCancel}
                 disabled={isDeleting[deleteConfirm.adminId || '']}
                 className="flex-1 px-4 py-2.5 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-white hover:border-slate-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
               >
                 Cancel
               </button>
@@ -716,6 +756,7 @@ export default function SettingsPage() {
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting[deleteConfirm.adminId || '']}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+                type="button"
               >
                 {isDeleting[deleteConfirm.adminId || ''] ? (
                   <>

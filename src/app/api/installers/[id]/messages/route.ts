@@ -79,10 +79,8 @@ export async function POST(
     // Create notification - matching the exact pattern from /api/notifications/route.ts
     const notification = await prisma.notification.create({
       data: {
-        id: crypto.randomUUID(),
         installerId,
         type: 'message',
-        updatedAt: new Date(),
         title: 'Message',
         content: trimmedContent || (trimmedAttachmentName ? `Sent ${trimmedAttachmentName}` : 'Sent an attachment'),
         priority: 'normal',

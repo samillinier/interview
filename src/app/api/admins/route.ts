@@ -40,34 +40,6 @@ async function getSession(request: NextRequest) {
 // GET - List all admins
 export async function GET(request: NextRequest) {
   try {
-    // Ensure all fallback admins exist first (do this before any session checks)
-    const FALLBACK_EMAILS = [
-      'amunoz@fiscorponline.com',
-      'aclass@fiscorponline.com',
-      'sbiru@fiscorponline.com',
-      'svudaru@fiscorponline.com',
-    ].map(e => e.toLowerCase().trim())
-
-    // Create any missing fallback admins
-    for (const email of FALLBACK_EMAILS) {
-      try {
-          await prisma.admin.upsert({
-            where: { email },
-            update: { isActive: true, updatedAt: new Date() },
-            create: {
-              id: crypto.randomUUID(),
-              email,
-              isActive: true,
-              createdBy: 'system_fallback',
-              updatedAt: new Date(),
-            },
-          })
-      } catch (error) {
-        console.error(`Failed to ensure admin exists for ${email}:`, error)
-        // Continue with other admins
-      }
-    }
-
     // Try to get session (but don't fail if it doesn't work)
     let session = null
     try {
@@ -76,22 +48,34 @@ export async function GET(request: NextRequest) {
       console.warn('Session retrieval failed, continuing anyway:', sessionError)
     }
 
-    // If session exists, try to auto-create current user as admin if they're in fallback list
+    // Only auto-create the CURRENT USER if they're in fallback list and don't exist
+    // This prevents recreating deleted admins when fetching the list
     if (session?.user?.email) {
       const userEmail = session.user.email.toLowerCase()
+      const FALLBACK_EMAILS = [
+        'amunoz@fiscorponline.com',
+        'aclass@fiscorponline.com',
+        'sbiru@fiscorponline.com',
+        'svudaru@fiscorponline.com',
+      ].map(e => e.toLowerCase().trim())
+
       if (FALLBACK_EMAILS.includes(userEmail)) {
         try {
-          await prisma.admin.upsert({
+          // Only create if they don't exist - don't update/recreate deleted ones
+          const existingAdmin = await prisma.admin.findUnique({
             where: { email: userEmail },
-            update: { isActive: true, updatedAt: new Date() },
-            create: {
-              id: crypto.randomUUID(),
-              email: userEmail,
-              isActive: true,
-              createdBy: 'system_fallback',
-              updatedAt: new Date(),
-            },
           })
+          
+          if (!existingAdmin) {
+            await prisma.admin.create({
+              data: {
+                email: userEmail,
+                isActive: true,
+                createdBy: 'system_fallback',
+              },
+            })
+            console.log(`Auto-created admin for current user: ${userEmail}`)
+          }
         } catch (error) {
           console.error('Failed to auto-create admin:', error)
         }
@@ -188,13 +172,11 @@ export async function POST(request: NextRequest) {
         try {
           currentAdmin = await prisma.admin.upsert({
             where: { email: userEmail },
-            update: { isActive: true, updatedAt: new Date() },
+            update: { isActive: true },
             create: {
-              id: crypto.randomUUID(),
               email: userEmail,
               isActive: true,
               createdBy: 'system_fallback',
-              updatedAt: new Date(),
             },
           })
         } catch (createError: any) {
@@ -228,17 +210,15 @@ export async function POST(request: NextRequest) {
         // Create all fallback admins first
         for (const email of FALLBACK_EMAILS) {
           try {
-          await prisma.admin.upsert({
-            where: { email: email.toLowerCase().trim() },
-            update: { isActive: true, updatedAt: new Date() },
-            create: {
-              id: crypto.randomUUID(),
-              email: email.toLowerCase().trim(),
-              isActive: true,
-              createdBy: 'system_fallback',
-              updatedAt: new Date(),
-            },
-          })
+            await prisma.admin.upsert({
+              where: { email: email.toLowerCase().trim() },
+              update: { isActive: true },
+              create: {
+                email: email.toLowerCase().trim(),
+                isActive: true,
+                createdBy: 'system_fallback',
+              },
+            })
           } catch (error) {
             console.error(`Failed to ensure admin exists for ${email}:`, error)
           }
@@ -289,12 +269,10 @@ export async function POST(request: NextRequest) {
     // Create new admin
     const newAdmin = await prisma.admin.create({
       data: {
-        id: crypto.randomUUID(),
         email: email.toLowerCase().trim(),
         name: name || null,
         createdBy: currentAdmin.id,
         isActive: true,
-        updatedAt: new Date(),
       },
       select: {
         id: true,

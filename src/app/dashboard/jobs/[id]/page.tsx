@@ -26,7 +26,8 @@ import {
   Search,
   Mail,
   Phone,
-  FileText
+  FileText,
+  StickyNote
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -240,7 +241,7 @@ export default function JobApplicationsPage() {
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
                 <p className="text-xs text-primary-500">Admin Dashboard</p>
               </div>
             )}
@@ -309,6 +310,15 @@ export default function JobApplicationsPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/remarks"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <StickyNote className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Remarks</span>}
           </Link>
           <Link
             href="/dashboard/settings"

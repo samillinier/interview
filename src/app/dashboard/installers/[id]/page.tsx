@@ -1525,7 +1525,11 @@ export default function InstallerProfileViewPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update installer')
+        const errorMessage = errorData.details 
+          ? `${errorData.error || 'Failed to update installer'}: ${errorData.details}`
+          : errorData.error || 'Failed to update installer'
+        console.error('Update error:', errorData)
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
@@ -1543,6 +1547,43 @@ export default function InstallerProfileViewPage() {
       setError(err.message || 'Failed to update installer profile')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  // Quick status update (just status field)
+  const handleQuickStatusUpdate = async (newStatus: string) => {
+    try {
+      setError('')
+      const response = await fetch(`/api/installers/${installerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorMessage = errorData.details 
+          ? `${errorData.error || 'Failed to update status'}: ${errorData.details}`
+          : errorData.error || 'Failed to update status'
+        console.error('Quick status update error:', errorData)
+        setError(errorMessage)
+        // Revert status on error
+        setStatus(installer?.status || 'pending')
+        return
+      }
+
+      const data = await response.json()
+      setInstaller(data.installer)
+      setStatus(newStatus)
+      setSuccess('Status updated successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error updating status:', err)
+      setError(err.message || 'Failed to update status')
+      // Revert status on error
+      setStatus(installer?.status || 'pending')
     }
   }
 
@@ -2163,7 +2204,7 @@ export default function InstallerProfileViewPage() {
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
                 <p className="text-xs text-primary-500">Admin Dashboard</p>
               </div>
             )}
@@ -2221,6 +2262,15 @@ export default function InstallerProfileViewPage() {
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
+          </Link>
+          <Link
+            href="/dashboard/remarks"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <StickyNote className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Remarks</span>}
           </Link>
           <Link
             href="/dashboard/settings"
@@ -2289,7 +2339,7 @@ export default function InstallerProfileViewPage() {
               />
             </div>
             <div>
-              <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+              <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
               <p className="text-xs text-primary-500">Admin Dashboard</p>
             </div>
           </div>

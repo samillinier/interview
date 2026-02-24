@@ -1,6 +1,117 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { ensureInstallerReferralCode } from '@/lib/referrals'
+import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/installerToken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+const INSTALLER_ALLOWED_UPDATE_FIELDS = new Set<string>([
+  // Basic / company
+  'firstName',
+  'lastName',
+  'phone',
+  'digitalId',
+  'workroom',
+  'vehicleDescription',
+  'companyName',
+  'companyTitle',
+  'companyStreetAddress',
+  'companyCity',
+  'companyState',
+  'companyZipCode',
+  'companyCounty',
+  'companyAddress',
+
+  // Experience / operations
+  'yearsOfExperience',
+  'hasOwnCrew',
+  'crewSize',
+  'hasOwnTools',
+  'toolsDescription',
+  'hasVehicle',
+  'hasInsurance',
+  'hasGeneralLiability',
+  'hasCommercialAutoLiability',
+  'hasWorkersComp',
+  'hasWorkersCompExemption',
+  'isSunbizRegistered',
+  'isSunbizActive',
+  'hasBusinessLicense',
+  'feiEin',
+  'employerLiabilityPolicyNumber',
+
+  // Compliance / expirations (installer-managed)
+  'llrpExpiry',
+  'btrExpiry',
+  'workersCompExemExpiryDates',
+  'workersCompExemExpiry',
+  'generalLiabilityExpiry',
+  'automobileLiabilityExpiryDates',
+  'automobileLiabilityExpiry',
+  'employersLiabilityExpiry',
+  'canPassBackgroundCheck',
+  'backgroundCheckDetails',
+  'insuranceType',
+  'hasLicense',
+  'licenseNumber',
+  'licenseExpiry',
+
+  // Availability / travel
+  'willingToTravel',
+  'maxTravelDistance',
+  'canStartImmediately',
+  'preferredStartDate',
+  'availability',
+  'mondayToFridayAvailability',
+  'saturdayAvailability',
+
+  // Skills (subset used by installer portal)
+  'wantsToAddCarpet',
+  'installsStretchInCarpet',
+  'dailyStretchInCarpetSqft',
+  'installsGlueDownCarpet',
+  'wantsToAddHardwood',
+  'installsNailDownSolidHardwood',
+  'dailyNailDownSolidHardwoodSqft',
+  'installsStapleDownEngineeredHardwood',
+  'wantsToAddLaminate',
+  'dailyLaminateSqft',
+  'installsLaminateOnStairs',
+  'wantsToAddVinyl',
+  'installsSheetVinyl',
+  'installsLuxuryVinylPlank',
+  'dailyLuxuryVinylPlankSqft',
+  'installsLuxuryVinylTile',
+  'installsVinylCompositionTile',
+  'dailyVinylCompositionTileSqft',
+  'wantsToAddTile',
+  'installsCeramicTile',
+  'dailyCeramicTileSqft',
+  'installsPorcelainTile',
+  'dailyPorcelainTileSqft',
+  'installsStoneTile',
+  'dailyStoneTileSqft',
+  'offersTileRemoval',
+  'installsTileBacksplash',
+  'dailyTileBacksplashSqft',
+  'movesFurniture',
+  'installsTrim',
+
+  // Payment info (installer portal)
+  'paymentCompanyName',
+  'paymentContactPerson',
+  'paymentPhoneNumber',
+  'paymentBusinessAddress',
+  'paymentEmailAddress',
+  'paymentBankName',
+  'paymentAccountName',
+  'paymentAccountNumber',
+  'paymentRoutingNumber',
+  'paymentAccountType',
+  'paymentAuthorizationName',
+  'paymentAuthorizationSignature',
+  'paymentAuthorizationDate',
+])
 
 export async function GET(
   request: NextRequest,
@@ -187,9 +298,18 @@ export async function PATCH(
       )
     }
 
-    let data
+    let data: any
+    let cleanedData: any = {}
+    let approvalSource: string | null = null
+    
     try {
       data = await request.json()
+
+      // Extract meta fields that should not be persisted
+      if (data?._approvalSource !== undefined) {
+        approvalSource = typeof data._approvalSource === 'string' ? data._approvalSource : null
+        delete data._approvalSource
+      }
 
       // Normalize workroom
       if (data.workroom !== undefined) {
@@ -262,14 +382,20 @@ export async function PATCH(
       }
       
       // Convert date strings to Date objects for expiry date fields
-      const dateFields = ['llrpExpiry', 'btrExpiry', 'workersCompExemExpiry', 'generalLiabilityExpiry', 'automobileLiabilityExpiry', 'employersLiabilityExpiry', 'paymentAuthorizationDate', 'preferredStartDate']
+      const dateFields = ['llrpExpiry', 'btrExpiry', 'workersCompExemExpiry', 'generalLiabilityExpiry', 'automobileLiabilityExpiry', 'employersLiabilityExpiry', 'paymentAuthorizationDate', 'preferredStartDate', 'licenseExpiry', 'followUpDate']
       for (const field of dateFields) {
         if (data[field] !== undefined) {
           if (data[field] === null || data[field] === '') {
             data[field] = null
           } else if (typeof data[field] === 'string' && data[field].trim() !== '') {
             try {
-              const date = new Date(data[field])
+              // Handle date-only strings (YYYY-MM-DD) by adding time component
+              let dateStr = data[field].trim()
+              // If it's just a date (YYYY-MM-DD), add time to make it a valid DateTime
+              if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                dateStr = dateStr + 'T00:00:00.000Z'
+              }
+              const date = new Date(dateStr)
               // Check if date is valid
               if (!isNaN(date.getTime())) {
                 data[field] = date
@@ -284,6 +410,53 @@ export async function PATCH(
           // If it's already a Date object, keep it as is
         }
       }
+      
+      // Handle remarks field (JSON string)
+      if (data.remarks !== undefined) {
+        if (data.remarks === null || data.remarks === '') {
+          data.remarks = null
+        } else if (typeof data.remarks === 'string') {
+          // Validate it's valid JSON
+          try {
+            JSON.parse(data.remarks)
+            // Keep as is if valid JSON
+          } catch {
+            // If not valid JSON, try to wrap it
+            data.remarks = JSON.stringify([{ note: data.remarks, createdAt: new Date().toISOString() }])
+          }
+        }
+      }
+      
+      // Remove undefined values to avoid Prisma errors
+      cleanedData = {}
+      for (const key in data) {
+        if (data[key] !== undefined) {
+          // For required string fields, ensure they're not empty
+          if ((key === 'firstName' || key === 'lastName' || key === 'email') && data[key] === '') {
+            return NextResponse.json(
+              { 
+                error: 'Validation error',
+                details: `${key} cannot be empty`,
+                code: 'VALIDATION_ERROR'
+              },
+              { status: 400 }
+            )
+          }
+          cleanedData[key] = data[key]
+        }
+      }
+      
+      // Ensure we have at least one field to update
+      if (Object.keys(cleanedData).length === 0) {
+        return NextResponse.json(
+          { 
+            error: 'No valid fields to update',
+            details: 'At least one field must be provided for update',
+            code: 'EMPTY_UPDATE'
+          },
+          { status: 400 }
+        )
+      }
     } catch (parseError: any) {
       console.error('Error parsing request JSON:', parseError)
       return NextResponse.json(
@@ -296,13 +469,97 @@ export async function PATCH(
       )
     }
 
-    try {
-    const installer = await prisma.installer.update({
-      where: { id: installerId },
-      data,
-    })
+    // Log what we're trying to update (for debugging)
+    console.log('Updating installer:', installerId)
+    console.log('Update data keys:', Object.keys(cleanedData))
+    console.log('Update data:', JSON.stringify(cleanedData, null, 2))
 
-    return NextResponse.json({ installer })
+    try {
+      // Admins (NextAuth session) can update immediately.
+      let adminEmail: string | null = null
+      try {
+        const session = await getServerSession(authOptions)
+        const email = session?.user?.email?.toLowerCase()
+        if (email) {
+          const admin = await prisma.admin.findUnique({ where: { email } })
+          if (admin?.isActive) adminEmail = email
+        }
+      } catch (e) {
+        // ignore session errors and fall back to installer token auth
+      }
+
+      if (adminEmail) {
+        const installer = await prisma.installer.update({
+          where: { id: installerId },
+          data: cleanedData,
+        })
+        console.log('Installer updated successfully (admin)')
+        return NextResponse.json({ installer })
+      }
+
+      // Installers must submit updates as a pending change request (requires token).
+      const token = getInstallerTokenFromRequest(request)
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized', details: 'Missing installer token' },
+          { status: 401 }
+        )
+      }
+
+      let payload
+      try {
+        payload = verifyInstallerToken(token)
+      } catch {
+        return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
+      }
+
+      if (!payload.installerId || payload.installerId !== installerId) {
+        return NextResponse.json(
+          { error: 'Forbidden', details: 'Token does not match installer' },
+          { status: 403 }
+        )
+      }
+
+      // Only allow a safe whitelist of fields from installer submissions
+      const filtered: Record<string, any> = {}
+      for (const [key, value] of Object.entries(cleanedData)) {
+        if (INSTALLER_ALLOWED_UPDATE_FIELDS.has(key)) {
+          // Ensure JSON-serializable values for Prisma Json field
+          if (value instanceof Date) {
+            filtered[key] = value.toISOString()
+          } else {
+            filtered[key] = value
+          }
+        }
+      }
+
+      if (Object.keys(filtered).length === 0) {
+        return NextResponse.json(
+          {
+            error: 'No allowed fields to update',
+            details: 'The submitted changes do not contain any fields that require approval.',
+          },
+          { status: 400 }
+        )
+      }
+
+      const changeRequest = await prisma.installerChangeRequest.create({
+        data: {
+          installerId,
+          status: 'pending',
+          source: approvalSource,
+          payload: filtered,
+          submittedBy: (payload.email || payload.username || null) as string | null,
+        },
+      })
+
+      console.log('Installer change request created:', changeRequest.id)
+      return NextResponse.json({
+        success: true,
+        pendingApproval: true,
+        requestId: changeRequest.id,
+        message: 'Changes submitted for admin approval',
+      })
     } catch (dbError: any) {
       // Handle database-specific errors
       console.error('Database error updating installer:', dbError)
@@ -312,6 +569,7 @@ export async function PATCH(
         name: dbError?.name,
         meta: dbError?.meta,
       })
+      console.error('Attempted update data:', JSON.stringify(cleanedData, null, 2))
       
       // Provide more detailed error information
       let errorMessage = 'Failed to update installer'

@@ -1,35 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
-
-const TOKEN_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'your-secret-key-change-in-production'
-
-function verifyToken(token: string): any {
-  try {
-    const [encodedHeader, encodedPayload, signature] = token.split('.')
-    
-    // Verify signature
-    const expectedSignature = crypto
-      .createHmac('sha256', TOKEN_SECRET)
-      .update(`${encodedHeader}.${encodedPayload}`)
-      .digest('base64url')
-    
-    if (signature !== expectedSignature) {
-      throw new Error('Invalid signature')
-    }
-    
-    // Decode payload
-    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString())
-    
-    // Check expiration
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      throw new Error('Token expired')
-    }
-    
-    return payload
-  } catch (error) {
-    throw new Error('Invalid token')
-  }
-}
+import { verifyInstallerToken } from '@/lib/installerToken'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const payload = verifyToken(token)
+      const payload = verifyInstallerToken(token)
       
       return NextResponse.json({
         success: true,

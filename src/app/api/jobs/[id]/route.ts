@@ -65,11 +65,22 @@ export async function GET(
       )
     }
 
-    // Keep backwards compatibility for older UI code expecting `job.applications`
+    // Normalize relation field names to match existing frontend expectations.
     const normalizedJob: any = {
       ...job,
-      applications: (job as any).JobApplication || [],
+      applications: (job as any).JobApplication?.map((app: any) => ({
+        ...app,
+        installer: app.Installer,
+      })) || [],
+      _count: {
+        ...job._count,
+        applications: (job._count as any)?.JobApplication ?? 0,
+      },
     }
+    delete normalizedJob.JobApplication
+    normalizedJob.applications?.forEach((app: any) => {
+      delete app.Installer
+    })
 
     return NextResponse.json({
       success: true,

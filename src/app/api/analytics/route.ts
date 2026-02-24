@@ -6,11 +6,14 @@ export async function GET(request: NextRequest) {
     // Get all installers with their related data
     const installers = await prisma.installer.findMany({
       include: {
+        Interview: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
         Document: true,
         StaffMember: true,
         Notification: true,
         JobApplication: true,
-        Interview: true,
       },
     })
 
@@ -201,7 +204,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Document verification status
-    const allDocuments = installers.flatMap(i => i.Document || [])
+    const allDocuments = installers.flatMap(i => i.Document)
     const documentVerification = {
       total: allDocuments.length,
       verified: allDocuments.filter(d => d.verified === true).length,
@@ -226,7 +229,7 @@ export async function GET(request: NextRequest) {
       totalWorkforce: installers.reduce((sum, i) => sum + (i.crewSize || 0), 0) + installers.length,
       withTools: installers.filter(i => i.hasOwnTools === true).length,
       withVehicles: installers.filter(i => i.hasVehicle === true).length,
-      totalStaffMembers: installers.reduce((sum, i) => sum + (i.StaffMember?.length || 0), 0),
+      totalStaffMembers: installers.reduce((sum, i) => sum + i.StaffMember.length, 0),
     }
 
     // 3. Service & Availability Analytics
@@ -366,7 +369,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Engagement & Communication Analytics
-    const allInterviews = installers.flatMap(i => i.Interview || [])
+    const allInterviews = installers.flatMap(i => i.Interview)
     const engagementAnalytics = {
       interviewCompletionRate: (() => {
         const completed = allInterviews.filter(i => i.status === 'completed').length
@@ -389,7 +392,7 @@ export async function GET(request: NextRequest) {
           : 0
       })(),
       documentUploadRate: (() => {
-        const withDocuments = installers.filter(i => (i.Document?.length || 0) > 0).length
+        const withDocuments = installers.filter(i => i.Document.length > 0).length
         return totalInstallers > 0 ? (withDocuments / totalInstallers) * 100 : 0
       })(),
       totalDocuments: allDocuments.length,
@@ -397,7 +400,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Notification engagement
-    const allNotifications = installers.flatMap(i => i.Notification || [])
+    const allNotifications = installers.flatMap(i => i.Notification)
     const notificationEngagement = {
       total: allNotifications.length,
       read: allNotifications.filter(n => n.isRead === true).length,
@@ -428,7 +431,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 7. Job & Application Analytics
-    const allJobApplications = installers.flatMap(i => i.JobApplication || [])
+    const allJobApplications = installers.flatMap(i => i.JobApplication)
     const jobAnalytics = {
       totalApplications: allJobApplications.length,
       applicationStatus: {

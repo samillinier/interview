@@ -1490,10 +1490,18 @@ export default function InstallerProfilePage() {
     setSuccess('')
 
     try {
+      const token = localStorage.getItem('installerToken')
+      if (!token) {
+        setError('Session expired. Please log in again.')
+        router.push('/installer/login')
+        return
+      }
+
       const response = await fetch(`/api/installers/${installer.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          _approvalSource: 'profile',
           firstName: firstName.trim() || undefined,
           lastName: lastName.trim() || undefined,
           phone: phone.trim() || undefined,
@@ -1609,6 +1617,13 @@ export default function InstallerProfilePage() {
         setError(data.details || data.error || 'Failed to update profile')
         setSuccess('')
         setIsSaving(false)
+        return
+      }
+
+      if (data?.pendingApproval) {
+        setSuccess(data.message || 'Changes submitted for admin approval.')
+        setIsEditing(false)
+        setTimeout(() => setSuccess(''), 4000)
         return
       }
 

@@ -72,7 +72,6 @@ export async function POST(
     // Create application
     const application = await prisma.jobApplication.create({
       data: {
-        id: crypto.randomUUID(),
         jobId,
         installerId,
         status: 'pending',

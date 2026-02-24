@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
       installerIds.map((installerId: string) =>
         prisma.notification.create({
           data: {
-            id: crypto.randomUUID(),
             installerId,
             type: type || 'notification',
             title,
@@ -37,7 +36,6 @@ export async function POST(request: NextRequest) {
             senderType: senderType || 'admin',
             attachmentUrl: attachmentUrl || null,
             attachmentName: attachmentName || null,
-            updatedAt: new Date(),
           },
         })
       )
@@ -79,7 +77,7 @@ export async function GET(request: NextRequest) {
     const notifications = await prisma.notification.findMany({
       where,
       include: {
-        installer: {
+        Installer: {
           select: {
             id: true,
             firstName: true,

@@ -21,12 +21,10 @@ export async function POST(request: NextRequest) {
       // Create new installer
       installer = await prisma.installer.create({
         data: {
-          id: crypto.randomUUID(),
           email,
           firstName: firstName || '',
           lastName: lastName || '',
           status: 'pending',
-          updatedAt: new Date(),
         },
       })
       console.log('Created new installer:', installer.id)
@@ -35,10 +33,8 @@ export async function POST(request: NextRequest) {
     // Create new interview
     const interview = await prisma.interview.create({
       data: {
-        id: crypto.randomUUID(),
         installerId: installer.id,
         status: 'in_progress',
-        updatedAt: new Date(),
       },
     })
     console.log('Created interview:', interview.id)

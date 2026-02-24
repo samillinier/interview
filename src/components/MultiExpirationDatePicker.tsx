@@ -100,6 +100,16 @@ export function MultiExpirationDatePicker({
     if (!isEditing) {
       const normalized = normalize(values || [])
       setLocalValues(normalized.length === 0 ? [''] : normalized)
+    } else {
+      // When entering edit mode, ensure we have at least one input field if values are empty
+      const normalized = normalize(values || [])
+      const currentNormalized = normalize(localValues)
+      if (normalized.length === 0 && currentNormalized.length === 0) {
+        setLocalValues([''])
+      } else if (normalized.length > 0) {
+        // Sync with prop values when entering edit mode if they exist
+        setLocalValues(normalized)
+      }
     }
   }, [values, isEditing])
 
@@ -185,14 +195,22 @@ export function MultiExpirationDatePicker({
                 const next = [...inputValues]
                 next[idx] = e.target.value
                 setLocalValues(next)
+                // Also update parent immediately so save button captures the current value
+                // Normalize but keep empty strings for now (will be filtered on save)
+                const normalized = normalize(next)
+                onChange(normalized)
               }}
               onBlur={(e) => {
-                // Normalize and sync with parent only when user finishes editing
-                const next = [...inputValues]
-                next[idx] = e.target.value
+                // Normalize and sync with parent when user finishes editing
+                // Use the current input value directly to ensure we capture what the user entered
+                const currentValue = e.target.value
+                const next = [...localValues]
+                next[idx] = currentValue
                 const normalized = normalize(next)
-                setLocalValues(normalized.length === 0 ? [''] : normalized)
-                onChange(normalized)
+                // Always ensure at least one field when editing, even if empty
+                const finalValues = normalized.length === 0 && isEditing ? [''] : normalized
+                setLocalValues(finalValues)
+                onChange(normalized) // Send normalized (non-empty) values to parent
               }}
               className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
             />

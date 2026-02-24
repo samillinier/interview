@@ -27,13 +27,7 @@ export async function GET(request: NextRequest) {
     })
 
     // If installerId provided, filter jobs by targetStatus
-    // Keep backwards compatibility for UI code expecting `job.applications`
-    const normalizedJobs: any[] = jobs.map((job: any) => ({
-      ...job,
-      applications: job.JobApplication || [],
-    }))
-
-    let filteredJobs = normalizedJobs
+    let filteredJobs = jobs
     if (installerId) {
       const installer = await prisma.installer.findUnique({
         where: { id: installerId },
@@ -41,7 +35,7 @@ export async function GET(request: NextRequest) {
       })
 
       if (installer) {
-        filteredJobs = normalizedJobs.filter(job => {
+        filteredJobs = jobs.filter(job => {
           if (!job.targetStatus || job.targetStatus === 'all') return true
           if (job.targetStatus === 'qualified' && (installer.status === 'passed' || installer.status === 'qualified')) return true
           if (job.targetStatus === 'passed' && installer.status === 'passed') return true
@@ -126,7 +120,6 @@ export async function POST(request: NextRequest) {
         eligibleInstallers.map((installer) =>
           prisma.notification.create({
             data: {
-              id: crypto.randomUUID(),
               installerId: installer.id,
               type: 'job',
               title: 'New Job Opportunity',
@@ -135,7 +128,6 @@ export async function POST(request: NextRequest) {
               link: `/installer/jobs`,
               senderId: 'admin',
               senderType: 'admin',
-              updatedAt: new Date(),
             },
           })
         )

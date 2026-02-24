@@ -71,7 +71,6 @@ export async function PATCH(
 
     await prisma.notification.create({
       data: {
-        id: crypto.randomUUID(),
         installerId: updatedApplication.installerId,
         type: 'notification',
         title: status === 'accepted' ? 'Application Accepted' : 'Application Update',
@@ -80,7 +79,6 @@ export async function PATCH(
         link: '/installer/jobs',
         senderId: 'admin',
         senderType: 'admin',
-        updatedAt: new Date(),
       },
     })
 

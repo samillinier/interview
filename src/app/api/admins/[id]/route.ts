@@ -38,10 +38,8 @@ export async function DELETE(
         try {
           currentAdmin = await prisma.admin.create({
             data: {
-              id: crypto.randomUUID(),
               email: userEmail,
               isActive: true,
-              updatedAt: new Date(),
             },
           })
         } catch (createError: any) {
@@ -134,10 +132,8 @@ export async function PATCH(
         try {
           currentAdmin = await prisma.admin.create({
             data: {
-              id: crypto.randomUUID(),
               email: userEmail,
               isActive: true,
-              updatedAt: new Date(),
             },
           })
         } catch (createError: any) {

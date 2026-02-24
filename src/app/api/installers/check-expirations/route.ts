@@ -202,11 +202,9 @@ export async function POST(request: NextRequest) {
           // Send notification to installer
           await prisma.notification.create({
             data: {
-              id: crypto.randomUUID(),
               installerId: installer.id,
               type: 'notification',
               title: title,
-              updatedAt: new Date(),
               content: content,
               priority: expiredItems.length > 0 ? 'urgent' : 'high',
               link: '/installer/profile',
@@ -365,7 +363,6 @@ export async function GET(request: NextRequest) {
 
           await prisma.notification.create({
             data: {
-              id: crypto.randomUUID(),
               installerId: installer.id,
               type: 'notification',
               title: title,
@@ -374,7 +371,6 @@ export async function GET(request: NextRequest) {
               link: '/installer/profile',
               senderId: 'system',
               senderType: 'admin',
-              updatedAt: new Date(),
             },
           })
         }

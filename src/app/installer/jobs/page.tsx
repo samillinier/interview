@@ -195,7 +195,7 @@ export default function InstallerJobsPage() {
             </div>
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-primary-900 text-sm">Recruitment Hub</h1>
+                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
                 <p className="text-xs text-primary-500">Installer Portal</p>
               </div>
             )}
