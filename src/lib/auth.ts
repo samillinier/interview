@@ -73,6 +73,7 @@ export const authOptions: NextAuthOptions = {
               create: {
                 email,
                 isActive: true,
+                role: 'ADMIN',
               },
             })
             console.log('✅ Auto-created admin in database:', email)
@@ -105,11 +106,28 @@ export const authOptions: NextAuthOptions = {
       if (profile) {
         token.picture = (profile as any).picture
       }
+
+      // Attach RBAC role (ADMIN | MODERATOR) from DB to the token so APIs/UI can enforce permissions
+      try {
+        const email = token.email?.toLowerCase()
+        if (email) {
+          const admin = (await prisma.admin.findUnique({
+            where: { email },
+          })) as any
+          if (admin?.isActive) {
+            ;(token as any).role = admin.role
+          }
+        }
+      } catch (e) {
+        // Don't block auth if role lookup fails; default handling happens in API guards
+      }
+
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.sub
+        ;(session.user as any).role = (token as any).role
         if (token.accessToken) {
           try {
             const response = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {

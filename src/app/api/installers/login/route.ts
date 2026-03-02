@@ -46,6 +46,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Block login if installer is deactivated
+    if ((installer.status || '').toLowerCase() === 'deactive') {
+      return NextResponse.json(
+        { error: 'Your account is deactivated. Please contact an admin.' },
+        { status: 403 }
+      )
+    }
+
     // Check if password hash exists
     if (!installer.passwordHash) {
       return NextResponse.json(

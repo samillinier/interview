@@ -12,6 +12,7 @@ import {
   Phone, 
   Briefcase, 
   Shield, 
+  ShieldAlert,
   CheckCircle2, 
   XCircle, 
   Loader2,
@@ -59,6 +60,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerBarcode } from '@/components/InstallerBarcode'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -243,6 +245,7 @@ interface InstallerProfile {
   workroom?: string
   username?: string
   status: string
+  trackerStage?: string
   yearsOfExperience?: number
   flooringSpecialties?: string
   flooringSkills?: string
@@ -368,9 +371,11 @@ export default function InstallerProfileViewPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   
   // Editable fields
   const [status, setStatus] = useState<string>('pending')
+  const [trackerStage, setTrackerStage] = useState<string>('PENDING')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
@@ -595,13 +600,33 @@ export default function InstallerProfileViewPage() {
       router.push('/login')
     } else if (sessionStatus === 'authenticated' && installerId) {
       fetchInstallerProfile()
+      fetchPendingApprovalsCount()
+      const interval = setInterval(fetchPendingApprovalsCount, 30000)
+      return () => clearInterval(interval)
     }
   }, [sessionStatus, installerId, router])
+
+  const fetchPendingApprovalsCount = async () => {
+    try {
+      const res = await fetch('/api/admin/change-requests/count')
+      if (res.status === 401) {
+        setPendingApprovalsCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setPendingApprovalsCount(data.count || 0)
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   // Initialize state when installer data is loaded
   useEffect(() => {
     if (installer && !isEditing) {
       setStatus(installer.status || 'pending')
+      setTrackerStage((installer.trackerStage as any) || 'PENDING')
       setFirstName(installer.firstName || '')
       setLastName(installer.lastName || '')
       setPhone(installer.phone || '')
@@ -904,6 +929,7 @@ export default function InstallerProfileViewPage() {
           statusKey: getStatus(sunbizOverride, hasDoc('sunbiz'), 'missing'),
           statusText: statusTextFromKey(getStatus(sunbizOverride, hasDoc('sunbiz'), 'missing')),
           date: 'N/A',
+          dates: [] as string[],
         },
         {
           key: 'lrrp',
@@ -911,6 +937,7 @@ export default function InstallerProfileViewPage() {
           statusKey: getStatus(lrrpOverride, hasDoc('lrrp'), 'missing'),
           statusText: statusTextFromKey(getStatus(lrrpOverride, hasDoc('lrrp'), 'missing')),
           date: llrpExpiry || '',
+          dates: [] as string[],
         },
         {
           key: 'lead_firm_certificate',
@@ -918,6 +945,7 @@ export default function InstallerProfileViewPage() {
           statusKey: getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'), 'missing'),
           statusText: statusTextFromKey(getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'), 'missing')),
           date: getLatestDocExpiryForType('lead_firm_certificate') || '',
+          dates: [] as string[],
         },
         {
           key: 'business_registration',
@@ -925,6 +953,7 @@ export default function InstallerProfileViewPage() {
           statusKey: getStatus(btrOverride, hasDoc('business_registration'), 'missing'),
           statusText: statusTextFromKey(getStatus(btrOverride, hasDoc('business_registration'), 'missing')),
           date: btrExpiry || (hasDoc('business_registration') ? 'N/A' : ''),
+          dates: [] as string[],
         },
         {
           key: 'workers_comp',
@@ -935,7 +964,8 @@ export default function InstallerProfileViewPage() {
           statusText: hasWorkersCompExemption === false
             ? 'N/A'
             : statusTextFromKey(getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'), 'missing')),
-          date: (workersCompExemExpiryDates || []).filter(Boolean)[0] || '',
+          date: (workersCompExemExpiryDates || []).filter(Boolean).slice().sort()[0] || '',
+          dates: (workersCompExemExpiryDates || []).filter(Boolean).slice().sort(),
         },
         {
           key: 'general_liability',
@@ -943,6 +973,7 @@ export default function InstallerProfileViewPage() {
           statusKey: getStatus(liabilityOverride, hasDoc('liability_insurance'), 'missing'),
           statusText: statusTextFromKey(getStatus(liabilityOverride, hasDoc('liability_insurance'), 'missing')),
           date: generalLiabilityExpiry || '',
+          dates: [] as string[],
         },
         {
           key: 'auto_liability',
@@ -953,7 +984,8 @@ export default function InstallerProfileViewPage() {
           statusText: hasCommercialAutoLiability === false
             ? 'N/A'
             : statusTextFromKey(getStatus(autoOverride, hasDoc('auto_insurance'), 'missing')),
-          date: (automobileLiabilityExpiryDates || []).filter(Boolean)[0] || '',
+          date: (automobileLiabilityExpiryDates || []).filter(Boolean).slice().sort()[0] || '',
+          dates: (automobileLiabilityExpiryDates || []).filter(Boolean).slice().sort(),
         },
         {
           key: 'employers_liability',
@@ -965,8 +997,9 @@ export default function InstallerProfileViewPage() {
             ? statusTextFromKey(getStatus(employersLiabilityOverride, hasDoc('employers_liability'), 'missing'))
             : 'N/A',
           date: employerLiabilityPolicyNumber ? (employersLiabilityExpiry || '') : 'N/A',
+          dates: [] as string[],
         },
-      ] as const
+      ]
     }, [
       documents,
       isSunbizRegistered,
@@ -1417,6 +1450,7 @@ export default function InstallerProfileViewPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status,
+          trackerStage,
           firstName,
           lastName,
           phone,
@@ -2203,9 +2237,9 @@ export default function InstallerProfileViewPage() {
               />
             </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
           </div>
@@ -2235,6 +2269,24 @@ export default function InstallerProfileViewPage() {
           >
             <UsersIcon className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
+          </Link>
+          <Link
+            href="/dashboard/approvals"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Approvals</span>
+                {pendingApprovalsCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {pendingApprovalsCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/analytics"
@@ -2272,15 +2324,17 @@ export default function InstallerProfileViewPage() {
             <StickyNote className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Remarks</span>}
           </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Settings</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -2306,101 +2360,7 @@ export default function InstallerProfileViewPage() {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Sidebar Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-40">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-lg border border-slate-200"
-        >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed left-0 top-0 h-full bg-brand-green border-r border-brand-green-dark transition-transform duration-300 z-40 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-              <p className="text-xs text-primary-500">Admin Dashboard</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium">
-            <UsersIcon className="w-5 h-5" />
-            <span>Installers</span>
-          </Link>
-          <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <BarChart3 className="w-5 h-5" />
-            <span>Analytics</span>
-          </Link>
-          <Link href="/dashboard/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Bell className="w-5 h-5" />
-            <span>Notifications</span>
-          </Link>
-          <Link href="/dashboard/messages" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <MessageSquare className="w-5 h-5" />
-            <span>Messages</span>
-          </Link>
-          <Link href="/dashboard/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-primary-900 text-sm truncate">
-                {session.user?.name || 'Admin'}
-              </p>
-              <p className="text-xs text-primary-500 truncate">{session.user?.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
+      <AdminMobileMenu pathname={pathname} />
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
@@ -2727,11 +2687,13 @@ export default function InstallerProfileViewPage() {
                     {/* Status-based border color */}
                     <div className={`w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
                       installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                      installer.status === 'deactive' ? 'ring-4 ring-slate-900' :
                       installer.status === 'passed' || installer.status === 'qualified' ? 'ring-4 ring-blue-500' :
                       installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
                       'ring-4 ring-yellow-500'
                     } ${!(photoUrl || installer.photoUrl) ? (
                       installer.status === 'active' ? 'bg-brand-green/10' :
+                      installer.status === 'deactive' ? 'bg-slate-200' :
                       installer.status === 'passed' || installer.status === 'qualified' ? 'bg-blue-100' :
                       installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-100' :
                       'bg-yellow-100'
@@ -2751,6 +2713,7 @@ export default function InstallerProfileViewPage() {
                       ) : (
                         <User className={`w-14 h-14 ${
                           installer.status === 'active' ? 'text-brand-green-dark' :
+                          installer.status === 'deactive' ? 'text-slate-800' :
                           installer.status === 'passed' || installer.status === 'qualified' ? 'text-blue-600' :
                           installer.status === 'failed' || installer.status === 'notQualified' ? 'text-red-600' :
                           'text-yellow-600'
@@ -2823,6 +2786,21 @@ export default function InstallerProfileViewPage() {
                           <option value="failed">Not Qualified</option>
                           <option value="pending">Pending</option>
                           <option value="active">Active</option>
+                          <option value="deactive">Deactive</option>
+                        </select>
+
+                        <select
+                          value={trackerStage}
+                          onChange={(e) => setTrackerStage(e.target.value)}
+                          className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                          title="Installer Tracker Stage"
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="QUALIFIED">Qualified</option>
+                          <option value="WAITING_FOR_APPROVAL">Waiting for Approval</option>
+                          <option value="VERIFICATION_IN_PROGRESS">Verification in Progress</option>
+                          <option value="BACKGROUND">Background</option>
+                          <option value="ACTIVE_APPROVED">Active / Approved</option>
                         </select>
                       </div>
                     ) : (
@@ -2897,8 +2875,29 @@ export default function InstallerProfileViewPage() {
                                   <div key={row.key} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-4">
                                     <div className="min-w-0">
                                       <p className="font-bold text-slate-900 truncate">{row.name}</p>
-                                      {formattedDate && (
-                                        <p className={`text-sm mt-1 ${getDateColorClass()}`}>{formattedDate}</p>
+                                      {Array.isArray((row as any).dates) && (row as any).dates.length > 0 ? (
+                                        <div className="mt-1 space-y-0.5">
+                                          {(row as any).dates.map((d: string, idx: number) => {
+                                            const fd = formatExpiryDate(d)
+                                            if (!fd) return null
+                                            const s = getExpirationStatus(d)
+                                            const cls =
+                                              s === 'expired'
+                                                ? 'text-red-600 font-semibold'
+                                                : s === 'expiring'
+                                                  ? 'text-yellow-600 font-semibold'
+                                                  : s === 'valid'
+                                                    ? 'text-green-600 font-semibold'
+                                                    : 'text-slate-500'
+                                            return (
+                                              <p key={`${d}-${idx}`} className={`text-sm ${cls}`}>{fd}</p>
+                                            )
+                                          })}
+                                        </div>
+                                      ) : (
+                                        formattedDate && (
+                                          <p className={`text-sm mt-1 ${getDateColorClass()}`}>{formattedDate}</p>
+                                        )
                                       )}
                                     </div>
                                     <div className="flex items-center gap-3 flex-wrap">

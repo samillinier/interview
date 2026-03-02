@@ -15,6 +15,7 @@ import {
   LogOut,
   User,
   MessageSquare,
+  ShieldAlert,
   FileText,
   Loader2,
   CheckCircle2,
@@ -31,6 +32,7 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 
 interface Installer {
   id: string
@@ -82,6 +84,7 @@ export default function NotificationsPage() {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [notificationCount, setNotificationCount] = useState(0)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -89,8 +92,12 @@ export default function NotificationsPage() {
     } else if (status === 'authenticated') {
       fetchInstallers()
       fetchNotificationCount()
+      fetchPendingApprovalsCount()
       // Refresh count every 30 seconds
-      const interval = setInterval(fetchNotificationCount, 30000)
+      const interval = setInterval(() => {
+        fetchNotificationCount()
+        fetchPendingApprovalsCount()
+      }, 30000)
       return () => clearInterval(interval)
     }
   }, [status, router])
@@ -104,6 +111,22 @@ export default function NotificationsPage() {
       }
     } catch (error) {
       console.error('Error fetching notification count:', error)
+    }
+  }
+
+  const fetchPendingApprovalsCount = async () => {
+    try {
+      const res = await fetch('/api/admin/change-requests/count')
+      if (res.status === 401) {
+        setPendingApprovalsCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setPendingApprovalsCount(data.count || 0)
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -271,9 +294,9 @@ export default function NotificationsPage() {
               />
             </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
             <button
@@ -299,6 +322,24 @@ export default function NotificationsPage() {
           >
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
+          </Link>
+          <Link
+            href="/dashboard/approvals"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Approvals</span>
+                {pendingApprovalsCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {pendingApprovalsCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/analytics"
@@ -342,15 +383,17 @@ export default function NotificationsPage() {
             <StickyNote className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Remarks</span>}
           </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Settings</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -377,120 +420,11 @@ export default function NotificationsPage() {
         </div>
       </aside>
 
-      {/* Mobile Sidebar Toggle */}
-      <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-brand-green text-white rounded-lg shadow-lg"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-      >
-        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed left-0 top-0 h-full bg-brand-green border-r border-brand-green-dark transition-transform duration-300 z-40 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-              <p className="text-xs text-primary-500">Admin Dashboard</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Users className="w-5 h-5" />
-            <span>Installers</span>
-          </Link>
-          <Link href="/dashboard/jobs" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/jobs'
-              ? 'bg-white/20 text-white font-medium'
-              : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <Briefcase className="w-5 h-5" />
-            <span>Jobs</span>
-          </Link>
-          <Link href="/dashboard/analytics" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/analytics'
-              ? 'bg-white/20 text-white font-medium'
-              : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <BarChart3 className="w-5 h-5" />
-            <span>Analytics</span>
-          </Link>
-          <Link href="/dashboard/notifications" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/notifications'
-              ? 'bg-white/20 text-white font-medium'
-              : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <Bell className="w-5 h-5" />
-            <div className="flex items-center gap-2">
-              <span>Notifications</span>
-            </div>
-          </Link>
-          <Link href="/dashboard/messages" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
-            pathname === '/dashboard/messages' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          <Link href="/dashboard/settings" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
-            pathname === '/dashboard/settings' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            <span>Settings</span>
-          </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-primary-900 text-sm truncate">
-                {session?.user?.name || 'Admin'}
-              </p>
-              <p className="text-xs text-primary-500 truncate">{session?.user?.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
+      <AdminMobileMenu pathname={pathname} />
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <main className="p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Send Notifications</h1>

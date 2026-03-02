@@ -28,6 +28,7 @@ import {
   PieChart,
   CreditCard,
   Shield,
+  ShieldAlert,
   Car,
   Wrench,
   AlertTriangle,
@@ -38,6 +39,7 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 
 interface AnalyticsData {
   totalInstallers: number
@@ -190,6 +192,7 @@ export default function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -197,8 +200,12 @@ export default function AnalyticsPage() {
     } else if (status === 'authenticated') {
       fetchAnalytics()
       fetchNotificationCount()
+      fetchPendingApprovalsCount()
       // Refresh count every 30 seconds
-      const interval = setInterval(fetchNotificationCount, 30000)
+      const interval = setInterval(() => {
+        fetchNotificationCount()
+        fetchPendingApprovalsCount()
+      }, 30000)
       return () => clearInterval(interval)
     }
   }, [status, router])
@@ -212,6 +219,22 @@ export default function AnalyticsPage() {
       }
     } catch (error) {
       console.error('Error fetching notification count:', error)
+    }
+  }
+
+  const fetchPendingApprovalsCount = async () => {
+    try {
+      const res = await fetch('/api/admin/change-requests/count')
+      if (res.status === 401) {
+        setPendingApprovalsCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setPendingApprovalsCount(data.count || 0)
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -278,9 +301,9 @@ export default function AnalyticsPage() {
               />
             </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
           </div>
@@ -311,6 +334,24 @@ export default function AnalyticsPage() {
           >
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
+          </Link>
+          <Link
+            href="/dashboard/approvals"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
+              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Approvals</span>
+                {pendingApprovalsCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {pendingApprovalsCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/analytics"
@@ -352,15 +393,17 @@ export default function AnalyticsPage() {
             <StickyNote className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Remarks</span>}
           </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium ${
+                pathname === '/dashboard/settings' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Settings</span>}
+            </Link>
+          )}
         </nav>
 
         {/* User Info & Logout */}
@@ -394,7 +437,8 @@ export default function AnalyticsPage() {
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
-        <div className="p-8">
+        <AdminMobileMenu pathname={pathname} />
+        <div className="p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Analytics Dashboard</h1>

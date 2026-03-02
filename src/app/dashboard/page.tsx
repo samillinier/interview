@@ -53,6 +53,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -1037,6 +1038,10 @@ export default function DashboardPage() {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
+      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+      if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(statusFilter)) {
+        setStatusFilter('passed')
+      }
       fetchStats()
       fetchInstallers(1)
       fetchExpirationData()
@@ -1100,6 +1105,13 @@ export default function DashboardPage() {
             Active
           </span>
         )
+      case 'deactive':
+        return (
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-900">
+            <XCircle className="w-4 h-4" />
+            Deactive
+          </span>
+        )
       default:
         return <span className="text-sm text-slate-500 capitalize">{status}</span>
     }
@@ -1143,9 +1155,9 @@ export default function DashboardPage() {
               />
             </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
           </div>
@@ -1229,15 +1241,17 @@ export default function DashboardPage() {
             <StickyNote className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Remarks</span>}
           </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Settings</span>}
+            </Link>
+          )}
         </nav>
 
         {/* User Info & Logout */}
@@ -1264,124 +1278,26 @@ export default function DashboardPage() {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Sidebar Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-40">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-lg border border-slate-200"
-        >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed left-0 top-0 h-full bg-brand-green border-r border-brand-green-dark transition-transform duration-300 z-40 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-              <p className="text-xs text-primary-500">Admin Dashboard</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Users className="w-5 h-5" />
-            <span>Installers</span>
-          </Link>
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5" />
-            <span>Approvals</span>
-            {pendingApprovalsCount > 0 && (
-              <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                {pendingApprovalsCount}
-              </span>
-            )}
-          </Link>
-          <Link href="/dashboard/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Bell className="w-5 h-5" />
-            <span>Notifications</span>
-          </Link>
-          <Link href="/dashboard/messages" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-            pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-          }`}>
-            <MessageSquare className="w-5 h-5" />
-            <span>Messages</span>
-          </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-primary-900 text-sm truncate">
-                {session.user?.name || 'Admin'}
-              </p>
-              <p className="text-xs text-primary-500 truncate">{session.user?.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
+      <AdminMobileMenu pathname={pathname} />
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 lg:pt-8 pb-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-3 sm:p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Applicants</p>
-                <p className="text-2xl font-bold text-slate-900 mb-0.5">{stats.total}</p>
-                <p className="text-[10px] text-slate-400 truncate">All registered</p>
+                <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Applicants</p>
+                <p className="text-xl sm:text-2xl font-bold text-slate-900 mb-0.5">{stats.total}</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">All registered</p>
               </div>
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center group-hover:bg-slate-200 transition-colors flex-shrink-0 ml-2 shadow-md">
-                <Users className="w-5 h-5 text-slate-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 rounded-lg flex items-center justify-center group-hover:bg-slate-200 transition-colors flex-shrink-0 ml-2 shadow-md">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
               </div>
             </div>
           </motion.div>
@@ -1391,16 +1307,16 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
             whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-200/40 p-4 hover:shadow-xl hover:border-blue-300/60 transition-all duration-200 group cursor-pointer"
+            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-200/40 p-3 sm:p-4 hover:shadow-xl hover:border-blue-300/60 transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Qualified</p>
-                <p className="text-2xl font-bold text-blue-600 mb-0.5">{stats.qualified}</p>
-                <p className="text-[10px] text-blue-500/80">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
+                <p className="text-[9px] sm:text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Qualified</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600 mb-0.5">{stats.qualified}</p>
+                <p className="text-[9px] sm:text-[10px] text-blue-500/80">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-blue-500/30">
-                <CheckCircle2 className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-blue-500/30">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
             </div>
           </motion.div>
@@ -1410,16 +1326,16 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-3 sm:p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Not Qualified</p>
-                <p className="text-2xl font-bold text-red-600 mb-0.5">{stats.notQualified}</p>
-                <p className="text-[10px] text-red-500/80">{stats.total > 0 ? Math.round((stats.notQualified / stats.total) * 100) : 0}% of total</p>
+                <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Not Qualified</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600 mb-0.5">{stats.notQualified}</p>
+                <p className="text-[9px] sm:text-[10px] text-red-500/80">{stats.total > 0 ? Math.round((stats.notQualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center group-hover:bg-red-200 transition-colors flex-shrink-0 ml-2 shadow-md">
-                <XCircle className="w-5 h-5 text-red-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-lg flex items-center justify-center group-hover:bg-red-200 transition-colors flex-shrink-0 ml-2 shadow-md">
+                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
               </div>
             </div>
           </motion.div>
@@ -1429,16 +1345,16 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
             whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-3 sm:p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Pending Review</p>
-                <p className="text-2xl font-bold text-yellow-600 mb-0.5">{stats.pending}</p>
-                <p className="text-[10px] text-yellow-500/80">{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}% of total</p>
+                <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Pending Review</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600 mb-0.5">{stats.pending}</p>
+                <p className="text-[9px] sm:text-[10px] text-yellow-500/80">{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-200 transition-colors flex-shrink-0 ml-2 shadow-md">
-                <Clock className="w-5 h-5 text-yellow-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-200 transition-colors flex-shrink-0 ml-2 shadow-md">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
               </div>
             </div>
           </motion.div>
@@ -1452,16 +1368,16 @@ export default function DashboardPage() {
               setStatusFilter('active')
               setCurrentPage(1)
             }}
-            className="bg-gradient-to-br from-brand-green/10 to-brand-green/5 rounded-lg shadow-lg border border-brand-green/30 p-4 hover:shadow-xl hover:border-brand-green/50 transition-all duration-200 group cursor-pointer"
+            className="bg-gradient-to-br from-brand-green/10 to-brand-green/5 rounded-lg shadow-lg border border-brand-green/30 p-3 sm:p-4 hover:shadow-xl hover:border-brand-green/50 transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-brand-green-dark uppercase tracking-wider mb-1">Active</p>
-                <p className="text-2xl font-bold text-brand-green-dark mb-0.5">{stats.active}</p>
-                <p className="text-[10px] text-brand-green/80">{stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total</p>
+                <p className="text-[9px] sm:text-[10px] font-semibold text-brand-green-dark uppercase tracking-wider mb-1">Active</p>
+                <p className="text-xl sm:text-2xl font-bold text-brand-green-dark mb-0.5">{stats.active}</p>
+                <p className="text-[9px] sm:text-[10px] text-brand-green/80">{stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-10 h-10 bg-brand-green rounded-lg flex items-center justify-center group-hover:bg-brand-green-dark transition-colors flex-shrink-0 ml-2 shadow-lg shadow-brand-green/30">
-                <Activity className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-brand-green rounded-lg flex items-center justify-center group-hover:bg-brand-green-dark transition-colors flex-shrink-0 ml-2 shadow-lg shadow-brand-green/30">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
             </div>
           </motion.div>
@@ -1620,60 +1536,155 @@ export default function DashboardPage() {
         </motion.div>
 
         <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="text"
-                placeholder="Search installers by name, email, or phone..."
+                placeholder="Search installers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
+                className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
               />
               {isLoading && hasLoadedInstallersOnce && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+                <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 animate-spin" />
                 </div>
               )}
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="passed">Qualified</option>
-              <option value="failed">Not Qualified</option>
-              <option value="active">Active</option>
-            </select>
-            <button
-              onClick={() => {
-                fetchStats()
-                fetchInstallers(1)
-                setCurrentPage(1)
-              }}
-              className="px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all hover:border-brand-green/30 flex items-center justify-center"
-            >
-              <RefreshCw className="w-5 h-5 text-slate-600" />
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Add Installer
-            </button>
-            <button className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-slate-500/30 hover:shadow-xl">
-              <Download className="w-5 h-5" />
-              Export
-            </button>
+            <div className="flex gap-2 sm:gap-3">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[120px]"
+              >
+                {((session?.user as any)?.role as any) === 'MODERATOR' ? (
+                  <>
+                    <option value="pending">Pending</option>
+                    <option value="passed">Qualified</option>
+                    <option value="failed">Not Qualified</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="passed">Qualified</option>
+                    <option value="failed">Not Qualified</option>
+                    <option value="active">Active</option>
+                    <option value="deactive">Deactive</option>
+                  </>
+                )}
+              </select>
+              <button
+                onClick={() => {
+                  fetchStats()
+                  fetchInstallers(1)
+                  setCurrentPage(1)
+                }}
+                className="px-3 sm:px-4 py-3 min-w-[44px] min-h-[44px] border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all hover:border-brand-green/30 flex items-center justify-center"
+                aria-label="Refresh"
+              >
+                <RefreshCw className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base"
+              >
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Add Installer</span>
+                <span className="sm:hidden">Add</span>
+              </button>
+              <button className="px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-slate-500/30 hover:shadow-xl text-sm sm:text-base">
+                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-3 p-4">
+            {installers.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16">
+                <Users className="w-12 h-12 text-slate-300" />
+                <p className="text-slate-500 font-medium">No installers found</p>
+                <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
+              </div>
+            ) : (
+              installers.map((installer) => (
+                <div
+                  key={installer.id}
+                  onClick={() => router.push(`/dashboard/installers/${installer.id}`)}
+                  className="bg-white border-2 border-slate-200 rounded-xl p-4 hover:border-brand-green/50 transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative flex-shrink-0">
+                      <div className={`relative w-14 h-14 rounded-full overflow-hidden shadow-md transition-all ${
+                        installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                        installer.status === 'deactive' ? 'ring-4 ring-slate-900' :
+                        installer.status === 'passed' || installer.status === 'qualified' ? 'ring-4 ring-blue-500' :
+                        installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
+                        'ring-4 ring-yellow-500'
+                      }`}>
+                        {!installer.photoUrl && (
+                          <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${
+                            installer.status === 'active' ? 'bg-brand-green' :
+                            installer.status === 'deactive' ? 'bg-slate-900' :
+                            installer.status === 'passed' || installer.status === 'qualified' ? 'bg-blue-500' :
+                            installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-500' :
+                            'bg-yellow-500'
+                          }`}>
+                            {getInitials(installer.firstName, installer.lastName)}
+                          </div>
+                        )}
+                        {installer.photoUrl && (
+                          <Image
+                            src={installer.photoUrl}
+                            alt={`${installer.firstName} ${installer.lastName}`}
+                            width={56}
+                            height={56}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        )}
+                      </div>
+                      {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
+                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${
+                          installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
+                        }`}>
+                          <CheckCircle2 className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-900 text-base mb-1">
+                        {installer.firstName} {installer.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate mb-2">{installer.email}</p>
+                      {installer.companyName && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                          <span className="text-xs font-medium text-slate-600 truncate">{installer.companyName}</span>
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        {getStatusBadge(installer.status)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Installer</th>
@@ -1706,6 +1717,7 @@ export default function DashboardPage() {
                             {/* Status-based border color */}
                             <div className={`relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md transition-all ${
                               installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                              installer.status === 'deactive' ? 'ring-4 ring-slate-900' :
                               installer.status === 'passed' || installer.status === 'qualified' ? 'ring-4 ring-blue-500' :
                               installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
                               'ring-4 ring-yellow-500'
@@ -1714,6 +1726,7 @@ export default function DashboardPage() {
                               {!installer.photoUrl && (
                                 <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${
                                   installer.status === 'active' ? 'bg-brand-green' :
+                                  installer.status === 'deactive' ? 'bg-slate-900' :
                                   installer.status === 'passed' || installer.status === 'qualified' ? 'bg-blue-500' :
                                   installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-500' :
                                   'bg-yellow-500'

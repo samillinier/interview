@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   StickyNote,
+  ShieldAlert,
   Calendar,
   User,
   Mail,
@@ -31,6 +32,7 @@ import {
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 
 interface Remark {
   date: string | null
@@ -63,12 +65,37 @@ export default function RemarksPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [expandedInstallers, setExpandedInstallers] = useState<Set<string>>(new Set())
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     }
   }, [status, router])
+
+  const fetchPendingApprovalsCount = async () => {
+    try {
+      const res = await fetch('/api/admin/change-requests/count')
+      if (res.status === 401) {
+        setPendingApprovalsCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setPendingApprovalsCount(data.count || 0)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchPendingApprovalsCount()
+      const interval = setInterval(fetchPendingApprovalsCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [status])
 
   useEffect(() => {
     fetchInstallersWithRemarks()
@@ -169,6 +196,8 @@ export default function RemarksPage() {
         return 'bg-amber-100 text-amber-700 border-amber-200'
       case 'inactive':
         return 'bg-slate-100 text-slate-700 border-slate-200'
+      case 'deactive':
+        return 'bg-slate-900 text-white border-slate-900'
       case 'rejected':
         return 'bg-rose-100 text-rose-700 border-rose-200'
       case 'qualified':
@@ -233,9 +262,9 @@ export default function RemarksPage() {
               />
             </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
             <button
@@ -261,6 +290,24 @@ export default function RemarksPage() {
           >
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
+          </Link>
+          <Link
+            href="/dashboard/approvals"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Approvals</span>
+                {pendingApprovalsCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {pendingApprovalsCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
           <Link
             href="/dashboard/analytics"
@@ -304,15 +351,17 @@ export default function RemarksPage() {
             <StickyNote className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Remarks</span>}
           </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Settings</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -343,7 +392,8 @@ export default function RemarksPage() {
 
       {/* Main Content */}
       <main className="lg:ml-64 flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-slate-200 px-6 py-6">
+        <AdminMobileMenu pathname={pathname} />
+        <div className="bg-white border-b border-slate-200 pr-4 pl-16 lg:px-6 pt-16 lg:pt-6 pb-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
@@ -366,7 +416,7 @@ export default function RemarksPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Filters */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -392,6 +442,7 @@ export default function RemarksPage() {
                     <option value="active">Active</option>
                     <option value="pending">Pending</option>
                     <option value="inactive">Inactive</option>
+                    <option value="deactive">Deactive</option>
                     <option value="rejected">Rejected</option>
                   </select>
                 </div>

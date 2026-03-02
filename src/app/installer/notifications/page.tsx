@@ -25,10 +25,11 @@ import {
   Briefcase,
   ExternalLink
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 interface Notification {
   id: string
@@ -48,6 +49,7 @@ interface Notification {
 
 export default function NotificationsPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -145,7 +147,9 @@ export default function NotificationsPage() {
       localStorage.setItem('installerId', installerId)
 
       // Load installer profile
-      const profileResponse = await fetch(`/api/installers/${installerId}`)
+      const profileResponse = await fetch(`/api/installers/${installerId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       
       const profileContentType = profileResponse.headers.get('content-type')
       if (!profileContentType || !profileContentType.includes('application/json')) {
@@ -552,112 +556,25 @@ export default function NotificationsPage() {
         </div>
       </aside>
 
-      {/* Mobile Sidebar Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-40">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-lg border border-slate-200"
-        >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
+      <InstallerMobileMenu
+        pathname={pathname}
+        notificationCount={notificationCount}
+        onLogout={handleLogout}
+      />
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed left-0 top-0 h-full bg-brand-green border-r border-brand-green-dark transition-transform duration-300 z-40 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-              <p className="text-xs text-primary-500">Dashboard</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/installer/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/installer/profile" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <User className="w-5 h-5" />
-            <span>Profile</span>
-          </Link>
-          <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Paperclip className="w-5 h-5" />
-            <span>Attachments</span>
-          </Link>
-          <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <CreditCard className="w-5 h-5" />
-            <span>Account</span>
-          </Link>
-          <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <ExternalLink className="w-5 h-5" />
-            <span>Referrals</span>
-          </Link>
-          <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium">
-            <Bell className="w-5 h-5" />
-            <span>Notifications</span>
-          </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-primary-900 text-sm truncate">
-                {installer.firstName || installer.lastName 
-                  ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                  : installer.email.split('@')[0]
-                }
-              </p>
-              <p className="text-xs text-primary-500 truncate">{installer.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 py-6 flex items-center justify-between">
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-1">Notifications</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Notifications</h1>
               <p className="text-sm text-slate-500">Stay updated with notifications, messages, and news</p>
             </div>
             <button
               onClick={() => loadNotifications()}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
+              className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Refresh</span>
@@ -666,9 +583,102 @@ export default function NotificationsPage() {
         </header>
 
         {/* Content Area */}
-        <main className="p-6 lg:p-8">
-          {/* Tabs */}
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-2 mb-6 backdrop-blur-sm">
+        <main className="p-4 sm:p-6 lg:p-8">
+          {/* Mobile: section selector (separate buttons, not tabs) */}
+          <div className="grid gap-3 mb-6 sm:hidden">
+            <button
+              onClick={() => setActiveTab('notification')}
+              className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                activeTab === 'notification'
+                  ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                  : 'border-slate-200 bg-white hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    activeTab === 'notification' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-900 truncate">Notifications</p>
+                    {unreadCount.notification > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                        {unreadCount.notification}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">Updates & alerts</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('message')}
+              className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                activeTab === 'message'
+                  ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                  : 'border-slate-200 bg-white hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    activeTab === 'message' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-900 truncate">Messages</p>
+                    {unreadCount.message > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                        {unreadCount.message}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">Chat with admin</p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('news')}
+              className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                activeTab === 'news'
+                  ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                  : 'border-slate-200 bg-white hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    activeTab === 'news' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Newspaper className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-900 truncate">News</p>
+                    {unreadCount.news > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                        {unreadCount.news}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">Announcements</p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Desktop/tablet: tabs (keep existing desktop behavior) */}
+          <div className="hidden sm:block bg-white rounded-2xl shadow-lg border border-slate-200/60 p-2 mb-6 backdrop-blur-sm">
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab('notification')}
@@ -681,11 +691,12 @@ export default function NotificationsPage() {
                 <Bell className="w-5 h-5" />
                 <span>Notifications</span>
                 {unreadCount.notification > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="flex-shrink-0 bg-white text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
                     {unreadCount.notification}
                   </span>
                 )}
               </button>
+
               <button
                 onClick={() => setActiveTab('message')}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
@@ -697,11 +708,12 @@ export default function NotificationsPage() {
                 <MessageSquare className="w-5 h-5" />
                 <span>Messages</span>
                 {unreadCount.message > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="flex-shrink-0 bg-white text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
                     {unreadCount.message}
                   </span>
                 )}
               </button>
+
               <button
                 onClick={() => setActiveTab('news')}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
@@ -713,7 +725,7 @@ export default function NotificationsPage() {
                 <Newspaper className="w-5 h-5" />
                 <span>News</span>
                 {unreadCount.news > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="flex-shrink-0 bg-white text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
                     {unreadCount.news}
                   </span>
                 )}
@@ -966,10 +978,10 @@ export default function NotificationsPage() {
                     !notification.isRead ? 'border-l-4 border-l-brand-green' : ''
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-bold text-slate-900">{notification.title}</h3>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="text-lg font-bold text-slate-900 break-words">{notification.title}</h3>
                         {!notification.isRead && (
                           <span className="w-2 h-2 bg-brand-green rounded-full"></span>
                         )}
@@ -984,8 +996,8 @@ export default function NotificationsPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-slate-700 mb-3 leading-relaxed">{notification.content}</p>
-                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <p className="text-slate-700 mb-3 leading-relaxed break-words">{notification.content}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-slate-500">
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           <span>{new Date(notification.createdAt).toLocaleDateString('en-US', { 
@@ -1006,7 +1018,7 @@ export default function NotificationsPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
                       {!notification.isRead && (
                         <button
                           onClick={() => handleMarkAsRead(notification.id)}

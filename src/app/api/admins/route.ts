@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
           if (!existingAdmin) {
             await prisma.admin.create({
               data: {
-                email: userEmail,
-                isActive: true,
-                createdBy: 'system_fallback',
-              },
-            })
+              email: userEmail,
+              isActive: true,
+              createdBy: 'system_fallback',
+            },
+          })
             console.log(`Auto-created admin for current user: ${userEmail}`)
           }
         } catch (error) {
@@ -82,7 +82,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Always return admins list (session check is optional for GET - we just display the list)
+    // Require an authenticated user, and only allow ADMIN role to view/manage users
+    const email = session?.user?.email?.toLowerCase()
+    if (!email) return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 })
+
+    const currentAdminForRole = (await prisma.admin.findUnique({
+      where: { email },
+    })) as any
+    if (!currentAdminForRole?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (currentAdminForRole.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
+
+    // Return admins list
     const admins = await prisma.admin.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
@@ -90,6 +102,7 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         isActive: true,
+        role: true,
         createdAt: true,
         createdBy: true,
       },
@@ -244,8 +257,11 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       )
     }
+    if ((currentAdmin as any).role && (currentAdmin as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
 
-    const { email, name } = await request.json()
+    const { email, name, role } = await request.json()
 
     if (!email) {
       return NextResponse.json(
@@ -271,6 +287,7 @@ export async function POST(request: NextRequest) {
       data: {
         email: email.toLowerCase().trim(),
         name: name || null,
+        role: role === 'MODERATOR' ? 'MODERATOR' : 'ADMIN',
         createdBy: currentAdmin.id,
         isActive: true,
       },
@@ -279,6 +296,7 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         isActive: true,
+        role: true,
         createdAt: true,
         createdBy: true,
       },

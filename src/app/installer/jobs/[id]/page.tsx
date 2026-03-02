@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { 
   Briefcase,
@@ -27,6 +27,7 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 interface Job {
   id: string
@@ -50,6 +51,7 @@ interface Job {
 export default function InstallerJobDetailPage() {
   const router = useRouter()
   const params = useParams()
+  const pathname = usePathname()
   const jobId = params?.id as string
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [job, setJob] = useState<Job | null>(null)
@@ -274,7 +276,8 @@ export default function InstallerJobDetailPage() {
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
+        <main className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 lg:pt-8 pb-8">
           {/* Header */}
           <div className="mb-8">
             <button

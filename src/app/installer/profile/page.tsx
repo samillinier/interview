@@ -39,12 +39,13 @@ import {
   Users,
   ExternalLink
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { InstallerBarcode } from '@/components/InstallerBarcode'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
@@ -217,6 +218,7 @@ interface InstallerProfile {
   workroom?: string
   username?: string
   status: string
+  trackerStage?: string
   yearsOfExperience?: number
   flooringSpecialties?: string
   flooringSkills?: string
@@ -319,12 +321,14 @@ interface InstallerProfile {
 
 export default function InstallerProfilePage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [installer, setInstaller] = useState<InstallerProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [hasPendingApproval, setHasPendingApproval] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [notificationCount, setNotificationCount] = useState(0)
   
@@ -655,6 +659,7 @@ export default function InstallerProfilePage() {
   const [feiEin, setFeiEin] = useState('')
   const [employerLiabilityPolicyNumber, setEmployerLiabilityPolicyNumber] = useState('')
   const [llrpExpiry, setLlrpExpiry] = useState('')
+  const [llrpExpiryDates, setLlrpExpiryDates] = useState<string[]>([])
   const [btrExpiry, setBtrExpiry] = useState('')
   const [workersCompExemExpiry, setWorkersCompExemExpiry] = useState('')
   const [workersCompExemExpiryDates, setWorkersCompExemExpiryDates] = useState<string[]>([])
@@ -749,7 +754,9 @@ export default function InstallerProfilePage() {
       console.log('Loading profile for installerId:', installerId)
       console.log('Token payload:', verifyData)
       
-      const profileResponse = await fetch(`/api/installers/${installerId}`)
+      const profileResponse = await fetch(`/api/installers/${installerId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       
       // Check content type before parsing
       const profileContentType = profileResponse.headers.get('content-type')
@@ -876,15 +883,33 @@ export default function InstallerProfilePage() {
         const formatDateForInput = (date: string | Date | null | undefined): string => {
           if (!date) return ''
           try {
+            // If already date-only, keep as-is (prevents timezone shifts)
+            const raw = typeof date === 'string' ? date.trim() : ''
+            if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+
             const dateObj = date instanceof Date ? date : new Date(date)
             if (isNaN(dateObj.getTime())) return ''
-            return dateObj.toISOString().split('T')[0]
+            const y = dateObj.getUTCFullYear()
+            const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0')
+            const d = String(dateObj.getUTCDate()).padStart(2, '0')
+            return `${y}-${m}-${d}`
           } catch (e) {
             return ''
           }
         }
         
-        setLlrpExpiry(formatDateForInput(profileData.installer.llrpExpiry))
+        const parsedLLRPDates: string[] = (() => {
+          if ((profileData.installer as any).llrpExpiryDates) {
+            try {
+              const arr = JSON.parse((profileData.installer as any).llrpExpiryDates)
+              if (Array.isArray(arr)) return arr.map((d: any) => formatDateForInput(String(d))).filter(Boolean)
+            } catch {}
+          }
+          const single = formatDateForInput(profileData.installer.llrpExpiry)
+          return single ? [single] : []
+        })()
+        setLlrpExpiryDates(parsedLLRPDates)
+        setLlrpExpiry(parsedLLRPDates[0] || formatDateForInput(profileData.installer.llrpExpiry))
         setBtrExpiry(formatDateForInput(profileData.installer.btrExpiry))
         const parsedWorkersCompDates: string[] = (() => {
           if (profileData.installer.workersCompExemExpiryDates) {
@@ -948,6 +973,7 @@ export default function InstallerProfilePage() {
         setAvailability(profileData.installer.availability || '')
         setMondayToFridayAvailability(profileData.installer.mondayToFridayAvailability || '')
         setSaturdayAvailability(profileData.installer.saturdayAvailability || '')
+        setHasPendingApproval((profileData.installer.pendingChangeRequestsCount || 0) > 0)
         setError('') // Clear any previous errors
         
         // Show NDA modal if user hasn't agreed yet
@@ -970,7 +996,10 @@ export default function InstallerProfilePage() {
   const fetchStaffMembers = async () => {
     if (!installer?.id) return
     try {
-      const response = await fetch(`/api/installers/${installer.id}/staff`)
+      const token = localStorage.getItem('installerToken')
+      const response = await fetch(`/api/installers/${installer.id}/staff`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       if (response.ok) {
         const data = await response.json()
         setStaffMembers(data.staffMembers || [])
@@ -994,7 +1023,10 @@ export default function InstallerProfilePage() {
   const fetchDocuments = async () => {
     if (!installer?.id) return
     try {
-      const response = await fetch(`/api/installers/${installer.id}/documents`)
+      const token = localStorage.getItem('installerToken')
+      const response = await fetch(`/api/installers/${installer.id}/documents`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       if (response.ok) {
         const docsContentType = response.headers.get('content-type')
         if (docsContentType && docsContentType.includes('application/json')) {
@@ -1011,7 +1043,10 @@ export default function InstallerProfilePage() {
   const fetchHistoricalData = async () => {
     if (!installer?.id) return
     try {
-      const response = await fetch(`/api/installers/${installer.id}/history`)
+      const token = localStorage.getItem('installerToken')
+      const response = await fetch(`/api/installers/${installer.id}/history`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       if (response.ok) {
         const data = await response.json()
         setHistoricalData(data.history || [])
@@ -1315,34 +1350,59 @@ export default function InstallerProfilePage() {
       
       const method = editingStaff ? 'PATCH' : 'POST'
 
+      const token = localStorage.getItem('installerToken')
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(staffForm),
       })
 
       const data = await response.json()
 
       if (response.ok && data.success) {
-        await fetchStaffMembers()
-        setShowStaffModal(false)
-        setEditingStaff(null)
-        setStaffForm({
-          firstName: '',
-          lastName: '',
-          digitalId: '',
-          email: '',
-          phone: '',
-          location: '',
-          title: '',
-          yearsOfExperience: '',
-          notes: '',
-          photoUrl: '',
-        })
-        setSuccess(editingStaff ? 'Staff member updated successfully!' : 'Staff member added successfully!')
-        setTimeout(() => setSuccess(''), 3000)
+        if (data.pendingApproval) {
+          // Change request submitted for approval
+          setShowStaffModal(false)
+          setEditingStaff(null)
+          setStaffForm({
+            firstName: '',
+            lastName: '',
+            digitalId: '',
+            email: '',
+            phone: '',
+            location: '',
+            title: '',
+            yearsOfExperience: '',
+            notes: '',
+            photoUrl: '',
+          })
+          setSuccess(data.message || 'Team member change submitted for admin approval')
+          setTimeout(() => setSuccess(''), 5000)
+        } else {
+          // Immediate update (admin)
+          await fetchStaffMembers()
+          setShowStaffModal(false)
+          setEditingStaff(null)
+          setStaffForm({
+            firstName: '',
+            lastName: '',
+            digitalId: '',
+            email: '',
+            phone: '',
+            location: '',
+            title: '',
+            yearsOfExperience: '',
+            notes: '',
+            photoUrl: '',
+          })
+          setSuccess(editingStaff ? 'Staff member updated successfully!' : 'Staff member added successfully!')
+          setTimeout(() => setSuccess(''), 3000)
+        }
       } else {
-        setError(data.error || 'Failed to save staff member')
+        setError(data.error || data.details || 'Failed to save staff member')
       }
     } catch (err: any) {
       console.error('Error saving staff member:', err)
@@ -1355,22 +1415,34 @@ export default function InstallerProfilePage() {
   // Delete staff member
   const handleDeleteStaff = async (staffId: string, staffName: string) => {
     if (!installer) return
-    if (!confirm(`Are you sure you want to delete ${staffName}? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete ${staffName}? This action requires admin approval.`)) {
       return
     }
 
     try {
+      const token = localStorage.getItem('installerToken')
       const response = await fetch(`/api/installers/${installer.id}/staff/${staffId}`, {
         method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       })
 
-      if (response.ok) {
-        await fetchStaffMembers()
-        setSuccess('Staff member deleted successfully!')
-        setTimeout(() => setSuccess(''), 3000)
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        if (data.pendingApproval) {
+          // Change request submitted for approval
+          setSuccess(data.message || 'Team member deletion submitted for admin approval')
+          setTimeout(() => setSuccess(''), 5000)
+        } else {
+          // Immediate deletion (admin)
+          await fetchStaffMembers()
+          setSuccess('Staff member deleted successfully!')
+          setTimeout(() => setSuccess(''), 3000)
+        }
       } else {
-        const data = await response.json()
-        setError(data.error || 'Failed to delete staff member')
+        setError(data.error || data.details || 'Failed to delete staff member')
       }
     } catch (err: any) {
       console.error('Error deleting staff member:', err)
@@ -1562,7 +1634,13 @@ export default function InstallerProfilePage() {
           hasBusinessLicense: hasBusinessLicense,
           feiEin: feiEin.trim() || undefined,
           employerLiabilityPolicyNumber: employerLiabilityPolicyNumber.trim() || undefined,
-          llrpExpiry: llrpExpiry ? new Date(llrpExpiry).toISOString() : undefined,
+          llrpExpiryDates: Array.isArray(llrpExpiryDates) ? llrpExpiryDates.map((d) => (d || '').trim()).filter(Boolean) : undefined,
+          llrpExpiry:
+            Array.isArray(llrpExpiryDates) && llrpExpiryDates.length > 0
+              ? new Date(llrpExpiryDates.slice().sort()[0]).toISOString()
+              : llrpExpiry
+                ? new Date(llrpExpiry).toISOString()
+                : undefined,
           btrExpiry: btrExpiry ? new Date(btrExpiry).toISOString() : undefined,
           workersCompExemExpiryDates: Array.isArray(workersCompExemExpiryDates)
             ? workersCompExemExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
@@ -1622,8 +1700,13 @@ export default function InstallerProfilePage() {
 
       if (data?.pendingApproval) {
         setSuccess(data.message || 'Changes submitted for admin approval.')
+        setHasPendingApproval(true)
         setIsEditing(false)
-        setTimeout(() => setSuccess(''), 4000)
+        setIsSaving(false)
+        setTimeout(() => {
+          // Keep the banner visible until approval (driven by pendingChangeRequestsCount on reload)
+          setSuccess('')
+        }, 5000)
         return
       }
 
@@ -1703,7 +1786,18 @@ export default function InstallerProfilePage() {
           }
         }
         
-        setLlrpExpiry(formatDateForInput(updatedInstaller.llrpExpiry))
+        const parsedLLRPDatesUpdated: string[] = (() => {
+          if ((updatedInstaller as any).llrpExpiryDates) {
+            try {
+              const arr = JSON.parse((updatedInstaller as any).llrpExpiryDates)
+              if (Array.isArray(arr)) return arr.map((d: any) => formatDateForInput(String(d))).filter(Boolean)
+            } catch {}
+          }
+          const single = formatDateForInput(updatedInstaller.llrpExpiry)
+          return single ? [single] : []
+        })()
+        setLlrpExpiryDates(parsedLLRPDatesUpdated)
+        setLlrpExpiry(parsedLLRPDatesUpdated[0] || formatDateForInput(updatedInstaller.llrpExpiry))
         setBtrExpiry(formatDateForInput(updatedInstaller.btrExpiry))
         const parsedWorkersCompDates: string[] = (() => {
           if (updatedInstaller.workersCompExemExpiryDates) {
@@ -1779,9 +1873,10 @@ export default function InstallerProfilePage() {
     setSuccess('')
 
     try {
+      const tok = localStorage.getItem('installerToken')
       const response = await fetch(`/api/installers/${installer.id}/agree-nda`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
       })
 
       // Check if response is OK
@@ -1811,10 +1906,13 @@ export default function InstallerProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading profile...</p>
+      <div className="min-h-screen interview-gradient">
+        <InstallerMobileMenu pathname={pathname} />
+        <div className="pt-16 flex items-center justify-center min-h-screen px-4">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
+            <p className="text-primary-600">Loading profile...</p>
+          </div>
         </div>
       </div>
     )
@@ -1822,34 +1920,37 @@ export default function InstallerProfilePage() {
 
   if (!installer && !isLoading) {
     return (
-      <div className="min-h-screen interview-gradient flex items-center justify-center p-4">
-        <div className="text-center bg-white rounded-3xl shadow-xl p-8 max-w-md">
-          <div className="w-16 h-16 bg-danger-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-danger-600" />
-          </div>
-          <h2 className="text-xl font-bold text-primary-900 mb-2">Profile Not Found</h2>
-          <p className="text-primary-500 mb-6">
-            {error || 'Unable to load your profile. Please try logging in again.'}
-          </p>
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                localStorage.removeItem('installerToken')
-                localStorage.removeItem('installerId')
-                router.push('/installer/login')
-              }}
-              className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
-            >
-              Go to Login
-            </button>
-            <button
-              onClick={() => {
-                checkAuthAndLoadProfile()
-              }}
-              className="w-full px-6 py-3 border border-primary-300 text-primary-700 rounded-xl font-medium hover:bg-primary-50 transition-colors"
-            >
-              Try Again
-            </button>
+      <div className="min-h-screen interview-gradient">
+        <InstallerMobileMenu pathname={pathname} />
+        <div className="pt-16 flex items-center justify-center min-h-screen p-4">
+          <div className="text-center bg-white rounded-3xl shadow-xl p-8 max-w-md w-full">
+            <div className="w-16 h-16 bg-danger-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-danger-600" />
+            </div>
+            <h2 className="text-xl font-bold text-primary-900 mb-2">Profile Not Found</h2>
+            <p className="text-primary-500 mb-6">
+              {error || 'Unable to load your profile. Please try logging in again.'}
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  localStorage.removeItem('installerToken')
+                  localStorage.removeItem('installerId')
+                  router.push('/installer/login')
+                }}
+                className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
+              >
+                Go to Login
+              </button>
+              <button
+                onClick={() => {
+                  checkAuthAndLoadProfile()
+                }}
+                className="w-full px-6 py-3 border border-primary-300 text-primary-700 rounded-xl font-medium hover:bg-primary-50 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1902,6 +2003,13 @@ export default function InstallerProfilePage() {
           >
             <User className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Profile</span>}
+          </Link>
+          <Link
+            href="/installer/agreements"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agreements</span>}
           </Link>
           <Link
             href="/installer/attachments"
@@ -1969,116 +2077,20 @@ export default function InstallerProfilePage() {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Sidebar Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-40">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-lg border border-slate-200"
-        >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed left-0 top-0 h-full bg-brand-green border-r border-brand-green-dark transition-transform duration-300 z-40 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-              <p className="text-xs text-primary-500">Dashboard</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/installer/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/installer/profile" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl transition-colors">
-            <User className="w-5 h-5" />
-            <span>Profile</span>
-          </Link>
-          <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Paperclip className="w-5 h-5" />
-            <span>Attachments</span>
-          </Link>
-          <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <CreditCard className="w-5 h-5" />
-            <span>Account</span>
-          </Link>
-          <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <ExternalLink className="w-5 h-5" />
-            <span>Referrals</span>
-          </Link>
-          <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Bell className="w-5 h-5" />
-            <div className="flex items-center gap-2">
-              <span>Notifications</span>
-              {notificationCount > 0 && (
-                <span className="bg-white text-brand-green text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </span>
-              )}
-            </div>
-          </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-primary-900 text-sm truncate">
-                {installer && (installer.firstName || installer.lastName
-                  ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                  : installer.email.split('@')[0])
-                }
-              </p>
-              <p className="text-xs text-primary-500 truncate">{installer?.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
+      <InstallerMobileMenu
+        pathname={pathname}
+        notificationCount={notificationCount}
+        onLogout={handleLogout}
+      />
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         {/* Top Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 py-6">
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-slate-900 mb-1">My Profile</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">My Profile</h1>
                 <p className="text-sm text-slate-500 mb-4">Manage your installer profile and information</p>
                 
                 {/* Profile Completion Progress */}
@@ -2121,7 +2133,7 @@ export default function InstallerProfilePage() {
         </header>
 
         {/* Content Area */}
-        <main className="p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {/* Complete Profile Notice */}
           {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div
@@ -2155,7 +2167,7 @@ export default function InstallerProfilePage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-8 md:p-10 mb-6 backdrop-blur-sm"
+            className="bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-5 sm:p-8 md:p-10 mb-6 backdrop-blur-sm"
           >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
             <div className="flex items-start gap-5 flex-1">
@@ -2165,11 +2177,13 @@ export default function InstallerProfilePage() {
                   {/* Status-based border color */}
                   <div className={`w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
                     installer && installer.status === 'active' ? 'ring-4 ring-brand-green' :
+                    installer && installer.status === 'deactive' ? 'ring-4 ring-slate-900' :
                     installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'ring-4 ring-blue-500' :
                     installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'ring-4 ring-red-500' :
                     'ring-4 ring-yellow-500'
                   } ${!photoUrl ? (
                     installer && installer.status === 'active' ? 'bg-brand-green/10' :
+                    installer && installer.status === 'deactive' ? 'bg-slate-200' :
                     installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'bg-blue-100' :
                     installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'bg-red-100' :
                     'bg-yellow-100'
@@ -2188,6 +2202,7 @@ export default function InstallerProfilePage() {
                     ) : (
                       <User className={`w-14 h-14 ${
                         installer && installer.status === 'active' ? 'text-brand-green-dark' :
+                        installer && installer.status === 'deactive' ? 'text-slate-800' :
                         installer && (installer.status === 'passed' || installer.status === 'qualified') ? 'text-blue-600' :
                         installer && (installer.status === 'failed' || installer.status === 'notQualified') ? 'text-red-600' :
                         'text-yellow-600'
@@ -2224,7 +2239,7 @@ export default function InstallerProfilePage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="text-4xl md:text-5xl font-bold text-slate-900 mb-2 leading-tight"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-2 leading-tight"
                 >
                   {installer && (installer.firstName || installer.lastName 
                     ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
@@ -2252,100 +2267,69 @@ export default function InstallerProfilePage() {
                     </div>
                   )
                 })()}
-                <div className="mt-1">
-                  <div className="flex flex-wrap items-center gap-2.5 mt-4">
-                    {(() => {
-                      const sunbizDoc = documents.find((d: any) => d?.type === 'sunbiz')
-                      const liabilityDoc = documents.find((d: any) => d?.type === 'liability_insurance')
-                      const businessTaxDoc = documents.find((d: any) => d?.type === 'business_registration')
-                      
-                      const badges = []
-                      
-                      if (sunbizDoc?.verificationLinkStatus) {
-                        badges.push({
-                          label: 'Sunbiz',
-                          status: sunbizDoc.verificationLinkStatus,
-                        })
-                      }
-                      
-                      if (liabilityDoc?.verificationLinkStatus) {
-                        badges.push({
-                          label: 'Liability Insurance',
-                          status: liabilityDoc.verificationLinkStatus,
-                        })
-                      }
-                      
-                      if (businessTaxDoc?.verificationLinkStatus) {
-                        badges.push({
-                          label: 'Business Tax Receipt',
-                          status: businessTaxDoc.verificationLinkStatus,
-                        })
-                      }
-                      
-                      return badges.map((badge) => {
-                        const statusConfig = {
-                          active: {
-                            bg: 'bg-green-50',
-                            text: 'text-green-700',
-                            border: 'border-green-200',
-                            icon: CheckCircle2,
-                            iconColor: 'text-green-600',
-                          },
-                          expired: {
-                            bg: 'bg-red-50',
-                            text: 'text-red-700',
-                            border: 'border-red-200',
-                            icon: XCircle,
-                            iconColor: 'text-red-600',
-                          },
-                          pending: {
-                            bg: 'bg-yellow-50',
-                            text: 'text-yellow-700',
-                            border: 'border-yellow-200',
-                            icon: Clock,
-                            iconColor: 'text-yellow-600',
-                          },
-                        }
-                        
-                        const config = statusConfig[badge.status as keyof typeof statusConfig] || {
-                          bg: 'bg-slate-50',
-                          text: 'text-slate-600',
-                          border: 'border-slate-200',
-                          icon: AlertCircle,
-                          iconColor: 'text-slate-500',
-                        }
-                        
-                        const Icon = config.icon
-                        
-                        return (
-                          <div
-                            key={badge.label}
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bg} ${config.border} ${config.text} shadow-sm transition-all hover:shadow-md`}
-                          >
-                            <Icon className={`w-3.5 h-3.5 ${config.iconColor} flex-shrink-0`} />
-                            <span className="text-xs font-semibold capitalize">{badge.label}</span>
-                            <span className="text-xs font-medium opacity-75">•</span>
-                            <span className="text-xs font-bold capitalize">{badge.status}</span>
+                {/* Removed document status badges on installer portal (admin-only) */}
               </div>
-                        )
-                      })
-                    })()}
             </div>
-                  </div>
-                </div>
-                  </div>
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Barcode Section - Right Side */}
               {installer && (
-                <div className="flex-shrink-0">
+                <div className="w-full md:w-auto md:flex-shrink-0">
                   <InstallerBarcode 
                     installerId={installer.id}
                     installerName={`${installer.firstName} ${installer.lastName}`.trim()}
+                    className="w-full"
                   />
                 </div>
             )}
           </div>
           </div>
+
+          {/* Installer Tracker Status (admin-controlled) */}
+          {installer && (
+            <div className="mt-2">
+              {(() => {
+                const stages = [
+                  { key: 'PENDING', label: 'Pending' },
+                  { key: 'QUALIFIED', label: 'Qualified' },
+                  { key: 'WAITING_FOR_APPROVAL', label: 'Waiting for Approval' },
+                  { key: 'VERIFICATION_IN_PROGRESS', label: 'Verification in Progress' },
+                  { key: 'BACKGROUND', label: 'Background' },
+                  { key: 'ACTIVE_APPROVED', label: 'Active / Approved' },
+                ] as const
+
+                const currentKey = String((installer as any)?.trackerStage || 'PENDING').toUpperCase()
+                const currentIdx = Math.max(0, stages.findIndex((s) => s.key === currentKey))
+
+                return (
+                  <div className="-mx-2 px-2">
+                    <div className="w-full bg-transparent border border-transparent rounded-full px-0 py-0 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:w-max lg:whitespace-nowrap lg:overflow-x-auto lg:hide-scrollbar">
+                    {stages.map((s, idx) => {
+                      const isCurrent = idx === currentIdx
+                      const isDone = idx < currentIdx
+                        const showCheck = isDone || isCurrent
+                      const base =
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors'
+                      const cls = isCurrent
+                        ? `${base} bg-brand-green text-white shadow-sm`
+                        : isDone
+                          ? `${base} bg-white text-brand-green border border-brand-green/30`
+                          : `${base} bg-white text-slate-500 border border-slate-200`
+
+                      return (
+                        <div key={s.key} className="flex items-center flex-shrink-0">
+                          <span className={cls}>
+                            {showCheck && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {s.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
         </motion.div>
 
           {/* Profile Information */}
@@ -2353,7 +2337,7 @@ export default function InstallerProfilePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5 sm:p-8 mb-6 backdrop-blur-sm"
           >
           <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
             <div>
@@ -2460,14 +2444,14 @@ export default function InstallerProfilePage() {
             )}
           </div>
 
-          {success && (
+          {(hasPendingApproval || success) && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="mb-6 p-4 bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl text-success-700 text-sm font-medium flex items-center gap-2"
             >
               <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-              {success}
+              {success || 'Changes submitted for admin approval'}
             </motion.div>
           )}
 
@@ -3536,11 +3520,15 @@ export default function InstallerProfilePage() {
                     Certificates
                   </h3>
                   <div className="grid md:grid-cols-3 gap-4">
-                    <ExpirationDatePicker
+                    <MultiExpirationDatePicker
                       label="LLRP"
-                      value={llrpExpiry}
-                      onChange={setLlrpExpiry}
+                      values={llrpExpiryDates}
+                      onChange={(next) => {
+                        setLlrpExpiryDates(next)
+                        setLlrpExpiry(next?.[0] || '')
+                      }}
                       isEditing={isEditing}
+                      addLabel="Add LLRP date"
                     />
                     <ExpirationDatePicker
                       label="BTR"

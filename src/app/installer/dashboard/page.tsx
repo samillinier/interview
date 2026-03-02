@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Bell,
   ExternalLink,
+  FileText,
   Menu,
   X,
   LogOut,
@@ -25,10 +26,11 @@ import {
   FileCheck,
   AlertTriangle
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 interface InstallerProfile {
   id: string
@@ -146,6 +148,7 @@ function AnimatedNumber({ value, suffix = '' }: { value: number | string | null 
 
 export default function InstallerDashboardPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [installer, setInstaller] = useState<InstallerProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -204,7 +207,9 @@ export default function InstallerDashboardPage() {
       }
 
       // Load installer profile
-      const profileResponse = await fetch(`/api/installers/${installerId}`)
+      const profileResponse = await fetch(`/api/installers/${installerId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       
       // Check if response is JSON before parsing
       const profileContentType = profileResponse.headers.get('content-type')
@@ -261,7 +266,9 @@ export default function InstallerDashboardPage() {
         
         // Fetch documents
         try {
-          const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
+          const docsResponse = await fetch(`/api/installers/${installerId}/documents`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          })
           if (docsResponse.ok) {
             const docsContentType = docsResponse.headers.get('content-type')
             if (docsContentType && docsContentType.includes('application/json')) {
@@ -391,6 +398,13 @@ export default function InstallerDashboardPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
+            href="/installer/agreements"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agreements</span>}
+          </Link>
+          <Link
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -456,107 +470,11 @@ export default function InstallerDashboardPage() {
           </button>
         </div>
       </aside>
-
-      {/* Mobile Sidebar Toggle */}
-      <div className="lg:hidden fixed top-4 left-4 z-40">
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-lg border border-slate-200"
-        >
-          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <aside className={`lg:hidden fixed left-0 top-0 h-full bg-brand-green border-r border-brand-green-dark transition-transform duration-300 z-40 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-              <p className="text-xs text-primary-500">Dashboard</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/installer/dashboard" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/installer/profile" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <User className="w-5 h-5" />
-            <span>Profile</span>
-          </Link>
-          <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Paperclip className="w-5 h-5" />
-            <span>Attachments</span>
-          </Link>
-          <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <CreditCard className="w-5 h-5" />
-            <span>Account</span>
-          </Link>
-          <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <ExternalLink className="w-5 h-5" />
-            <span>Referrals</span>
-          </Link>
-          <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Bell className="w-5 h-5" />
-            <div className="flex items-center gap-2">
-              <span>Notifications</span>
-              {notificationCount > 0 && (
-                <span className="bg-white text-brand-green text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </span>
-              )}
-            </div>
-          </Link>
-        </nav>
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-primary-900 text-sm truncate">
-                {installer.firstName || installer.lastName 
-                  ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                  : installer.email.split('@')[0]
-                }
-              </p>
-              <p className="text-xs text-primary-500 truncate">{installer.email}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
+      <InstallerMobileMenu
+        pathname={pathname}
+        notificationCount={notificationCount}
+        onLogout={handleLogout}
+      />
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
@@ -567,7 +485,7 @@ export default function InstallerDashboardPage() {
         </header>
 
         {/* Content Area */}
-        <main className="p-4 lg:p-6">
+        <main className="p-4 lg:p-6 pt-16 lg:pt-6">
           {/* Welcome Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -576,13 +494,25 @@ export default function InstallerDashboardPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-2">
+                {/* Desktop title (unchanged) */}
+                <h2 className="hidden sm:block text-2xl font-bold mb-2">
                   Welcome, {installer.firstName || installer.lastName 
                     ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
                     : installer.email.split('@')[0]
                   }!
                 </h2>
-                <p className="text-white/90 mb-4">
+
+                {/* Mobile title: keep first+last together on the second line */}
+                <h2 className="sm:hidden text-2xl font-bold mb-2 leading-tight">
+                  <span className="block">Welcome,</span>
+                  <span className="block whitespace-nowrap">
+                    {(installer.firstName || installer.lastName
+                      ? `${installer.firstName || ''}\u00A0${installer.lastName || ''}`.trim()
+                      : installer.email.split('@')[0]
+                    )}!
+                  </span>
+                </h2>
+                <p className="hidden sm:block text-white/90 mb-4">
                   {installer.status === 'passed' || installer.status === 'qualified' 
                     ? 'Your application has been approved. You can now manage your profile and view opportunities.'
                     : installer.status === 'pending'
@@ -590,93 +520,15 @@ export default function InstallerDashboardPage() {
                     : 'Thank you for your interest. Please check back for updates.'
                   }
                 </p>
-                {/* Document Status Badges */}
-                <div className="flex flex-wrap items-center gap-2.5 mt-4">
-                  {(() => {
-                    const sunbizDoc = documents.find((d: any) => d?.type === 'sunbiz')
-                    const liabilityDoc = documents.find((d: any) => d?.type === 'liability_insurance')
-                    const businessTaxDoc = documents.find((d: any) => d?.type === 'business_registration')
-                    
-                    const badges = []
-                    
-                    if (sunbizDoc?.verificationLinkStatus) {
-                      badges.push({
-                        label: 'Sunbiz',
-                        status: sunbizDoc.verificationLinkStatus,
-                      })
-                    }
-                    
-                    if (liabilityDoc?.verificationLinkStatus) {
-                      badges.push({
-                        label: 'Liability Insurance',
-                        status: liabilityDoc.verificationLinkStatus,
-                      })
-                    }
-                    
-                    if (businessTaxDoc?.verificationLinkStatus) {
-                      badges.push({
-                        label: 'Business Tax Receipt',
-                        status: businessTaxDoc.verificationLinkStatus,
-                      })
-                    }
-                    
-                    return badges.map((badge) => {
-                      const statusConfig = {
-                        active: {
-                          bg: 'bg-white/20',
-                          text: 'text-white',
-                          border: 'border-white/30',
-                          icon: CheckCircle2,
-                          iconColor: 'text-white',
-                        },
-                        expired: {
-                          bg: 'bg-red-500/20',
-                          text: 'text-white',
-                          border: 'border-red-300/30',
-                          icon: XCircle,
-                          iconColor: 'text-white',
-                        },
-                        pending: {
-                          bg: 'bg-yellow-500/20',
-                          text: 'text-white',
-                          border: 'border-yellow-300/30',
-                          icon: Clock,
-                          iconColor: 'text-white',
-                        },
-                      }
-                      
-                      const config = statusConfig[badge.status as keyof typeof statusConfig] || {
-                        bg: 'bg-white/10',
-                        text: 'text-white/80',
-                        border: 'border-white/20',
-                        icon: AlertCircle,
-                        iconColor: 'text-white/80',
-                      }
-                      
-                      const Icon = config.icon
-                      
-                      return (
-                        <div
-                          key={badge.label}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${config.bg} ${config.border} ${config.text} shadow-sm transition-all hover:shadow-md backdrop-blur-sm`}
-                        >
-                          <Icon className={`w-3.5 h-3.5 ${config.iconColor} flex-shrink-0`} />
-                          <span className="text-xs font-semibold capitalize">{badge.label}</span>
-                          <span className="text-xs font-medium opacity-75">•</span>
-                          <span className="text-xs font-bold capitalize">{badge.status}</span>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
+                {/* Removed document status badges on installer portal (admin-only) */}
               </div>
               <div className="flex items-center gap-4">
                 {installer.status === 'passed' || installer.status === 'qualified' ? (
-                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                  <div className="hidden sm:flex w-16 h-16 bg-white/20 rounded-full items-center justify-center">
                     <CheckCircle2 className="w-8 h-8 text-white" />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                  <div className="hidden sm:flex w-16 h-16 bg-white/20 rounded-full items-center justify-center">
                     <Clock className="w-8 h-8 text-white" />
                   </div>
                 )}
@@ -826,28 +678,30 @@ export default function InstallerDashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="bg-white rounded-xl shadow-lg border-2 border-yellow-200 p-6 mb-6"
+              className="bg-white rounded-xl shadow-lg border-2 border-yellow-200 p-4 sm:p-6 mb-6"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6 text-yellow-600" />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Certificate & Insurance Expiry Alert</h2>
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                      Certificate &amp; Insurance Expiry Alert
+                    </h2>
                     <p className="text-sm text-slate-500">You have items that need attention</p>
                   </div>
                 </div>
                 <Link
                   href="/installer/profile"
-                  className="px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors font-medium flex items-center gap-2"
+                  className="w-full sm:w-auto justify-center px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors font-medium inline-flex items-center gap-2"
                 >
                   Update Now
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-2 gap-3">
                 {expiringItems.map((item, idx) => (
                   <motion.div
                     key={idx}
@@ -860,15 +714,15 @@ export default function InstallerDashboardPage() {
                         : 'bg-yellow-50 border-yellow-200'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                         {item.status === 'expired' ? (
                           <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                         ) : (
                           <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-slate-900 mb-1">{item.name}</p>
+                          <p className="font-semibold text-slate-900 mb-1 leading-snug break-words">{item.name}</p>
                           <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-slate-400" />
                             <p className="text-sm text-slate-600">

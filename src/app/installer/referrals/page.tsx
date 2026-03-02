@@ -16,10 +16,11 @@ import {
   Link as LinkIcon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 interface InstallerProfile {
   id: string
@@ -32,6 +33,7 @@ interface InstallerProfile {
 
 export default function InstallerReferralsPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [installer, setInstaller] = useState<InstallerProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -71,7 +73,9 @@ export default function InstallerReferralsPage() {
         localStorage.setItem('installerId', installerId)
 
         const [profileResponse, notificationResponse] = await Promise.all([
-          fetch(`/api/installers/${installerId}`),
+          fetch(`/api/installers/${installerId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }),
           fetch(`/api/notifications/count?installerId=${installerId}`),
         ])
 
@@ -205,14 +209,15 @@ export default function InstallerReferralsPage() {
 
       {/* Main */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 py-6">
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
             <h1 className="text-3xl font-bold text-slate-900 mb-1">Referrals</h1>
             <p className="text-sm text-slate-500">Share your link to earn credit for new installer signups.</p>
           </div>
         </header>
 
-        <main className="p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {error && (
             <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
@@ -245,11 +250,11 @@ export default function InstallerReferralsPage() {
 
             <div className="mt-5 flex flex-col md:flex-row gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
                   <input
                     readOnly
                     value={referralUrl}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-800 text-sm"
+                    className="w-full min-w-0 px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-800 text-sm"
                   />
                   <button
                     type="button"
@@ -262,7 +267,7 @@ export default function InstallerReferralsPage() {
                         console.error('Failed to copy referral link:', e)
                       }
                     }}
-                    className="px-5 py-3 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto px-5 py-3 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
                     disabled={!referralUrl}
                   >
                     {copied ? 'Copied' : 'Copy'}

@@ -25,11 +25,12 @@ import {
   Briefcase,
   ExternalLink
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 const dancingScript = Dancing_Script({
   subsets: ['latin'],
@@ -55,6 +56,7 @@ interface PaymentInfo {
 
 export default function PaymentPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -124,7 +126,9 @@ export default function PaymentPage() {
       localStorage.setItem('installerId', installerId)
 
       // Load installer profile
-      const profileResponse = await fetch(`/api/installers/${installerId}`)
+      const profileResponse = await fetch(`/api/installers/${installerId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       
       // Check if response is JSON before parsing
       const profileContentType = profileResponse.headers.get('content-type')
@@ -391,8 +395,9 @@ export default function PaymentPage() {
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 py-6">
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 mb-1">Account Information Form</h1>
@@ -435,7 +440,7 @@ export default function PaymentPage() {
           </div>
         </header>
 
-        <main className="p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {success && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}

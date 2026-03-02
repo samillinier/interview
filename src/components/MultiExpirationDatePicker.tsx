@@ -1,15 +1,38 @@
 import { useState, useEffect } from 'react'
 import { Calendar, Plus, Trash2 } from 'lucide-react'
 
+function pad2(n: number) {
+  return String(n).padStart(2, '0')
+}
+
+function parseDateOnlyToUTC(dateString: string): Date | null {
+  const s = String(dateString || '').trim()
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (m) {
+    const y = Number(m[1])
+    const mo = Number(m[2])
+    const d = Number(m[3])
+    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null
+    return new Date(Date.UTC(y, mo - 1, d))
+  }
+  const dt = new Date(s)
+  if (Number.isNaN(dt.getTime())) return null
+  return dt
+}
+
+function toYMDUTC(dt: Date) {
+  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`
+}
+
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
   if (!expiryDate) return 'none'
-  const d = new Date(expiryDate)
-  if (Number.isNaN(d.getTime())) return 'none'
+  const d = parseDateOnlyToUTC(expiryDate)
+  if (!d) return 'none'
 
-  const expiry = new Date(d)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  expiry.setHours(0, 0, 0, 0)
+  // Compare at midnight UTC to avoid timezone day-shifts (the root cause of +/- 1 day bugs)
+  const expiry = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  const now = new Date()
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 
   if (expiry < today) return 'expired'
 
@@ -24,9 +47,10 @@ function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | '
 }
 
 function formatDisplayDate(dateString: string) {
-  const d = new Date(dateString)
-  if (Number.isNaN(d.getTime())) return 'N/A'
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  const d = parseDateOnlyToUTC(dateString)
+  if (!d) return 'N/A'
+  // Force UTC so YYYY-MM-DD never renders as the "previous/next day" in local timezones.
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 function normalize(values: string[]) {
@@ -36,8 +60,8 @@ function normalize(values: string[]) {
     .map((v) => {
       // If already in YYYY-MM-DD format, validate and return
       if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-        const d = new Date(v + 'T00:00:00')
-        if (!Number.isNaN(d.getTime()) && d.getFullYear() >= 1000 && d.getFullYear() <= 2099) {
+        const d = parseDateOnlyToUTC(v)
+        if (d && d.getUTCFullYear() >= 1000 && d.getUTCFullYear() <= 2099) {
           return v
         }
       }
@@ -58,22 +82,28 @@ function normalize(values: string[]) {
             ? (parseInt(yearStr) < 50 ? 2000 + parseInt(yearStr) : 1900 + parseInt(yearStr))
             : parseInt(yearStr)
           if (fullYear >= 1000 && fullYear <= 2099) {
-            const fixedDate = new Date(fullYear, parseInt(month) - 1, parseInt(day))
+            const fixedDate = new Date(Date.UTC(fullYear, parseInt(month) - 1, parseInt(day)))
             if (!Number.isNaN(fixedDate.getTime())) {
-              return fixedDate.toISOString().split('T')[0]
+              return toYMDUTC(fixedDate)
             }
           }
         }
         return null
       }
       
-      return d.toISOString().split('T')[0]
+      // Convert using UTC components to avoid timezone-related +/- 1 day shifts
+      return toYMDUTC(d)
     })
     .filter(Boolean) as string[]
 
-  const uniq = Array.from(new Set(cleaned))
-  uniq.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-  return uniq
+  // IMPORTANT: Do NOT de-dupe. Users can have multiple policies/certificates expiring on the same day.
+  // Keep duplicates, just sort for consistent display.
+  cleaned.sort((a, b) => {
+    const da = parseDateOnlyToUTC(a)
+    const db = parseDateOnlyToUTC(b)
+    return (da?.getTime() ?? 0) - (db?.getTime() ?? 0)
+  })
+  return cleaned
 }
 
 export function MultiExpirationDatePicker({
@@ -159,15 +189,12 @@ export function MultiExpirationDatePicker({
           {badge}
         </div>
         <div className="space-y-1">
-          {normalized.slice(0, 3).map((v) => (
-            <div key={v} className="flex items-center gap-2">
+          {normalized.map((v, idx) => (
+            <div key={`${v}-${idx}`} className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-slate-400" />
               <p className="font-semibold text-slate-900">{formatDisplayDate(v)}</p>
             </div>
           ))}
-          {normalized.length > 3 && (
-            <p className="text-xs text-slate-600 mt-2">+{normalized.length - 3} more</p>
-          )}
         </div>
       </div>
     )

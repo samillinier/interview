@@ -48,6 +48,8 @@ Add these (select **Production, Preview, Development** for each):
 2. Click **Redeploy** on latest deployment (or trigger new deploy)
 3. Or push to GitHub: `git push origin main` (auto-deploys)
 
+**Important:** Ensure Vercel uses the `vercel-build` / `build` script so Prisma migrations run during deploy.
+
 ### Step 5: After First Deployment
 1. Note your deployment URL (e.g., `https://floor-interior-service.vercel.app`)
 2. Update `NEXTAUTH_URL` and `NEXT_PUBLIC_APP_URL` with actual URL
@@ -55,7 +57,7 @@ Add these (select **Production, Preview, Development** for each):
 
 ## ⚠️ Important Notes
 
-- Database schema will auto-create on first deployment
+- Database schema is applied via Prisma migrations during build (`prisma migrate deploy`)
 - Build may take 5-10 minutes
 - Check build logs if deployment fails
 - Your database will be empty initially (different from local SQLite)

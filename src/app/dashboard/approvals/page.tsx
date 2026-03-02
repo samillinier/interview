@@ -26,14 +26,17 @@ import {
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 
 type ChangeRequest = {
   id: string
   createdAt: string
   status: string
   source: string | null
+  sections: string[] | null
   submittedBy: string | null
   payload: Record<string, any>
+  diffs?: Array<{ field: string; from: any; to: any }>
   Installer: {
     id: string
     firstName: string
@@ -41,6 +44,19 @@ type ChangeRequest = {
     email: string
     companyName: string | null
   }
+}
+
+type ApprovalGroup = {
+  key: string
+  installerId: string
+  source: string | null
+  Installer: ChangeRequest['Installer']
+  requestIds: string[]
+  createdAt: string // newest
+  submittedBy: string | null
+  sections: string[]
+  changedKeys: string[]
+  actions: string[] // e.g. create_staff
 }
 
 export default function ApprovalsPage() {
@@ -56,10 +72,101 @@ export default function ApprovalsPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [rejectModal, setRejectModal] = useState<{
+    open: boolean
+    ids: string[]
+    label: string
+    reason: string
+  }>({ open: false, ids: [], label: '', reason: '' })
+
+  const [agreementModal, setAgreementModal] = useState<{
+    open: boolean
+    id: string
+    label: string
+    signature: string
+    signedDate: string
+  }>({
+    open: false,
+    id: '',
+    label: '',
+    signature: '',
+    signedDate: new Date().toISOString().slice(0, 10),
+  })
+
+  const requestsById = useMemo(() => {
+    const m = new Map<string, ChangeRequest>()
+    for (const r of requests) m.set(r.id, r)
+    return m
+  }, [requests])
+
+  const humanizeField = (field: string): string => {
+    const parts = String(field).split('.').filter(Boolean)
+    const pretty = parts.map((p) =>
+      p
+        .replace(/_/g, ' ')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .trim()
+    )
+    return pretty.join(' › ')
+  }
+
+  const formatValue = (val: any): string => {
+    if (val === null || val === undefined) return '—'
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No'
+    if (typeof val === 'number') return String(val)
+    if (typeof val === 'string') {
+      const s = val.trim()
+      if (!s) return '—'
+      // ISO date-ish strings
+      if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+        const d = new Date(s)
+        if (!Number.isNaN(d.getTime())) return d.toLocaleString()
+      }
+      // JSON arrays/objects stored as strings
+      if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
+        try {
+          const parsed = JSON.parse(s)
+          if (Array.isArray(parsed)) return parsed.map(formatValue).join(', ')
+          return JSON.stringify(parsed)
+        } catch {
+          // fall through
+        }
+      }
+      return s
+    }
+    if (Array.isArray(val)) return val.map(formatValue).join(', ')
+    if (typeof val === 'object') {
+      try {
+        return JSON.stringify(val)
+      } catch {
+        return String(val)
+      }
+    }
+    return String(val)
+  }
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
+
+  useEffect(() => {
+    if (!rejectModal.open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRejectModal({ open: false, ids: [], label: '', reason: '' })
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [rejectModal.open])
+
+  useEffect(() => {
+    if (!agreementModal.open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAgreementModal((p) => ({ ...p, open: false }))
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [agreementModal.open])
 
   const fetchPendingCount = async () => {
     try {
@@ -100,7 +207,12 @@ export default function ApprovalsPage() {
         throw new Error(data.error || data.details || `Failed to fetch change requests (HTTP ${res.status})`)
       }
       const data = await res.json()
-      setRequests(data.requests || [])
+      // Ensure sections are parsed correctly (Prisma returns JSON as object/array)
+      const requestsWithParsedSections = (data.requests || []).map((r: any) => ({
+        ...r,
+        sections: r.sections ? (Array.isArray(r.sections) ? r.sections : JSON.parse(r.sections || '[]')) : null,
+      }))
+      setRequests(requestsWithParsedSections)
       await fetchPendingCount()
     } catch (e: any) {
       setError(e.message || 'Failed to fetch approvals')
@@ -130,7 +242,7 @@ export default function ApprovalsPage() {
         body: JSON.stringify({ action: 'approve' }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Failed to approve')
+      if (!res.ok) throw new Error(data.details ? `${data.error || 'Failed to approve'}: ${data.details}` : data.error || 'Failed to approve')
 
       setSuccess('Approved and applied changes.')
       setRequests((prev) => prev.filter((r) => r.id !== id))
@@ -143,8 +255,7 @@ export default function ApprovalsPage() {
     }
   }
 
-  const handleReject = async (id: string) => {
-    const reason = window.prompt('Reason for rejection? (optional)') || ''
+  const handleApproveAgreement = async (id: string, adminSignature: string, adminSignedDate: string) => {
     setApproving((p) => ({ ...p, [id]: true }))
     setError('')
     setSuccess('')
@@ -152,10 +263,44 @@ export default function ApprovalsPage() {
       const res = await fetch(`/api/admin/change-requests/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject', rejectionReason: reason }),
+        body: JSON.stringify({ action: 'approve', adminSignature, adminSignedDate }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Failed to reject')
+      if (!res.ok)
+        throw new Error(
+          data.details ? `${data.error || 'Failed to approve agreement'}: ${data.details}` : data.error || 'Failed to approve agreement'
+        )
+
+      setSuccess('Agreement approved and signed.')
+      setRequests((prev) => prev.filter((r) => r.id !== id))
+      await fetchPendingCount()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (e: any) {
+      setError(e.message || 'Failed to approve agreement')
+    } finally {
+      setApproving((p) => ({ ...p, [id]: false }))
+    }
+  }
+
+  const handleApproveMany = async (ids: string[]) => {
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop
+      await handleApprove(id)
+    }
+  }
+
+  const handleReject = async (id: string, reason = '') => {
+    setApproving((p) => ({ ...p, [id]: true }))
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/admin/change-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', rejectionReason: reason || '' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.details ? `${data.error || 'Failed to reject'}: ${data.details}` : data.error || 'Failed to reject')
 
       setSuccess('Rejected change request.')
       setRequests((prev) => prev.filter((r) => r.id !== id))
@@ -168,11 +313,110 @@ export default function ApprovalsPage() {
     }
   }
 
-  const rows = useMemo(() => {
-    return requests.map((r) => {
-      const keys = Object.keys(r.payload || {})
-      return { ...r, changedKeys: keys }
+  const handleRejectMany = async (ids: string[], reason = '') => {
+    for (const id of ids) {
+      setApproving((p) => ({ ...p, [id]: true }))
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await fetch(`/api/admin/change-requests/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reject', rejectionReason: reason || '' }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.details ? `${data.error || 'Failed to reject'}: ${data.details}` : data.error || 'Failed to reject')
+        setRequests((prev) => prev.filter((r) => r.id !== id))
+      } catch (e: any) {
+        setError(e.message || 'Failed to reject')
+      } finally {
+        setApproving((p) => ({ ...p, [id]: false }))
+      }
+    }
+    await fetchPendingCount()
+    setSuccess('Rejected change request(s).')
+    setTimeout(() => setSuccess(''), 3000)
+  }
+
+  const openRejectModal = (ids: string[], label: string) => {
+    setRejectModal({
+      open: true,
+      ids,
+      label,
+      reason: '',
     })
+  }
+
+  const confirmRejectFromModal = async () => {
+    const ids = rejectModal.ids || []
+    if (!ids.length) {
+      setRejectModal({ open: false, ids: [], label: '', reason: '' })
+      return
+    }
+    const reason = (rejectModal.reason || '').trim()
+    setRejectModal({ open: false, ids: [], label: '', reason: '' })
+    if (ids.length === 1) await handleReject(ids[0], reason)
+    else await handleRejectMany(ids, reason)
+  }
+
+  const openAgreementModal = (id: string, label: string) => {
+    setAgreementModal({
+      open: true,
+      id,
+      label,
+      signature: '',
+      signedDate: new Date().toISOString().slice(0, 10),
+    })
+  }
+
+  const confirmAgreementFromModal = async () => {
+    const id = agreementModal.id
+    const sig = (agreementModal.signature || '').trim()
+    const date = (agreementModal.signedDate || '').trim()
+    if (!id || !sig) {
+      setAgreementModal((p) => ({ ...p, open: false }))
+      setError('Admin signature is required to approve the agreement.')
+      return
+    }
+    setAgreementModal((p) => ({ ...p, open: false }))
+    await handleApproveAgreement(id, sig, date)
+  }
+
+  const groups = useMemo((): ApprovalGroup[] => {
+    const map = new Map<string, ApprovalGroup>()
+    for (const r of requests) {
+      const key = `${r.Installer.id}::${r.source || ''}`
+      const existing = map.get(key)
+      const keys = Object.keys(r.payload || {})
+      const sections = Array.isArray(r.sections) ? r.sections : []
+      const action = typeof (r.payload as any)?.action === 'string' ? String((r.payload as any).action) : ''
+
+      const createdAt = r.createdAt
+      if (!existing) {
+        map.set(key, {
+          key,
+          installerId: r.Installer.id,
+          source: r.source,
+          Installer: r.Installer,
+          requestIds: [r.id],
+          createdAt,
+          submittedBy: r.submittedBy,
+          sections: [...sections],
+          changedKeys: [...keys],
+          actions: action ? [action] : [],
+        })
+      } else {
+        existing.requestIds.push(r.id)
+        // newest timestamp (for display)
+        if (new Date(createdAt).getTime() > new Date(existing.createdAt).getTime()) {
+          existing.createdAt = createdAt
+          existing.submittedBy = r.submittedBy
+        }
+        existing.sections = Array.from(new Set([...(existing.sections || []), ...sections])).filter(Boolean)
+        existing.changedKeys = Array.from(new Set([...(existing.changedKeys || []), ...keys])).filter(Boolean)
+        if (action) existing.actions = Array.from(new Set([...(existing.actions || []), action])).filter(Boolean)
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [requests])
 
   if (status === 'loading' || loading) {
@@ -188,6 +432,144 @@ export default function ApprovalsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Reject Modal */}
+      {rejectModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close modal"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setRejectModal({ open: false, ids: [], label: '', reason: '' })}
+          />
+          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-lg font-bold text-slate-900">
+                    {rejectModal.ids.length > 1 ? 'Reject changes' : 'Reject change'}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Add a reason (optional). This message will be sent to the installer.
+                  </div>
+                  {rejectModal.label && (
+                    <div className="mt-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                      <span className="font-semibold">For:</span> {rejectModal.label}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRejectModal({ open: false, ids: [], label: '', reason: '' })}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <label className="block text-sm font-semibold text-slate-800 mb-2">Reason for rejection (optional)</label>
+              <textarea
+                value={rejectModal.reason}
+                onChange={(e) => setRejectModal((p) => ({ ...p, reason: e.target.value }))}
+                rows={4}
+                placeholder="e.g., Please upload the updated insurance certificate with the correct expiry date."
+                className="w-full rounded-xl border border-slate-300 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 px-4 py-3 text-sm text-slate-900 outline-none"
+              />
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectModal({ open: false, ids: [], label: '', reason: '' })}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmRejectFromModal}
+                  className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"
+                >
+                  {rejectModal.ids.length > 1 ? 'Reject All' : 'Reject'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Agreement Approve / Sign Modal */}
+      {agreementModal.open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close modal"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setAgreementModal((p) => ({ ...p, open: false }))}
+          />
+          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-lg font-bold text-slate-900">Sign &amp; approve agreement</div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Add your signature to approve the installer&rsquo;s submitted agreement.
+                  </div>
+                  {agreementModal.label && (
+                    <div className="mt-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                      <span className="font-semibold">For:</span> {agreementModal.label}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAgreementModal((p) => ({ ...p, open: false }))}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Admin signature</label>
+                <input
+                  value={agreementModal.signature}
+                  onChange={(e) => setAgreementModal((p) => ({ ...p, signature: e.target.value }))}
+                  placeholder="Type your full name"
+                  className="w-full rounded-xl border border-slate-300 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 px-4 py-3 text-sm text-slate-900 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={agreementModal.signedDate}
+                  onChange={(e) => setAgreementModal((p) => ({ ...p, signedDate: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 px-4 py-3 text-sm text-slate-900 outline-none"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAgreementModal((p) => ({ ...p, open: false }))}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmAgreementFromModal}
+                  className="px-4 py-2 rounded-xl bg-brand-green text-white hover:bg-brand-green-dark transition-colors font-medium"
+                >
+                  Approve
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside
         className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}
@@ -198,9 +580,9 @@ export default function ApprovalsPage() {
               <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
             </div>
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
             <button
@@ -283,15 +665,17 @@ export default function ApprovalsPage() {
             <StickyNote className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Remarks</span>}
           </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Settings</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -320,9 +704,11 @@ export default function ApprovalsPage() {
         </div>
       </aside>
 
+      <AdminMobileMenu pathname={pathname} />
+
       {/* Main */}
       <main className="lg:ml-64 flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-slate-200 px-6 py-6">
+        <div className="bg-white border-b border-slate-200 pr-4 pl-16 lg:px-6 pt-16 lg:pt-6 pb-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
@@ -345,7 +731,7 @@ export default function ApprovalsPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 flex items-start gap-3">
               <XCircle className="w-5 h-5 mt-0.5" />
@@ -359,72 +745,217 @@ export default function ApprovalsPage() {
             </div>
           )}
 
-          {rows.length === 0 ? (
+          {groups.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 text-center text-slate-600">
               No pending approvals.
             </div>
           ) : (
             <div className="space-y-4">
-              {rows.map((r) => (
+              {groups.map((g) => (
                 <motion.div
-                  key={r.id}
+                  key={g.key}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6"
                 >
+                  {(() => {
+                    const rawDiffs =
+                      g.requestIds
+                        .flatMap((id) => requestsById.get(id)?.diffs || [])
+                        .filter(Boolean) || []
+                    const deduped = new Map<string, { field: string; from: any; to: any }>()
+                    for (const d of rawDiffs) deduped.set(String(d.field), d)
+                    const diffs = Array.from(deduped.values())
+                    const isExpanded = !!expanded[g.key]
+                    const visibleDiffs = isExpanded ? diffs : diffs.slice(0, 4)
+
+                    return (
+                      <>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="font-bold text-slate-900">
-                          {r.Installer.companyName ? `${r.Installer.companyName} — ` : ''}
-                          {r.Installer.firstName} {r.Installer.lastName}
+                          {g.Installer.companyName ? `${g.Installer.companyName} — ` : ''}
+                          {g.Installer.firstName} {g.Installer.lastName}
                         </div>
-                        <div className="text-sm text-slate-600">{r.Installer.email}</div>
-                        {r.source && (
+                        <div className="text-sm text-slate-600">{g.Installer.email}</div>
+                        {g.source && (
                           <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                            {r.source}
+                            {g.source}
                           </span>
                         )}
                         <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                           Pending
                         </span>
+                        {g.requestIds.length > 1 && (
+                          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200">
+                            {g.requestIds.length} requests
+                          </span>
+                        )}
                       </div>
 
+                      {g.sections.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="text-sm font-semibold text-slate-700">Sections:</span>
+                          {g.sections.map((section) => (
+                            <span
+                              key={section}
+                              className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                            >
+                              {section}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-3 text-sm text-slate-700">
                         <span className="font-semibold">Changed fields:</span>{' '}
-                        {r.changedKeys.length ? r.changedKeys.join(', ') : '(none)'}
+                        {(() => {
+                          const changed = diffs.map((d) => humanizeField(String(d.field)))
+                          if (!changed.length) return '(none)'
+                          const shown = isExpanded ? changed : changed.slice(0, 10)
+                          const more = Math.max(0, changed.length - shown.length)
+                          return (
+                            <>
+                              {shown.join(', ')}
+                              {more > 0 ? ` +${more} more` : ''}
+                            </>
+                          )
+                        })()}
                       </div>
+                      {g.actions.length > 0 && (
+                        <div className="mt-2 text-sm text-slate-600">
+                          <span className="font-semibold">Action:</span>{' '}
+                          {g.actions
+                            .map((a) => {
+                              if (a === 'create_staff') return 'Add Team Member'
+                              if (a === 'update_staff') return 'Update Team Member'
+                              if (a === 'delete_staff') return 'Delete Team Member'
+                              if (a === 'approve_agreement') return 'Agreement Approval'
+                              return a
+                            })
+                            .join(', ')}
+                        </div>
+                      )}
                       <div className="mt-2 text-xs text-slate-500">
-                        Submitted: {new Date(r.createdAt).toLocaleString()} {r.submittedBy ? `• by ${r.submittedBy}` : ''}
+                        Submitted: {new Date(g.createdAt).toLocaleString()} {g.submittedBy ? `• by ${g.submittedBy}` : ''}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/dashboard/installers/${r.Installer.id}`}
+                        href={`/dashboard/installers/${g.Installer.id}`}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <span className="text-sm font-medium">View Profile</span>
                         <ExternalLink className="w-4 h-4" />
                       </Link>
                       <button
-                        onClick={() => handleReject(r.id)}
-                        disabled={!!approving[r.id]}
+                        type="button"
+                        onClick={() =>
+                          openRejectModal(
+                            g.requestIds,
+                            `${g.Installer.companyName ? `${g.Installer.companyName} — ` : ''}${g.Installer.firstName} ${
+                              g.Installer.lastName
+                            }`
+                          )
+                        }
+                        disabled={g.requestIds.some((id) => !!approving[id])}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50"
                       >
                         <XCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">Reject</span>
+                        <span className="text-sm font-medium">{g.requestIds.length > 1 ? 'Reject All' : 'Reject'}</span>
                       </button>
                       <button
-                        onClick={() => handleApprove(r.id)}
-                        disabled={!!approving[r.id]}
+                        onClick={() => {
+                          const firstId = g.requestIds[0]
+                          const first = firstId ? requestsById.get(firstId) : null
+                          const action = typeof (first?.payload as any)?.action === 'string' ? String((first?.payload as any).action) : ''
+                          const isAgreement = action === 'approve_agreement' && g.requestIds.length === 1
+                          const label = `${g.Installer.companyName ? `${g.Installer.companyName} — ` : ''}${g.Installer.firstName} ${g.Installer.lastName}`
+                          if (isAgreement && firstId) openAgreementModal(firstId, label)
+                          else g.requestIds.length > 1 ? handleApproveMany(g.requestIds) : handleApprove(g.requestIds[0])
+                        }}
+                        disabled={g.requestIds.some((id) => !!approving[id])}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white hover:bg-brand-green-dark transition-colors disabled:opacity-50"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-sm font-medium">Approve</span>
+                        <span className="text-sm font-medium">
+                          {(() => {
+                            const firstId = g.requestIds[0]
+                            const first = firstId ? requestsById.get(firstId) : null
+                            const action = typeof (first?.payload as any)?.action === 'string' ? String((first?.payload as any).action) : ''
+                            const isAgreement = action === 'approve_agreement' && g.requestIds.length === 1
+                            return isAgreement ? 'Sign & Approve' : g.requestIds.length > 1 ? 'Approve All' : 'Approve'
+                          })()}
+                        </span>
                       </button>
                     </div>
                   </div>
+
+                  {diffs.length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-slate-800">Changes (from → to)</div>
+                        {diffs.length > 4 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpanded((p) => ({ ...p, [g.key]: !p[g.key] }))}
+                            className="text-sm text-brand-green hover:underline"
+                          >
+                            {isExpanded ? 'Show less' : `Show all (${diffs.length})`}
+                          </button>
+                        )}
+                      </div>
+                      {/* Mobile Card View */}
+                      <div className="lg:hidden mt-2 space-y-2">
+                        {visibleDiffs.map((d) => (
+                          <div key={d.field} className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                            <div className="font-semibold text-slate-800 text-sm mb-2">{humanizeField(d.field)}</div>
+                            <div className="space-y-1.5">
+                              <div>
+                                <div className="text-xs text-slate-500 mb-0.5">From:</div>
+                                <div className="text-sm text-slate-600 break-words">{formatValue(d.from)}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs text-slate-500 mb-0.5">To:</div>
+                                <div className="text-sm text-slate-900 font-medium break-words">{formatValue(d.to)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Desktop Table View */}
+                      <div className="hidden lg:block mt-2 overflow-x-auto">
+                        <table className="w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-semibold text-slate-700 border-b border-slate-200">Field</th>
+                              <th className="text-left px-3 py-2 font-semibold text-slate-700 border-b border-slate-200">From</th>
+                              <th className="text-left px-3 py-2 font-semibold text-slate-700 border-b border-slate-200">To</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {visibleDiffs.map((d) => (
+                              <tr key={d.field} className="align-top">
+                                <td className="px-3 py-2 border-b border-slate-100 text-slate-800 whitespace-nowrap">
+                                  {humanizeField(d.field)}
+                                </td>
+                                <td className="px-3 py-2 border-b border-slate-100 text-slate-600 max-w-[360px]">
+                                  <div className="break-words">{formatValue(d.from)}</div>
+                                </td>
+                                <td className="px-3 py-2 border-b border-slate-100 text-slate-900 max-w-[360px]">
+                                  <div className="break-words font-medium">{formatValue(d.to)}</div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                      </>
+                    )
+                  })()}
                 </motion.div>
               ))}
             </div>

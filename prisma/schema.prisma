@@ -14,10 +14,25 @@ model Admin {
   email     String   @unique
   name      String?
   isActive  Boolean  @default(true)
+  role      AdminRole @default(ADMIN)
   createdBy String?
 
   @@index([email])
   @@index([isActive])
+}
+
+enum AdminRole {
+  ADMIN
+  MODERATOR
+}
+
+enum InstallerTrackerStage {
+  PENDING
+  QUALIFIED
+  WAITING_FOR_APPROVAL
+  VERIFICATION_IN_PROGRESS
+  BACKGROUND
+  ACTIVE_APPROVED
 }
 
 model Communication {
@@ -90,6 +105,7 @@ model Installer {
   openToTravel                         Boolean                  @default(false)
   travelLocations                      String?
   status                               String                   @default("pending")
+  trackerStage                         InstallerTrackerStage    @default(PENDING)
   passFailReason                       String?
   overallScore                         Int?
   notes                                String?
@@ -164,6 +180,7 @@ model Installer {
   employersLiabilityExpiry             DateTime?
   generalLiabilityExpiry               DateTime?
   llrpExpiry                           DateTime?
+  llrpExpiryDates                      String?
   workersCompExemExpiry                DateTime?
   automobileLiabilityExpiryDates       String?
   workersCompExemExpiryDates           String?
@@ -181,9 +198,34 @@ model Installer {
   JobApplication                       JobApplication[]
   Notification                         Notification[]
   InstallerChangeRequest               InstallerChangeRequest[]
+  InstallerAgreement                   InstallerAgreement[]
   StaffMember                          StaffMember[]
 
   @@index([referredByInstallerId])
+}
+
+model InstallerAgreement {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  installerId String
+  type        String
+  status      String    @default("draft") // draft | pending_admin | approved | rejected
+  payload     Json
+  // Installer signature submission time (when sent for admin approval)
+  signedAt    DateTime?
+  // Admin approval/signature metadata
+  approvedAt  DateTime?
+  approvedBy  String?
+  adminSignature String?
+  adminSignedDate String?
+
+  Installer Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@unique([installerId, type])
+  @@index([installerId])
+  @@index([type])
+  @@index([status])
 }
 
 model InstallerHistory {
@@ -373,6 +415,7 @@ model InstallerChangeRequest {
   installerId     String
   status          String    @default("pending") // pending | approved | rejected
   source          String? // e.g. profile | payment | attachments
+  sections        Json? // Array of section names that changed: ["Profile Information", "Insurance & Registration", etc.]
   payload         Json
   submittedBy     String? // installer email/username
   reviewedBy      String? // admin email

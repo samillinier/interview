@@ -54,6 +54,9 @@ export async function DELETE(
         { status: 403 }
       )
     }
+    if ((currentAdmin as any).role && (currentAdmin as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
 
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
@@ -148,12 +151,15 @@ export async function PATCH(
         { status: 403 }
       )
     }
+    if ((currentAdmin as any).role && (currentAdmin as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
 
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const adminId = resolvedParams.id
 
-    const { name, isActive } = await request.json()
+    const { name, isActive, role } = await request.json()
 
     // Prevent deactivating yourself
     if (adminId === currentAdmin.id && isActive === false) {
@@ -169,12 +175,14 @@ export async function PATCH(
       data: {
         ...(name !== undefined && { name }),
         ...(isActive !== undefined && { isActive }),
+        ...(role !== undefined && { role: role === 'MODERATOR' ? 'MODERATOR' : 'ADMIN' }),
       },
       select: {
         id: true,
         email: true,
         name: true,
         isActive: true,
+        role: true,
         createdAt: true,
         createdBy: true,
       },

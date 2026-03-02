@@ -31,8 +31,8 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       {/* Navigation */}
       <nav className="border-b border-primary-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center">
               <Image
                 src={logo}
@@ -42,27 +42,28 @@ export default function HomePage() {
                 className="w-12 h-12 object-contain"
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {!session ? (
                 <Link
-                  href="/login"
-                  className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
+                  href="/installer/login"
+                  className="px-3 sm:px-4 py-2 min-h-[44px] flex items-center justify-center bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors text-sm sm:text-base"
                 >
                   Sign In
                 </Link>
               ) : (
-              <Link
-                href="/dashboard"
-                className="text-primary-600 hover:text-brand-green transition-colors font-medium"
-              >
-                Dashboard
-              </Link>
+                <Link
+                  href="/dashboard"
+                  className="px-3 sm:px-4 py-2 min-h-[44px] flex items-center justify-center text-primary-600 hover:text-brand-green transition-colors font-medium text-sm sm:text-base"
+                >
+                  Dashboard
+                </Link>
               )}
               <Link
                 href="/interview"
-                className="px-4 py-2 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors"
+                className="px-3 sm:px-4 py-2 min-h-[44px] flex items-center justify-center bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors text-sm sm:text-base"
               >
-                Start Interview
+                <span className="hidden sm:inline">Start Interview</span>
+                <span className="sm:hidden">Interview</span>
               </Link>
               {session && (
                 <div className="relative group">

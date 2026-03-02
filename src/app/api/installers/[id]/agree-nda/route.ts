@@ -1,5 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/installerToken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+async function requireInstallerOrAdmin(request: NextRequest, installerId: string) {
+  // Installer token path
+  const token = getInstallerTokenFromRequest(request)
+  if (token) {
+    try {
+      const payload = verifyInstallerToken(token)
+      if (!payload.installerId || payload.installerId !== installerId) {
+        return { ok: false as const, status: 403, error: 'Forbidden' }
+      }
+      return { ok: true as const, actor: 'installer' as const }
+    } catch {
+      return { ok: false as const, status: 401, error: 'Unauthorized' }
+    }
+  }
+
+  // Admin session path
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email?.toLowerCase()
+  if (!email) return { ok: false as const, status: 401, error: 'Unauthorized' }
+
+  const admin = (await prisma.admin.findUnique({ where: { email } })) as any
+  if (!admin?.isActive) return { ok: false as const, status: 403, error: 'Admin access required' }
+
+  return { ok: true as const, actor: 'admin' as const }
+}
 
 export async function POST(
   request: NextRequest,
@@ -16,6 +45,9 @@ export async function POST(
         { status: 400 }
       )
     }
+
+    const access = await requireInstallerOrAdmin(request, installerId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     // Update installer with NDA agreement timestamp
     const installer = await prisma.installer.update({

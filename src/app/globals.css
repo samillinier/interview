@@ -23,6 +23,24 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile-friendly improvements */
+@media (max-width: 640px) {
+  /* Prevent iOS from zooming on input focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 /* Custom scrollbar */
@@ -67,6 +85,15 @@ body {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #10b981 #f1f5f9;
+}
+
+/* Hide scrollbar but keep scrolling (for horizontal chip rows on mobile) */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 /* Voice wave animation */

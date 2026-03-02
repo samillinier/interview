@@ -5,6 +5,64 @@ import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/instal
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+// Helper function to categorize fields by section
+function getSectionsFromFields(fields: string[]): string[] {
+  const sections = new Set<string>()
+  
+  // Profile Information fields
+  const profileFields = new Set([
+    'firstName', 'lastName', 'phone', 'digitalId', 'workroom', 'vehicleDescription',
+    'companyName', 'companyTitle', 'companyStreetAddress', 'companyCity', 'companyState',
+    'companyZipCode', 'companyCounty', 'companyAddress', 'yearsOfExperience',
+    'hasOwnCrew', 'crewSize', 'hasOwnTools', 'toolsDescription', 'hasVehicle',
+    'willingToTravel', 'maxTravelDistance', 'canStartImmediately', 'preferredStartDate',
+    'availability', 'mondayToFridayAvailability', 'saturdayAvailability',
+    'wantsToAddCarpet', 'installsStretchInCarpet', 'dailyStretchInCarpetSqft',
+    'installsGlueDownCarpet', 'wantsToAddHardwood', 'installsNailDownSolidHardwood',
+    'dailyNailDownSolidHardwoodSqft', 'installsStapleDownEngineeredHardwood',
+    'wantsToAddLaminate', 'dailyLaminateSqft', 'installsLaminateOnStairs',
+    'wantsToAddVinyl', 'installsSheetVinyl', 'installsLuxuryVinylPlank',
+    'dailyLuxuryVinylPlankSqft', 'installsLuxuryVinylTile', 'installsVinylCompositionTile',
+    'dailyVinylCompositionTileSqft', 'wantsToAddTile', 'installsCeramicTile',
+    'dailyCeramicTileSqft', 'installsPorcelainTile', 'dailyPorcelainTileSqft',
+    'installsStoneTile', 'dailyStoneTileSqft', 'offersTileRemoval',
+    'installsTileBacksplash', 'dailyTileBacksplashSqft', 'movesFurniture', 'installsTrim'
+  ])
+  
+  // Insurance & Registration fields
+  const insuranceFields = new Set([
+    'hasInsurance', 'insuranceType', 'hasGeneralLiability', 'hasCommercialAutoLiability',
+    'hasWorkersComp', 'hasWorkersCompExemption', 'isSunbizRegistered', 'isSunbizActive',
+    'hasBusinessLicense', 'feiEin', 'employerLiabilityPolicyNumber'
+  ])
+  
+  // Insurance & Certificate Expiry Dates fields
+  const expiryFields = new Set([
+    'llrpExpiry', 'llrpExpiryDates', 'btrExpiry', 'workersCompExemExpiryDates', 'workersCompExemExpiry',
+    'generalLiabilityExpiry', 'automobileLiabilityExpiryDates', 'automobileLiabilityExpiry',
+    'employersLiabilityExpiry'
+  ])
+  
+  // License & Background Check fields
+  const licenseFields = new Set([
+    'hasLicense', 'licenseNumber', 'licenseExpiry', 'canPassBackgroundCheck', 'backgroundCheckDetails'
+  ])
+  
+  for (const field of fields) {
+    if (profileFields.has(field)) {
+      sections.add('Profile Information')
+    } else if (insuranceFields.has(field)) {
+      sections.add('Insurance & Registration')
+    } else if (expiryFields.has(field)) {
+      sections.add('Insurance & Certificate Expiry Dates')
+    } else if (licenseFields.has(field)) {
+      sections.add('License & Background Check')
+    }
+  }
+  
+  return Array.from(sections)
+}
+
 const INSTALLER_ALLOWED_UPDATE_FIELDS = new Set<string>([
   // Basic / company
   'firstName',
@@ -42,6 +100,7 @@ const INSTALLER_ALLOWED_UPDATE_FIELDS = new Set<string>([
 
   // Compliance / expirations (installer-managed)
   'llrpExpiry',
+  'llrpExpiryDates',
   'btrExpiry',
   'workersCompExemExpiryDates',
   'workersCompExemExpiry',
@@ -157,6 +216,38 @@ export async function GET(
         )
     }
 
+      /**
+       * Access control:
+       * - If an installer token is present and valid, allow the installer to fetch their own record.
+       * - Otherwise, require a dashboard session (Admin or Moderator).
+       * - Moderators can only access Qualified installers (status = "passed").
+       */
+      const token = getInstallerTokenFromRequest(request)
+      if (token) {
+        try {
+          const payload = verifyInstallerToken(token)
+          if (!payload.installerId || payload.installerId !== installerId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+        } catch {
+          return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
+        }
+      } else {
+        const session = await getServerSession(authOptions)
+        const email = session?.user?.email?.toLowerCase()
+        if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+        const admin = (await prisma.admin.findUnique({
+          where: { email },
+        })) as any
+        if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+
+        const st = String(installer.status || '').toLowerCase()
+        if (admin.role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(st)) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
+      }
+
       // Ensure referral code exists (backfill for older installers)
       let referralCode = installer.referralCode || null
       try {
@@ -175,12 +266,23 @@ export async function GET(
         console.error('Failed to compute referralsCount:', err)
     }
 
+      // Pending change requests (used by installer portal to show "submitted for approval" banner)
+      let pendingChangeRequestsCount = 0
+      try {
+        pendingChangeRequestsCount = await prisma.installerChangeRequest.count({
+          where: { installerId, status: 'pending' },
+        })
+      } catch (err) {
+        console.error('Failed to compute pendingChangeRequestsCount:', err)
+      }
+
       console.log('Installer found:', installer.email)
       return NextResponse.json({
         installer: {
           ...installer,
           referralCode,
           referralsCount,
+          pendingChangeRequestsCount,
         },
       })
     } catch (dbError: any) {
@@ -270,6 +372,42 @@ function normalizeDateString(dateStr: string): string | null {
   return d.toISOString().split('T')[0]
 }
 
+function normalizeComparableValue(key: string, val: any): any {
+  if (val === undefined) return undefined
+  if (val === null) return null
+
+  // Normalize strings (trim)
+  if (typeof val === 'string') return val.trim()
+
+  // Normalize Dates to ISO strings
+  if (val instanceof Date) return val.toISOString()
+
+  // For our multi-date fields we store JSON strings in the Installer table.
+  // Compare as-is (string) after trimming above.
+
+  return val
+}
+
+function isEqualForChangeRequest(key: string, proposed: any, current: any): boolean {
+  const a = normalizeComparableValue(key, proposed)
+  const b = normalizeComparableValue(key, current)
+
+  // If proposed is a date string and current is a Date, normalize both to ISO.
+  if (typeof a === 'string' && b instanceof Date) {
+    const d = new Date(a)
+    if (!Number.isNaN(d.getTime())) return d.toISOString() === b.toISOString()
+  }
+  if (a instanceof Date && typeof b === 'string') {
+    const d = new Date(b)
+    if (!Number.isNaN(d.getTime())) return a.toISOString() === d.toISOString()
+  }
+
+  // Basic deep-ish compare for JSON strings (already stable-sorted upstream)
+  if (typeof a === 'string' && typeof b === 'string') return a === b
+
+  return Object.is(a, b)
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -344,13 +482,13 @@ export async function PATCH(
           .map((v) => normalizeDateString(v))
           .filter((v): v is string => v !== null) as string[]
 
-        const uniq = Array.from(new Set(cleaned))
-        uniq.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+        // Keep duplicates (multiple policies can share the same expiry date), just sort.
+        cleaned.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
-        data.automobileLiabilityExpiryDates = uniq.length > 0 ? JSON.stringify(uniq) : null
+        data.automobileLiabilityExpiryDates = cleaned.length > 0 ? JSON.stringify(cleaned) : null
 
         // Keep the single-date field in sync for legacy logic (earliest date)
-        data.automobileLiabilityExpiry = uniq.length > 0 ? new Date(uniq[0]) : null
+        data.automobileLiabilityExpiry = cleaned.length > 0 ? new Date(cleaned[0]) : null
       }
 
       // Handle multi-date workers comp certificate expiry dates (stored as JSON string)
@@ -374,11 +512,38 @@ export async function PATCH(
           .map((v) => normalizeDateString(v))
           .filter((v): v is string => v !== null) as string[]
 
-        const uniq = Array.from(new Set(cleaned))
-        uniq.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+        // Keep duplicates (multiple certificates can share the same expiry date), just sort.
+        cleaned.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
-        data.workersCompExemExpiryDates = uniq.length > 0 ? JSON.stringify(uniq) : null
-        data.workersCompExemExpiry = uniq.length > 0 ? new Date(uniq[0]) : null
+        data.workersCompExemExpiryDates = cleaned.length > 0 ? JSON.stringify(cleaned) : null
+        data.workersCompExemExpiry = cleaned.length > 0 ? new Date(cleaned[0]) : null
+      }
+
+      // Handle multi-date LLRP expiry dates (stored as JSON string)
+      if ((data as any).llrpExpiryDates !== undefined) {
+        let arr: string[] = []
+        const incoming = (data as any).llrpExpiryDates
+        if (Array.isArray(incoming)) {
+          arr = incoming
+        } else if (typeof incoming === 'string') {
+          try {
+            const parsed = JSON.parse(incoming)
+            if (Array.isArray(parsed)) arr = parsed
+          } catch {
+            arr = []
+          }
+        }
+
+        const cleaned = arr
+          .filter((v) => typeof v === 'string')
+          .map((v) => (v as string).trim())
+          .filter(Boolean)
+          .filter((v) => /^\d{4}-\d{2}-\d{2}$/.test(v))
+
+        cleaned.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+
+        ;(data as any).llrpExpiryDates = cleaned.length > 0 ? JSON.stringify(cleaned) : null
+        data.llrpExpiry = cleaned.length > 0 ? new Date(cleaned[0]) : null
       }
       
       // Convert date strings to Date objects for expiry date fields
@@ -469,13 +634,158 @@ export async function PATCH(
       )
     }
 
-    // Log what we're trying to update (for debugging)
-    console.log('Updating installer:', installerId)
-    console.log('Update data keys:', Object.keys(cleanedData))
-    console.log('Update data:', JSON.stringify(cleanedData, null, 2))
-
     try {
-      // Admins (NextAuth session) can update immediately.
+      /**
+       * IMPORTANT:
+       * If an installer token is present, we treat this request as an installer submission
+       * and create a pending change request, even if a NextAuth admin session cookie exists
+       * (e.g. same browser previously used the admin dashboard).
+       */
+      const token = getInstallerTokenFromRequest(request)
+      if (token) {
+        let payload
+        try {
+          payload = verifyInstallerToken(token)
+        } catch {
+          return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
+        }
+
+        if (!payload.installerId || payload.installerId !== installerId) {
+          return NextResponse.json(
+            { error: 'Forbidden', details: 'Token does not match installer' },
+            { status: 403 }
+          )
+        }
+
+        // Load current installer state so we can create a true diff (avoid "changed everything" requests).
+        const currentInstaller = await prisma.installer.findUnique({ where: { id: installerId } })
+        if (!currentInstaller) {
+          return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+        }
+        if ((currentInstaller.status || '').toLowerCase() === 'deactive') {
+          return NextResponse.json(
+            { error: 'Account deactivated', details: 'This installer account is deactivated.' },
+            { status: 403 }
+          )
+        }
+
+        // Only allow a safe whitelist of fields from installer submissions
+        const filtered: Record<string, any> = {}
+        for (const [key, value] of Object.entries(cleanedData)) {
+          if (INSTALLER_ALLOWED_UPDATE_FIELDS.has(key)) {
+            // Ensure JSON-serializable values for Prisma Json field
+            if (value instanceof Date) filtered[key] = value.toISOString()
+            else filtered[key] = value
+          }
+        }
+
+        // Reduce to only actual changes vs current installer
+        const diffOnly: Record<string, any> = {}
+        for (const [key, value] of Object.entries(filtered)) {
+          // @ts-ignore - dynamic access
+          const currentVal = (currentInstaller as any)[key]
+          if (!isEqualForChangeRequest(key, value, currentVal)) {
+            diffOnly[key] = value
+          }
+        }
+
+        if (Object.keys(diffOnly).length === 0) {
+          return NextResponse.json(
+            {
+              error: 'No changes detected',
+              details: 'Nothing changed compared to the saved profile.',
+            },
+            { status: 400 }
+          )
+        }
+
+        // Determine which sections changed
+        const changedSections = getSectionsFromFields(Object.keys(diffOnly))
+
+        const source = approvalSource || 'profile'
+
+        // If there's already a pending request for this installer+source, merge into it (prevents duplicates).
+        const existingPending = await prisma.installerChangeRequest.findFirst({
+          where: { installerId, status: 'pending', source },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        if (existingPending) {
+          const prevPayload = (existingPending.payload || {}) as Record<string, any>
+          const mergedPayload = { ...prevPayload, ...diffOnly }
+
+          // Re-diff merged payload vs current installer to drop any accidental/no-op keys.
+          const mergedDiff: Record<string, any> = {}
+          for (const [key, value] of Object.entries(mergedPayload)) {
+            // @ts-ignore
+            const currentVal = (currentInstaller as any)[key]
+            if (!isEqualForChangeRequest(key, value, currentVal)) mergedDiff[key] = value
+          }
+          if (Object.keys(mergedDiff).length === 0) {
+            return NextResponse.json(
+              {
+                error: 'No changes detected',
+                details: 'Nothing changed compared to the saved profile.',
+              },
+              { status: 400 }
+            )
+          }
+
+          const prevSections = Array.isArray(existingPending.sections) ? (existingPending.sections as any[]) : []
+          const mergedSections = Array.from(
+            new Set([...(prevSections as string[]), ...getSectionsFromFields(Object.keys(mergedDiff))])
+          ).filter(Boolean)
+
+          const [, updatedRequest] = await prisma.$transaction([
+            prisma.installer.updateMany({
+              where: { id: installerId, status: 'active' },
+              data: { status: 'pending' },
+            }),
+            prisma.installerChangeRequest.update({
+              where: { id: existingPending.id },
+              data: {
+                payload: mergedDiff as any,
+                sections: mergedSections.length > 0 ? (mergedSections as any) : null,
+                updatedAt: new Date(),
+              },
+            }),
+          ])
+
+          return NextResponse.json({
+            success: true,
+            pendingApproval: true,
+            requestId: updatedRequest.id,
+            message: 'Changes updated and submitted for admin approval',
+          })
+        }
+
+        const [, changeRequest] = await prisma.$transaction([
+          // Flip installer status to pending only if currently active (do not overwrite other statuses).
+          prisma.installer.updateMany({
+            where: { id: installerId, status: 'active' },
+            data: { status: 'pending' },
+          }),
+          prisma.installerChangeRequest.create({
+            data: {
+              installerId,
+              status: 'pending',
+              source,
+              sections: changedSections.length > 0 ? changedSections : null,
+              payload: diffOnly,
+              submittedBy: (payload.email || payload.username || null) as string | null,
+            } as any,
+          }),
+        ])
+
+        return NextResponse.json({
+          success: true,
+          pendingApproval: true,
+          requestId: changeRequest.id,
+          message: 'Changes submitted for admin approval',
+        })
+      }
+
+      // No installer token: allow admins (NextAuth session) to update immediately.
       let adminEmail: string | null = null
       try {
         const session = await getServerSession(authOptions)
@@ -484,82 +794,56 @@ export async function PATCH(
           const admin = await prisma.admin.findUnique({ where: { email } })
           if (admin?.isActive) adminEmail = email
         }
-      } catch (e) {
-        // ignore session errors and fall back to installer token auth
+      } catch {
+        // ignore session errors
       }
 
-      if (adminEmail) {
-        const installer = await prisma.installer.update({
-          where: { id: installerId },
-          data: cleanedData,
-        })
-        console.log('Installer updated successfully (admin)')
-        return NextResponse.json({ installer })
-      }
-
-      // Installers must submit updates as a pending change request (requires token).
-      const token = getInstallerTokenFromRequest(request)
-      if (!token) {
+      if (!adminEmail) {
         return NextResponse.json(
           { error: 'Unauthorized', details: 'Missing installer token' },
           { status: 401 }
         )
       }
 
-      let payload
-      try {
-        payload = verifyInstallerToken(token)
-      } catch {
-        return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
-      }
-
-      if (!payload.installerId || payload.installerId !== installerId) {
-        return NextResponse.json(
-          { error: 'Forbidden', details: 'Token does not match installer' },
-          { status: 403 }
-        )
-      }
-
-      // Only allow a safe whitelist of fields from installer submissions
-      const filtered: Record<string, any> = {}
-      for (const [key, value] of Object.entries(cleanedData)) {
-        if (INSTALLER_ALLOWED_UPDATE_FIELDS.has(key)) {
-          // Ensure JSON-serializable values for Prisma Json field
-          if (value instanceof Date) {
-            filtered[key] = value.toISOString()
-          } else {
-            filtered[key] = value
+      // If admin is deactivating the installer, append a system remark reminding to disable external access.
+      // This helps the Remarks page act as an internal checklist.
+      if (cleanedData.status && String(cleanedData.status).toLowerCase() === 'deactive') {
+        const currentInstaller = await prisma.installer.findUnique({
+          where: { id: installerId },
+          select: { status: true, remarks: true, firstName: true, lastName: true, email: true },
+        })
+        const baseRemarksRaw = (cleanedData.remarks !== undefined ? cleanedData.remarks : currentInstaller?.remarks) as any
+        let remarksArr: Array<{ date?: string | null; note: string; createdAt: string }> = []
+        if (typeof baseRemarksRaw === 'string' && baseRemarksRaw.trim() !== '') {
+          try {
+            const parsed = JSON.parse(baseRemarksRaw)
+            if (Array.isArray(parsed)) remarksArr = parsed as any
+            else remarksArr = []
+          } catch {
+            remarksArr = [{ note: String(baseRemarksRaw), createdAt: new Date().toISOString() }]
           }
+        }
+
+        const alreadyHasSystemNote = remarksArr.some((r) => {
+          const note = (r as any)?.note
+          return typeof note === 'string' && note.startsWith('SYSTEM: Installer deactivated.')
+        })
+
+        // Add the system note if missing (even if installer was already deactive from a previous version)
+        if (!alreadyHasSystemNote) {
+          const installerName = `${currentInstaller?.firstName || ''} ${currentInstaller?.lastName || ''}`.trim()
+          const installerEmail = currentInstaller?.email || ''
+          const note = `SYSTEM: Installer deactivated. Please deactivate this installer’s ProjectForce account and disable access for any associated staff/team members. (${installerName || installerId}${installerEmail ? ` • ${installerEmail}` : ''})`
+          remarksArr.unshift({ note, createdAt: new Date().toISOString() })
+          cleanedData.remarks = JSON.stringify(remarksArr)
         }
       }
 
-      if (Object.keys(filtered).length === 0) {
-        return NextResponse.json(
-          {
-            error: 'No allowed fields to update',
-            details: 'The submitted changes do not contain any fields that require approval.',
-          },
-          { status: 400 }
-        )
-      }
-
-      const changeRequest = await prisma.installerChangeRequest.create({
-        data: {
-          installerId,
-          status: 'pending',
-          source: approvalSource,
-          payload: filtered,
-          submittedBy: (payload.email || payload.username || null) as string | null,
-        },
+      const installer = await prisma.installer.update({
+        where: { id: installerId },
+        data: cleanedData,
       })
-
-      console.log('Installer change request created:', changeRequest.id)
-      return NextResponse.json({
-        success: true,
-        pendingApproval: true,
-        requestId: changeRequest.id,
-        message: 'Changes submitted for admin approval',
-      })
+      return NextResponse.json({ installer })
     } catch (dbError: any) {
       // Handle database-specific errors
       console.error('Database error updating installer:', dbError)

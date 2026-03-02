@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { generateUniqueReferralCode } from '@/lib/referrals'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // Require authenticated dashboard user (Admin or Moderator) for installer list
+    const session = await getServerSession(authOptions)
+    const email = session?.user?.email?.toLowerCase()
+    if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const admin = (await prisma.admin.findUnique({
+      where: { email },
+    })) as any
+    if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+
     const { searchParams } = new URL(request.url)
     
     const status = searchParams.get('status')
@@ -17,7 +29,11 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const where: any = {}
 
-    if (status && status !== 'all') {
+    // Moderators can ONLY see "Qualified" + "Pending" + "Not Qualified" installers
+    // (status in ["passed", "pending", "failed"])
+    if (admin.role === 'MODERATOR') {
+      where.status = { in: ['passed', 'pending', 'failed'] }
+    } else if (status && status !== 'all') {
       where.status = status
     }
 
@@ -102,14 +118,23 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      const toYMDUTC = (d: Date) => {
+        const y = d.getUTCFullYear()
+        const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+        const dd = String(d.getUTCDate()).padStart(2, '0')
+        return `${y}-${m}-${dd}`
+      }
+
       const cleaned = raw
         .filter((v) => typeof v === 'string')
         .map((v) => (v as string).trim())
         .filter(Boolean)
         .map((v) => {
+          // If already date-only, keep it (prevents timezone shifts)
+          if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
           const d = new Date(v)
           if (Number.isNaN(d.getTime())) return null
-          return d.toISOString().split('T')[0]
+          return toYMDUTC(d)
         })
         .filter(Boolean) as string[]
 
@@ -123,6 +148,9 @@ export async function POST(request: NextRequest) {
 
     const workersCompCertDates = parseDateArray(data.workersCompExemExpiryDates)
     const earliestWorkersCompCert = workersCompCertDates.length > 0 ? workersCompCertDates[0] : null
+
+    const llrpDates = parseDateArray((data as any).llrpExpiryDates ?? data.llrpExpiry)
+    const earliestLLRP = llrpDates.length > 0 ? llrpDates[0] : null
 
     const installerCreateData: any = {
         firstName: data.firstName,
@@ -168,7 +196,8 @@ export async function POST(request: NextRequest) {
         canPassBackgroundCheck: data.canPassBackgroundCheck ?? null,
         backgroundCheckDetails: data.backgroundCheckDetails,
         // Insurance & Certificate Expiry Dates
-        llrpExpiry: parseDate(data.llrpExpiry),
+        llrpExpiryDates: llrpDates.length > 0 ? JSON.stringify(llrpDates) : null,
+        llrpExpiry: earliestLLRP ? new Date(earliestLLRP) : parseDate(data.llrpExpiry),
         btrExpiry: parseDate(data.btrExpiry),
         workersCompExemExpiryDates: workersCompCertDates.length > 0 ? JSON.stringify(workersCompCertDates) : null,
         workersCompExemExpiry: earliestWorkersCompCert ? new Date(earliestWorkersCompCert) : parseDate(data.workersCompExemExpiry),

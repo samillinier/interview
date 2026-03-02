@@ -27,11 +27,12 @@ import {
   Briefcase,
   ExternalLink
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Dancing_Script } from 'next/font/google'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 // All document types now support multiple uploads
 const MULTI_DOCUMENT_TYPES = new Set() // Empty set - all types are multi now
@@ -131,6 +132,7 @@ const DOCUMENT_TYPES = [
 
 export default function AttachmentsPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [documents, setDocuments] = useState<Document[]>([])
@@ -197,7 +199,9 @@ export default function AttachmentsPage() {
       localStorage.setItem('installerId', installerId)
 
       // Load installer profile
-      const profileResponse = await fetch(`/api/installers/${installerId}`)
+      const profileResponse = await fetch(`/api/installers/${installerId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       
       // Check if response is JSON before parsing
       const profileContentType = profileResponse.headers.get('content-type')
@@ -729,14 +733,15 @@ export default function AttachmentsPage() {
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 py-6">
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
             <h1 className="text-3xl font-bold text-slate-900 mb-1">Attachments</h1>
             <p className="text-sm text-slate-500">Upload and manage your required documents</p>
           </div>
         </header>
 
-        <main className="p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {success && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -843,32 +848,7 @@ export default function AttachmentsPage() {
                             </span>
                           </div>
                         )}
-                        {hasVerificationLinkFeature && existingDoc?.verificationLinkStatus && (
-                          <div className="mt-2 flex items-center gap-2">
-                            {existingDoc?.verificationLink && (
-                              <a
-                                href={existingDoc.verificationLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-brand-green hover:underline flex items-center gap-1"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                Verification Link
-                              </a>
-                            )}
-                            <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-                              existingDoc.verificationLinkStatus === 'active'
-                                ? 'bg-green-100 text-green-700' 
-                                : existingDoc.verificationLinkStatus === 'expired'
-                                ? 'bg-red-100 text-red-700'
-                                : existingDoc.verificationLinkStatus === 'pending'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {existingDoc.verificationLinkStatus}
-                            </span>
-                          </div>
-                        )}
+                        {/* Verification Link is admin-only; hidden in installer portal */}
                       </div>
                     </div>
                   </div>
@@ -877,10 +857,12 @@ export default function AttachmentsPage() {
                     <div className="space-y-3">
                       {matchingDocs.map((doc) => (
                           <div key={doc.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                               <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-slate-900 truncate">{doc.name || doc.fileName}</p>
+                                <p className="font-medium text-slate-900 whitespace-normal break-words sm:truncate sm:whitespace-nowrap">
+                                  {doc.name || doc.fileName}
+                                </p>
                                 <div className="flex flex-wrap items-center gap-2 mt-1">
                                   {doc.fileSize && (
                                     <p className="text-xs text-slate-500">
@@ -901,17 +883,7 @@ export default function AttachmentsPage() {
                                     })()}
                                   </p>
                                 )}
-                                  {hasVerificationLinkFeature && doc.verificationLink && (
-                                    <a
-                                      href={doc.verificationLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-brand-green hover:underline inline-flex items-center gap-1"
-                                    >
-                                      <ExternalLink className="w-3 h-3" />
-                                      Verification Link
-                                    </a>
-                                  )}
+                                  {/* Verification Link is admin-only; hidden in installer portal */}
                                 </div>
                               </div>
                             </div>

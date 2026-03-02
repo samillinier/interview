@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   description: 'Automated prescreening system for flooring installers powered by AI',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -18,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-white text-primary-900 antialiased font-sans">
+      <body className="bg-white text-primary-900 antialiased font-sans overflow-x-hidden">
         <AuthProvider>
           {children}
         </AuthProvider>
