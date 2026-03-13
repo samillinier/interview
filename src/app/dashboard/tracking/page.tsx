@@ -947,55 +947,6 @@ export default function TrackingPage() {
               </table>
             </div>
             
-            {/* Expanded Details */}
-            {filteredItems.map((item) => (
-              expanded[item.id] && (
-                <motion.div
-                  key={`details-${item.id}`}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="border-t border-slate-200 bg-slate-50 px-6 py-4"
-                >
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {item.description && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Description</p>
-                        <p className="text-sm text-slate-700">{item.description}</p>
-                      </div>
-                    )}
-                    {item.notes && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Notes</p>
-                        <p className="text-sm text-slate-700">{item.notes}</p>
-                      </div>
-                    )}
-                    {item.category && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Category</p>
-                        <p className="text-sm text-slate-700">{item.category}</p>
-                      </div>
-                    )}
-                    {item.resolvedBy && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Resolved By</p>
-                        <p className="text-sm text-slate-700">{item.resolvedBy}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Created</p>
-                      <p className="text-sm text-slate-700">{new Date(item.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    {item.resolvedAt && (
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Resolved</p>
-                        <p className="text-sm text-slate-700">{new Date(item.resolvedAt).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            ))}
           </div>
         </div>
       </main>
