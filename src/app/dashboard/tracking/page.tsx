@@ -95,6 +95,7 @@ export default function TrackingPage() {
     itemTitle: '',
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [newItem, setNewItem] = useState({
     installerId: '',
     type: 'issue',
@@ -122,6 +123,12 @@ export default function TrackingPage() {
       } else {
         fetchTrackingItems()
         fetchInstallers()
+        fetchPendingApprovalsCount()
+        // Refresh count every 30 seconds
+        const interval = setInterval(() => {
+          fetchPendingApprovalsCount()
+        }, 30000)
+        return () => clearInterval(interval)
       }
     }
   }, [sessionStatus, router, session, statusFilter, typeFilter, priorityFilter])
@@ -133,6 +140,22 @@ export default function TrackingPage() {
       setInstallers(data.installers || [])
     } catch (err) {
       console.error('Error fetching installers:', err)
+    }
+  }
+
+  const fetchPendingApprovalsCount = async () => {
+    try {
+      const res = await fetch('/api/admin/change-requests/count')
+      if (res.status === 401) {
+        setPendingApprovalsCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setPendingApprovalsCount(data.count || 0)
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -421,7 +444,16 @@ export default function TrackingPage() {
                 }`}
               >
                 <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Approvals</span>}
+                {sidebarOpen && (
+                  <div className="flex items-center gap-2">
+                    <span>Approvals</span>
+                    {pendingApprovalsCount > 0 && (
+                      <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                        {pendingApprovalsCount}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
             )}
             {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
@@ -682,159 +714,176 @@ export default function TrackingPage() {
                         : '-'
                       
                       return (
-                        <motion.tr
-                          key={item.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-emerald-50/30 transition-all duration-200 group"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-4">
-                              <div className="relative">
-                                <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md bg-slate-200 flex items-center justify-center">
-                                  {item.Installer ? (
-                                    <>
-                                      {item.Installer.photoUrl ? (
-                                        <Image
-                                          src={item.Installer.photoUrl}
-                                          alt={installerName}
-                                          width={48}
-                                          height={48}
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            e.currentTarget.style.display = 'none'
-                                          }}
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-brand-green text-white font-bold text-sm">
-                                          {getInitials(item.Installer.firstName, item.Installer.lastName)}
-                                        </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-slate-300 text-white font-bold text-sm">
-                                      ?
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
-                                  {installerName}
-                                </p>
-                                {installerCompany && (
-                                  <p className="text-sm text-slate-500">{installerCompany}</p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {(() => {
-                              const statusBadge = getStatusBadge(item.status)
-                              const StatusIcon = statusBadge.icon
-                              return (
-                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}>
-                                  <StatusIcon className="w-3 h-3" />
-                                  {statusBadge.label}
-                                </span>
-                              )
-                            })()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${pipeline.bg} ${pipeline.text} ${pipeline.border}`}>
-                              <PipelineIcon className="w-3 h-3" />
-                              {pipeline.label}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            {contactName !== '-' ? (
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">{contactName}</p>
-                                <p className="text-xs text-slate-500">{installerEmail}</p>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-slate-600">{item.description || item.title}</span>
-                              <button
-                                onClick={() => {
-                                  setEditingItem(item.id)
-                                  setEditNotes(item.notes || '')
-                                  setEditStatus(item.status)
-                                }}
-                                className="p-1 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-2">
-                              {editingItem === item.id ? (
-                                <div className="flex flex-col gap-2">
-                                  <select
-                                    value={editStatus}
-                                    onChange={(e) => setEditStatus(e.target.value)}
-                                    className="px-3 py-1 text-sm border border-slate-300 rounded-lg"
-                                  >
-                                    <option value="pending">Pending</option>
-                                    <option value="ongoing">Ongoing</option>
-                                    <option value="resolved">Resolved</option>
-                                    <option value="solved">Solved</option>
-                                  </select>
-                                  <textarea
-                                    value={editNotes}
-                                    onChange={(e) => setEditNotes(e.target.value)}
-                                    placeholder="Add notes..."
-                                    className="px-3 py-1 text-sm border border-slate-300 rounded-lg w-48"
-                                    rows={2}
-                                  />
-                                  <div className="flex gap-1">
-                                    <button
-                                      onClick={() => handleUpdateStatus(item.id, editStatus, editNotes)}
-                                      className="px-3 py-1 text-xs bg-brand-green text-white rounded-lg hover:bg-brand-green-dark"
-                                    >
-                                      Save
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setEditingItem(null)
-                                        setEditNotes('')
-                                        setEditStatus('pending')
-                                      }}
-                                      className="px-3 py-1 text-xs bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
-                                    >
-                                      Cancel
-                                    </button>
+                        <>
+                          <motion.tr
+                            key={item.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-emerald-50/30 transition-all duration-200 group"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                <div className="relative">
+                                  <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md bg-slate-200 flex items-center justify-center">
+                                    {item.Installer ? (
+                                      <>
+                                        {item.Installer.photoUrl ? (
+                                          <Image
+                                            src={item.Installer.photoUrl}
+                                            alt={installerName}
+                                            width={48}
+                                            height={48}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              e.currentTarget.style.display = 'none'
+                                            }}
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center bg-brand-green text-white font-bold text-sm">
+                                            {getInitials(item.Installer.firstName, item.Installer.lastName)}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-slate-300 text-white font-bold text-sm">
+                                        ?
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => setExpanded({ ...expanded, [item.id]: !expanded[item.id] })}
-                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                                    title={expanded[item.id] ? 'Collapse' : 'Expand'}
-                                  >
-                                    <ChevronDown className={`w-4 h-4 transition-transform ${expanded[item.id] ? 'rotate-180' : ''}`} />
-                                  </button>
-                                  {((session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR') && (
-                                    <button
-                                      onClick={() => handleDeleteClick(item.id, item.title)}
-                                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                      title="Delete"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
+                                <div>
+                                  <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
+                                    {installerName}
+                                  </p>
+                                  {installerCompany && (
+                                    <p className="text-sm text-slate-500">{installerCompany}</p>
                                   )}
-                                </>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {(() => {
+                                const statusBadge = getStatusBadge(item.status)
+                                const StatusIcon = statusBadge.icon
+                                return (
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}>
+                                    <StatusIcon className="w-3 h-3" />
+                                    {statusBadge.label}
+                                  </span>
+                                )
+                              })()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${pipeline.bg} ${pipeline.text} ${pipeline.border}`}>
+                                <PipelineIcon className="w-3 h-3" />
+                                {pipeline.label}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {contactName !== '-' ? (
+                                <div>
+                                  <p className="text-sm font-medium text-slate-900">{contactName}</p>
+                                  <p className="text-xs text-slate-500">{installerEmail}</p>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">-</span>
                               )}
-                            </div>
-                          </td>
-                        </motion.tr>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-slate-600">{new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                <button
+                                  onClick={() => {
+                                    setEditingItem(item.id)
+                                    setEditNotes(item.notes || '')
+                                    setEditStatus(item.status)
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-2">
+                                {editingItem === item.id ? (
+                                  <div className="flex flex-col gap-2">
+                                    <select
+                                      value={editStatus}
+                                      onChange={(e) => setEditStatus(e.target.value)}
+                                      className="px-3 py-1 text-sm border border-slate-300 rounded-lg"
+                                    >
+                                      <option value="pending">Pending</option>
+                                      <option value="ongoing">Ongoing</option>
+                                      <option value="resolved">Resolved</option>
+                                      <option value="solved">Solved</option>
+                                    </select>
+                                    <textarea
+                                      value={editNotes}
+                                      onChange={(e) => setEditNotes(e.target.value)}
+                                      placeholder="Add notes..."
+                                      className="px-3 py-1 text-sm border border-slate-300 rounded-lg w-48"
+                                      rows={2}
+                                    />
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => handleUpdateStatus(item.id, editStatus, editNotes)}
+                                        className="px-3 py-1 text-xs bg-brand-green text-white rounded-lg hover:bg-brand-green-dark"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingItem(null)
+                                          setEditNotes('')
+                                          setEditStatus('pending')
+                                        }}
+                                        className="px-3 py-1 text-xs bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => setExpanded({ ...expanded, [item.id]: !expanded[item.id] })}
+                                      className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                      title={expanded[item.id] ? 'Collapse' : 'Expand'}
+                                    >
+                                      <ChevronDown className={`w-4 h-4 transition-transform ${expanded[item.id] ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    {((session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR') && (
+                                      <button
+                                        onClick={() => handleDeleteClick(item.id, item.title)}
+                                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </motion.tr>
+                          {expanded[item.id] && item.description && (
+                            <motion.tr
+                              key={`${item.id}-description`}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                            >
+                              <td colSpan={6} className="px-6 py-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex-shrink-0 whitespace-nowrap">DESCRIPTION:</span>
+                                  <span className="text-sm text-slate-700">{item.description}</span>
+                                </div>
+                              </td>
+                            </motion.tr>
+                          )}
+                        </>
                       )
                     })
                   )}
