@@ -1003,6 +1003,7 @@ export default function TrackingPage() {
                         priority: 'normal',
                         category: '',
                         notes: '',
+                        metadata: {},
                       })
                     }}
                     className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -1314,6 +1315,7 @@ export default function TrackingPage() {
                       priority: 'normal',
                       category: '',
                       notes: '',
+                      metadata: {},
                     })
                   }}
                   className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors font-medium text-base"
