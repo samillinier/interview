@@ -20,9 +20,11 @@ import {
   Bell,
   CreditCard,
   FileText,
+  Paperclip,
   Users,
   Building2,
-  ExternalLink
+  ExternalLink,
+  HelpCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -218,6 +220,13 @@ export default function InstallerJobDetailPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
+            href="/installer/agreements"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agreements</span>}
+          </Link>
+          <Link
             href="/installer/jobs"
             className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
           >
@@ -228,7 +237,7 @@ export default function InstallerJobDetailPage() {
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <FileText className="w-5 h-5 flex-shrink-0" />
+            <Paperclip className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Attachments</span>}
           </Link>
           <Link
@@ -260,6 +269,13 @@ export default function InstallerJobDetailPage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 

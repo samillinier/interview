@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Sparkles, LogOut, ChevronDown, Play } from 'lucide-react'
+import { ArrowRight, LogOut, ChevronDown, Play } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
 const rotatingWords = [
@@ -117,20 +117,9 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-20 lg:py-32 grid-pattern bg-white">
+      <section className="pt-20 pb-32 lg:pt-32 lg:pb-48 grid-pattern bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 via-pink-50 to-orange-50 px-4 py-2 rounded-full text-sm font-semibold mb-6 border border-violet-100/50"
-            >
-              <Sparkles className="w-4 h-4 text-violet-500" />
-              <span className="bg-gradient-to-r from-violet-600 via-pink-500 to-orange-500 bg-clip-text text-transparent">
-                AI-Powered Prescreening
-              </span>
-            </motion.div>
-
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -204,14 +193,10 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <section className="pt-16 pb-8 bg-brand-green overflow-hidden flex-1">
+      <section className="pb-8 bg-brand-green overflow-hidden flex-1">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-white/90">
-            <p className="mb-4">Floor Interior Service - AI-Powered Prescreening System</p>
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-              <Link href="/interview" className="hover:text-white transition-colors">
-                Start Interview
-              </Link>
               {session && (
                 <Link href="/dashboard" className="hover:text-white transition-colors">
                   Admin Dashboard

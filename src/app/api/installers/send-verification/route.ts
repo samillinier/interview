@@ -80,11 +80,11 @@ export async function POST(request: NextRequest) {
     const isDevelopment = process.env.NODE_ENV === 'development'
     const baseUrl = isDevelopment 
       ? 'http://localhost:3000'
-      : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service.vercel.app')
+      : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app')
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(installer.email)}`
     
-    // Logo URL - using hosted logo from itswhitehat.com
-    const logoUrl = process.env.EMAIL_LOGO_URL || 'https://itswhitehat.com/wp-content/uploads/2026/02/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.webp'
+    // Use URL for logo to prevent email clipping
+    const logoUrl = process.env.EMAIL_LOGO_URL || `${baseUrl}/logo.png`
 
     // Send email with verification link
     const resendApiKey = process.env.RESEND_API_KEY

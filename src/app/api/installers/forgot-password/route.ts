@@ -61,8 +61,10 @@ export async function POST(request: NextRequest) {
     const resendApiKey = process.env.RESEND_API_KEY
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
-    // Use the same logo URL as verification email
-    const logoUrl = process.env.EMAIL_LOGO_URL || 'https://itswhitehat.com/wp-content/uploads/2026/02/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.webp'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app'
+    
+    // Use URL for logo to prevent email clipping
+    const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
 
     if (resendApiKey) {
       try {

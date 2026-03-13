@@ -175,7 +175,11 @@ export async function PATCH(
       data: {
         ...(name !== undefined && { name }),
         ...(isActive !== undefined && { isActive }),
-        ...(role !== undefined && { role: role === 'MODERATOR' ? 'MODERATOR' : 'ADMIN' }),
+        ...(role !== undefined && { 
+          role: role === 'MODERATOR' ? 'MODERATOR' : 
+                role === 'MANAGER' ? 'MANAGER' : 
+                'ADMIN' 
+        }),
       },
       select: {
         id: true,

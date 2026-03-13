@@ -64,8 +64,32 @@ export async function POST(
           type,
           name: name || 'Document',
           url,
+          verified: false, // Documents need admin verification
         },
       })
+
+      // Create a change request for admin verification
+      try {
+        await prisma.installerChangeRequest.create({
+          data: {
+            installerId,
+            payload: {
+              action: 'verify_document',
+              documentId: document.id,
+              documentType: type,
+              documentName: name || 'Document',
+              documentUrl: url,
+            },
+            sections: ['Attachments'],
+            status: 'pending',
+            source: 'attachments',
+          },
+        })
+      } catch (changeRequestError) {
+        console.error('Failed to create change request for document:', changeRequestError)
+        // Don't fail the upload if change request creation fails
+      }
+
       return NextResponse.json({ document })
     }
 
@@ -143,8 +167,32 @@ export async function POST(
         type,
         name: file.name,
         url: fileUrl,
+        verified: false, // Documents need admin verification
       },
     })
+
+    // Create a change request for admin verification
+    try {
+      await prisma.installerChangeRequest.create({
+        data: {
+          installerId,
+          payload: {
+            action: 'verify_document',
+            documentId: document.id,
+            documentType: type,
+            documentName: file.name,
+            documentUrl: fileUrl,
+          },
+          sections: ['Attachments'],
+          status: 'pending',
+          source: 'attachments',
+        },
+      })
+    } catch (changeRequestError) {
+      console.error('Failed to create change request for document:', changeRequestError)
+      // Don't fail the upload if change request creation fails
+    }
+
     return NextResponse.json({ document })
   } catch (error: any) {
     console.error('Error uploading document:', error)

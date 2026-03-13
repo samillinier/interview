@@ -23,7 +23,9 @@ import {
   RefreshCw,
   Send,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  HelpCircle
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -65,6 +67,10 @@ export default function NotificationsPage() {
   const [notificationCount, setNotificationCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+  }
 
   useEffect(() => {
     checkAuthAndLoadData()
@@ -491,6 +497,13 @@ export default function NotificationsPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
+            href="/installer/agreements"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agreements</span>}
+          </Link>
+          <Link
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -527,6 +540,13 @@ export default function NotificationsPage() {
               </div>
             )}
           </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -548,7 +568,7 @@ export default function NotificationsPage() {
           </div>
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}` }
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Logout</span>}
@@ -763,7 +783,7 @@ export default function NotificationsPage() {
                     animate={{ opacity: 1 }}
                     className="space-y-4"
                   >
-                    {filteredNotifications.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((message) => {
+                    {filteredNotifications.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((message, index) => {
                       const isFromAdmin = !message.senderId || message.senderId === 'admin' || message.senderType === 'admin'
                       const attachmentUrl = message.attachmentUrl || null
                       const attachmentName = message.attachmentName || null
@@ -772,21 +792,70 @@ export default function NotificationsPage() {
                           (/\.(png|jpe?g|gif|webp|svg)$/i.test(attachmentName || '') ||
                             /\.(png|jpe?g|gif|webp|svg)(\?|#|$)/i.test(attachmentUrl))
                       )
+                      const showAvatar = index === 0 || 
+                        filteredNotifications[index - 1]?.senderId !== message.senderId ||
+                        filteredNotifications[index - 1]?.senderType !== message.senderType
                       return (
                         <motion.div
                           key={message.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`flex ${isFromAdmin ? 'justify-start' : 'justify-end'}`}
+                          className={`flex ${isFromAdmin ? 'justify-start' : 'justify-end'} items-end gap-3` }
                         >
-                          <div className={`max-w-[70%] ${!isFromAdmin ? '' : 'flex items-start gap-3'}`}>
-                            {isFromAdmin && (
-                              <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-brand-green">
-                                <User className="w-6 h-6 text-white m-auto mt-2" />
+                          {/* Avatar for admin messages (company logo) */}
+                          {isFromAdmin && (
+                            <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-white shadow-md">
+                                <Image
+                                  src={logo}
+                                  alt="Company Logo"
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
                               </div>
-                            )}
-                            <div>
-                              <div className={`rounded-3xl px-6 py-5 shadow-lg ${
+                            </div>
+                          )}
+
+                          {/* Avatar for installer messages (installer photo) */}
+                          {!isFromAdmin && (
+                            <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
+                                {installer?.photoUrl ? (
+                                  <Image
+                                    src={installer.photoUrl}
+                                    alt={`${installer.firstName || ''} ${installer.lastName || ''}`}
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover relative z-10"
+                                    onError={(e) => {
+                                      const parent = e.currentTarget.parentElement
+                                      if (parent) {
+                                        const initialsDiv = parent.querySelector('.initials-fallback')
+                                        if (initialsDiv) {
+                                          (initialsDiv as HTMLElement).style.display = 'flex'
+                                        }
+                                      }
+                                      e.currentTarget.style.display = 'none'
+                                    }}
+                                  />
+                                ) : null}
+                                <div className={`w-full h-full flex items-center justify-center initials-fallback ${
+                                  installer?.photoUrl ? 'absolute inset-0 z-0' : ''
+                                }`} style={{ display: installer?.photoUrl ? 'none' : 'flex' }}>
+                                  <span className="text-white font-bold text-sm">
+                                    {installer ? getInitials(installer.firstName || '', installer.lastName || '') : 'I'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="max-w-[70%]">
+                            <div className={`rounded-3xl px-6 py-5 shadow-lg ${
                                 isFromAdmin
                                   ? 'bg-gradient-to-br from-slate-100 to-slate-50 text-slate-900 border-2 border-slate-200 rounded-tl-sm hover:border-slate-300 transition-colors'
                                   : 'bg-gradient-to-br from-brand-green to-brand-green-dark text-white rounded-tr-sm'
@@ -863,7 +932,6 @@ export default function NotificationsPage() {
                                 </span>
                               </div>
                             </div>
-                          </div>
                         </motion.div>
                       )
                     })}

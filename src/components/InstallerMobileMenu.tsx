@@ -14,6 +14,7 @@ import {
   Paperclip,
   User,
   X,
+  HelpCircle,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -40,6 +41,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       { href: '/installer/payment', label: 'Account', icon: CreditCard },
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
+      { href: '/installer/help', label: 'Help', icon: HelpCircle },
     ],
     [notificationCount]
   )

@@ -14,6 +14,8 @@ import {
   X,
   Loader2,
   Link as LinkIcon,
+  FileText,
+  HelpCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
@@ -156,6 +158,10 @@ export default function InstallerReferralsPage() {
             <User className="w-5 h-5" />
             {sidebarOpen && <span>Profile</span>}
           </Link>
+          <Link href="/installer/agreements" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+            <FileText className="w-5 h-5" />
+            {sidebarOpen && <span>Agreements</span>}
+          </Link>
           <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Paperclip className="w-5 h-5" />
             {sidebarOpen && <span>Attachments</span>}
@@ -180,6 +186,10 @@ export default function InstallerReferralsPage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link href="/installer/help" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+            <HelpCircle className="w-5 h-5" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 

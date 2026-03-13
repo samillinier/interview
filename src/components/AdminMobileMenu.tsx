@@ -29,6 +29,7 @@ export function AdminMobileMenu({ pathname }: Props) {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
 
   const isDetailPage =
     pathname.startsWith('/dashboard/installers/')
@@ -57,6 +58,32 @@ export function AdminMobileMenu({ pathname }: Props) {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    const loadMessages = async () => {
+      try {
+        const res = await fetch('/api/notifications?type=message', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const messages = data?.notifications || []
+        // Only count unread messages from installers (not from admin)
+        const unreadCount = messages.filter((m: any) => {
+          const isFromInstaller = !m.senderId || (m.senderId !== 'admin' && m.senderType !== 'admin')
+          return !m.isRead && isFromInstaller
+        }).length
+        if (!cancelled && Number.isFinite(unreadCount)) setUnreadMessagesCount(unreadCount)
+      } catch {
+        // ignore
+      }
+    }
+    loadMessages()
+    const interval = setInterval(loadMessages, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
+
   const items = useMemo(() => {
     const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
     const base = [
@@ -65,7 +92,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-      { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
+      { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ]
@@ -74,7 +101,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       return base.filter((it) => it.href !== '/dashboard/settings')
     }
     return base
-  }, [pendingApprovalsCount, session?.user])
+  }, [pendingApprovalsCount, unreadMessagesCount, session?.user])
 
   const isActive = (href: string, match?: (p: string) => boolean) => {
     if (match) return match(pathname)
@@ -146,7 +173,7 @@ export function AdminMobileMenu({ pathname }: Props) {
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="flex-1">{it.label}</span>
-                  {it.label === 'Approvals' && (it.badge || 0) > 0 && (
+                  {it.badge !== undefined && (it.badge || 0) > 0 && (
                     <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
                       {it.badge}
                     </span>

@@ -4,6 +4,46 @@ import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/instal
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+async function requireInstallerOrAdmin(request: NextRequest, installerId: string) {
+  // Installer token path
+  const token = getInstallerTokenFromRequest(request)
+  if (token) {
+    try {
+      const payload = verifyInstallerToken(token)
+      if (!payload.installerId || payload.installerId !== installerId) {
+        return { ok: false as const, status: 403, error: 'Forbidden' }
+      }
+      return { ok: true as const, actor: 'installer' as const }
+    } catch {
+      return { ok: false as const, status: 401, error: 'Unauthorized' }
+    }
+  }
+
+  // Admin session path
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email?.toLowerCase()
+  if (!email) return { ok: false as const, status: 401, error: 'Unauthorized' }
+
+  const admin = (await prisma.admin.findUnique({ where: { email } })) as any
+  if (!admin?.isActive) return { ok: false as const, status: 403, error: 'Admin access required' }
+
+  // Moderators can only access Qualified installers (status = "passed", "pending", "failed")
+  if (admin.role === 'MODERATOR') {
+    const installer = await prisma.installer.findUnique({
+      where: { id: installerId },
+      select: { status: true },
+    })
+    if (installer) {
+      const st = String(installer.status || '').toLowerCase()
+      if (!['passed', 'pending', 'failed'].includes(st)) {
+        return { ok: false as const, status: 403, error: 'Forbidden' }
+      }
+    }
+  }
+
+  return { ok: true as const, actor: 'admin' as const }
+}
+
 // PATCH - Update a staff member
 export async function PATCH(
   request: NextRequest,
@@ -12,7 +52,8 @@ export async function PATCH(
   try {
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
-    const { id: installerId, staffId } = resolvedParams
+    const installerId = resolvedParams.id
+    const staffId = resolvedParams.staffId
 
     if (!installerId || !staffId) {
       return NextResponse.json(
@@ -21,125 +62,117 @@ export async function PATCH(
       )
     }
 
-    const body = await request.json()
-    const { firstName, lastName, digitalId, email, phone, location, photoUrl, title, yearsOfExperience, notes } = body
-
-    if (!firstName || !lastName) {
-      return NextResponse.json(
-        { error: 'First name and last name are required' },
-        { status: 400 }
-      )
-    }
-
     // Verify staff member exists and belongs to installer
-    const existingStaff = await prisma.staffMember.findFirst({
-      where: {
-        id: staffId,
-        installerId,
-      },
+    const staffMember = await prisma.staffMember.findUnique({
+      where: { id: staffId },
+      select: { id: true, installerId: true },
     })
 
-    if (!existingStaff) {
+    if (!staffMember) {
       return NextResponse.json(
         { error: 'Staff member not found' },
         { status: 404 }
       )
     }
 
-    // If installer token is present, ALWAYS create a pending change request (even if admin cookie exists).
-    const token = getInstallerTokenFromRequest(request)
-    if (token) {
-      let payload
-      try {
-        payload = verifyInstallerToken(token)
-      } catch {
-        return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
-      }
-
-      if (!payload.installerId || payload.installerId !== installerId) {
-        return NextResponse.json(
-          { error: 'Forbidden', details: 'Token does not match installer' },
-          { status: 403 }
-        )
-      }
-
-      const installer = await prisma.installer.findUnique({ where: { id: installerId }, select: { status: true } })
-      if ((installer?.status || '').toLowerCase() === 'deactive') {
-        return NextResponse.json(
-          { error: 'Account deactivated', details: 'This installer account is deactivated.' },
-          { status: 403 }
-        )
-      }
-
-      // Create change request for staff update + flip installer to pending if active
-      const [, changeRequest] = await prisma.$transaction([
-        prisma.installer.updateMany({
-          where: { id: installerId, status: 'active' },
-          data: { status: 'pending' },
-        }),
-        prisma.installerChangeRequest.create({
-          data: {
-            installerId,
-            status: 'pending',
-            source: 'team-members',
-            sections: ['Team Members'],
-            payload: {
-              action: 'update_staff',
-              staffId,
-              staffData: {
-                firstName,
-                lastName,
-                digitalId: digitalId || null,
-                email: email || null,
-                phone: phone || null,
-                location: location || null,
-                photoUrl: photoUrl || null,
-                title: title || null,
-                yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : null,
-                notes: notes || null,
-              },
-            },
-            submittedBy: (payload.email || payload.username || null) as string | null,
-          },
-        }),
-      ])
-
-      return NextResponse.json({
-        success: true,
-        pendingApproval: true,
-        requestId: changeRequest.id,
-        message: 'Team member update submitted for admin approval',
-      })
+    if (staffMember.installerId !== installerId) {
+      return NextResponse.json(
+        { error: 'Staff member does not belong to this installer' },
+        { status: 403 }
+      )
     }
 
-    // No installer token: admin session can update immediately
-    const session = await getServerSession(authOptions)
-    const adminEmail = session?.user?.email?.toLowerCase()
-    if (!adminEmail) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const admin = await prisma.admin.findUnique({ where: { email: adminEmail } })
-    if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    // Check authentication
+    const authResult = await requireInstallerOrAdmin(request, installerId)
+    if (!authResult.ok) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      )
+    }
 
-    const staffMember = await prisma.staffMember.update({
+    const body = await request.json()
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      photoUrl,
+      title,
+      notes,
+      digitalId,
+      expirationDate,
+      status,
+    } = body
+
+    // Validate required fields
+    if (firstName !== undefined && !firstName) {
+      return NextResponse.json(
+        { error: 'First name cannot be empty' },
+        { status: 400 }
+      )
+    }
+    if (lastName !== undefined && !lastName) {
+      return NextResponse.json(
+        { error: 'Last name cannot be empty' },
+        { status: 400 }
+      )
+    }
+
+    // Validate status if provided
+    if (status !== undefined && !['active', 'expired'].includes(status)) {
+      return NextResponse.json(
+        { error: 'Status must be either "active" or "expired"' },
+        { status: 400 }
+      )
+    }
+
+    // Build update data
+    const updateData: any = {}
+    if (firstName !== undefined) updateData.firstName = firstName
+    if (lastName !== undefined) updateData.lastName = lastName
+    if (email !== undefined) updateData.email = email || null
+    if (phone !== undefined) updateData.phone = phone || null
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl || null
+    if (title !== undefined) updateData.title = title || null
+    if (notes !== undefined) updateData.notes = notes || null
+    if (digitalId !== undefined) updateData.digitalId = digitalId || null
+    
+    // Handle expiration date
+    if (expirationDate !== undefined) {
+      if (expirationDate === null || expirationDate === '') {
+        updateData.expirationDate = null
+      } else {
+        const parsedDate = new Date(expirationDate)
+        if (isNaN(parsedDate.getTime())) {
+          return NextResponse.json(
+            { error: 'Invalid expiration date format' },
+            { status: 400 }
+          )
+        }
+        updateData.expirationDate = parsedDate
+      }
+    }
+    
+    // Handle status
+    if (status !== undefined) {
+      updateData.status = status
+    }
+
+    // Update staff member
+    const updatedStaffMember = await prisma.staffMember.update({
       where: { id: staffId },
-      data: {
-        firstName,
-        lastName,
-        digitalId: digitalId || null,
-        email: email || null,
-        phone: phone || null,
-        location: location || null,
-        photoUrl: photoUrl || null,
-        title: title || null,
-        yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : null,
-        notes: notes || null,
-      },
+      data: updateData,
     })
 
-    return NextResponse.json({ success: true, staffMember })
+    return NextResponse.json({
+      success: true,
+      staffMember: updatedStaffMember,
+    })
   } catch (error: any) {
     console.error('Error updating staff member:', error)
     return NextResponse.json(
-      { error: 'Failed to update staff member' },
+      { error: 'Failed to update staff member', details: error.message },
       { status: 500 }
     )
   }
@@ -153,7 +186,8 @@ export async function DELETE(
   try {
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
-    const { id: installerId, staffId } = resolvedParams
+    const installerId = resolvedParams.id
+    const staffId = resolvedParams.staffId
 
     if (!installerId || !staffId) {
       return NextResponse.json(
@@ -163,100 +197,47 @@ export async function DELETE(
     }
 
     // Verify staff member exists and belongs to installer
-    const existingStaff = await prisma.staffMember.findFirst({
-      where: {
-        id: staffId,
-        installerId,
-      },
+    const staffMember = await prisma.staffMember.findUnique({
+      where: { id: staffId },
+      select: { id: true, installerId: true, firstName: true, lastName: true },
     })
 
-    if (!existingStaff) {
+    if (!staffMember) {
       return NextResponse.json(
         { error: 'Staff member not found' },
         { status: 404 }
       )
     }
 
-    // If installer token is present, ALWAYS create a pending change request (even if admin cookie exists).
-    const token = getInstallerTokenFromRequest(request)
-    if (token) {
-      let payload
-      try {
-        payload = verifyInstallerToken(token)
-      } catch {
-        return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
-      }
-
-      if (!payload.installerId || payload.installerId !== installerId) {
-        return NextResponse.json(
-          { error: 'Forbidden', details: 'Token does not match installer' },
-          { status: 403 }
-        )
-      }
-
-      const installer = await prisma.installer.findUnique({ where: { id: installerId }, select: { status: true } })
-      if ((installer?.status || '').toLowerCase() === 'deactive') {
-        return NextResponse.json(
-          { error: 'Account deactivated', details: 'This installer account is deactivated.' },
-          { status: 403 }
-        )
-      }
-
-      // Create change request for staff deletion + flip installer to pending if active
-      const [, changeRequest] = await prisma.$transaction([
-        prisma.installer.updateMany({
-          where: { id: installerId, status: 'active' },
-          data: { status: 'pending' },
-        }),
-        prisma.installerChangeRequest.create({
-          data: {
-            installerId,
-            status: 'pending',
-            source: 'team-members',
-            sections: ['Team Members'],
-            payload: {
-              action: 'delete_staff',
-              staffId,
-              staffData: {
-                // Store current staff data for reference
-                firstName: existingStaff.firstName,
-                lastName: existingStaff.lastName,
-                digitalId: existingStaff.digitalId,
-                email: existingStaff.email,
-                phone: existingStaff.phone,
-                location: existingStaff.location,
-                title: existingStaff.title,
-              },
-            },
-            submittedBy: (payload.email || payload.username || null) as string | null,
-          },
-        }),
-      ])
-
-      return NextResponse.json({
-        success: true,
-        pendingApproval: true,
-        requestId: changeRequest.id,
-        message: 'Team member deletion submitted for admin approval',
-      })
+    if (staffMember.installerId !== installerId) {
+      return NextResponse.json(
+        { error: 'Staff member does not belong to this installer' },
+        { status: 403 }
+      )
     }
 
-    // No installer token: admin session can delete immediately
-    const session = await getServerSession(authOptions)
-    const adminEmail = session?.user?.email?.toLowerCase()
-    if (!adminEmail) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const admin = await prisma.admin.findUnique({ where: { email: adminEmail } })
-    if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    // Check authentication
+    const authResult = await requireInstallerOrAdmin(request, installerId)
+    if (!authResult.ok) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      )
+    }
 
+    // Delete staff member
     await prisma.staffMember.delete({
       where: { id: staffId },
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      message: 'Staff member deleted successfully',
+    })
   } catch (error: any) {
     console.error('Error deleting staff member:', error)
     return NextResponse.json(
-      { error: 'Failed to delete staff member' },
+      { error: 'Failed to delete staff member', details: error.message },
       { status: 500 }
     )
   }

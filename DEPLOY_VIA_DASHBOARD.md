@@ -25,7 +25,7 @@ Your code is ready! Follow these steps:
 ### 4. Monitor Deployment
 - Watch the build logs in real-time
 - Build will take 2-5 minutes
-- Look for: `prisma generate`, `prisma db push`, `next build`
+- Look for: `prisma migrate deploy`, `prisma generate`, `next build`
 
 ### 5. Verify Success
 ✅ Build completes without errors
@@ -51,8 +51,8 @@ Your code is ready! Follow these steps:
 ## 📝 What Happens During Build
 
 1. `npm install` - Install dependencies
-2. `prisma generate` - Generate Prisma Client
-3. `prisma db push` - Push schema to PostgreSQL database
+2. `prisma migrate deploy` - Apply database migrations (production-safe)
+3. `prisma generate` - Generate Prisma Client
 4. `next build` - Build Next.js application
 5. Deploy to production
 

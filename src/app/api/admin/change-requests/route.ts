@@ -151,12 +151,20 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'pending'
-    const take = Math.min(parseInt(searchParams.get('take') || '50', 10) || 50, 200)
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 200)
+    const skip = (page - 1) * limit
+
+    // Get total count for pagination
+    const total = await prisma.installerChangeRequest.count({
+      where: { status },
+    })
 
     const requests = await prisma.installerChangeRequest.findMany({
       where: { status },
       orderBy: { createdAt: 'desc' },
-      take,
+      skip,
+      take: limit,
       include: {
         Installer: {
           select: {
@@ -277,7 +285,16 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, requests: normalizedRequests })
+    return NextResponse.json({
+      success: true,
+      requests: normalizedRequests,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    })
   } catch (error: any) {
     console.error('Error fetching change requests:', error)
     return NextResponse.json(

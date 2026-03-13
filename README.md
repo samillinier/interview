@@ -59,9 +59,10 @@ Create a `.env.local` file in the root directory (copy from `env.local.example`)
 # OpenAI API Key - Get yours at https://platform.openai.com/api-keys
 OPENAI_API_KEY=sk-your-openai-api-key-here
 
-# Database URL - SQLite for local development
-# For production (Vercel Postgres), use PostgreSQL connection string
-DATABASE_URL="file:./dev.db"
+# Database URL (PostgreSQL)
+# Vercel Postgres: set DATABASE_URL to the pooled connection string, and DATABASE_URL_UNPOOLED to the non-pooled/direct connection string (for Prisma migrations)
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB?sslmode=require"
+DATABASE_URL_UNPOOLED="postgresql://USER:PASSWORD@HOST:5432/DB?sslmode=require"
 
 # Base URL for the application
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -73,7 +74,7 @@ NEXTAUTH_SECRET=your-nextauth-secret-here-generate-with-openssl
 
 ```bash
 npx prisma generate
-npx prisma db push
+npx prisma migrate dev
 ```
 
 4. **Start the development server:**

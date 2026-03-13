@@ -177,6 +177,10 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    // NOTE: Prisma client types in this repo can drift when prisma generate hasn't been run locally.
+    // To avoid blocking builds with type-only mismatches, we cast the client to `any` in this route.
+    const prismaAny = prisma as any
+
     // Check if Prisma is available
     if (!prisma) {
       return NextResponse.json(
@@ -237,7 +241,7 @@ export async function GET(
         const email = session?.user?.email?.toLowerCase()
         if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        const admin = (await prisma.admin.findUnique({
+        const admin = (await prismaAny.admin.findUnique({
           where: { email },
         })) as any
         if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
@@ -249,7 +253,7 @@ export async function GET(
       }
 
       // Ensure referral code exists (backfill for older installers)
-      let referralCode = installer.referralCode || null
+      let referralCode = (installer as any).referralCode || null
       try {
         referralCode = await ensureInstallerReferralCode(installerId)
       } catch (err) {
@@ -259,8 +263,8 @@ export async function GET(
       // Basic referral stats
       let referralsCount = 0
       try {
-        referralsCount = await prisma.installer.count({
-          where: { referredByInstallerId: installerId },
+        referralsCount = await prismaAny.installer.count({
+          where: { referredByInstallerId: installerId } as any,
         })
       } catch (err) {
         console.error('Failed to compute referralsCount:', err)
@@ -269,7 +273,7 @@ export async function GET(
       // Pending change requests (used by installer portal to show "submitted for approval" banner)
       let pendingChangeRequestsCount = 0
       try {
-        pendingChangeRequestsCount = await prisma.installerChangeRequest.count({
+        pendingChangeRequestsCount = await prismaAny.installerChangeRequest.count({
           where: { installerId, status: 'pending' },
         })
       } catch (err) {
@@ -413,6 +417,9 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    // See note in GET: prisma types can drift locally; cast to any to prevent type-only build blockers.
+    const prismaAny = prisma as any
+
     // Check if Prisma is available
     if (!prisma) {
       return NextResponse.json(
@@ -439,6 +446,7 @@ export async function PATCH(
     let data: any
     let cleanedData: any = {}
     let approvalSource: string | null = null
+    let notificationMethod: 'email' | 'notification' | 'both' | undefined = undefined
     
     try {
       data = await request.json()
@@ -448,6 +456,10 @@ export async function PATCH(
         approvalSource = typeof data._approvalSource === 'string' ? data._approvalSource : null
         delete data._approvalSource
       }
+
+      // Extract notificationMethod (not persisted to DB)
+      notificationMethod = data?.notificationMethod as 'email' | 'notification' | 'both' | undefined
+      delete data.notificationMethod
 
       // Normalize workroom
       if (data.workroom !== undefined) {
@@ -593,11 +605,15 @@ export async function PATCH(
       }
       
       // Remove undefined values to avoid Prisma errors
+      // Also: avoid accidentally wiping existing optional string fields when the client sends empty strings.
+      // Admin UI historically sent many fields on save; if any local state wasn't populated, it could send "" and erase data.
       cleanedData = {}
       for (const key in data) {
         if (data[key] !== undefined) {
+          const v = data[key]
+
           // For required string fields, ensure they're not empty
-          if ((key === 'firstName' || key === 'lastName' || key === 'email') && data[key] === '') {
+          if ((key === 'firstName' || key === 'lastName' || key === 'email') && v === '') {
             return NextResponse.json(
               { 
                 error: 'Validation error',
@@ -607,7 +623,14 @@ export async function PATCH(
               { status: 400 }
             )
           }
-          cleanedData[key] = data[key]
+
+          // For optional string fields: ignore empty-string updates to prevent unintended data loss.
+          // If callers truly want to clear a field, they should send `null`.
+          if (typeof v === 'string' && v.trim() === '' && key !== 'firstName' && key !== 'lastName' && key !== 'email') {
+            continue
+          }
+
+          cleanedData[key] = v
         }
       }
       
@@ -658,7 +681,7 @@ export async function PATCH(
         }
 
         // Load current installer state so we can create a true diff (avoid "changed everything" requests).
-        const currentInstaller = await prisma.installer.findUnique({ where: { id: installerId } })
+        const currentInstaller = await prismaAny.installer.findUnique({ where: { id: installerId } })
         if (!currentInstaller) {
           return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
         }
@@ -705,7 +728,7 @@ export async function PATCH(
         const source = approvalSource || 'profile'
 
         // If there's already a pending request for this installer+source, merge into it (prevents duplicates).
-        const existingPending = await prisma.installerChangeRequest.findFirst({
+        const existingPending = await prismaAny.installerChangeRequest.findFirst({
           where: { installerId, status: 'pending', source },
           orderBy: { createdAt: 'desc' },
         })
@@ -736,12 +759,12 @@ export async function PATCH(
             new Set([...(prevSections as string[]), ...getSectionsFromFields(Object.keys(mergedDiff))])
           ).filter(Boolean)
 
-          const [, updatedRequest] = await prisma.$transaction([
-            prisma.installer.updateMany({
+          const [, updatedRequest] = await prismaAny.$transaction([
+            prismaAny.installer.updateMany({
               where: { id: installerId, status: 'active' },
               data: { status: 'pending' },
             }),
-            prisma.installerChangeRequest.update({
+            prismaAny.installerChangeRequest.update({
               where: { id: existingPending.id },
               data: {
                 payload: mergedDiff as any,
@@ -759,13 +782,13 @@ export async function PATCH(
           })
         }
 
-        const [, changeRequest] = await prisma.$transaction([
+        const [, changeRequest] = await prismaAny.$transaction([
           // Flip installer status to pending only if currently active (do not overwrite other statuses).
-          prisma.installer.updateMany({
+          prismaAny.installer.updateMany({
             where: { id: installerId, status: 'active' },
             data: { status: 'pending' },
           }),
-          prisma.installerChangeRequest.create({
+          prismaAny.installerChangeRequest.create({
             data: {
               installerId,
               status: 'pending',
@@ -791,7 +814,7 @@ export async function PATCH(
         const session = await getServerSession(authOptions)
         const email = session?.user?.email?.toLowerCase()
         if (email) {
-          const admin = await prisma.admin.findUnique({ where: { email } })
+          const admin = await prismaAny.admin.findUnique({ where: { email } })
           if (admin?.isActive) adminEmail = email
         }
       } catch {
@@ -808,9 +831,9 @@ export async function PATCH(
       // If admin is deactivating the installer, append a system remark reminding to disable external access.
       // This helps the Remarks page act as an internal checklist.
       if (cleanedData.status && String(cleanedData.status).toLowerCase() === 'deactive') {
-        const currentInstaller = await prisma.installer.findUnique({
+        const currentInstaller = await prismaAny.installer.findUnique({
           where: { id: installerId },
-          select: { status: true, remarks: true, firstName: true, lastName: true, email: true },
+          select: { status: true, remarks: true, firstName: true, lastName: true, email: true } as any,
         })
         const baseRemarksRaw = (cleanedData.remarks !== undefined ? cleanedData.remarks : currentInstaller?.remarks) as any
         let remarksArr: Array<{ date?: string | null; note: string; createdAt: string }> = []
@@ -839,10 +862,309 @@ export async function PATCH(
         }
       }
 
-      const installer = await prisma.installer.update({
+      // Get current installer to check if status or trackerStage changed
+      const currentInstaller = await prismaAny.installer.findUnique({
+        where: { id: installerId },
+        select: { status: true, trackerStage: true, email: true, firstName: true, lastName: true } as any,
+      })
+
+      // IMPORTANT: Check for changes BEFORE updating the database
+      // Send notification if status or trackerStage changed (default to 'both' if notificationMethod not provided)
+      const effectiveNotificationMethod = notificationMethod !== undefined && notificationMethod !== null ? notificationMethod : 'both'
+      
+      // Debug logging - check what's in cleanedData
+      console.log(`🔍 Checking changes for installer ${installerId}:`)
+      console.log(`  - cleanedData keys: ${Object.keys(cleanedData).join(', ')}`)
+      console.log(`  - Current status: ${currentInstaller?.status}, New status: ${cleanedData.status}`)
+      console.log(`  - Current trackerStage: ${currentInstaller?.trackerStage}, New trackerStage: ${cleanedData.trackerStage}`)
+      console.log(`  - trackerStage in cleanedData: ${cleanedData.trackerStage !== undefined ? 'YES' : 'NO'}`)
+      console.log(`  - notificationMethod provided: ${notificationMethod}`)
+      console.log(`  - effectiveNotificationMethod: ${effectiveNotificationMethod}`)
+      
+      // Check if status changed (only if status is explicitly provided in request)
+      const statusChanged = Boolean(
+        currentInstaller && 
+        cleanedData.status !== undefined && 
+        cleanedData.status !== null &&
+        currentInstaller.status !== cleanedData.status
+      )
+      
+      // Check if trackerStage changed (only if trackerStage is explicitly provided in request)
+      // CRITICAL FIX: Make sure we're checking the actual value, not just existence
+      const trackerStageChanged = Boolean(
+        currentInstaller && 
+        cleanedData.trackerStage !== undefined && 
+        cleanedData.trackerStage !== null &&
+        String(currentInstaller.trackerStage) !== String(cleanedData.trackerStage)
+      )
+      
+      console.log(`🔍 Change detection results:`)
+      console.log(`  - statusChanged: ${statusChanged}`)
+      console.log(`  - trackerStageChanged: ${trackerStageChanged}`)
+      console.log(`  - Will send notifications: ${statusChanged || trackerStageChanged}`)
+
+      const installer = await prismaAny.installer.update({
         where: { id: installerId },
         data: cleanedData,
       })
+      
+      // Log changes for debugging
+      if (statusChanged || trackerStageChanged) {
+        console.log(`📢 Status/Stage change detected for installer ${installerId}:`)
+        if (statusChanged && currentInstaller) {
+          console.log(`  - Status: ${currentInstaller.status} → ${cleanedData.status}`)
+        }
+        if (trackerStageChanged && currentInstaller) {
+          console.log(`  - Tracker Stage: ${currentInstaller.trackerStage} → ${cleanedData.trackerStage}`)
+        }
+        console.log(`  - Notification Method: ${effectiveNotificationMethod}`)
+      } else {
+        console.log(`⚠️ No status or trackerStage change detected`)
+      }
+      
+      if ((statusChanged || trackerStageChanged) && currentInstaller) {
+        const newStatus = cleanedData.status || currentInstaller.status
+        const oldStatus = currentInstaller.status
+        const newTrackerStage = cleanedData.trackerStage || currentInstaller.trackerStage
+        const oldTrackerStage = currentInstaller.trackerStage
+
+        // Status labels for display
+        const statusLabels: Record<string, string> = {
+          'qualified': 'Qualified',
+          'failed': 'Not Qualified',
+          'pending': 'Pending',
+          'active': 'Active',
+          'deactive': 'Deactivated',
+        }
+
+        // Tracker stage labels
+        const trackerStageLabels: Record<string, string> = {
+          'PENDING': 'Pending',
+          'QUALIFIED': 'Qualified',
+          'WAITING_FOR_APPROVAL': 'Waiting for Approval',
+          'VERIFICATION_IN_PROGRESS': 'Verification in Progress',
+          'BACKGROUND': 'Background Check',
+          'ACTIVE_APPROVED': 'Active / Approved',
+        }
+
+        // Create welcoming status messages
+        const getStatusMessage = (oldStatus: string, newStatus: string, oldTrackerStage: string | null, newTrackerStage: string | null, statusChanged: boolean, trackerStageChanged: boolean) => {
+          const oldLabel = statusLabels[oldStatus] || oldStatus
+          const newLabel = statusLabels[newStatus] || newStatus
+          const oldTrackerLabel = oldTrackerStage ? trackerStageLabels[oldTrackerStage] || oldTrackerStage : null
+          const newTrackerLabel = newTrackerStage ? trackerStageLabels[newTrackerStage] || newTrackerStage : null
+          
+          // Build message based on what changed
+          let changeDescription = ''
+          if (statusChanged && trackerStageChanged) {
+            changeDescription = `Your status has been updated from "${oldLabel}" to "${newLabel}" and your stage has moved from "${oldTrackerLabel}" to "${newTrackerLabel}".`
+          } else if (statusChanged) {
+            changeDescription = `Your status has been updated from "${oldLabel}" to "${newLabel}".`
+          } else if (trackerStageChanged) {
+            changeDescription = `Your application stage has been updated from "${oldTrackerLabel}" to "${newTrackerLabel}".`
+          }
+          
+          // More welcoming messages based on status/stage change
+          if (newStatus === 'qualified' || newStatus === 'active' || newTrackerStage === 'ACTIVE_APPROVED') {
+            return `Great news! ${changeDescription} We're excited to have you on board and look forward to working with you.`
+          } else if (newStatus === 'pending' || newTrackerStage === 'PENDING') {
+            return `${changeDescription} Our team is reviewing your information and will be in touch soon. Thank you for your patience.`
+          } else if (newStatus === 'failed' || newStatus === 'deactive') {
+            return `${changeDescription} If you have any questions or concerns, please don't hesitate to reach out to our support team.`
+          } else {
+            return `${changeDescription} We appreciate your continued partnership with us.`
+          }
+        }
+
+        const statusMessage = getStatusMessage(oldStatus, newStatus, oldTrackerStage, newTrackerStage, statusChanged, trackerStageChanged)
+        const notificationTitle = statusChanged && trackerStageChanged ? 'Status & Stage Update' : (statusChanged ? 'Status Update' : 'Stage Update')
+        const notificationContent = statusMessage
+
+        // Send notification (if method is 'notification' or 'both')
+        if (effectiveNotificationMethod === 'notification' || effectiveNotificationMethod === 'both') {
+          try {
+            // Determine priority based on status and trackerStage
+            const isHighPriority = 
+              newStatus === 'qualified' || 
+              newStatus === 'active' || 
+              newTrackerStage === 'ACTIVE_APPROVED' ||
+              newTrackerStage === 'QUALIFIED'
+            
+            const notification = await prismaAny.notification.create({
+              data: {
+                installerId: installerId,
+                type: 'notification',
+                title: notificationTitle,
+                content: notificationContent,
+                priority: isHighPriority ? 'high' : 'normal',
+                link: '/installer/profile',
+                senderId: 'admin',
+                senderType: 'admin',
+              },
+            })
+            console.log(`✅ ${trackerStageChanged ? 'Tracker stage' : 'Status'} change notification created successfully for installer ${installerId} (Notification ID: ${notification.id})`)
+          } catch (e: any) {
+            console.error('❌ Failed to create notification:', e?.message || e)
+          }
+        }
+
+        // Send email (if method is 'email' or 'both')
+        if ((effectiveNotificationMethod === 'email' || effectiveNotificationMethod === 'both') && currentInstaller.email) {
+          try {
+            const { Resend } = await import('resend')
+            const resendApiKey = process.env.RESEND_API_KEY
+            if (resendApiKey) {
+              const resend = new Resend(resendApiKey)
+              const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+              const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app'
+              
+              // Use URL for logo to prevent email clipping (base64 makes emails too large)
+              const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+              
+              // Create welcoming email message
+              const getWelcomeMessage = (oldStatus: string, newStatus: string, oldTrackerStage: string | null, newTrackerStage: string | null, firstName: string, statusChanged: boolean, trackerStageChanged: boolean) => {
+                // Priority: Use tracker stage messages if tracker stage changed, otherwise fall back to status-based messages
+                if (trackerStageChanged && newTrackerStage) {
+                  switch (newTrackerStage) {
+                    case 'PENDING':
+                      return `Thank you for your interest in working with Floor Interior Services and for completing the AI interview! 🎉 Your status is now <strong>Pending ⏳</strong>. To move forward to the next stage, please complete your full profile in the installer portal, including all required information and documents. We're excited to move ahead with you!`
+                    
+                    case 'QUALIFIED':
+                      return `Great news! 🎉 Your status has been updated to <strong>Qualified ✅</strong>. You've successfully met our initial requirements, and we're excited to continue the process with you. Please complete your full profile, upload all required attachments, and add expiration dates. Once submitted, your documents will move to verification. You're getting closer! 🚀`
+                    
+                    case 'WAITING_FOR_APPROVAL':
+                      return `Thank you for submitting your documents! 🙌 Your status is now <strong>Waiting for Approval 📂</strong>, and our Compliance Specialist is currently reviewing everything. We appreciate your patience and will keep you updated soon. You're almost there!`
+                    
+                    case 'VERIFICATION_IN_PROGRESS':
+                      return `Your application is now in <strong>Verification in Progress 🔎</strong>. Our team is carefully reviewing your documents to ensure everything meets compliance standards. If any corrections are needed, we'll notify you right away. Once approved, you'll move to the Background stage. Keep an eye out — you're making great progress! 💪`
+                    
+                    case 'BACKGROUND':
+                      return `Congratulations! 🎊 You've moved to the <strong>Background 🛡️</strong> stage. This process typically takes 3–7 days to complete. Once finalized, you'll be just one step away from becoming fully approved. Thank you for your patience during this final review!`
+                    
+                    case 'ACTIVE_APPROVED':
+                      return `Congratulations! Your background has been successfully completed, and your status is now <strong>Active / Approved 🎉🚀</strong>! You are officially an approved installer with Floor Interior Services. You'll now connect with your Regional Manager and be ready to get started with work. We're excited to have you on board — welcome to the team! 👏🔥`
+                    
+                    default:
+                      // Fall through to status-based messages
+                      break
+                  }
+                }
+                
+                // Fallback to status-based messages if no tracker stage change or unknown stage
+                const oldLabel = statusLabels[oldStatus] || oldStatus
+                const newLabel = statusLabels[newStatus] || newStatus
+                const oldTrackerLabel = oldTrackerStage ? trackerStageLabels[oldTrackerStage] || oldTrackerStage : null
+                const newTrackerLabel = newTrackerStage ? trackerStageLabels[newTrackerStage] || newTrackerStage : null
+                
+                // Build change description
+                let changeDesc = ''
+                if (statusChanged && trackerStageChanged) {
+                  changeDesc = `your status has been updated to <strong>"${newLabel}"</strong> and your application stage has moved to <strong>"${newTrackerLabel}"</strong>`
+                } else if (statusChanged) {
+                  changeDesc = `your status has been updated to <strong>"${newLabel}"</strong>`
+                } else if (trackerStageChanged) {
+                  changeDesc = `your application stage has been updated to <strong>"${newTrackerLabel}"</strong>`
+                }
+                
+                if (newStatus === 'qualified' || newStatus === 'active' || newTrackerStage === 'ACTIVE_APPROVED') {
+                  return `We're thrilled to inform you that ${changeDesc}! 🎉<br><br>This is an exciting milestone, and we're delighted to have you as part of our team. You can now access all the features available to active installers and start exploring opportunities with us.`
+                } else if (newStatus === 'pending' || newTrackerStage === 'PENDING') {
+                  return `We wanted to let you know that ${changeDesc}.<br><br>Our team is currently reviewing your information and documentation. We appreciate your patience during this process and will be in touch with you soon. If you have any questions in the meantime, please don't hesitate to reach out.`
+                } else if (newStatus === 'failed' || newStatus === 'deactive') {
+                  return `We're writing to inform you that ${changeDesc}.<br><br>If you have any questions about this change or would like to discuss your account status, our support team is here to help. Please feel free to contact us at any time.`
+                } else {
+                  return `We wanted to keep you informed that ${changeDesc}.<br><br>Thank you for being part of our installer community. We value your partnership and look forward to continuing to work together.`
+                }
+              }
+              
+              const welcomeMessage = getWelcomeMessage(oldStatus, newStatus, oldTrackerStage, newTrackerStage, currentInstaller.firstName || '', statusChanged, trackerStageChanged)
+
+              const emailResult = await resend.emails.send({
+                from: `${fromName} <${fromEmail}>`,
+                to: currentInstaller.email,
+                subject: statusChanged && trackerStageChanged 
+                  ? `Status & Stage Update: ${statusLabels[newStatus] || newStatus} - ${trackerStageLabels[newTrackerStage] || newTrackerStage}`
+                  : statusChanged 
+                    ? `Status Update: ${statusLabels[newStatus] || newStatus}`
+                    : `Stage Update: ${trackerStageLabels[newTrackerStage] || newTrackerStage}`,
+                html: `
+                  <!DOCTYPE html>
+                  <html>
+                    <head>
+                      <meta charset="utf-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+                      <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
+                        <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 180px; height: auto; display: block; margin: 0 auto; border-radius: 8px;" />
+                      </div>
+                      
+                      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Status Update</h1>
+                      </div>
+                      
+                      <p style="font-size: 16px; margin-bottom: 20px;">Hi ${currentInstaller.firstName || 'there'},</p>
+                      
+                      <p style="font-size: 15px; line-height: 1.8; color: #4a5568; margin-bottom: 25px;">
+                        ${welcomeMessage}
+                      </p>
+                      
+                      <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #22c55e; padding: 20px; margin: 25px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        ${statusChanged ? `
+                        <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;"><strong style="color: #334155;">Previous Status:</strong> ${statusLabels[oldStatus] || oldStatus}</p>
+                        <p style="margin: 0 0 12px 0; font-size: 16px; color: #1e40af; font-weight: 600;"><strong style="color: #334155;">New Status:</strong> ${statusLabels[newStatus] || newStatus}</p>
+                        ` : ''}
+                        ${trackerStageChanged ? `
+                        <p style="margin: ${statusChanged ? '12px' : '0'} 0 8px 0; font-size: 14px; color: #64748b;"><strong style="color: #334155;">Previous Stage:</strong> ${trackerStageLabels[oldTrackerStage] || oldTrackerStage}</p>
+                        <p style="margin: 0; font-size: 16px; color: #1e40af; font-weight: 600;"><strong style="color: #334155;">New Stage:</strong> ${trackerStageLabels[newTrackerStage] || newTrackerStage}</p>
+                        ` : ''}
+                      </div>
+                      
+                      <div style="text-align: center; margin: 30px 0;">
+                        <a href="${appUrl}/installer/profile" 
+                           style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                          View Profile
+                        </a>
+                      </div>
+                      
+                      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                      <p style="color: #999; font-size: 12px; text-align: center;">
+                        Floor Interior Service - Installer Portal
+                      </p>
+                    </body>
+                  </html>
+                `,
+                text: `
+Hi ${currentInstaller.firstName || 'there'},
+
+${welcomeMessage.replace(/<br>/g, '\n').replace(/<strong>/g, '').replace(/<\/strong>/g, '').replace(/🎉/g, '')}
+
+${statusChanged ? `Previous Status: ${statusLabels[oldStatus] || oldStatus}\nNew Status: ${statusLabels[newStatus] || newStatus}\n` : ''}
+${trackerStageChanged ? `Previous Stage: ${trackerStageLabels[oldTrackerStage] || oldTrackerStage}\nNew Stage: ${trackerStageLabels[newTrackerStage] || newTrackerStage}\n` : ''}
+View your profile: ${appUrl}/installer/profile
+
+If you have any questions, please don't hesitate to reach out to our support team.
+
+Best regards,
+Floor Interior Service Team
+                `,
+              })
+
+              if (emailResult && 'id' in emailResult) {
+                console.log(`✅ Status change email sent successfully to ${currentInstaller.email} (Email ID: ${emailResult.id})`)
+              } else if (emailResult && 'error' in emailResult) {
+                console.error('❌ Failed to send status change email:', emailResult.error)
+              }
+            } else {
+              console.warn('⚠️ RESEND_API_KEY not configured - email not sent')
+            }
+          } catch (e: any) {
+            console.error('❌ Failed to send status change email:', e?.message || e)
+          }
+        }
+      }
+
       return NextResponse.json({ installer })
     } catch (dbError: any) {
       // Handle database-specific errors

@@ -20,6 +20,7 @@ import {
   Printer,
   User,
   X,
+  HelpCircle,
 } from 'lucide-react'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -341,6 +342,10 @@ export default function W9AgreementPage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link href="/installer/help" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 

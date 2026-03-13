@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter, useParams, usePathname } from 'next/navigation'
+import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { upload } from '@vercel/blob/client'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
@@ -361,21 +361,46 @@ export default function InstallerProfileViewPage() {
   const router = useRouter()
   const params = useParams()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { data: session, status: sessionStatus } = useSession()
   const installerId = params?.id as string
+  
+  // Check if user is a manager or moderator (restricted access)
+  const isManager = (session?.user as any)?.role === 'MANAGER'
+  const isModerator = (session?.user as any)?.role === 'MODERATOR'
+  const canDelete = !isManager && !isModerator
+  
+  // Get return URL from query params (preserves pagination state)
+  const getReturnURL = () => {
+    const params = new URLSearchParams()
+    if (searchParams?.get('page')) params.set('page', searchParams.get('page')!)
+    if (searchParams?.get('search')) params.set('search', searchParams.get('search')!)
+    if (searchParams?.get('status')) params.set('status', searchParams.get('status')!)
+    return params.toString() ? `?${params.toString()}` : ''
+  }
+  
+  // Helper function to check if a section can be edited by managers
+  // Managers cannot edit anything - view only
+  const canManagerEditSection = (section: string): boolean => {
+    if (!isManager) return true // Non-managers can edit everything
+    return false // Managers cannot edit any sections
+  }
 
   const [installer, setInstaller] = useState<InstallerProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Managers cannot edit - always keep isEditing false for them
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
   
   // Editable fields
   const [status, setStatus] = useState<string>('pending')
   const [trackerStage, setTrackerStage] = useState<string>('PENDING')
+  const [notificationMethod, setNotificationMethod] = useState<'email' | 'notification' | 'both'>('both')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
@@ -468,6 +493,7 @@ export default function InstallerProfileViewPage() {
   const [isSavingRemark, setIsSavingRemark] = useState(false)
   const [deleteRemarkConfirm, setDeleteRemarkConfirm] = useState<{ show: boolean; index: number | null }>({ show: false, index: null })
   const [documents, setDocuments] = useState<any[]>([])
+  const [agreements, setAgreements] = useState<any[]>([])
   const [uploadingDocumentType, setUploadingDocumentType] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
     show: false,
@@ -496,11 +522,11 @@ export default function InstallerProfileViewPage() {
     digitalId: '',
     email: '',
     phone: '',
-    location: '',
     title: '',
-    yearsOfExperience: '',
     notes: '',
     photoUrl: '',
+    expirationDate: '',
+    status: 'active',
   })
   const [staffPhotoFile, setStaffPhotoFile] = useState<File | null>(null)
   const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState(false)
@@ -605,6 +631,19 @@ export default function InstallerProfileViewPage() {
       return () => clearInterval(interval)
     }
   }, [sessionStatus, installerId, router])
+
+  // Handle scrolling to attachments section when hash is present
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#attachments') {
+      // Wait for content to load, then scroll
+      setTimeout(() => {
+        const element = document.getElementById('attachments')
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 500)
+    }
+  }, [installer, isLoading])
 
   const fetchPendingApprovalsCount = async () => {
     try {
@@ -771,6 +810,7 @@ export default function InstallerProfileViewPage() {
       setInstaller(data.installer)
 
       await refreshDocuments()
+      await refreshAgreements()
 
       // Load staff members
       const staffResponse = await fetch(`/api/installers/${installerId}/staff`)
@@ -834,6 +874,19 @@ export default function InstallerProfileViewPage() {
         })
         setVerificationLinks(linksState)
       }
+    }
+  }
+
+  const refreshAgreements = async () => {
+    if (!installerId) return
+    try {
+      const res = await fetch(`/api/installers/${installerId}/agreements`)
+      if (res.ok) {
+        const data = await res.json()
+        setAgreements(data.agreements || [])
+      }
+    } catch (e) {
+      console.error('Error refreshing agreements:', e)
     }
   }
 
@@ -999,6 +1052,45 @@ export default function InstallerProfileViewPage() {
           date: employerLiabilityPolicyNumber ? (employersLiabilityExpiry || '') : 'N/A',
           dates: [] as string[],
         },
+        // Add staff members to compliance status
+        ...(staffMembers || []).map((staff: any) => {
+          // Determine status based on expirationDate and status field
+          let staffStatusKey: ComplianceStatusKey = 'active'
+          
+          // Convert expirationDate to string if it's a Date object
+          const expirationDateStr = staff.expirationDate 
+            ? (staff.expirationDate instanceof Date 
+                ? staff.expirationDate.toISOString().split('T')[0] 
+                : String(staff.expirationDate))
+            : null
+          
+          // If status field is explicitly "expired", use expired
+          if (staff.status === 'expired') {
+            staffStatusKey = 'expired'
+          } else if (expirationDateStr) {
+            // If expirationDate exists, check if it's expired
+            const expiryStatus = getExpirationStatus(expirationDateStr)
+            if (expiryStatus === 'expired') {
+              staffStatusKey = 'expired'
+            } else if (expiryStatus === 'expiring' || expiryStatus === 'valid') {
+              staffStatusKey = 'active'
+            }
+          } else if (staff.status === 'active') {
+            staffStatusKey = 'active'
+          } else {
+            // Default to active if no expiration date and status is active
+            staffStatusKey = 'active'
+          }
+          
+          return {
+            key: `staff_${staff.id}`,
+            name: `${staff.firstName} ${staff.lastName}${staff.title ? ` (${staff.title})` : ''}`,
+            statusKey: staffStatusKey,
+            statusText: statusTextFromKey(staffStatusKey),
+            date: expirationDateStr || '',
+            dates: [] as string[],
+          }
+        }),
       ]
     }, [
       documents,
@@ -1014,6 +1106,7 @@ export default function InstallerProfileViewPage() {
       automobileLiabilityExpiryDates,
       employerLiabilityPolicyNumber,
       employersLiabilityExpiry,
+      staffMembers,
     ])
 
     const complianceCounts = useMemo(() => {
@@ -1440,113 +1533,137 @@ export default function InstallerProfileViewPage() {
 
   // Handle save installer profile
   const handleSave = async () => {
+    if (isManager) return // Managers cannot save changes
     try {
       setIsSaving(true)
       setError('')
       setSuccess('')
 
+      // Get the previous status and trackerStage to detect if they changed
+      const previousStatus = installer?.status || 'pending'
+      const previousTrackerStage = installer?.trackerStage || 'PENDING'
+      const statusChanged = previousStatus !== status
+      const trackerStageChanged = previousTrackerStage !== trackerStage
+
+      // Build payload, then strip empty-string fields to avoid wiping existing DB values.
+      // To intentionally clear a field, the API expects `null` (not an empty string).
+      const payload: any = {
+        status,
+        trackerStage,
+        notificationMethod: (statusChanged || trackerStageChanged) ? notificationMethod : undefined,
+        firstName,
+        lastName,
+        phone,
+        digitalId: digitalId.trim() || null,
+        workroom: workroom.trim() || null,
+        yearsOfExperience,
+        flooringSpecialties,
+        flooringSkills,
+        hasOwnCrew,
+        crewSize,
+        hasOwnTools,
+        toolsDescription: hasOwnTools === false ? null : toolsDescription,
+        hasVehicle,
+        vehicleDescription: hasVehicle === false ? null : vehicleDescription,
+        hasInsurance,
+        insuranceType,
+        hasLicense,
+        licenseNumber,
+        licenseExpiry: licenseExpiry || null,
+        hasGeneralLiability,
+        hasCommercialAutoLiability,
+        hasWorkersComp,
+        hasWorkersCompExemption,
+        isSunbizRegistered,
+        isSunbizActive,
+        hasBusinessLicense,
+        feiEin,
+        employerLiabilityPolicyNumber,
+        llrpExpiry: llrpExpiry ? new Date(llrpExpiry).toISOString() : undefined,
+        btrExpiry: btrExpiry ? new Date(btrExpiry).toISOString() : undefined,
+        workersCompExemExpiryDates: Array.isArray(workersCompExemExpiryDates)
+          ? workersCompExemExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
+          : undefined,
+        workersCompExemExpiry:
+          Array.isArray(workersCompExemExpiryDates) && workersCompExemExpiryDates.length > 0
+            ? new Date(workersCompExemExpiryDates.slice().sort()[0]).toISOString()
+            : workersCompExemExpiry
+              ? new Date(workersCompExemExpiry).toISOString()
+              : undefined,
+        generalLiabilityExpiry: generalLiabilityExpiry ? new Date(generalLiabilityExpiry).toISOString() : undefined,
+        automobileLiabilityExpiryDates: Array.isArray(automobileLiabilityExpiryDates)
+          ? automobileLiabilityExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
+          : undefined,
+        automobileLiabilityExpiry:
+          Array.isArray(automobileLiabilityExpiryDates) && automobileLiabilityExpiryDates.length > 0
+            ? new Date(automobileLiabilityExpiryDates.slice().sort()[0]).toISOString()
+            : automobileLiabilityExpiry
+              ? new Date(automobileLiabilityExpiry).toISOString()
+              : undefined,
+        employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : undefined,
+        willingToTravel,
+        maxTravelDistance,
+        canStartImmediately,
+        preferredStartDate: preferredStartDate ? new Date(preferredStartDate).toISOString() : null,
+        mondayToFridayAvailability,
+        saturdayAvailability,
+        availability,
+        companyName,
+        companyTitle,
+        companyStreetAddress,
+        companyCity,
+        companyState,
+        companyZipCode,
+        companyCounty,
+        companyAddress,
+        wantsToAddCarpet,
+        installsStretchInCarpet,
+        dailyStretchInCarpetSqft,
+        installsGlueDownCarpet,
+        wantsToAddHardwood,
+        installsNailDownSolidHardwood,
+        dailyNailDownSolidHardwoodSqft,
+        installsStapleDownEngineeredHardwood,
+        wantsToAddLaminate,
+        dailyLaminateSqft,
+        installsLaminateOnStairs,
+        wantsToAddVinyl,
+        installsSheetVinyl,
+        installsLuxuryVinylPlank,
+        dailyLuxuryVinylPlankSqft,
+        installsLuxuryVinylTile,
+        installsVinylCompositionTile,
+        dailyVinylCompositionTileSqft,
+        wantsToAddTile,
+        installsCeramicTile,
+        dailyCeramicTileSqft,
+        installsPorcelainTile,
+        dailyPorcelainTileSqft,
+        installsStoneTile,
+        dailyStoneTileSqft,
+        offersTileRemoval,
+        installsTileBacksplash,
+        dailyTileBacksplashSqft,
+        movesFurniture,
+        installsTrim,
+        notes,
+      }
+
+      for (const [k, v] of Object.entries(payload)) {
+        if (v === undefined) {
+          delete payload[k]
+          continue
+        }
+        if (typeof v === 'string' && v.trim() === '' && k !== 'firstName' && k !== 'lastName') {
+          delete payload[k]
+        }
+      }
+
       const response = await fetch(`/api/installers/${installerId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status,
-          trackerStage,
-          firstName,
-          lastName,
-          phone,
-          digitalId: digitalId.trim() || null,
-          workroom: workroom.trim() || null,
-          yearsOfExperience,
-          flooringSpecialties,
-          flooringSkills,
-          hasOwnCrew,
-          crewSize,
-          hasOwnTools,
-          toolsDescription: hasOwnTools === false ? null : toolsDescription,
-          hasVehicle,
-          vehicleDescription: hasVehicle === false ? null : vehicleDescription,
-          hasInsurance,
-          insuranceType,
-          hasLicense,
-          licenseNumber,
-          licenseExpiry: licenseExpiry || null,
-          hasGeneralLiability,
-          hasCommercialAutoLiability,
-          hasWorkersComp,
-          hasWorkersCompExemption,
-          isSunbizRegistered,
-          isSunbizActive,
-          hasBusinessLicense,
-          feiEin,
-          employerLiabilityPolicyNumber,
-          llrpExpiry: llrpExpiry ? new Date(llrpExpiry).toISOString() : undefined,
-          btrExpiry: btrExpiry ? new Date(btrExpiry).toISOString() : undefined,
-          workersCompExemExpiryDates: Array.isArray(workersCompExemExpiryDates)
-            ? workersCompExemExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
-            : undefined,
-          workersCompExemExpiry:
-            Array.isArray(workersCompExemExpiryDates) && workersCompExemExpiryDates.length > 0
-              ? new Date(workersCompExemExpiryDates.slice().sort()[0]).toISOString()
-              : workersCompExemExpiry
-                ? new Date(workersCompExemExpiry).toISOString()
-                : undefined,
-          generalLiabilityExpiry: generalLiabilityExpiry ? new Date(generalLiabilityExpiry).toISOString() : undefined,
-          automobileLiabilityExpiryDates: Array.isArray(automobileLiabilityExpiryDates)
-            ? automobileLiabilityExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
-            : undefined,
-          automobileLiabilityExpiry:
-            Array.isArray(automobileLiabilityExpiryDates) && automobileLiabilityExpiryDates.length > 0
-              ? new Date(automobileLiabilityExpiryDates.slice().sort()[0]).toISOString()
-              : automobileLiabilityExpiry
-                ? new Date(automobileLiabilityExpiry).toISOString()
-                : undefined,
-          employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : undefined,
-          willingToTravel,
-          maxTravelDistance,
-          canStartImmediately,
-          preferredStartDate: preferredStartDate ? new Date(preferredStartDate).toISOString() : null,
-          mondayToFridayAvailability,
-          saturdayAvailability,
-          availability,
-          companyName,
-          companyTitle,
-          companyStreetAddress,
-          companyCity,
-          companyState,
-          companyZipCode,
-          companyCounty,
-          companyAddress,
-          wantsToAddCarpet,
-          installsStretchInCarpet,
-          dailyStretchInCarpetSqft,
-          installsGlueDownCarpet,
-          wantsToAddHardwood,
-          installsNailDownSolidHardwood,
-          dailyNailDownSolidHardwoodSqft,
-          installsStapleDownEngineeredHardwood,
-          wantsToAddLaminate,
-          dailyLaminateSqft,
-          installsLaminateOnStairs,
-          wantsToAddVinyl,
-          installsSheetVinyl,
-          installsLuxuryVinylPlank,
-          dailyLuxuryVinylPlankSqft,
-          installsLuxuryVinylTile,
-          installsVinylCompositionTile,
-          dailyVinylCompositionTileSqft,
-          wantsToAddTile,
-          installsCeramicTile,
-          dailyCeramicTileSqft,
-          installsPorcelainTile,
-          dailyPorcelainTileSqft,
-          installsStoneTile,
-          dailyStoneTileSqft,
-          offersTileRemoval,
-          installsTileBacksplash,
-          dailyTileBacksplashSqft,
-          movesFurniture,
-          installsTrim,
-          notes,
+          ...payload,
         }),
       })
 
@@ -1593,6 +1710,7 @@ export default function InstallerProfileViewPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: newStatus,
+          notificationMethod: notificationMethod,
         }),
       })
 
@@ -1712,6 +1830,7 @@ export default function InstallerProfileViewPage() {
 
   // Handle cancel edit
   const handleCancelEdit = () => {
+    if (isManager) return // Managers cannot edit
     // Reset to original values
     if (installer) {
       setStatus(installer.status || 'pending')
@@ -1836,11 +1955,11 @@ export default function InstallerProfileViewPage() {
       digitalId: '',
       email: '',
       phone: '',
-      location: '',
       title: '',
-      yearsOfExperience: '',
       notes: '',
       photoUrl: '',
+      expirationDate: '',
+      status: 'active',
     })
     setStaffPhotoFile(null)
     setShowStaffModal(true)
@@ -1854,11 +1973,11 @@ export default function InstallerProfileViewPage() {
       digitalId: staff.digitalId || '',
       email: staff.email || '',
       phone: staff.phone || '',
-      location: staff.location || '',
       title: staff.title || '',
-      yearsOfExperience: staff.yearsOfExperience?.toString() || '',
       notes: staff.notes || '',
       photoUrl: staff.photoUrl || '',
+      expirationDate: staff.expirationDate ? new Date(staff.expirationDate).toISOString().split('T')[0] : '',
+      status: staff.status || 'active',
     })
     setStaffPhotoFile(null)
     setShowStaffModal(true)
@@ -1940,7 +2059,6 @@ export default function InstallerProfileViewPage() {
         body: JSON.stringify({
           ...staffForm,
           photoUrl,
-          yearsOfExperience: staffForm.yearsOfExperience ? parseInt(staffForm.yearsOfExperience) : null,
         }),
       })
 
@@ -1967,11 +2085,11 @@ export default function InstallerProfileViewPage() {
         digitalId: '',
         email: '',
         phone: '',
-        location: '',
         title: '',
-        yearsOfExperience: '',
         notes: '',
         photoUrl: '',
+        expirationDate: '',
+        status: 'active',
       })
       setStaffPhotoFile(null)
       setSuccess('Staff member saved successfully!')
@@ -2211,7 +2329,7 @@ export default function InstallerProfileViewPage() {
             {error || 'Unable to load installer profile.'}
           </p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(`/dashboard${getReturnURL()}`)}
             className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
           >
             Back to Dashboard
@@ -2243,12 +2361,6 @@ export default function InstallerProfileViewPage() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
@@ -2270,42 +2382,59 @@ export default function InstallerProfileViewPage() {
             <UsersIcon className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Approvals</span>
-                {pendingApprovalsCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {pendingApprovalsCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
-          <Link
-            href="/dashboard/notifications"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/approvals"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Approvals</span>
+                  {pendingApprovalsCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/tracking"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Activity className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Tracking</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/analytics"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Analytics</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/notifications"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Bell className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Notifications</span>}
+            </Link>
+          )}
           <Link
             href="/dashboard/messages"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -2315,16 +2444,18 @@ export default function InstallerProfileViewPage() {
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
           </Link>
-          <Link
-            href="/dashboard/remarks"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <StickyNote className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Remarks</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MODERATOR' && (
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/remarks"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <StickyNote className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Remarks</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
             <Link
               href="/dashboard/settings"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -2339,9 +2470,22 @@ export default function InstallerProfileViewPage() {
 
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
+            {session?.user?.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || session.user?.email || 'Admin'}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-brand-green" />
+              </div>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-primary-900 text-sm truncate">
@@ -2369,7 +2513,7 @@ export default function InstallerProfileViewPage() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
                 <button
-                  onClick={() => router.push('/dashboard')}
+                  onClick={() => router.push(`/dashboard${getReturnURL()}`)}
                   className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5 text-slate-600" />
@@ -2379,6 +2523,15 @@ export default function InstallerProfileViewPage() {
                   <p className="text-sm text-slate-500">
                     {isEditing ? 'Edit installer details and information' : 'View installer details and information'}
                   </p>
+                  {installer?.createdAt && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Joined {new Date(installer.createdAt).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -2610,40 +2763,44 @@ export default function InstallerProfileViewPage() {
                   )}
                 </div>
                 
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                    Edit Profile
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={handleCancelEdit}
-                      className="px-6 py-2.5 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-green/30"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-5 h-5" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
-                  </div>
+                {!isManager && (
+                  <>
+                    {!isEditing ? (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
+                      >
+                        <Edit2 className="w-5 h-5" />
+                        Edit Profile
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-6 py-2.5 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSave}
+                          disabled={isSaving}
+                          className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-green/30"
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-5 h-5" />
+                              Save Changes
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -2728,20 +2885,64 @@ export default function InstallerProfileViewPage() {
                         <CheckCircle2 className="w-5 h-5 text-white" />
                       </div>
                     )}
-                    <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        disabled={isUploadingPhoto}
-                        className="hidden"
-                      />
-                      {isUploadingPhoto ? (
-                        <Loader2 className="w-6 h-6 text-white animate-spin" />
-                      ) : (
-                        <Camera className="w-6 h-6 text-white" />
-                      )}
-                    </label>
+                    
+                    {/* Photo hover menu - View and Download */}
+                    {(photoUrl || installer.photoUrl) && (
+                      <div className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-center justify-center">
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const imgUrl = photoUrl || installer.photoUrl
+                              if (imgUrl) {
+                                window.open(imgUrl, '_blank', 'noopener,noreferrer')
+                              }
+                            }}
+                            className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium shadow-lg"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const imgUrl = photoUrl || installer.photoUrl
+                              if (imgUrl) {
+                                const link = document.createElement('a')
+                                link.href = imgUrl
+                                link.download = `${installer.firstName}_${installer.lastName}_photo.jpg`
+                                link.target = '_blank'
+                                document.body.appendChild(link)
+                                link.click()
+                                document.body.removeChild(link)
+                              }
+                            }}
+                            className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium shadow-lg"
+                          >
+                            <Download className="w-3 h-3" />
+                            Download
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Upload photo overlay - only show when no photo exists */}
+                    {!(photoUrl || installer.photoUrl) && (
+                      <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center z-30">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          disabled={isUploadingPhoto}
+                          className="hidden"
+                        />
+                        {isUploadingPhoto ? (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-white" />
+                        )}
+                      </label>
+                    )}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -2776,73 +2977,190 @@ export default function InstallerProfileViewPage() {
                   })()}
                   <div className="mt-1">
                     {isEditing ? (
-                      <div className="flex items-center gap-3">
-                        <select
-                          value={status}
-                          onChange={(e) => setStatus(e.target.value)}
-                          className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                        >
-                          <option value="qualified">Qualified</option>
-                          <option value="failed">Not Qualified</option>
-                          <option value="pending">Pending</option>
-                          <option value="active">Active</option>
-                          <option value="deactive">Deactive</option>
-                        </select>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                            className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                          >
+                            <option value="qualified">Qualified</option>
+                            <option value="failed">Not Qualified</option>
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                            <option value="deactive">Deactive</option>
+                          </select>
 
-                        <select
-                          value={trackerStage}
-                          onChange={(e) => setTrackerStage(e.target.value)}
-                          className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                          title="Installer Tracker Stage"
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="QUALIFIED">Qualified</option>
-                          <option value="WAITING_FOR_APPROVAL">Waiting for Approval</option>
-                          <option value="VERIFICATION_IN_PROGRESS">Verification in Progress</option>
-                          <option value="BACKGROUND">Background</option>
-                          <option value="ACTIVE_APPROVED">Active / Approved</option>
-                        </select>
+                          {(status === 'pending' || status === 'failed') && (
+                            <button
+                              onClick={async () => {
+                                if (!installerId) return
+                                setIsSendingEmail(true)
+                                setError('')
+                                setSuccess('')
+                                try {
+                                  const response = await fetch(`/api/installers/${installerId}/send-status-email`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ status }),
+                                  })
+                                  const data = await response.json()
+                                  if (response.ok) {
+                                    setSuccess(data.message || 'Email sent successfully!')
+                                    // Clear success message after 5 seconds
+                                    setTimeout(() => setSuccess(''), 5000)
+                                  } else {
+                                    setError(data.error || 'Failed to send email')
+                                    // Clear error message after 5 seconds
+                                    setTimeout(() => setError(''), 5000)
+                                  }
+                                } catch (err: any) {
+                                  setError(err.message || 'Failed to send email')
+                                  // Clear error message after 5 seconds
+                                  setTimeout(() => setError(''), 5000)
+                                } finally {
+                                  setIsSendingEmail(false)
+                                }
+                              }}
+                              disabled={isSendingEmail}
+                              className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                              title={status === 'pending' ? 'Send AI Interview email' : 'Send Profile Completion email'}
+                            >
+                              {isSendingEmail ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="w-4 h-4" />
+                                  Send Email
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          <select
+                            value={trackerStage}
+                            onChange={(e) => setTrackerStage(e.target.value)}
+                            className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            title="Installer Tracker Stage"
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="QUALIFIED">Qualified</option>
+                            <option value="WAITING_FOR_APPROVAL">Waiting for Approval</option>
+                            <option value="VERIFICATION_IN_PROGRESS">Verification in Progress</option>
+                            <option value="BACKGROUND">Background</option>
+                            <option value="ACTIVE_APPROVED">Active / Approved</option>
+                          </select>
+                        </div>
+                        
+                        {/* Notification Method Selector */}
+                        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <Bell className="w-4 h-4 text-blue-600" />
+                          <label className="text-sm font-semibold text-slate-700">Notify installer via:</label>
+                          <select
+                            value={notificationMethod}
+                            onChange={(e) => setNotificationMethod(e.target.value as 'email' | 'notification' | 'both')}
+                            className="px-3 py-1.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 text-sm"
+                          >
+                            <option value="both">Email & Notification</option>
+                            <option value="email">Email Only</option>
+                            <option value="notification">Notification Only</option>
+                          </select>
+                        </div>
                       </div>
                     ) : (
                       <>
-                      {/* Collapsible compliance status + filter */}
-                      <div className="mt-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setComplianceOpen((v) => !v)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                            title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
-                          >
-                            <BarChart3 className="w-4 h-4 text-brand-green" />
-                            <span>Compliance Status</span>
-                            {complianceOpen ? (
-                              <ChevronUp className="w-4 h-4 text-slate-500" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-slate-500" />
-                            )}
-                          </button>
+                      {/* Show tracker stages for managers, compliance status for others */}
+                      {isManager ? (
+                        <div className="mt-4">
+                          {(() => {
+                            const stages = [
+                              { key: 'PENDING', label: 'Pending' },
+                              { key: 'QUALIFIED', label: 'Qualified' },
+                              { key: 'WAITING_FOR_APPROVAL', label: 'Waiting for Approval' },
+                              { key: 'VERIFICATION_IN_PROGRESS', label: 'Verification in Progress' },
+                              { key: 'BACKGROUND', label: 'Background' },
+                              { key: 'ACTIVE_APPROVED', label: 'Active / Approved' },
+                            ] as const
 
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className="px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-bold">
-                              Active {complianceCounts.active}
-                            </span>
-                            <span className="px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold">
-                              Expired {complianceCounts.expired}
-                            </span>
-                            <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 font-bold">
-                              Missing {complianceCounts.missing}
-                            </span>
-                            <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                              Inactive {complianceCounts.inactive}
-                            </span>
+                            const currentKey = String(trackerStage || 'PENDING').toUpperCase()
+                            const currentIdx = Math.max(0, stages.findIndex((s) => s.key === currentKey))
+
+                            return (
+                              <div className="-mx-2 px-2">
+                                <div className="w-full bg-transparent border border-transparent rounded-full px-0 py-0 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:w-max lg:whitespace-nowrap lg:overflow-x-auto lg:hide-scrollbar">
+                                  {stages.map((s, idx) => {
+                                    const isCurrent = idx === currentIdx
+                                    const isDone = idx < currentIdx
+                                    const showCheck = isDone || isCurrent
+                                    const base =
+                                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors'
+                                    const cls = isCurrent
+                                      ? `${base} bg-brand-green text-white shadow-sm`
+                                      : isDone
+                                        ? `${base} bg-white text-brand-green border border-brand-green/30`
+                                        : `${base} bg-white text-slate-500 border border-slate-200`
+
+                                    return (
+                                      <div key={s.key} className="flex items-center flex-shrink-0">
+                                        <span className={cls}>
+                                          {showCheck && <CheckCircle2 className="w-3.5 h-3.5" />}
+                                          {s.label}
+                                        </span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="mt-4">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setComplianceOpen((v) => !v)}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                              title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
+                            >
+                              <BarChart3 className="w-4 h-4 text-brand-green" />
+                              <span>Compliance Status</span>
+                              {complianceOpen ? (
+                                <ChevronUp className="w-4 h-4 text-slate-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-slate-500" />
+                              )}
+                            </button>
+
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-bold">
+                                Active {complianceCounts.active}
+                              </span>
+                              <span className="px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold">
+                                Expired {complianceCounts.expired}
+                              </span>
+                              <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 font-bold">
+                                Missing {complianceCounts.missing}
+                              </span>
+                              <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                                Inactive {complianceCounts.inactive}
+                              </span>
+                            </div>
                           </div>
                         </div>
+                      )}
+                      {!isManager && (
+                        <div className="mt-4">
 
-                        {complianceOpen && (
-                          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div className="divide-y divide-slate-100">
-                              {complianceRows.map((row) => {
+                          {complianceOpen && (
+                            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                              <div className="divide-y divide-slate-100">
+                                {complianceRows.map((row) => {
                                 const badgeClasses =
                                   row.statusKey === 'active'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -2909,15 +3227,16 @@ export default function InstallerProfileViewPage() {
                                 )
                               })}
 
-                              {!complianceRows.length && (
-                                <div className="px-4 py-6 text-sm text-slate-600">
-                                  No compliance items available.
-                                </div>
-                              )}
+                                {!complianceRows.length && (
+                                  <div className="px-4 py-6 text-sm text-slate-600">
+                                    No compliance items available.
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                       </>
                     )}
                   </div>
@@ -3490,7 +3809,7 @@ export default function InstallerProfileViewPage() {
                   <p className="text-sm text-slate-500">Staff and crew members</p>
                 </div>
               </div>
-              {staffMembers.length > 0 && (
+              {staffMembers.length > 0 && !isManager && (
                 <button
                   onClick={handleAddStaff}
                   className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors"
@@ -3505,13 +3824,15 @@ export default function InstallerProfileViewPage() {
               <div className="text-center py-12">
                 <UsersIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-500 mb-4">No team members added yet</p>
-                <button
-                  onClick={handleAddStaff}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add First Member</span>
-                </button>
+                {!isManager && (
+                  <button
+                    onClick={handleAddStaff}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:bg-brand-green-dark transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add First Member</span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -3523,23 +3844,29 @@ export default function InstallerProfileViewPage() {
                     className="bg-slate-50 rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all relative"
                   >
                     <div className="absolute top-2 right-2 flex gap-2">
-                      <button
-                        onClick={() => handleEditStaff(staff)}
-                        className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteStaff(staff.id, `${staff.firstName} ${staff.lastName}`)}
-                        className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isManager && (
+                        <>
+                          <button
+                            onClick={() => handleEditStaff(staff)}
+                            className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDeleteStaff(staff.id, `${staff.firstName} ${staff.lastName}`)}
+                              className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center relative">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center">
                         {staff.photoUrl && !failedImageLoads.has(staff.id) ? (
                           <Image
                             src={staff.photoUrl}
@@ -3556,9 +3883,20 @@ export default function InstallerProfileViewPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-slate-900 text-lg">
-                          {staff.firstName} {staff.lastName}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-slate-900 text-lg">
+                            {staff.firstName} {staff.lastName}
+                          </h3>
+                          {staff.status && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              staff.status === 'active' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {staff.status === 'active' ? 'Active' : 'Expired'}
+                            </span>
+                          )}
+                        </div>
                         {staff.title && (
                           <p className="text-sm text-slate-600">{staff.title}</p>
                         )}
@@ -3578,18 +3916,6 @@ export default function InstallerProfileViewPage() {
                           <span>{staff.phone}</span>
                         </div>
                       )}
-                      {staff.location && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <MapPin className="w-4 h-4 text-slate-400" />
-                          <span>{staff.location}</span>
-                        </div>
-                      )}
-                      {staff.yearsOfExperience && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Briefcase className="w-4 h-4 text-slate-400" />
-                          <span>{staff.yearsOfExperience} years experience</span>
-                        </div>
-                      )}
                       {staff.digitalId && (
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <CreditCard className="w-4 h-4 text-slate-400" />
@@ -3607,6 +3933,12 @@ export default function InstallerProfileViewPage() {
                           )}
                         </div>
                       )}
+                      {staff.expirationDate && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Calendar className="w-4 h-4 text-slate-400" />
+                          <span>Expires: {new Date(staff.expirationDate).toLocaleDateString()}</span>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -3615,11 +3947,13 @@ export default function InstallerProfileViewPage() {
           </motion.div>
 
           {/* Attachments */}
+          {!isManager && (
           <motion.div
+            id="attachments"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.32 }}
-            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm scroll-mt-20"
           >
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
               <div>
@@ -3756,19 +4090,21 @@ export default function InstallerProfileViewPage() {
                                           View
                                         </a>
                                       )}
-                                      <button
-                                        type="button"
-                                        disabled={deletingThis}
-                                        onClick={() => handleDeleteClick(doc.id, docName, docType.id)}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-200 bg-white text-red-700 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
-                                      >
-                                        {deletingThis ? (
-                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        ) : (
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        )}
-                                        Delete
-                                      </button>
+                                      {canDelete && (
+                                        <button
+                                          type="button"
+                                          disabled={deletingThis}
+                                          onClick={() => handleDeleteClick(doc.id, docName, docType.id)}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-200 bg-white text-red-700 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                                        >
+                                          {deletingThis ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          )}
+                                          Delete
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 )
@@ -3932,8 +4268,186 @@ export default function InstallerProfileViewPage() {
               </p>
             </div>
           </motion.div>
+          )}
+
+          {/* Agreements Section */}
+          {!isManager && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.33 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Agreements</h2>
+                <p className="text-sm text-slate-500">Signed agreements and legal documents</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <FileCheck className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            {(() => {
+              // Filter to only show signed agreements (must have signedAt date)
+              const signedAgreements = agreements.filter((agreement: any) => {
+                // Only show agreements that have been signed by the installer
+                return agreement.signedAt != null
+              })
+
+              if (signedAgreements.length === 0) {
+                return (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">No agreements signed yet</p>
+                    <p className="text-sm text-slate-400 mt-1">Agreements will appear here once the installer signs them</p>
+                  </div>
+                )
+              }
+
+              return (
+                <div className="space-y-4">
+                  {signedAgreements.map((agreement: any) => {
+                  const getAgreementName = (type: string) => {
+                    switch (type) {
+                      case 'background-authorization-release':
+                      case 'background-authorization':
+                        return 'Background Authorization and Release'
+                      case 'form-w-9':
+                      case 'w-9':
+                      case 'w9':
+                        return 'Form W-9'
+                      case 'nda':
+                        return 'Non-Disclosure Agreement (NDA)'
+                      case 'service-agreement':
+                        return 'Service Agreement'
+                      default:
+                        return type.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+                    }
+                  }
+
+                  const getAgreementRoute = (type: string) => {
+                    switch (type) {
+                      case 'background-authorization-release':
+                      case 'background-authorization':
+                        return `/dashboard/installers/${installerId}/agreements/background-authorization`
+                      case 'form-w-9':
+                      case 'w-9':
+                      case 'w9':
+                        return `/dashboard/installers/${installerId}/agreements/w-9`
+                      case 'nda':
+                        return `/dashboard/installers/${installerId}/agreements/nda`
+                      case 'service-agreement':
+                        return `/dashboard/installers/${installerId}/agreements/service-agreement`
+                      default:
+                        return null
+                    }
+                  }
+
+                  const getStatusBadge = (status: string) => {
+                    switch (status) {
+                      case 'approved':
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Approved
+                          </span>
+                        )
+                      case 'pending_admin':
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold">
+                            <Clock className="w-3.5 h-3.5" />
+                            Pending Approval
+                          </span>
+                        )
+                      case 'rejected':
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-semibold">
+                            <XCircle className="w-3.5 h-3.5" />
+                            Rejected
+                          </span>
+                        )
+                      case 'draft':
+                      default:
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold">
+                            <FileText className="w-3.5 h-3.5" />
+                            Draft
+                          </span>
+                        )
+                    }
+                  }
+
+                  const agreementRoute = getAgreementRoute(agreement.type)
+                  const signedDate = agreement.signedAt ? new Date(agreement.signedAt).toLocaleDateString() : null
+                  const approvedDate = agreement.approvedAt ? new Date(agreement.approvedAt).toLocaleDateString() : null
+
+                  return (
+                    <motion.div
+                      key={agreement.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="border border-slate-200 rounded-xl p-6 hover:border-slate-300 hover:shadow-md transition-all bg-slate-50/50"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                              <FileCheck className="w-5 h-5 text-brand-green" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-bold text-slate-900 mb-1">
+                                {getAgreementName(agreement.type)}
+                              </h3>
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {getStatusBadge(agreement.status)}
+                                {signedDate && (
+                                  <span className="text-sm text-slate-600">
+                                    Signed: {signedDate}
+                                  </span>
+                                )}
+                                {approvedDate && (
+                                  <span className="text-sm text-slate-600">
+                                    Approved: {approvedDate}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {agreement.adminSignature && (
+                            <div className="mt-3 pt-3 border-t border-slate-200">
+                              <p className="text-sm text-slate-600">
+                                <span className="font-semibold">Admin Signature:</span> {agreement.adminSignature}
+                              </p>
+                              {agreement.adminSignedDate && (
+                                <p className="text-sm text-slate-600 mt-1">
+                                  <span className="font-semibold">Admin Signed Date:</span> {agreement.adminSignedDate}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {agreementRoute && (
+                          <Link
+                            href={agreementRoute}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-white transition-colors font-medium text-sm whitespace-nowrap"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Agreement
+                          </Link>
+                        )}
+                      </div>
+                    </motion.div>
+                  )
+                })}
+                </div>
+              )
+            })()}
+          </motion.div>
+          )}
 
           {/* Insurance & Registration Information */}
+          {!isManager && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4276,8 +4790,10 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Insurance & Certificate Expiry Dates - Full Width Section */}
+          {!isManager && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4360,6 +4876,7 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* License & Background Check Section */}
           <motion.div
@@ -6471,6 +6988,7 @@ export default function InstallerProfileViewPage() {
           </motion.div>
 
           {/* Payment Information */}
+          {!isManager && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -6865,8 +7383,10 @@ export default function InstallerProfileViewPage() {
               </div>
             )}
           </motion.div>
+          )}
 
           {/* Historical Data Section */}
+          {!isManager && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -6879,13 +7399,15 @@ export default function InstallerProfileViewPage() {
                 <p className="text-sm text-slate-500">Past years' profile information</p>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={handleAddHistory}
-                  className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Historical Data
-                </button>
+                {!isManager && (
+                  <button
+                    onClick={handleAddHistory}
+                    className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Historical Data
+                  </button>
+                )}
                 <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-brand-green" />
                 </div>
@@ -6934,26 +7456,32 @@ export default function InstallerProfileViewPage() {
                           </div>
                         </button>
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEditHistory(history)
-                            }}
-                            className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteHistory(history.id, history.year)
-                            }}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {!isManager && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditHistory(history)
+                                }}
+                                className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
+                                title="Edit"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              {canDelete && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteHistory(history.id, history.year)
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          )}
                           <button
                             onClick={() => setExpandedHistory(prev => ({
                               ...prev,
@@ -7684,6 +8212,7 @@ export default function InstallerProfileViewPage() {
               </div>
             )}
           </motion.div>
+          )}
 
           {/* Location Map (uses saved Address) */}
           {(() => {
@@ -9392,11 +9921,11 @@ export default function InstallerProfileViewPage() {
                     digitalId: '',
                     email: '',
                     phone: '',
-                    location: '',
                     title: '',
-                    yearsOfExperience: '',
                     notes: '',
                     photoUrl: '',
+                    expirationDate: '',
+                    status: 'active',
                   })
                   setStaffPhotoFile(null)
                 }}
@@ -9411,7 +9940,7 @@ export default function InstallerProfileViewPage() {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Photo</label>
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center">
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-slate-300 flex-shrink-0 bg-slate-100 flex items-center justify-center group">
                     {staffPhotoFile ? (
                       <Image
                         src={URL.createObjectURL(staffPhotoFile)}
@@ -9421,13 +9950,52 @@ export default function InstallerProfileViewPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : staffForm.photoUrl ? (
-                      <Image
-                        src={staffForm.photoUrl}
-                        alt="Current photo"
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <Image
+                          src={staffForm.photoUrl}
+                          alt="Current photo"
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Photo hover menu - View and Download */}
+                        <div className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-center justify-center">
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (staffForm.photoUrl) {
+                                  window.open(staffForm.photoUrl, '_blank', 'noopener,noreferrer')
+                                }
+                              }}
+                              className="flex items-center gap-0.5 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-[10px] font-medium shadow-lg"
+                              title="View photo"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (staffForm.photoUrl) {
+                                  const link = document.createElement('a')
+                                  link.href = staffForm.photoUrl
+                                  link.download = `${staffForm.firstName || ''}_${staffForm.lastName || ''}_photo.jpg`
+                                  link.target = '_blank'
+                                  document.body.appendChild(link)
+                                  link.click()
+                                  document.body.removeChild(link)
+                                }
+                              }}
+                              className="flex items-center gap-0.5 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-[10px] font-medium shadow-lg"
+                              title="Download photo"
+                            >
+                              <Download className="w-2.5 h-2.5" />
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      </>
                     ) : (
                       <User className="w-12 h-12 text-slate-400" />
                     )}
@@ -9520,26 +10088,29 @@ export default function InstallerProfileViewPage() {
                     placeholder="Job title"
                   />
                 </div>
+              </div>
+
+              {/* Expiration Date and Status */}
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Location</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expiration Date</label>
                   <input
-                    type="text"
-                    value={staffForm.location}
-                    onChange={(e) => setStaffForm({ ...staffForm, location: e.target.value })}
+                    type="date"
+                    value={staffForm.expirationDate}
+                    onChange={(e) => setStaffForm({ ...staffForm, expirationDate: e.target.value })}
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                    placeholder="Location"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Years of Experience</label>
-                  <input
-                    type="number"
-                    value={staffForm.yearsOfExperience}
-                    onChange={(e) => setStaffForm({ ...staffForm, yearsOfExperience: e.target.value })}
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select
+                    value={staffForm.status}
+                    onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                    placeholder="Years"
-                    min="0"
-                  />
+                  >
+                    <option value="active">Active</option>
+                    <option value="expired">Expired</option>
+                  </select>
                 </div>
               </div>
 
@@ -9568,11 +10139,11 @@ export default function InstallerProfileViewPage() {
                     digitalId: '',
                     email: '',
                     phone: '',
-                    location: '',
                     title: '',
-                    yearsOfExperience: '',
                     notes: '',
                     photoUrl: '',
+                    expirationDate: '',
+                    status: 'active',
                   })
                   setStaffPhotoFile(null)
                 }}

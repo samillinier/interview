@@ -49,6 +49,7 @@ function pickInstallerUpdatePayload(payload: any): Record<string, any> {
 
     // Compliance / expirations (installer-managed)
     'llrpExpiry',
+    'llrpExpiryDates',
     'btrExpiry',
     'workersCompExemExpiryDates',
     'workersCompExemExpiry',
@@ -205,6 +206,22 @@ export async function PATCH(
         }
       }
 
+      // Document verification tasks: mark document as not verified (but don't delete it)
+      if (payload?.action === 'verify_document' && payload?.documentId) {
+        try {
+          await prisma.document.update({
+            where: { id: String(payload.documentId) },
+            data: {
+              verified: false,
+              verifiedAt: null,
+            },
+            select: { id: true },
+          })
+        } catch (e) {
+          console.error('Failed to mark document as not verified:', e)
+        }
+      }
+
       const updated = await prisma.installerChangeRequest.update({
         where: { id: requestId },
         data: {
@@ -221,16 +238,21 @@ export async function PATCH(
         const reasonText = (rejectionReason || '').trim()
         const payloadForReject = changeRequest.payload as any
         const isAgreement = payloadForReject?.action === 'approve_agreement'
+        const isDocument = payloadForReject?.action === 'verify_document'
+        const documentName = isDocument ? (payloadForReject?.documentName || 'document') : ''
+        
         await prisma.notification.create({
           data: {
             installerId: changeRequest.installerId,
             type: 'notification',
-            title: isAgreement ? 'Agreement Rejected' : 'Update Rejected',
+            title: isAgreement ? 'Agreement Rejected' : isDocument ? 'Attachment Rejected' : 'Update Rejected',
             content: isAgreement
               ? `Your submitted agreement was rejected.${reasonText ? ` Reason: ${reasonText}` : ''}`
+              : isDocument
+              ? `Your uploaded ${documentName} was rejected and needs to be re-uploaded.${reasonText ? ` Reason: ${reasonText}` : ''}`
               : `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was rejected.${reasonText ? ` Reason: ${reasonText}` : ''}`,
             priority: 'normal',
-            link: isAgreement ? '/installer/agreements/background-authorization' : '/installer/profile',
+            link: isAgreement ? '/installer/agreements/background-authorization' : isDocument ? '/installer/attachments' : '/installer/profile',
             senderId: 'admin',
             senderType: 'admin',
           },
@@ -337,6 +359,85 @@ export async function PATCH(
       return NextResponse.json({ success: true, request: updated })
     }
 
+    // Handle document verification (Attachments section)
+    if (payload?.action === 'verify_document') {
+      const documentId = payload?.documentId ? String(payload.documentId) : ''
+      if (!documentId) {
+        return NextResponse.json({ error: 'Invalid document verification request', details: 'Missing documentId' }, { status: 400 })
+      }
+
+      const now = new Date()
+      const updated = await prisma.$transaction(async (tx) => {
+        // Verify the document exists and belongs to the installer
+        const document = await tx.document.findUnique({
+          where: { id: documentId },
+          select: { installerId: true },
+        })
+
+        if (!document) {
+          throw new Error('Document not found')
+        }
+
+        if (document.installerId !== changeRequest.installerId) {
+          throw new Error('Document does not belong to this installer')
+        }
+
+        // Mark document as verified
+        await tx.document.update({
+          where: { id: documentId },
+          data: {
+            verified: true,
+            verifiedAt: now,
+          },
+        })
+
+        // Mark change request as approved
+        const updatedRequest = await tx.installerChangeRequest.update({
+          where: { id: requestId },
+          data: {
+            status: 'approved',
+            reviewedBy: email,
+            reviewedAt: now,
+            rejectionReason: null,
+          },
+        })
+
+        return updatedRequest
+      })
+
+      // Notify installer
+      try {
+        const documentName = payload?.documentName || 'document'
+        await prisma.notification.create({
+          data: {
+            installerId: changeRequest.installerId,
+            type: 'notification',
+            title: 'Attachment Verified',
+            content: `Your uploaded ${documentName} has been verified and approved.`,
+            priority: 'normal',
+            link: '/installer/attachments',
+            senderId: 'admin',
+            senderType: 'admin',
+          },
+        })
+      } catch (e) {
+        console.error('Failed to notify installer about document verification:', e)
+      }
+
+      // Check if there are remaining pending requests
+      const remaining = await prisma.installerChangeRequest.count({
+        where: { installerId: changeRequest.installerId, status: 'pending' },
+      })
+      if (remaining === 0) {
+        await prisma.installer.updateMany({
+          where: { id: changeRequest.installerId, status: 'pending' },
+          data: { status: 'active' },
+        })
+      }
+
+      return NextResponse.json({ success: true, request: updated })
+    }
+
     // Handle staff member changes (Team Members section)
     if (payload?.action) {
       const { action: staffAction, staffId, staffData } = payload
@@ -351,11 +452,11 @@ export async function PATCH(
             digitalId: staffData.digitalId || null,
             email: staffData.email || null,
             phone: staffData.phone || null,
-            location: staffData.location || null,
             photoUrl: staffData.photoUrl || null,
             title: staffData.title || null,
-            yearsOfExperience: staffData.yearsOfExperience ? parseInt(staffData.yearsOfExperience) : null,
             notes: staffData.notes || null,
+            expirationDate: staffData.expirationDate ? new Date(staffData.expirationDate) : null,
+            status: staffData.status || 'active',
           },
         })
 
@@ -403,20 +504,28 @@ export async function PATCH(
 
       if (staffAction === 'update_staff' && staffId) {
         // Update existing staff member
+        const updateData: any = {
+          firstName: staffData.firstName,
+          lastName: staffData.lastName,
+          digitalId: staffData.digitalId || null,
+          email: staffData.email || null,
+          phone: staffData.phone || null,
+          photoUrl: staffData.photoUrl || null,
+          title: staffData.title || null,
+          notes: staffData.notes || null,
+        }
+        
+        if (staffData.expirationDate !== undefined) {
+          updateData.expirationDate = staffData.expirationDate ? new Date(staffData.expirationDate) : null
+        }
+        
+        if (staffData.status !== undefined) {
+          updateData.status = staffData.status || 'active'
+        }
+        
         const staffMember = await prisma.staffMember.update({
           where: { id: staffId },
-          data: {
-            firstName: staffData.firstName,
-            lastName: staffData.lastName,
-            digitalId: staffData.digitalId || null,
-            email: staffData.email || null,
-            phone: staffData.phone || null,
-            location: staffData.location || null,
-            photoUrl: staffData.photoUrl || null,
-            title: staffData.title || null,
-            yearsOfExperience: staffData.yearsOfExperience ? parseInt(staffData.yearsOfExperience) : null,
-            notes: staffData.notes || null,
-          },
+          data: updateData,
         })
 
         const updatedRequest = await prisma.installerChangeRequest.update({

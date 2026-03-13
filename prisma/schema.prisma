@@ -5,6 +5,8 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Use a non-pooled/direct connection for Prisma migrations (avoids advisory lock timeouts on poolers like Neon).
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Admin {
@@ -24,6 +26,7 @@ model Admin {
 enum AdminRole {
   ADMIN
   MODERATOR
+  MANAGER
 }
 
 enum InstallerTrackerStage {
@@ -194,6 +197,7 @@ model Installer {
   Installer                            Installer?               @relation("InstallerToInstaller", fields: [referredByInstallerId], references: [id])
   other_Installer                      Installer[]              @relation("InstallerToInstaller")
   InstallerHistory                     InstallerHistory[]
+  InstallerTracking                   InstallerTracking[]
   Interview                            Interview[]
   JobApplication                       JobApplication[]
   Notification                         Notification[]
@@ -429,6 +433,31 @@ model InstallerChangeRequest {
   @@index([createdAt])
 }
 
+model InstallerTracking {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  installerId String?   // Optional for manual entries
+  type        String    // "issue" | "activity" | "status_change" | "document" | "communication"
+  title       String
+  description String?
+  status      String    @default("pending") // "pending" | "ongoing" | "resolved" | "solved"
+  priority    String    @default("normal") // "low" | "normal" | "high" | "urgent"
+  category    String?   // e.g. "document_expiry", "status_change", "communication", "compliance"
+  metadata    Json?     // Additional data like oldStatus, newStatus, documentType, etc.
+  resolvedAt  DateTime?
+  resolvedBy  String?   // admin email
+  notes       String?
+  
+  Installer   Installer? @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([installerId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([priority])
+}
+
 model ScreeningCriteria {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
@@ -449,13 +478,143 @@ model StaffMember {
   lastName          String
   email             String?
   phone             String?
-  location          String?
   photoUrl          String?
   title             String?
-  yearsOfExperience Int?
   notes             String?
   digitalId         String?
+  expirationDate    DateTime?
+  status            String    @default("active") // "active" | "expired"
   Installer         Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
 
   @@index([installerId])
+  @@index([status])
+}
+
+model Property {
+  id                String   @id @default(cuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  firstName         String
+  lastName          String
+  email             String   @unique
+  phone             String?
+  username          String?  @unique
+  passwordHash      String?
+  passwordResetToken String?
+  status            String   @default("active")
+  photoUrl          String?
+  companyName       String?
+  companyAddress    String?
+  notes             String?
+  Location          Location[]
+  Vehicle           Vehicle[]
+  Inventory         Inventory[]
+
+  @@index([email])
+  @@index([username])
+  @@index([status])
+}
+
+model Location {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  propertyId            String
+  location              String?
+  aliasLocation         String?
+  propertyAddress       String?
+  leaseStart            DateTime?
+  leaseRenewal          DateTime?
+  landlord              String?
+  landlordPhone         String?
+  propertyMgr           String?
+  rentAmount            Float?
+  depositAmt            Float?
+  // Legacy amount field (kept for backwards compatibility)
+  depositPayback        Float?
+  // Date the deposit is expected to be paid back
+  depositPaybackDate    DateTime?
+  status                String?   @default("active")
+  insuranceRequirements String?
+  subBroker             String?
+  sublessee             String?
+  subRent               Float?
+  subDeposit            Float?
+  subContacts           String?
+  subPhone              String?
+  sqFeet                Float?
+  photoUrl              String?
+  // WiFi & Utilities
+  wifiName              String?
+  wifiPassword          String?
+  waterProvider         String?   // JSON string with name, phone, accountNumber, etc.
+  internetProvider      String?   // JSON string with name, phone, accountNumber, plan, etc.
+  powerProvider         String?   // JSON string with name, phone, accountNumber, etc.
+  garbageProvider       String?   // JSON string with name, phone, accountNumber, pickupDay, etc.
+  propaneProvider       String?   // JSON string with name, phone, accountNumber, tankLocation, etc.
+  securityLock          String?   // JSON string with type, code, location, notes, etc.
+  Property              Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+model Vehicle {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  propertyId            String
+  vehicleYear           Int?
+  vehicleMake           String?
+  vehicleModel          String?
+  assignedDriver        String?
+  vin                   String?
+  location              String?
+  locationAddress       String?
+  plate                 String?
+  tagRenewal            DateTime?
+  transponderNumber     String?
+  mileageAsOfAugust2025 Float?
+  photoUrl              String?
+  Property              Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([vin])
+  @@index([plate])
+}
+
+model Inventory {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  propertyId            String
+  itemName              String
+  sku                   String?
+  category              String?
+  quantity              Float     @default(0)
+  unitOfMeasure         String?   @default("unit")
+  cost                  Float?
+  price                 Float?
+  supplier              String?
+  supplierContact       String?
+  location              String?
+  warehouse             String?
+  reorderLevel          Float?
+  minimumStock          Float?
+  maximumStock          Float?
+  status                String    @default("active")
+  brand                 String?
+  manufacturer          String?
+  barcode               String?
+  serialNumber          String?
+  lastRestocked         DateTime?
+  notes                 String?
+  photoUrl              String?
+  Property              Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([sku])
+  @@index([category])
+  @@index([status])
+  @@index([barcode])
 }

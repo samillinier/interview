@@ -52,7 +52,7 @@ This guide will help you deploy your Floor Interior Service application to Verce
 2. **Configure your project:**
    - **Framework Preset:** Next.js (should auto-detect)
    - **Root Directory:** `./` (leave as default)
-   - **Build Command:** `prisma generate && prisma migrate deploy && next build` (already in vercel.json)
+   - **Build Command:** `npm run vercel-build` (already in `vercel.json`)
    - **Install Command:** `npm install` (already in vercel.json)
    - **Output Directory:** `.next` (auto-detected)
 
@@ -62,6 +62,7 @@ This guide will help you deploy your Floor Interior Service application to Verce
 
    ```
    DATABASE_URL = (Vercel will auto-populate this from POSTGRES_URL)
+   DATABASE_URL_UNPOOLED = (set this to Vercel’s non-pooled/direct connection string for Prisma migrations)
    OPENAI_API_KEY = sk-your-openai-api-key-here
    NEXTAUTH_URL = https://your-app.vercel.app
    NEXTAUTH_SECRET = (generate with: openssl rand -base64 32)
@@ -211,6 +212,7 @@ If migrations fail:
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `DATABASE_URL` | PostgreSQL connection string (from Vercel Postgres) | Yes |
+| `DATABASE_URL_UNPOOLED` | Non-pooled/direct PostgreSQL connection string (used for Prisma migrations via `directUrl`) | Yes |
 | `OPENAI_API_KEY` | Your OpenAI API key | Yes |
 | `NEXTAUTH_URL` | Your app URL (e.g., https://your-app.vercel.app) | Yes |
 | `NEXTAUTH_SECRET` | Secret for NextAuth (generate with `openssl rand -base64 32`) | Yes |

@@ -37,7 +37,8 @@ import {
   Plus,
   Trash2,
   Users,
-  ExternalLink
+  ExternalLink,
+  HelpCircle
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -455,11 +456,11 @@ export default function InstallerProfilePage() {
     digitalId: '',
     email: '',
     phone: '',
-    location: '',
     title: '',
-    yearsOfExperience: '',
     notes: '',
     photoUrl: '',
+    expirationDate: '',
+    status: 'active',
   })
   const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState(false)
   const [isSavingStaff, setIsSavingStaff] = useState(false)
@@ -1373,11 +1374,11 @@ export default function InstallerProfilePage() {
             digitalId: '',
             email: '',
             phone: '',
-            location: '',
             title: '',
-            yearsOfExperience: '',
             notes: '',
             photoUrl: '',
+            expirationDate: '',
+            status: 'active',
           })
           setSuccess(data.message || 'Team member change submitted for admin approval')
           setTimeout(() => setSuccess(''), 5000)
@@ -1392,11 +1393,11 @@ export default function InstallerProfilePage() {
             digitalId: '',
             email: '',
             phone: '',
-            location: '',
             title: '',
-            yearsOfExperience: '',
             notes: '',
             photoUrl: '',
+            expirationDate: '',
+            status: 'active',
           })
           setSuccess(editingStaff ? 'Staff member updated successfully!' : 'Staff member added successfully!')
           setTimeout(() => setSuccess(''), 3000)
@@ -1459,11 +1460,11 @@ export default function InstallerProfilePage() {
       digitalId: staff.digitalId || '',
       email: staff.email || '',
       phone: staff.phone || '',
-      location: staff.location || '',
       title: staff.title || '',
-      yearsOfExperience: staff.yearsOfExperience?.toString() || '',
       notes: staff.notes || '',
       photoUrl: staff.photoUrl || '',
+      expirationDate: staff.expirationDate ? new Date(staff.expirationDate).toISOString().split('T')[0] : '',
+      status: staff.status || 'active',
     })
     setStaffFormImageError(false) // Reset error state when editing staff
     setShowStaffModal(true)
@@ -1478,11 +1479,11 @@ export default function InstallerProfilePage() {
       digitalId: '',
       email: '',
       phone: '',
-      location: '',
       title: '',
-      yearsOfExperience: '',
       notes: '',
       photoUrl: '',
+      expirationDate: '',
+      status: 'active',
     })
     setStaffFormImageError(false) // Reset error state when adding new staff
     setShowStaffModal(true)
@@ -2047,6 +2048,13 @@ export default function InstallerProfilePage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 
@@ -3653,9 +3661,20 @@ export default function InstallerProfilePage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-slate-900 text-lg">
-                            {staff.firstName} {staff.lastName}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-900 text-lg">
+                              {staff.firstName} {staff.lastName}
+                            </h3>
+                            {staff.status && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                staff.status === 'active' 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {staff.status === 'active' ? 'Active' : 'Expired'}
+                              </span>
+                            )}
+                          </div>
                           {staff.title && (
                             <p className="text-sm text-slate-600">{staff.title}</p>
                           )}
@@ -3692,18 +3711,6 @@ export default function InstallerProfilePage() {
                           <span>{staff.phone}</span>
                         </div>
                       )}
-                      {staff.location && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <MapPin className="w-4 h-4 text-slate-400" />
-                          <span>{staff.location}</span>
-                        </div>
-                      )}
-                      {staff.yearsOfExperience && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <Briefcase className="w-4 h-4 text-slate-400" />
-                          <span>{staff.yearsOfExperience} years experience</span>
-                        </div>
-                      )}
                       {staff.digitalId && (
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <CreditCard className="w-4 h-4 text-slate-400" />
@@ -3719,6 +3726,12 @@ export default function InstallerProfilePage() {
                           ) : (
                             <span className="truncate">{staff.digitalId}</span>
                           )}
+                        </div>
+                      )}
+                      {staff.expirationDate && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Calendar className="w-4 h-4 text-slate-400" />
+                          <span>Expires: {new Date(staff.expirationDate).toLocaleDateString()}</span>
                         </div>
                       )}
                     </div>
@@ -6196,11 +6209,11 @@ export default function InstallerProfilePage() {
                     digitalId: '',
                     email: '',
                     phone: '',
-                    location: '',
                     title: '',
-                    yearsOfExperience: '',
                     notes: '',
                     photoUrl: '',
+                    expirationDate: '',
+                    status: 'active',
                   })
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -6318,17 +6331,6 @@ export default function InstallerProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Location</label>
-                    <input
-                      type="text"
-                      value={staffForm.location}
-                      onChange={(e) => setStaffForm({ ...staffForm, location: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                      placeholder="City, State or full address"
-                    />
-                  </div>
-
-                  <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Job Title/Role</label>
                     <input
                       type="text"
@@ -6338,17 +6340,29 @@ export default function InstallerProfilePage() {
                       placeholder="e.g., Lead Installer, Assistant"
                     />
                   </div>
+                </div>
 
+                {/* Expiration Date and Status */}
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Years of Experience</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Expiration Date</label>
                     <input
-                      type="number"
-                      value={staffForm.yearsOfExperience}
-                      onChange={(e) => setStaffForm({ ...staffForm, yearsOfExperience: e.target.value })}
+                      type="date"
+                      value={staffForm.expirationDate}
+                      onChange={(e) => setStaffForm({ ...staffForm, expirationDate: e.target.value })}
                       className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                      placeholder="Years"
-                      min="0"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                    <select
+                      value={staffForm.status}
+                      onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    >
+                      <option value="active">Active</option>
+                      <option value="expired">Expired</option>
+                    </select>
                   </div>
                 </div>
 
@@ -6377,11 +6391,11 @@ export default function InstallerProfilePage() {
                     digitalId: '',
                     email: '',
                     phone: '',
-                    location: '',
                     title: '',
-                    yearsOfExperience: '',
                     notes: '',
                     photoUrl: '',
+                    expirationDate: '',
+                    status: 'active',
                   })
                 }}
                 className="px-6 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"

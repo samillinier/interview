@@ -1,6 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { uploadFile } from '@/lib/storage'
+import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/installerToken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+async function requireInstallerOrAdmin(request: NextRequest, installerId: string) {
+  // Installer token path
+  const token = getInstallerTokenFromRequest(request)
+  if (token) {
+    try {
+      const payload = verifyInstallerToken(token)
+      if (!payload.installerId || payload.installerId !== installerId) {
+        return { ok: false as const, status: 403, error: 'Forbidden' }
+      }
+      return { ok: true as const, actor: 'installer' as const }
+    } catch {
+      return { ok: false as const, status: 401, error: 'Unauthorized' }
+    }
+  }
+
+  // Admin session path
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email?.toLowerCase()
+  if (!email) return { ok: false as const, status: 401, error: 'Unauthorized' }
+
+  const admin = (await prisma.admin.findUnique({ where: { email } })) as any
+  if (!admin?.isActive) return { ok: false as const, status: 403, error: 'Admin access required' }
+
+  // Moderators can only access Qualified installers (status = "passed", "pending", "failed")
+  if (admin.role === 'MODERATOR') {
+    const installer = await prisma.installer.findUnique({
+      where: { id: installerId },
+      select: { status: true },
+    })
+    if (installer) {
+      const st = String(installer.status || '').toLowerCase()
+      if (!['passed', 'pending', 'failed'].includes(st)) {
+        return { ok: false as const, status: 403, error: 'Forbidden' }
+      }
+    }
+  }
+
+  return { ok: true as const, actor: 'admin' as const }
+}
 
 export async function POST(
   request: NextRequest,
@@ -11,12 +54,42 @@ export async function POST(
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
 
+    if (!installerId) {
+      return NextResponse.json(
+        { error: 'Installer ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Verify installer exists
+    const installer = await prisma.installer.findUnique({
+      where: { id: installerId },
+      select: { id: true, status: true },
+    })
+
+    if (!installer) {
+      return NextResponse.json(
+        { error: 'Installer not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check authentication
+    const authResult = await requireInstallerOrAdmin(request, installerId)
+    if (!authResult.ok) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      )
+    }
+
     const formData = await request.formData()
     const photo = formData.get('photo') as File | null
+    const staffMemberId = formData.get('staffMemberId') as string | null
 
-    if (!photo || !installerId) {
+    if (!photo) {
       return NextResponse.json(
-        { error: 'Photo and installer ID are required' },
+        { error: 'Photo is required' },
         { status: 400 }
       )
     }
@@ -37,16 +110,29 @@ export async function POST(
       )
     }
 
-    // Verify installer exists
-    const installer = await prisma.installer.findUnique({
-      where: { id: installerId },
-    })
+    // If updating existing staff member, delete old photo
+    if (staffMemberId) {
+      const staffMember = await prisma.staffMember.findUnique({
+        where: { id: staffMemberId },
+        select: { photoUrl: true, installerId: true },
+      })
 
-    if (!installer) {
-      return NextResponse.json(
-        { error: 'Installer not found' },
-        { status: 404 }
-      )
+      if (!staffMember) {
+        return NextResponse.json(
+          { error: 'Staff member not found' },
+          { status: 404 }
+        )
+      }
+
+      if (staffMember.installerId !== installerId) {
+        return NextResponse.json(
+          { error: 'Staff member does not belong to this installer' },
+          { status: 403 }
+        )
+      }
+
+      // Delete old photo if exists (would need deleteFile function)
+      // For now, we'll just upload the new one
     }
 
     // Generate unique filename

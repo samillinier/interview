@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { upload } from '@vercel/blob/client'
 import { 
@@ -46,7 +46,8 @@ import {
   Paperclip,
   Activity,
   Settings,
-  StickyNote
+  StickyNote,
+  Eye
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -162,18 +163,25 @@ interface Installer {
   photoUrl?: string
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  // Initialize state from URL params
+  const urlPage = searchParams?.get('page') ? parseInt(searchParams.get('page')!) : 1
+  const urlSearch = searchParams?.get('search') || ''
+  const urlStatus = searchParams?.get('status') || 'all'
+  
   const [installers, setInstallers] = useState<Installer[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasLoadedInstallersOnce, setHasLoadedInstallersOnce] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState(urlSearch)
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(urlSearch)
+  const [statusFilter, setStatusFilter] = useState(urlStatus)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(urlPage)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState({
@@ -208,6 +216,7 @@ export default function DashboardPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
 
   // Fetch pending approvals count
   const fetchPendingApprovalsCount = async () => {
@@ -222,11 +231,34 @@ export default function DashboardPage() {
     }
   }
 
+  // Fetch unread messages count - only count messages FROM installers (not from admin)
+  const fetchUnreadMessagesCount = async () => {
+    try {
+      const response = await fetch('/api/notifications?type=message')
+      if (response.ok) {
+        const data = await response.json()
+        const messages = data?.notifications || []
+        // Only count unread messages from installers (not from admin)
+        const unreadCount = messages.filter((m: any) => {
+          const isFromInstaller = !m.senderId || (m.senderId !== 'admin' && m.senderType !== 'admin')
+          return !m.isRead && isFromInstaller
+        }).length
+        setUnreadMessagesCount(unreadCount)
+      }
+    } catch (error) {
+      console.error('Error fetching unread messages count:', error)
+    }
+  }
+
   useEffect(() => {
     if (status === 'authenticated') {
       fetchPendingApprovalsCount()
+      fetchUnreadMessagesCount()
       // Refresh count every 30 seconds
-      const interval = setInterval(fetchPendingApprovalsCount, 30000)
+      const interval = setInterval(() => {
+        fetchPendingApprovalsCount()
+        fetchUnreadMessagesCount()
+      }, 30000)
       return () => clearInterval(interval)
     }
   }, [status])
@@ -555,9 +587,51 @@ export default function DashboardPage() {
     }
   }
 
+  // Update URL with current state
+  const updateURL = (updates: { page?: number; search?: string; status?: string }) => {
+    const params = new URLSearchParams(searchParams?.toString() || '')
+    
+    if (updates.page !== undefined) {
+      if (updates.page === 1) {
+        params.delete('page')
+      } else {
+        params.set('page', updates.page.toString())
+      }
+    }
+    
+    if (updates.search !== undefined) {
+      if (!updates.search.trim()) {
+        params.delete('search')
+      } else {
+        params.set('search', updates.search.trim())
+      }
+    }
+    
+    if (updates.status !== undefined) {
+      if (updates.status === 'all') {
+        params.delete('status')
+      } else {
+        params.set('status', updates.status)
+      }
+    }
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }
+
+  // Build return URL query string for navigation to installer detail
+  const getReturnURL = () => {
+    const params = new URLSearchParams()
+    if (currentPage > 1) params.set('page', currentPage.toString())
+    if (debouncedSearchQuery.trim()) params.set('search', debouncedSearchQuery.trim())
+    if (statusFilter !== 'all') params.set('status', statusFilter)
+    return params.toString() ? `?${params.toString()}` : ''
+  }
+
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
+      updateURL({ page })
       fetchInstallers(page)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
@@ -1038,16 +1112,25 @@ export default function DashboardPage() {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
-      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
-      if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(statusFilter)) {
-        setStatusFilter('passed')
-      }
       fetchStats()
       fetchInstallers(1)
       fetchExpirationData()
       setCurrentPage(1)
     }
   }, [status, router])
+
+  // Validate status filter for moderators whenever it changes
+  useEffect(() => {
+    if (status === 'authenticated') {
+      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+      if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(statusFilter)) {
+        // Reset to a valid default for moderators
+        const validStatus = 'pending'
+        setStatusFilter(validStatus)
+        updateURL({ status: validStatus, page: 1 })
+      }
+    }
+  }, [statusFilter, status, session])
 
   // Debounce search query
   useEffect(() => {
@@ -1058,8 +1141,37 @@ export default function DashboardPage() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
+  // Sync URL params on mount and initial load
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === 'authenticated' && searchParams) {
+      const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
+      const urlSearch = searchParams.get('search') || ''
+      let urlStatus = searchParams.get('status') || 'all'
+      
+      // Validate status for moderators
+      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+      if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(urlStatus)) {
+        urlStatus = 'pending' // Default to pending for moderators
+      }
+      
+      // Only update state if URL params differ from current state
+      if (urlPage !== currentPage) setCurrentPage(urlPage)
+      if (urlSearch !== searchQuery) setSearchQuery(urlSearch)
+      if (urlSearch !== debouncedSearchQuery) setDebouncedSearchQuery(urlSearch)
+      if (urlStatus !== statusFilter) setStatusFilter(urlStatus)
+      
+      // Initial load with URL params
+      if (!hasLoadedInstallersOnce) {
+        fetchStats()
+        fetchInstallers(urlPage)
+      }
+    }
+  }, [status])
+
+  // Update URL when search/filter changes and fetch installers (but not on initial mount)
+  useEffect(() => {
+    if (status === 'authenticated' && hasLoadedInstallersOnce) {
+      updateURL({ search: debouncedSearchQuery, status: statusFilter, page: 1 })
       fetchStats()
       fetchInstallers(1)
       setCurrentPage(1)
@@ -1161,12 +1273,6 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
 
         {/* Navigation */}
@@ -1185,44 +1291,61 @@ export default function DashboardPage() {
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Approvals</span>
-                {pendingApprovalsCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {pendingApprovalsCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
-          <Link
-            href="/dashboard/notifications"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-              </div>
-            )}
-          </Link>
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/approvals"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Approvals</span>
+                  {pendingApprovalsCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/tracking"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Activity className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Tracking</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/analytics"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Analytics</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/notifications"
+              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+            >
+              <Bell className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Notifications</span>
+                </div>
+              )}
+            </Link>
+          )}
           <Link
             href="/dashboard/messages"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -1230,18 +1353,29 @@ export default function DashboardPage() {
             }`}
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Messages</span>
+                {unreadMessagesCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {unreadMessagesCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
-          <Link
-            href="/dashboard/remarks"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <StickyNote className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Remarks</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MODERATOR' && (
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/remarks"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <StickyNote className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Remarks</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
             <Link
               href="/dashboard/settings"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -1252,14 +1386,36 @@ export default function DashboardPage() {
               {sidebarOpen && <span>Settings</span>}
             </Link>
           )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/property/dashboard"
+              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
+            >
+              <Building2 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Property Portal</span>}
+            </Link>
+          )}
         </nav>
 
         {/* User Info & Logout */}
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
+            {session?.user?.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || session.user?.email || 'Admin'}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-brand-green" />
+              </div>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-primary-900 text-sm truncate">
@@ -1481,7 +1637,7 @@ export default function DashboardPage() {
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.05 }}
-                          onClick={() => router.push(`/dashboard/installers/${item.installerId}`)}
+                          onClick={() => router.push(`/dashboard/installers/${item.installerId}${getReturnURL()}`)}
                           className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md"
                         >
                           <div className="flex items-start justify-between mb-3">
@@ -1543,7 +1699,10 @@ export default function DashboardPage() {
                 type="text"
                 placeholder="Search installers..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  // URL will be updated when debouncedSearchQuery changes
+                }}
                 className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
               />
               {isLoading && hasLoadedInstallersOnce && (
@@ -1555,7 +1714,20 @@ export default function DashboardPage() {
             <div className="flex gap-2 sm:gap-3">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  const newStatus = e.target.value
+                  const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+                  
+                  // Validate for moderators - only allow valid statuses
+                  if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(newStatus)) {
+                    // If invalid, reset to pending
+                    setStatusFilter('pending')
+                    updateURL({ status: 'pending', page: 1 })
+                  } else {
+                    setStatusFilter(newStatus)
+                    updateURL({ status: newStatus, page: 1 })
+                  }
+                }}
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[120px]"
               >
                 {((session?.user as any)?.role as any) === 'MODERATOR' ? (
@@ -1617,7 +1789,7 @@ export default function DashboardPage() {
               installers.map((installer) => (
                 <div
                   key={installer.id}
-                  onClick={() => router.push(`/dashboard/installers/${installer.id}`)}
+                  onClick={() => router.push(`/dashboard/installers/${installer.id}${getReturnURL()}`)}
                   className="bg-white border-2 border-slate-200 rounded-xl p-4 hover:border-brand-green/50 transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <div className="flex items-start gap-3">
@@ -1709,7 +1881,7 @@ export default function DashboardPage() {
                     <tr 
                       key={installer.id} 
                       className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-emerald-50/30 transition-all duration-200 cursor-pointer group"
-                      onClick={() => router.push(`/dashboard/installers/${installer.id}`)}
+                      onClick={() => router.push(`/dashboard/installers/${installer.id}${getReturnURL()}`)}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
@@ -1741,12 +1913,12 @@ export default function DashboardPage() {
                                 alt={`${installer.firstName} ${installer.lastName}`}
                                 width={48}
                                 height={48}
-                                  className="w-full h-full object-cover"
+                                className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none'
                                 }}
                               />
-                              )}
+                            )}
                             </div>
                             {/* Checkmark badge */}
                             {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
@@ -1783,21 +1955,23 @@ export default function DashboardPage() {
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => router.push(`/dashboard/installers/${installer.id}`)}
+                            onClick={() => router.push(`/dashboard/installers/${installer.id}${getReturnURL()}`)}
                             className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteClick(installer.id, `${installer.firstName} ${installer.lastName}`.trim() || installer.email)
-                            }}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete installer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {((session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteClick(installer.id, `${installer.firstName} ${installer.lastName}`.trim() || installer.email)
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete installer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -4153,12 +4327,12 @@ export default function DashboardPage() {
                               digitalId: '',
                               email: '',
                               phone: '',
-                              location: '',
                               title: '',
-                              yearsOfExperience: '',
                               notes: '',
                               photoUrl: '',
                               photoFile: null,
+                              expirationDate: '',
+                              status: 'active',
                             },
                           ]
                         })
@@ -4382,20 +4556,6 @@ export default function DashboardPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-slate-700 mb-2">Location</label>
-                              <input
-                                type="text"
-                                value={staff.location}
-                                onChange={(e) => {
-                                  const updated = [...staffMembersToAdd]
-                                  updated[index].location = e.target.value
-                                  setStaffMembersToAdd(updated)
-                                }}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                                placeholder="City, State"
-                              />
-                            </div>
-                            <div>
                               <label className="block text-sm font-semibold text-slate-700 mb-2">Job Title/Role</label>
                               <input
                                 type="text"
@@ -4410,19 +4570,32 @@ export default function DashboardPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-slate-700 mb-2">Years of Experience</label>
+                              <label className="block text-sm font-semibold text-slate-700 mb-2">Expiration Date</label>
                               <input
-                                type="number"
-                                value={staff.yearsOfExperience}
+                                type="date"
+                                value={staff.expirationDate || ''}
                                 onChange={(e) => {
                                   const updated = [...staffMembersToAdd]
-                                  updated[index].yearsOfExperience = e.target.value
+                                  updated[index].expirationDate = e.target.value
                                   setStaffMembersToAdd(updated)
                                 }}
                                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                                placeholder="Years"
-                                min="0"
                               />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                              <select
+                                value={staff.status || 'active'}
+                                onChange={(e) => {
+                                  const updated = [...staffMembersToAdd]
+                                  updated[index].status = e.target.value
+                                  setStaffMembersToAdd(updated)
+                                }}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                              >
+                                <option value="active">Active</option>
+                                <option value="expired">Expired</option>
+                              </select>
                             </div>
                             <div className="md:col-span-2">
                               <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
@@ -4590,5 +4763,20 @@ export default function DashboardPage() {
         </motion.div>
       )}
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen interview-gradient flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
+          <p className="text-primary-600">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <DashboardPageContent />
+    </Suspense>
   )
 }

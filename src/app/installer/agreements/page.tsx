@@ -18,6 +18,7 @@ import {
   Shield,
   User,
   X,
+  HelpCircle,
 } from 'lucide-react'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -88,7 +89,8 @@ export default function InstallerAgreementsPage() {
     }
 
     run()
-  }, [router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (checking) {
     return (
@@ -190,6 +192,13 @@ export default function InstallerAgreementsPage() {
               </div>
             )}
           </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
@@ -228,7 +237,7 @@ export default function InstallerAgreementsPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">Agreements</h1>
-                <p className="text-sm text-slate-500">Fill and print required forms</p>
+                <p className="text-sm text-slate-500">Sign required forms using Adobe Sign</p>
               </div>
             </div>
           </div>
@@ -237,45 +246,53 @@ export default function InstallerAgreementsPage() {
         <main className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
             <div className="grid gap-4">
-              <Link
-                href="/installer/agreements/background-authorization"
+              <a
+                href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhB5j-mH_p2ruL7INNqrKVKTBR2ncZH-koaIAKG71Adn7Y-twmq0L10ntLY98fB-vjc*"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
               >
                 <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
                   <FileText className="w-6 h-6 text-brand-green" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">W-9 Form</div>
+                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                      Form
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-600 mt-1">W-9 FORM - Fillable Form</div>
+                </div>
+                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1">
+                  <ExternalLink className="w-4 h-4" />
+                </div>
+              </a>
+
+              <a
+                href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhD6ZgUjSyD1XPnftzSvkU-VqsxteBEqz1hpXmXiNGqkahKR0pZRusQ4zRcPAlT13oI*"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
+              >
+                <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-6 h-6 text-brand-green" />
+                </div>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
-                      Background Authorization and Release
+                      Background Authorization and Release Form
                     </div>
                     <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
                       Form
                     </span>
                   </div>
-                  <div className="text-sm text-slate-600 mt-1">Enter your information, save, then print/sign.</div>
+                  <div className="text-sm text-slate-600 mt-1">BACKGROUND AUTHORIZATION AND RELEASE FORM - Fillable Form</div>
                 </div>
-                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors">→</div>
-              </Link>
-
-              <Link
-                href="/installer/agreements/w-9"
-                className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
-              >
-                <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-brand-green" />
+                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1">
+                  <ExternalLink className="w-4 h-4" />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">Form W-9</div>
-                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                      Form
-                    </span>
-                  </div>
-                  <div className="text-sm text-slate-600 mt-1">Fill and submit for approval, then download once approved.</div>
-                </div>
-                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors">→</div>
-              </Link>
+              </a>
 
               <Link
                 href="/installer/agreements/nda"
@@ -284,7 +301,7 @@ export default function InstallerAgreementsPage() {
                 <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
                   <Shield className="w-6 h-6 text-brand-green" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">NDA Agreement</div>
                     {installer?.ndaAgreedAt ? (
@@ -298,31 +315,6 @@ export default function InstallerAgreementsPage() {
                     )}
                   </div>
                   <div className="text-sm text-slate-600 mt-1">Review and accept the NDA.</div>
-                </div>
-                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors">→</div>
-              </Link>
-
-              <Link
-                href="/installer/attachments"
-                className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
-              >
-                <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                  <FileCheck className="w-6 h-6 text-brand-green" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">Service Agreement</div>
-                    {installer?.serviceAgreementSignedAt ? (
-                      <span className="text-xs font-bold text-success-700 bg-success-100 border border-success-200 px-2 py-0.5 rounded-full">
-                        Signed
-                      </span>
-                    ) : (
-                      <span className="text-xs font-bold text-warning-700 bg-warning-100 border border-warning-200 px-2 py-0.5 rounded-full">
-                        Required
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-slate-600 mt-1">Sign from Attachments (it will prompt you if needed).</div>
                 </div>
                 <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors">→</div>
               </Link>

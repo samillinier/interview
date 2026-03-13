@@ -13,6 +13,7 @@
 - ✅ Neon database configured in Vercel Storage
 - ✅ Environment variables set in Vercel:
   - ✅ `DATABASE_URL` (from POSTGRES_URL)
+  - ✅ `DATABASE_URL_UNPOOLED` (from Vercel Postgres non-pooled/direct connection string)
   - ✅ `POSTGRES_URL` (auto-created)
   - ✅ `NEXTAUTH_SECRET`
   - ✅ `NEXTAUTH_URL`
@@ -52,8 +53,8 @@ vercel --prod
 
 2. **What to Look For:**
    - ✅ `npm install` - Installing dependencies
+   - ✅ `prisma migrate deploy` - Applying migrations to Neon database
    - ✅ `prisma generate` - Generating Prisma Client
-   - ✅ `prisma db push` - Pushing schema to Neon database
    - ✅ `next build` - Building Next.js app
    - ✅ Deployment successful
 
@@ -97,7 +98,7 @@ vercel --prod
 
 - **Database:** Neon (via Vercel Storage) ✅
 - **Environment Variables:** All configured ✅
-- **Build Command:** `prisma generate && prisma db push --skip-generate && next build`
+- **Build Command:** `npm run vercel-build`
 - **Framework:** Next.js
 - **Region:** iad1
 

@@ -10,13 +10,28 @@ async function getSession(request: NextRequest) {
     // Try multiple methods to get session in App Router
     // Method 1: Use getServerSession with cookies()
     try {
-      await cookies()
+      // In local development, cookies() might fail, so wrap in try-catch
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          await cookies()
+        } catch (cookieError: any) {
+          console.warn('cookies() failed in development, trying direct method:', cookieError?.message)
+          // Try direct getServerSession without cookies() wrapper
+          const directSession = await getServerSession(authOptions)
+          if (directSession?.user?.email) {
+            return directSession
+          }
+        }
+      } else {
+        await cookies()
+      }
+      
       const session = await getServerSession(authOptions)
       if (session?.user?.email) {
         return session
       }
-    } catch (cookieError) {
-      console.log('Cookie method failed, trying request headers')
+    } catch (cookieError: any) {
+      console.log('Cookie method failed, trying request headers:', cookieError?.message)
     }
     
     // Method 2: If that fails, try reading from request headers directly
@@ -24,15 +39,19 @@ async function getSession(request: NextRequest) {
     const cookieHeader = request.headers.get('cookie')
     if (cookieHeader) {
       // Try getServerSession again - sometimes it needs the request context
-      const session = await getServerSession(authOptions)
-      if (session?.user?.email) {
-        return session
+      try {
+        const session = await getServerSession(authOptions)
+        if (session?.user?.email) {
+          return session
+        }
+      } catch (sessionError: any) {
+        console.warn('getServerSession failed with cookie header:', sessionError?.message)
       }
     }
     
     return null
-  } catch (error) {
-    console.error('Error getting session:', error)
+  } catch (error: any) {
+    console.error('Error getting session:', error?.message || error)
     return null
   }
 }
@@ -44,8 +63,21 @@ export async function GET(request: NextRequest) {
     let session = null
     try {
       session = await getSession(request)
-    } catch (sessionError) {
-      console.warn('Session retrieval failed, continuing anyway:', sessionError)
+    } catch (sessionError: any) {
+      console.warn('Session retrieval failed, continuing anyway:', sessionError?.message || sessionError)
+      // In local development, try alternative method
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          // Try direct getServerSession without cookies() wrapper
+          const directSession = await getServerSession(authOptions)
+          if (directSession?.user?.email) {
+            session = directSession
+            console.log('Got session via direct method')
+          }
+        } catch (directError) {
+          console.warn('Direct session method also failed:', directError)
+        }
+      }
     }
 
     // Only auto-create the CURRENT USER if they're in fallback list and don't exist
@@ -84,29 +116,96 @@ export async function GET(request: NextRequest) {
 
     // Require an authenticated user, and only allow ADMIN role to view/manage users
     const email = session?.user?.email?.toLowerCase()
-    if (!email) return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 })
+    if (!email) {
+      console.error('No email found in session. Session:', session)
+      return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 })
+    }
 
-    const currentAdminForRole = (await prisma.admin.findUnique({
-      where: { email },
-    })) as any
-    if (!currentAdminForRole?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    let currentAdminForRole
+    try {
+      currentAdminForRole = await prisma.admin.findUnique({
+        where: { email },
+      }) as any
+    } catch (dbError: any) {
+      console.error('Database error fetching admin:', dbError)
+      console.error('Error code:', dbError.code)
+      
+      let errorMessage = 'Database error'
+      if (dbError.code === 'P1001') {
+        errorMessage = 'Cannot reach database server. Please check your DATABASE_URL environment variable.'
+      } else if (dbError.code === 'P1002') {
+        errorMessage = 'Database connection timed out. Please check your database server.'
+      } else if (dbError.message) {
+        errorMessage = dbError.message
+      }
+      
+      return NextResponse.json(
+        { 
+          error: errorMessage,
+          details: process.env.NODE_ENV === 'development' ? {
+            message: dbError.message,
+            code: dbError.code
+          } : undefined
+        },
+        { status: 500 }
+      )
+    }
+
+    if (!currentAdminForRole?.isActive) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
     if (currentAdminForRole.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
     }
 
     // Return admins list
-    const admins = await prisma.admin.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        isActive: true,
-        role: true,
-        createdAt: true,
-        createdBy: true,
-      },
-    })
+    let admins
+    try {
+      admins = await prisma.admin.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          isActive: true,
+          role: true,
+          createdAt: true,
+          createdBy: true,
+        },
+      })
+    } catch (dbError: any) {
+      console.error('Database error fetching admins list:', dbError)
+      console.error('Error code:', dbError.code)
+      console.error('Error meta:', dbError.meta)
+      console.error('Full error:', JSON.stringify(dbError, null, 2))
+      
+      // Check for specific database errors
+      let errorMessage = 'Database error fetching admins'
+      if (dbError.code === 'P1001') {
+        errorMessage = 'Cannot reach database server. Please check your DATABASE_URL environment variable.'
+      } else if (dbError.code === 'P1002') {
+        errorMessage = 'Database connection timed out. Please check your database server.'
+      } else if (dbError.code === 'P1017') {
+        errorMessage = 'Database server closed the connection. Please check your database status.'
+      } else if (dbError.code === 'P2002') {
+        errorMessage = 'Database constraint violation. Please check your data.'
+      } else if (dbError.message) {
+        errorMessage = dbError.message
+      }
+      
+      return NextResponse.json(
+        { 
+          error: errorMessage,
+          details: process.env.NODE_ENV === 'development' ? {
+            message: dbError.message,
+            code: dbError.code,
+            meta: dbError.meta,
+            stack: dbError.stack
+          } : undefined
+        },
+        { status: 500 }
+      )
+    }
 
     console.log(`Returning ${admins.length} admins`)
     return NextResponse.json({ admins })
@@ -116,7 +215,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to fetch admins',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
     )
@@ -287,7 +387,7 @@ export async function POST(request: NextRequest) {
       data: {
         email: email.toLowerCase().trim(),
         name: name || null,
-        role: role === 'MODERATOR' ? 'MODERATOR' : 'ADMIN',
+        role: role === 'MODERATOR' ? 'MODERATOR' : role === 'MANAGER' ? 'MANAGER' : 'ADMIN',
         createdBy: currentAdmin.id,
         isActive: true,
       },

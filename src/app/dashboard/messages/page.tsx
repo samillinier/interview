@@ -24,7 +24,9 @@ import {
   Paperclip,
   Image as ImageIcon,
   BarChart3,
-  StickyNote
+  StickyNote,
+  Building2,
+  Activity
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -79,6 +81,7 @@ export default function MessagesPage() {
   const [selectedInstaller, setSelectedInstaller] = useState<Installer | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [isSending, setIsSending] = useState(false)
@@ -146,8 +149,27 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedInstaller) {
       fetchMessagesForInstaller(selectedInstaller.id)
+      // Mark messages as read when admin views them
+      markMessagesAsRead(selectedInstaller.id)
     }
   }, [selectedInstaller])
+
+  const markMessagesAsRead = async (installerId: string) => {
+    try {
+      const response = await fetch(`/api/installers/${installerId}/notifications/mark-all-read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'message' }),
+      })
+      if (response.ok) {
+        // Refresh messages and update badge count
+        await fetchMessagesForInstaller(installerId)
+        await fetchAllMessages()
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error)
+    }
+  }
 
   useEffect(() => {
     scrollToBottom()
@@ -176,15 +198,29 @@ export default function MessagesPage() {
       // Always fetch fresh installers to ensure we have the latest data
       const installersList = await fetchInstallers()
       
+      // Create a Set of accessible installer IDs for quick lookup
+      // This ensures moderators only see messages from installers they have access to
+      const accessibleInstallerIds = new Set(installersList.map((i: any) => i.id))
+      
       const response = await fetch('/api/notifications?type=message')
       const data = await response.json()
       const allMessages: Message[] = data.notifications || []
       
+      // Filter messages to only include those from accessible installers
+      // This is important for moderators who can only see certain installer statuses
+      const filteredMessages = allMessages.filter((message) => 
+        accessibleInstallerIds.has(message.installerId)
+      )
+      
       // Group messages by installer and create conversations
       const conversationMap = new Map<string, Conversation>()
       
-      allMessages.forEach((message) => {
+      filteredMessages.forEach((message) => {
         const installerId = message.installerId
+        // Only count unread messages FROM installers (not from admin)
+        const isFromInstaller = !message.senderId || message.senderId !== 'admin' && message.senderType !== 'admin'
+        const isUnreadFromInstaller = !message.isRead && isFromInstaller
+        
         if (!conversationMap.has(installerId)) {
           const installer = installersList.find((i: any) => i.id === installerId) || {
             id: message.installer.id,
@@ -197,14 +233,14 @@ export default function MessagesPage() {
           conversationMap.set(installerId, {
             installer,
             lastMessage: message,
-            unreadCount: message.isRead ? 0 : 1
+            unreadCount: isUnreadFromInstaller ? 1 : 0
           })
         } else {
           const conv = conversationMap.get(installerId)!
           if (!conv.lastMessage || new Date(message.createdAt) > new Date(conv.lastMessage.createdAt)) {
             conv.lastMessage = message
           }
-          if (!message.isRead) {
+          if (isUnreadFromInstaller) {
             conv.unreadCount++
           }
         }
@@ -220,12 +256,18 @@ export default function MessagesPage() {
         }
       })
       
-      setConversations(Array.from(conversationMap.values()).sort((a, b) => {
+      const sortedConversations = Array.from(conversationMap.values()).sort((a, b) => {
         if (!a.lastMessage && !b.lastMessage) return 0
         if (!a.lastMessage) return 1
         if (!b.lastMessage) return -1
         return new Date(b.lastMessage!.createdAt).getTime() - new Date(a.lastMessage!.createdAt).getTime()
-      }))
+      })
+      
+      setConversations(sortedConversations)
+      
+      // Calculate total unread message count - only count messages FROM installers (not from admin)
+      const totalUnread = sortedConversations.reduce((sum, conv) => sum + conv.unreadCount, 0)
+      setUnreadMessagesCount(totalUnread)
     } catch (error) {
       console.error('Error fetching messages:', error)
     }
@@ -233,6 +275,14 @@ export default function MessagesPage() {
 
   const fetchMessagesForInstaller = async (installerId: string) => {
     try {
+      // Verify that the installer is accessible (important for moderators)
+      const installerExists = installers.find((i) => i.id === installerId)
+      if (!installerExists) {
+        console.error('Installer not accessible:', installerId)
+        setMessages([])
+        return
+      }
+      
       const response = await fetch(`/api/installers/${installerId}/notifications?type=message`)
       const data = await response.json()
       // Sort messages by creation time (oldest first for chat view)
@@ -422,12 +472,6 @@ export default function MessagesPage() {
                 <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="ml-auto p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
 
@@ -450,46 +494,52 @@ export default function MessagesPage() {
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Approvals</span>
-                {pendingApprovalsCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {pendingApprovalsCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
-          <Link
-            href="/dashboard/notifications"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-              </div>
-            )}
-          </Link>
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/approvals"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Approvals</span>
+                  {pendingApprovalsCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/analytics"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Analytics</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/notifications"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Bell className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Notifications</span>
+                </div>
+              )}
+            </Link>
+          )}
           <Link
             href="/dashboard/messages"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -497,18 +547,29 @@ export default function MessagesPage() {
             }`}
           >
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span>Messages</span>
+                {unreadMessagesCount > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                    {unreadMessagesCount}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
-          <Link
-            href="/dashboard/remarks"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <StickyNote className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Remarks</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MODERATOR' && (
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/remarks"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <StickyNote className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Remarks</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
             <Link
               href="/dashboard/settings"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -519,13 +580,35 @@ export default function MessagesPage() {
               {sidebarOpen && <span>Settings</span>}
             </Link>
           )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/property/dashboard"
+              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
+            >
+              <Building2 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Property Portal</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
+            {session?.user?.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || session.user?.email || 'Admin'}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-brand-green" />
+              </div>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-primary-900 text-sm truncate">
@@ -583,22 +666,29 @@ export default function MessagesPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20">
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-brand-green">
                       {conversation.installer.photoUrl ? (
                         <Image
                           src={conversation.installer.photoUrl}
                           alt={`${conversation.installer.firstName} ${conversation.installer.lastName}`}
                           width={48}
                           height={48}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover relative z-10"
                           onError={(e) => {
+                            const parent = e.currentTarget.parentElement
+                            if (parent) {
+                              const initialsDiv = parent.querySelector('.initials-fallback')
+                              if (initialsDiv) {
+                                (initialsDiv as HTMLElement).style.display = 'flex'
+                              }
+                            }
                             e.currentTarget.style.display = 'none'
                           }}
                         />
                       ) : null}
-                      <div className={`w-full h-full flex items-center justify-center ${
-                        conversation.installer.photoUrl ? 'absolute inset-0 bg-brand-green' : 'bg-brand-green'
-                      }`}>
+                      <div className={`w-full h-full flex items-center justify-center initials-fallback ${
+                        conversation.installer.photoUrl ? 'absolute inset-0 z-0' : ''
+                      }`} style={{ display: conversation.installer.photoUrl ? 'none' : 'flex' }}>
                         <span className="text-white font-semibold text-sm">
                           {getInitials(conversation.installer.firstName, conversation.installer.lastName)}
                         </span>
@@ -641,22 +731,29 @@ export default function MessagesPage() {
             <>
               {/* Chat Header */}
               <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-3 flex-shrink-0">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-brand-green">
                   {selectedInstaller.photoUrl ? (
                     <Image
                       src={selectedInstaller.photoUrl}
                       alt={`${selectedInstaller.firstName} ${selectedInstaller.lastName}`}
                       width={40}
                       height={40}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover relative z-10"
                       onError={(e) => {
+                        const parent = e.currentTarget.parentElement
+                        if (parent) {
+                          const initialsDiv = parent.querySelector('.initials-fallback')
+                          if (initialsDiv) {
+                            (initialsDiv as HTMLElement).style.display = 'flex'
+                          }
+                        }
                         e.currentTarget.style.display = 'none'
                       }}
                     />
                   ) : null}
-                  <div className={`w-full h-full flex items-center justify-center ${
-                    selectedInstaller.photoUrl ? 'absolute inset-0 bg-brand-green' : 'bg-brand-green'
-                  }`}>
+                  <div className={`w-full h-full flex items-center justify-center initials-fallback ${
+                    selectedInstaller.photoUrl ? 'absolute inset-0 z-0' : ''
+                  }`} style={{ display: selectedInstaller.photoUrl ? 'none' : 'flex' }}>
                     <span className="text-white font-semibold text-xs">
                       {getInitials(selectedInstaller.firstName, selectedInstaller.lastName)}
                     </span>
@@ -686,7 +783,9 @@ export default function MessagesPage() {
                   <AnimatePresence>
                     {messages.map((message, index) => {
                       const isFromAdmin = !message.senderId || message.senderId === 'admin'
-                      const showAvatar = !isFromAdmin && (index === 0 || messages[index - 1].senderId !== message.senderId)
+                      const showAvatar = index === 0 || 
+                        (isFromAdmin && messages[index - 1].senderId !== message.senderId) ||
+                        (!isFromAdmin && messages[index - 1].senderId !== message.senderId)
                       return (
                         <motion.div
                           key={message.id}
@@ -698,25 +797,50 @@ export default function MessagesPage() {
                           }}
                           className={`flex items-end gap-3 mb-4 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}
                         >
+                          {/* Avatar for admin messages (company logo) */}
+                          {isFromAdmin && (
+                            <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-white">
+                                <Image
+                                  src={logo}
+                                  alt="Company Logo"
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
                           {/* Avatar for installer messages */}
                             {!isFromAdmin && (
                             <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
-                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md">
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
                                 {message.installer?.photoUrl ? (
                                   <Image
                                     src={message.installer.photoUrl}
                                     alt={`${message.installer.firstName} ${message.installer.lastName}`}
                                     width={40}
                                     height={40}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover relative z-10"
                                     onError={(e) => {
+                                      const parent = e.currentTarget.parentElement
+                                      if (parent) {
+                                        const initialsDiv = parent.querySelector('.initials-fallback')
+                                        if (initialsDiv) {
+                                          (initialsDiv as HTMLElement).style.display = 'flex'
+                                        }
+                                      }
                                       e.currentTarget.style.display = 'none'
                                     }}
                                   />
                                 ) : null}
-                                <div className={`w-full h-full flex items-center justify-center ${
-                                  message.installer?.photoUrl ? 'absolute inset-0 bg-gradient-to-br from-brand-green to-brand-green-dark' : 'bg-gradient-to-br from-brand-green to-brand-green-dark'
-                                }`}>
+                                <div className={`w-full h-full flex items-center justify-center initials-fallback ${
+                                  message.installer?.photoUrl ? 'absolute inset-0 z-0' : ''
+                                }`} style={{ display: message.installer?.photoUrl ? 'none' : 'flex' }}>
                                   <span className="text-white font-bold text-sm">
                                     {message.installer ? getInitials(message.installer.firstName, message.installer.lastName) : 'I'}
                                   </span>

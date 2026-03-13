@@ -24,7 +24,8 @@ import {
   CreditCard,
   Shield,
   FileCheck,
-  AlertTriangle
+  AlertTriangle,
+  HelpCircle
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
@@ -440,6 +441,13 @@ export default function InstallerDashboardPage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 

@@ -25,23 +25,17 @@ import {
   Trash2,
   CreditCard,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  HelpCircle
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Dancing_Script } from 'next/font/google'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 // All document types now support multiple uploads
 const MULTI_DOCUMENT_TYPES = new Set() // Empty set - all types are multi now
-
-const dancingScript = Dancing_Script({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-})
 
 interface Document {
   id: string
@@ -140,11 +134,6 @@ export default function AttachmentsPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [showContractModal, setShowContractModal] = useState(false)
-  const [isSigningContract, setIsSigningContract] = useState(false)
-  const [contractSignature, setContractSignature] = useState('')
-  const [contractName, setContractName] = useState('')
-  const [contractDate, setContractDate] = useState(new Date().toISOString().split('T')[0])
   const [notificationCount, setNotificationCount] = useState(0)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
     show: false,
@@ -229,11 +218,6 @@ export default function AttachmentsPage() {
         console.error('Error fetching notification count:', error)
       }
       
-      // Show contract modal if not signed yet
-      if (!profileData.installer.serviceAgreementSignedAt) {
-        setShowContractModal(true)
-      }
-
       // Load documents
       const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
       if (docsResponse.ok) {
@@ -400,67 +384,6 @@ export default function AttachmentsPage() {
     router.push('/installer/login')
   }
 
-  const handleSignContract = async () => {
-    if (!installer) {
-      setError('Installer information not available. Please refresh the page.')
-      return
-    }
-
-    if (!contractSignature.trim()) {
-      setError('Please enter your signature')
-      return
-    }
-
-    setIsSigningContract(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      const response = await fetch(`/api/installers/${installer.id}/sign-service-agreement`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          signature: contractSignature,
-          name: contractName || `${installer.firstName || ''} ${installer.lastName || ''}`.trim(),
-          date: contractDate,
-        }),
-      })
-
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Non-JSON response from sign-service-agreement API:', text.substring(0, 200))
-        throw new Error('Server error: API returned invalid response.')
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || errorData.details || `Failed to sign contract (${response.status})`)
-      }
-
-      const data = await response.json()
-
-      if (data.success && data.installer) {
-        setInstaller(data.installer)
-        setShowContractModal(false)
-        setSuccess('Service agreement signed successfully!')
-        setTimeout(() => setSuccess(''), 3000)
-      } else {
-        throw new Error(data.error || 'Failed to sign service agreement')
-      }
-    } catch (err: any) {
-      console.error('Error signing contract:', err)
-      setError(err.message || 'Failed to sign service agreement. Please try again.')
-    } finally {
-      setIsSigningContract(false)
-    }
-  }
-
-  const handleSignLater = () => {
-    setShowContractModal(false)
-    setSuccess('You can sign the service agreement later from this page.')
-    setTimeout(() => setSuccess(''), 5000)
-  }
 
   if (isLoading) {
     return (
@@ -493,135 +416,6 @@ export default function AttachmentsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Service Agreement Contract Modal */}
-      {showContractModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-          >
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-brand-green to-brand-green-dark">
-              <h2 className="text-2xl font-bold text-white">Service Agreement</h2>
-              <p className="text-white/90 text-sm mt-1">Please review and sign the service agreement</p>
-            </div>
-
-            {/* Modal Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="prose max-w-none">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">FLOOR INTERIOR SERVICES, CORP. SERVICES AGREEMENT</h3>
-                
-                <p className="text-slate-700 mb-4">
-                  This Contract is effective on the date indicated below (the "Effective Date") between Floor Interior Services, Corp. and 
-                  the Independent Contractor as defined below. The terms of this Contract govern, as applicable, real property 
-                  improvements and the detail assessments of real property improvements provided by Independent Contractor to Floor 
-                  Interior Services Corp. Customers ("Installation Services"). The term "Services" means Installation Services. The term 
-                  "Lowe's" means Lowe's Home Centers, LLC.
-                </p>
-
-                <h4 className="text-lg font-semibold text-slate-900 mt-6 mb-3">Contact Information</h4>
-                <p className="text-slate-700 mb-2">
-                  <strong>Official Business Name of Independent Contractor ("Independent Contractor")</strong>
-                </p>
-                <p className="text-slate-700 mb-2">
-                  <strong>Address:</strong> {installer?.companyStreetAddress || 'Not provided'}
-                </p>
-                <p className="text-slate-700 mb-2">
-                  <strong>City, State, Zip Code:</strong> {installer?.companyCity || ''} {installer?.companyState || ''} {installer?.companyZipCode || ''}
-                </p>
-                <p className="text-slate-700 mb-4">
-                  <strong>Email:</strong> {installer?.email || 'Not provided'}
-                </p>
-
-                <p className="text-slate-700 mb-6 font-semibold">
-                  BY EXECUTING THIS CONTRACT, FLOOR INTERIOR SERVICES, CORP. AND INDEPENDENT CONTRACTOR AGREE TO THE 
-                  TERMS SET OUT IN THIS CONTRACT AND ANY ATTACHMENTS, AND AGREE TO ARBITRATE ANY CONTROVERSY BETWEEN 
-                  THEM, AS DESCRIBED IN SECTION 15.
-                </p>
-
-                <h4 className="text-lg font-semibold text-slate-900 mt-6 mb-3">Signatures</h4>
-                
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Printed Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={contractName}
-                      onChange={(e) => setContractName(e.target.value)}
-                      placeholder={installer ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim() || 'Enter your name' : 'Enter your name'}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Signature *
-                    </label>
-                    <input
-                      type="text"
-                      value={contractSignature}
-                      onChange={(e) => setContractSignature(e.target.value)}
-                      placeholder="Enter your signature"
-                      className={`w-full px-4 py-3 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 ${dancingScript.className} text-2xl`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Effective Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={contractDate}
-                      onChange={(e) => setContractDate(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                    />
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-600 mt-6">
-                  This Agreement may be executed in one or more counterparts, each of which shall be deemed an original, but all of 
-                  which together shall constitute one and the same instrument.
-                </p>
-
-                <p className="text-sm text-slate-600 mt-4">
-                  <strong>THE FOLLOWING ARE PART OF THIS CONTRACT:</strong> Performance of Installation Services (Attachment A), Schedule of Prices 
-                  (Attachment B), Insurance Requirements (Attachment C), Independent Contractor Code of Conduct (Attachment D), 
-                  Warranty Retainer (Attachment E), Service Requirements (Attachment F), Reference Guides (Attachment G).
-                </p>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
-              <button
-                onClick={handleSignLater}
-                className="px-6 py-3 border border-slate-300 text-slate-700 rounded-xl font-medium hover:bg-slate-100 transition-colors"
-              >
-                Sign Later
-              </button>
-              <button
-                onClick={handleSignContract}
-                disabled={isSigningContract || !contractSignature.trim()}
-                className="px-6 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isSigningContract ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Signing...
-                  </>
-                ) : (
-                  'Sign Agreement'
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
         <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
@@ -666,6 +460,13 @@ export default function AttachmentsPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
+            href="/installer/agreements"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agreements</span>}
+          </Link>
+          <Link
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
           >
@@ -701,6 +502,13 @@ export default function AttachmentsPage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 

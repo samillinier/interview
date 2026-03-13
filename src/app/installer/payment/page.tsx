@@ -22,8 +22,10 @@ import {
   MapPin,
   Banknote,
   FileCheck,
+  FileText,
   Briefcase,
-  ExternalLink
+  ExternalLink,
+  HelpCircle
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -328,6 +330,13 @@ export default function PaymentPage() {
             {sidebarOpen && <span>Profile</span>}
           </Link>
           <Link
+            href="/installer/agreements"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agreements</span>}
+          </Link>
+          <Link
             href="/installer/attachments"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -363,6 +372,13 @@ export default function PaymentPage() {
                 )}
               </div>
             )}
+          </Link>
+          <Link
+            href="/installer/help"
+            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+          >
+            <HelpCircle className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Help</span>}
           </Link>
         </nav>
 

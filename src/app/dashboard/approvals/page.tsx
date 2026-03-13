@@ -23,6 +23,10 @@ import {
   ShieldAlert,
   ExternalLink,
   RefreshCw,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Activity
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -73,6 +77,10 @@ export default function ApprovalsPage() {
   const [success, setSuccess] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const itemsPerPage = 50
   const [rejectModal, setRejectModal] = useState<{
     open: boolean
     ids: string[]
@@ -146,6 +154,28 @@ export default function ApprovalsPage() {
     return String(val)
   }
 
+  const getAgreementRoute = (agreementType: string | null | undefined, installerId: string): string | null => {
+    if (!agreementType) return null
+    
+    // Map agreement types to admin view routes
+    const agreementRoutes: Record<string, string> = {
+      'background-authorization-release': `/dashboard/installers/${installerId}/agreements/background-authorization`,
+      'background-authorization': `/dashboard/installers/${installerId}/agreements/background-authorization`,
+      'form-w-9': `/dashboard/installers/${installerId}/agreements/w-9`,
+      'form-w9': `/dashboard/installers/${installerId}/agreements/w-9`,
+      'formw-9': `/dashboard/installers/${installerId}/agreements/w-9`,
+      'w-9': `/dashboard/installers/${installerId}/agreements/w-9`,
+      'w9': `/dashboard/installers/${installerId}/agreements/w-9`,
+      'nda': `/dashboard/installers/${installerId}/agreements/nda`,
+      'service-agreement': `/dashboard/installers/${installerId}/agreements/service-agreement`,
+    }
+    
+    const route = agreementRoutes[agreementType.toLowerCase()]
+    if (!route) return null
+    
+    return route
+  }
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
@@ -185,13 +215,13 @@ export default function ApprovalsPage() {
     }
   }
 
-  const fetchRequests = async (refresh = false) => {
+  const fetchRequests = async (refresh = false, page: number = currentPage) => {
     try {
       if (refresh) setIsRefreshing(true)
       else setLoading(true)
       setError('')
 
-      const res = await fetch('/api/admin/change-requests?status=pending&take=100')
+      const res = await fetch(`/api/admin/change-requests?status=pending&page=${page}&limit=${itemsPerPage}`)
       if (res.status === 401) {
         setError('Your admin session expired. Please sign in again.')
         router.push('/login')
@@ -213,6 +243,14 @@ export default function ApprovalsPage() {
         sections: r.sections ? (Array.isArray(r.sections) ? r.sections : JSON.parse(r.sections || '[]')) : null,
       }))
       setRequests(requestsWithParsedSections)
+      
+      // Update pagination state
+      if (data.pagination) {
+        setCurrentPage(data.pagination.page || page)
+        setTotalPages(data.pagination.totalPages || 1)
+        setTotalCount(data.pagination.total || 0)
+      }
+      
       await fetchPendingCount()
     } catch (e: any) {
       setError(e.message || 'Failed to fetch approvals')
@@ -222,9 +260,17 @@ export default function ApprovalsPage() {
     }
   }
 
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+      fetchRequests(false, page)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchRequests()
+      fetchRequests(false, 1)
       fetchPendingCount()
       const interval = setInterval(fetchPendingCount, 30000)
       return () => clearInterval(interval)
@@ -585,12 +631,6 @@ export default function ApprovalsPage() {
                 <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="ml-auto p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
 
@@ -611,33 +651,48 @@ export default function ApprovalsPage() {
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Approvals</span>
-                {pendingCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {pendingCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/approvals"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Approvals</span>
+                  {pendingCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                      {pendingCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/tracking"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Activity className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Tracking</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/analytics"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Analytics</span>}
+            </Link>
+          )}
           <Link
             href="/dashboard/notifications"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -647,25 +702,29 @@ export default function ApprovalsPage() {
             <Bell className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Notifications</span>}
           </Link>
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          <Link
-            href="/dashboard/remarks"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <StickyNote className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Remarks</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MODERATOR' && (
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/messages"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <MessageSquare className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Messages</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/remarks"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <StickyNote className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Remarks</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
             <Link
               href="/dashboard/settings"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -676,13 +735,35 @@ export default function ApprovalsPage() {
               {sidebarOpen && <span>Settings</span>}
             </Link>
           )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/property/dashboard"
+              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
+            >
+              <Building2 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Property Portal</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
-            </div>
+            {session?.user?.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || session.user?.email || 'Admin'}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 text-white" />
+              </div>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-primary-900 truncate">
@@ -831,6 +912,7 @@ export default function ApprovalsPage() {
                               if (a === 'update_staff') return 'Update Team Member'
                               if (a === 'delete_staff') return 'Delete Team Member'
                               if (a === 'approve_agreement') return 'Agreement Approval'
+                              if (a === 'verify_document') return 'Attachment Verification'
                               return a
                             })
                             .join(', ')}
@@ -849,6 +931,84 @@ export default function ApprovalsPage() {
                         <span className="text-sm font-medium">View Profile</span>
                         <ExternalLink className="w-4 h-4" />
                       </Link>
+                      {(() => {
+                        const firstId = g.requestIds[0]
+                        const first = firstId ? requestsById.get(firstId) : null
+                        const action = typeof (first?.payload as any)?.action === 'string' ? String((first?.payload as any).action) : ''
+                        const isAgreement = action === 'approve_agreement' && g.requestIds.length === 1
+                        const isDocument = action === 'verify_document'
+                        
+                        // Show document link(s) for document verification requests
+                        if (isDocument) {
+                          const docs = g.requestIds
+                            .map((id) => (id ? requestsById.get(id) : null))
+                            .filter(Boolean)
+                            .map((r: any) => ({
+                              id: String(r.id),
+                              url: r?.payload?.documentUrl ? String(r.payload.documentUrl) : '',
+                              name: r?.payload?.documentName ? String(r.payload.documentName) : 'Attachment',
+                            }))
+                            .filter((d) => !!d.url)
+
+                          // If we have one or more URLs, show direct link(s) to the document(s)
+                          if (docs.length > 0) {
+                            return (
+                              <div className="flex items-center gap-2">
+                                {docs.slice(0, 2).map((d) => (
+                                  <a
+                                    key={d.id}
+                                    href={d.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <span className="text-sm font-medium">
+                                      {docs.length > 1 ? `View ${d.name}` : 'View Attachment'}
+                                    </span>
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+                                ))}
+                                {docs.length > 2 && (
+                                  <Link
+                                    href={`/dashboard/installers/${g.Installer.id}#attachments`}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <span className="text-sm font-medium">+{docs.length - 2} more</span>
+                                    <ExternalLink className="w-4 h-4" />
+                                  </Link>
+                                )}
+                              </div>
+                            )
+                          }
+
+                          // Fallback: if URL is missing, link to the installer attachments section
+                          return (
+                            <Link
+                              href={`/dashboard/installers/${g.Installer.id}#attachments`}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                              <span className="text-sm font-medium">View Attachments</span>
+                              <ExternalLink className="w-4 h-4" />
+                            </Link>
+                          )
+                        }
+                        
+                        if (!isAgreement) return null
+                        
+                        const agreementType = (first?.payload as any)?.agreementType
+                        const agreementRoute = getAgreementRoute(agreementType, g.Installer.id)
+                        if (!agreementRoute) return null
+                        
+                        return (
+                          <Link
+                            href={agreementRoute}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                          >
+                            <span className="text-sm font-medium">View Agreement</span>
+                            <ExternalLink className="w-4 h-4" />
+                          </Link>
+                        )
+                      })()}
                       <button
                         type="button"
                         onClick={() =>
@@ -958,6 +1118,64 @@ export default function ApprovalsPage() {
                   })()}
                 </motion.div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-between bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+              <div className="text-sm text-slate-700">
+                Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                <span className="font-semibold text-slate-900">{Math.min(currentPage * itemsPerPage, totalCount)}</span> of{' '}
+                <span className="font-semibold text-slate-900">{totalCount}</span> approvals
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
+                >
+                  <ChevronLeft className="w-5 h-5 text-slate-600" />
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                          currentPage === pageNum
+                            ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
+                            : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
+                >
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
             </div>
           )}
         </div>

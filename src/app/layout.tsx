@@ -9,6 +9,16 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 export const metadata: Metadata = {
   title: 'Floor Interior Service | AI-Powered Prescreening',
   description: 'Automated prescreening system for flooring installers powered by AI',
+  icons: {
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.png',
+  },
 }
 
 export const viewport = {

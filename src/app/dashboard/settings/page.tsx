@@ -27,6 +27,8 @@ import {
   Bell,
   BarChart3,
   StickyNote,
+  Building2,
+  Activity
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
@@ -39,7 +41,7 @@ interface Admin {
   email: string
   name: string | null
   isActive: boolean
-  role: 'ADMIN' | 'MODERATOR'
+  role: 'ADMIN' | 'MODERATOR' | 'MANAGER'
   createdAt: string
   createdBy: string | null
 }
@@ -64,7 +66,7 @@ export default function SettingsPage() {
   const [newAdmin, setNewAdmin] = useState({
     email: '',
     name: '',
-    role: 'ADMIN' as 'ADMIN' | 'MODERATOR',
+    role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER',
   })
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
@@ -76,7 +78,7 @@ export default function SettingsPage() {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
-      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | undefined
       if (role === 'MODERATOR') {
         router.push('/auth/access-denied')
         return
@@ -136,11 +138,19 @@ export default function SettingsPage() {
 
       const data = await response.json()
       console.log('Fetched admins data:', data)
+      
+      // Check if response contains an error
+      if (data.error) {
+        throw new Error(data.error + (data.details ? `: ${JSON.stringify(data.details)}` : ''))
+      }
+      
       setAdmins(data.admins || [])
       console.log('Set admins:', data.admins || [])
     } catch (err: any) {
       console.error('Error fetching admins:', err)
-      setError(err.message || 'Failed to load administrators. Please try refreshing the page.')
+      // Show more detailed error message if available
+      const errorMessage = err.message || 'Failed to load administrators. Please try refreshing the page.'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -189,7 +199,7 @@ export default function SettingsPage() {
       }
 
       setSuccess('Admin added successfully!')
-      setNewAdmin({ email: '', name: '', role: 'ADMIN' })
+      setNewAdmin({ email: '', name: '', role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER' })
       setShowAddModal(false)
       await fetchAdmins()
       setTimeout(() => setSuccess(''), 3000)
@@ -271,7 +281,7 @@ export default function SettingsPage() {
     return null
   }
 
-  const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+  const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | undefined
   if (currentRole === 'MODERATOR') {
     return null
   }
@@ -299,12 +309,6 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
 
         {/* Navigation */}
@@ -323,6 +327,7 @@ export default function SettingsPage() {
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
+          {(session?.user as any)?.role !== 'MODERATOR' && (
           <Link
             href="/dashboard/approvals"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -341,6 +346,18 @@ export default function SettingsPage() {
               </div>
             )}
           </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/tracking"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Activity className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Tracking</span>}
+            </Link>
+          )}
           <Link
             href="/dashboard/analytics"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -384,14 +401,36 @@ export default function SettingsPage() {
             <Settings className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Settings</span>}
           </Link>
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/property/dashboard"
+              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
+            >
+              <Building2 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Property Portal</span>}
+            </Link>
+          )}
         </nav>
 
         {/* User Info & Logout */}
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
+            {session?.user?.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || session.user?.email || 'Admin'}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5 text-brand-green" />
+              </div>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-primary-900 text-sm truncate">
@@ -506,9 +545,11 @@ export default function SettingsPage() {
                           {admin.name || admin.email.split('@')[0]}
                         </p>
                         <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          admin.role === 'ADMIN' ? 'bg-brand-green/10 text-brand-green' : 'bg-slate-200 text-slate-700'
+                          admin.role === 'ADMIN' ? 'bg-brand-green/10 text-brand-green' : 
+                          admin.role === 'MANAGER' ? 'bg-blue-100 text-blue-700' : 
+                          'bg-slate-200 text-slate-700'
                         }`}>
-                          {admin.role === 'ADMIN' ? 'Admin' : 'Moderator'}
+                          {admin.role === 'ADMIN' ? 'Admin' : admin.role === 'MANAGER' ? 'Manager' : 'Moderator'}
                         </span>
                         {admin.isActive ? (
                           <span className="px-2 py-0.5 bg-success-100 text-success-700 text-xs font-semibold rounded-full">
@@ -542,7 +583,7 @@ export default function SettingsPage() {
                     <select
                       value={admin.role}
                       onChange={async (e) => {
-                        const role = e.target.value as 'ADMIN' | 'MODERATOR'
+                        const role = e.target.value as 'ADMIN' | 'MODERATOR' | 'MANAGER'
                         try {
                           const res = await fetch(`/api/admins/${admin.id}`, {
                             method: 'PATCH',
@@ -563,6 +604,7 @@ export default function SettingsPage() {
                     >
                       <option value="ADMIN">Admin</option>
                       <option value="MODERATOR">Moderator</option>
+                      <option value="MANAGER">Manager</option>
                     </select>
                   </div>
                   <button
@@ -657,6 +699,7 @@ export default function SettingsPage() {
                 >
                   <option value="ADMIN">Admin (full access)</option>
                   <option value="MODERATOR">Moderator (qualified-only)</option>
+                  <option value="MANAGER">Manager (restricted access)</option>
                 </select>
               </div>
 

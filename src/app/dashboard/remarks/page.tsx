@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Building2,
   RefreshCw,
+  Activity
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -267,12 +268,6 @@ export default function RemarksPage() {
                 <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
               </div>
             )}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="ml-auto p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
 
@@ -291,48 +286,65 @@ export default function RemarksPage() {
             <Users className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Installers</span>}
           </Link>
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Approvals</span>
-                {pendingApprovalsCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {pendingApprovalsCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
-          <Link
-            href="/dashboard/notifications"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/notifications'
-                ? 'bg-white/20 text-white font-medium'
-                : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-              </div>
-            )}
-          </Link>
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/approvals"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Approvals</span>
+                  {pendingApprovalsCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
+                      {pendingApprovalsCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/dashboard/tracking"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Activity className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Tracking</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/analytics"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Analytics</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/notifications"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/notifications'
+                  ? 'bg-white/20 text-white font-medium'
+                  : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <Bell className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && (
+                <div className="flex items-center gap-2">
+                  <span>Notifications</span>
+                </div>
+              )}
+            </Link>
+          )}
           <Link
             href="/dashboard/messages"
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -342,16 +354,18 @@ export default function RemarksPage() {
             <MessageSquare className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Messages</span>}
           </Link>
-          <Link
-            href="/dashboard/remarks"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <StickyNote className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Remarks</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MODERATOR' && (
+          {(session?.user as any)?.role !== 'MANAGER' && (
+            <Link
+              href="/dashboard/remarks"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+              }`}
+            >
+              <StickyNote className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Remarks</span>}
+            </Link>
+          )}
+          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
             <Link
               href="/dashboard/settings"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -362,13 +376,35 @@ export default function RemarksPage() {
               {sidebarOpen && <span>Settings</span>}
             </Link>
           )}
+          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
+            <Link
+              href="/property/dashboard"
+              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
+            >
+              <Building2 className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Property Portal</span>}
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200 bg-white">
           <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center">
-              <User className="w-6 h-6 text-white" />
-            </div>
+            {session?.user?.image ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
+                <Image
+                  src={session.user.image}
+                  alt={session.user?.name || session.user?.email || 'Admin'}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 text-white" />
+              </div>
+            )}
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-primary-900 truncate">

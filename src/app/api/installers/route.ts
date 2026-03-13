@@ -32,7 +32,16 @@ export async function GET(request: NextRequest) {
     // Moderators can ONLY see "Qualified" + "Pending" + "Not Qualified" installers
     // (status in ["passed", "pending", "failed"])
     if (admin.role === 'MODERATOR') {
-      where.status = { in: ['passed', 'pending', 'failed'] }
+      // For moderators, always restrict to accessible statuses
+      const moderatorStatuses = ['passed', 'pending', 'failed']
+      
+      // If a specific status filter is provided and it's valid for moderators, filter by it
+      if (status && status !== 'all' && moderatorStatuses.includes(status)) {
+        where.status = status
+      } else {
+        // Otherwise, show all accessible statuses
+        where.status = { in: moderatorStatuses }
+      }
     } else if (status && status !== 'all') {
       where.status = status
     }
