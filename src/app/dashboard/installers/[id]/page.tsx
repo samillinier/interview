@@ -53,7 +53,10 @@ import {
   Activity,
   ExternalLink,
   Camera,
-  StickyNote
+  StickyNote,
+  Share2,
+  MoreVertical,
+  Check
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -396,6 +399,8 @@ export default function InstallerProfileViewPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [showShareDropdown, setShowShareDropdown] = useState(false)
+  const [shareLinkCopied, setShareLinkCopied] = useState(false)
   
   // Editable fields
   const [status, setStatus] = useState<string>('pending')
@@ -2766,13 +2771,54 @@ export default function InstallerProfileViewPage() {
                 {!isManager && (
                   <>
                     {!isEditing ? (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
-                      >
-                        <Edit2 className="w-5 h-5" />
-                        Edit Profile
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                          Edit Profile
+                        </button>
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowShareDropdown(!showShareDropdown)}
+                            className="p-2.5 border-2 border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors"
+                            title="More options"
+                          >
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
+                          {showShareDropdown && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setShowShareDropdown(false)}
+                              />
+                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                                <button
+                                  onClick={async () => {
+                                    const shareUrl = `${window.location.origin}/dashboard/installers/${installerId}`
+                                    try {
+                                      await navigator.clipboard.writeText(shareUrl)
+                                      setShareLinkCopied(true)
+                                      setShowShareDropdown(false)
+                                      setTimeout(() => setShareLinkCopied(false), 3000)
+                                      setSuccess('Profile link copied to clipboard!')
+                                      setTimeout(() => setSuccess(''), 3000)
+                                    } catch (err) {
+                                      setError('Failed to copy link. Please try again.')
+                                      setTimeout(() => setError(''), 5000)
+                                    }
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                >
+                                  <Share2 className="w-4 h-4 text-slate-500" />
+                                  <span className="font-medium">Share Profile</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex items-center gap-3">
                         <button
