@@ -105,6 +105,7 @@ export default function TrackingPage() {
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     category: '',
     notes: '',
+    metadata: {} as any,
   })
   const [installers, setInstallers] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; companyName: string | null }>>([])
   const [installerSearchQuery, setInstallerSearchQuery] = useState('')
@@ -275,18 +276,36 @@ export default function TrackingPage() {
   }
 
   const handleCreateItem = async () => {
-    if (!newItem.installerId || !newItem.title) {
-      setError('Installer and title are required')
+    // Check if it's a manual entry
+    const isManualEntry = newItem.installerId?.startsWith('manual_') || (showManualInstallerInput && manualInstallerName.trim())
+    
+    if (!isManualEntry && !newItem.installerId) {
+      setError('Please select an installer or enter a manual installer name')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+    if (!newItem.title) {
+      setError('Title is required')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+    if (isManualEntry && !manualInstallerName.trim()) {
+      setError('Installer name is required for manual entry')
       setTimeout(() => setError(''), 5000)
       return
     }
 
     try {
       setIsCreating(true)
+      const payload = {
+        ...newItem,
+        installerId: isManualEntry ? null : newItem.installerId,
+        metadata: isManualEntry ? { manualInstallerName: manualInstallerName.trim() } : (newItem.metadata || {}),
+      }
       const response = await fetch('/api/tracking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) throw new Error('Failed to create tracking item')
@@ -303,7 +322,11 @@ export default function TrackingPage() {
         priority: 'normal',
         category: '',
         notes: '',
+        metadata: {},
       })
+      setInstallerSearchQuery('')
+      setShowManualInstallerInput(false)
+      setManualInstallerName('')
       fetchTrackingItems()
     } catch (err: any) {
       setError(err.message || 'Failed to create tracking item')
@@ -346,6 +369,20 @@ export default function TrackingPage() {
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+  }
+
+  const getInitialsFromName = (name: string) => {
+    if (!name || !name.trim()) return '?'
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      // First letter of first name and first letter of last name
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    } else if (parts.length === 1) {
+      // Single word: take first two letters
+      const word = parts[0]
+      return word.length >= 2 ? word.substring(0, 2).toUpperCase() : word[0].toUpperCase()
+    }
+    return '?'
   }
 
   const getTypeIcon = (type: string) => {
@@ -745,8 +782,10 @@ export default function TrackingPage() {
                                         )}
                                       </>
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-slate-300 text-white font-bold text-sm">
-                                        ?
+                                      <div className="w-full h-full flex items-center justify-center bg-brand-green text-white font-bold text-sm">
+                                        {item.metadata && typeof item.metadata === 'object' && 'manualInstallerName' in item.metadata
+                                          ? getInitialsFromName(String((item.metadata as any).manualInstallerName))
+                                          : '?'}
                                       </div>
                                     )}
                                   </div>
