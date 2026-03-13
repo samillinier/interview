@@ -87,6 +87,7 @@ export default function TrackingPage() {
   const [editingItem, setEditingItem] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState('')
   const [editStatus, setEditStatus] = useState<string>('pending')
+  const [editType, setEditType] = useState<string>('issue')
   const [showAddModal, setShowAddModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; itemId: string | null; itemTitle: string }>({
@@ -201,27 +202,30 @@ export default function TrackingPage() {
     }
   }
 
-  const handleUpdateStatus = async (itemId: string, newStatus: string, notes?: string) => {
+  const handleUpdateStatus = async (itemId: string, newStatus: string, newType?: string, notes?: string) => {
     try {
       const response = await fetch(`/api/tracking/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: newStatus,
+          type: newType || editType,
           notes: notes || editNotes,
           resolvedBy: (session?.user as any)?.email,
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to update status')
+      if (!response.ok) throw new Error('Failed to update tracking item')
 
-      setSuccess('Status updated successfully')
+      setSuccess('Tracking item updated successfully')
       setTimeout(() => setSuccess(''), 3000)
       setEditingItem(null)
       setEditNotes('')
+      setEditStatus('pending')
+      setEditType('issue')
       fetchTrackingItems()
     } catch (err: any) {
-      setError(err.message || 'Failed to update status')
+      setError(err.message || 'Failed to update tracking item')
       setTimeout(() => setError(''), 5000)
     }
   }
@@ -836,6 +840,7 @@ export default function TrackingPage() {
                                     setEditingItem(item.id)
                                     setEditNotes(item.notes || '')
                                     setEditStatus(item.status)
+                                    setEditType(item.type)
                                   }}
                                   className="p-1 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded transition-colors opacity-0 group-hover:opacity-100"
                                   title="Edit"
@@ -858,6 +863,17 @@ export default function TrackingPage() {
                                       <option value="resolved">Resolved</option>
                                       <option value="solved">Solved</option>
                                     </select>
+                                    <select
+                                      value={editType}
+                                      onChange={(e) => setEditType(e.target.value)}
+                                      className="px-3 py-1 text-sm border border-slate-300 rounded-lg"
+                                    >
+                                      <option value="issue">Issue</option>
+                                      <option value="activity">Activity</option>
+                                      <option value="status_change">Status Change</option>
+                                      <option value="document">Document</option>
+                                      <option value="communication">Communication</option>
+                                    </select>
                                     <textarea
                                       value={editNotes}
                                       onChange={(e) => setEditNotes(e.target.value)}
@@ -867,7 +883,7 @@ export default function TrackingPage() {
                                     />
                                     <div className="flex gap-1">
                                       <button
-                                        onClick={() => handleUpdateStatus(item.id, editStatus, editNotes)}
+                                        onClick={() => handleUpdateStatus(item.id, editStatus, editType, editNotes)}
                                         className="px-3 py-1 text-xs bg-brand-green text-white rounded-lg hover:bg-brand-green-dark"
                                       >
                                         Save
@@ -877,6 +893,7 @@ export default function TrackingPage() {
                                           setEditingItem(null)
                                           setEditNotes('')
                                           setEditStatus('pending')
+                                          setEditType('issue')
                                         }}
                                         className="px-3 py-1 text-xs bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
                                       >

@@ -26,7 +26,7 @@ export async function PATCH(
     const id = resolvedParams.id
 
     const body = await request.json()
-    const { status, notes, resolvedBy } = body
+    const { status, type, notes, resolvedBy } = body
 
     const updateData: any = {}
     
@@ -40,6 +40,9 @@ export async function PATCH(
         updateData.resolvedAt = null
         updateData.resolvedBy = null
       }
+    }
+    if (type !== undefined) {
+      updateData.type = type
     }
     if (notes !== undefined) {
       updateData.notes = notes
