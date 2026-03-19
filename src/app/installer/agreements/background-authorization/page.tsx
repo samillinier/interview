@@ -314,15 +314,11 @@ export default function BackgroundAuthorizationAgreementPage() {
           </Link>
           <Link href="/installer/agreements" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium">
             <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Agreements</span>}
+            {sidebarOpen && <span>Form</span>}
           </Link>
           <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Paperclip className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link href="/installer/payment" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <ExternalLink className="w-5 h-5 flex-shrink-0" />

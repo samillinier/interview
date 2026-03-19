@@ -464,7 +464,7 @@ export default function AttachmentsPage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Agreements</span>}
+            {sidebarOpen && <span>Form</span>}
           </Link>
           <Link
             href="/installer/attachments"
@@ -472,13 +472,6 @@ export default function AttachmentsPage() {
           >
             <Paperclip className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link
-            href="/installer/payment"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/referrals"
@@ -589,60 +582,38 @@ export default function AttachmentsPage() {
                   key={docType.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`bg-white rounded-2xl shadow-lg border p-6 backdrop-blur-sm ${
+                  className={`bg-white rounded-3xl sm:rounded-2xl shadow-sm sm:shadow-lg border p-4 sm:p-6 backdrop-blur-sm ${
                     hasActiveVerificationLink 
                       ? 'border-brand-green/50 bg-brand-green/5' 
-                      : 'border-slate-200/60'
+                      : 'border-slate-200'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  <div className="mb-4">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
                         existingDoc ? 'bg-success-100' : 'bg-brand-green/10'
                       }`}>
-                        <Icon className={`w-6 h-6 ${existingDoc ? 'text-success-600' : 'text-brand-green'}`} />
+                        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${existingDoc ? 'text-success-600' : 'text-brand-green'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           {hasActiveVerificationLink && (
                             <CheckCircle2 className="w-5 h-5 text-brand-green flex-shrink-0" />
                           )}
-                          <h3 className="text-lg font-bold text-slate-900">{docType.name}</h3>
+                          <h3 className="text-lg sm:text-lg font-bold text-slate-900 leading-tight">{docType.name}</h3>
                           {docType.required && (
                             <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
                               Required
                             </span>
                           )}
-                          {isMulti && (
-                            <label
-                              className={`ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-colors cursor-pointer ${
-                                isUploading ? 'opacity-60 cursor-not-allowed' : 'border-brand-green/30 text-brand-green hover:bg-brand-green/10'
-                              }`}
-                              title="Add another file"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span className="text-xs font-semibold">Add</span>
-                              <input
-                                type="file"
-                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleFileUpload(docType.id, file)
-                                  e.target.value = ''
-                                }}
-                                className="hidden"
-                                disabled={isUploading}
-                              />
-                            </label>
-                          )}
                         </div>
-                        <p className="text-sm text-slate-500 mb-2">{docType.description}</p>
+                        <p className="text-sm sm:text-sm text-slate-500 leading-snug">{docType.description}</p>
                         {existingDoc && (
                           <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
                             <CheckCircle2 className="w-4 h-4 text-success-600" />
                             <span>
                               Uploaded on {
-                                existingDoc.uploadedAt 
+                                existingDoc.uploadedAt
                                   ? (() => {
                                       try {
                                         const date = new Date(existingDoc.uploadedAt)
@@ -659,19 +630,43 @@ export default function AttachmentsPage() {
                         {/* Verification Link is admin-only; hidden in installer portal */}
                       </div>
                     </div>
+                    {isMulti && (
+                      <div className="flex justify-end mt-3">
+                        <label
+                          className={`inline-flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-2xl sm:rounded-xl border transition-colors cursor-pointer ${
+                            isUploading ? 'opacity-60 cursor-not-allowed' : 'border-brand-green/30 text-brand-green hover:bg-brand-green/10'
+                          }`}
+                          title="Add another file"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="text-sm sm:text-xs font-semibold">Add</span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleFileUpload(docType.id, file)
+                              e.target.value = ''
+                            }}
+                            className="hidden"
+                            disabled={isUploading}
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   {matchingDocs.length > 0 ? (
                     <div className="space-y-3">
                       {matchingDocs.map((doc) => (
-                          <div key={doc.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                            <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                          <div key={doc.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                            <div className="flex items-start gap-3 min-w-0">
                               <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-slate-900 whitespace-normal break-words sm:truncate sm:whitespace-nowrap">
+                                <p className="font-medium text-sm sm:text-base text-slate-900 whitespace-normal break-all leading-snug">
                                   {doc.name || doc.fileName}
                                 </p>
-                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                                   {doc.fileSize && (
                                     <p className="text-xs text-slate-500">
                                       {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
@@ -695,20 +690,20 @@ export default function AttachmentsPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-slate-200/80">
                               <a
                                 href={doc.url || doc.fileUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 download={doc.name || doc.fileName}
-                                className="p-2 text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"
+                                className="p-2.5 sm:p-2 text-brand-green hover:bg-brand-green/10 rounded-xl sm:rounded-lg transition-colors"
                                 title="View / Download"
                               >
                                 <Download className="w-5 h-5" />
                               </a>
                               <button
                                 onClick={() => handleDeleteClick(doc.id, doc.name || doc.fileName, docType.id)}
-                                className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
+                                className="p-2.5 sm:p-2 text-danger-600 hover:bg-danger-50 rounded-xl sm:rounded-lg transition-colors"
                                 title="Delete"
                               >
                                 <Trash2 className="w-5 h-5" />

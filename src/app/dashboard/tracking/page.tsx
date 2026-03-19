@@ -60,6 +60,7 @@ type TrackingItem = {
     id: string
     firstName: string
     lastName: string
+    phone: string | null
     email: string
     companyName: string | null
     photoUrl: string | null
@@ -182,7 +183,7 @@ export default function TrackingPage() {
       if (typeFilter !== 'all') params.append('type', typeFilter)
       if (priorityFilter !== 'all') params.append('priority', priorityFilter)
 
-      const response = await fetch(`/api/tracking?${params.toString()}`)
+      const response = await fetch(`/api/tracking?${params.toString()}`, { cache: 'no-store' })
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to fetch tracking items' }))
         throw new Error(errorData.error || errorData.details || 'Failed to fetch tracking items')
@@ -202,7 +203,7 @@ export default function TrackingPage() {
     }
   }
 
-  const handleUpdateStatus = async (itemId: string, newStatus: string, newType?: string, notes?: string) => {
+  const handleUpdateStatus = async (itemId: string, newStatus: string, newType?: string, description?: string) => {
     try {
       const response = await fetch(`/api/tracking/${itemId}`, {
         method: 'PATCH',
@@ -210,12 +211,15 @@ export default function TrackingPage() {
         body: JSON.stringify({
           status: newStatus,
           type: newType || editType,
-          notes: notes || editNotes,
+          description: description ?? editNotes,
           resolvedBy: (session?.user as any)?.email,
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to update tracking item')
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(data?.error || data?.details || 'Failed to update tracking item')
+      }
 
       setSuccess('Tracking item updated successfully')
       setTimeout(() => setSuccess(''), 3000)
@@ -223,6 +227,23 @@ export default function TrackingPage() {
       setEditNotes('')
       setEditStatus('pending')
       setEditType('issue')
+
+      // Optimistically update visible row immediately for better UX.
+      setTrackingItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: (newStatus as TrackingItem['status']) || item.status,
+                type: newType || item.type,
+                description: description !== undefined ? description : item.description,
+                updatedAt: new Date().toISOString(),
+              }
+            : item
+        )
+      )
+
+      // Re-sync from API as source of truth.
       fetchTrackingItems()
     } catch (err: any) {
       setError(err.message || 'Failed to update tracking item')
@@ -387,6 +408,31 @@ export default function TrackingPage() {
       return word.length >= 2 ? word.substring(0, 2).toUpperCase() : word[0].toUpperCase()
     }
     return '?'
+  }
+
+  const getInstallerAvatarRing = (status?: string | null) => {
+    const s = String(status || '').toLowerCase()
+    if (s === 'active') return { ring: 'ring-4 ring-brand-green', initialsBg: 'bg-brand-green' }
+    if (s === 'deactive' || s === 'inactive' || s === 'deactivated') return { ring: 'ring-4 ring-slate-900', initialsBg: 'bg-slate-900' }
+    if (s === 'passed' || s === 'qualified') return { ring: 'ring-4 ring-blue-500', initialsBg: 'bg-blue-500' }
+    if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified') return { ring: 'ring-4 ring-red-500', initialsBg: 'bg-red-500' }
+    if (s === 'pending') return { ring: 'ring-4 ring-yellow-500', initialsBg: 'bg-yellow-500' }
+    return { ring: 'ring-4 ring-slate-300', initialsBg: 'bg-slate-500' }
+  }
+
+  const getInstallerStatusCircle = (status?: string | null) => {
+    const s = String(status || '').toLowerCase()
+    if (!s) return null
+
+    if (s === 'active') return { label: 'Active', bg: 'bg-brand-green', icon: CheckCircle2 }
+    if (s === 'passed' || s === 'qualified') return { label: 'Qualified', bg: 'bg-blue-500', icon: CheckCircle2 }
+    if (s === 'pending') return { label: 'Pending', bg: 'bg-yellow-500', icon: Clock }
+    if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified')
+      return { label: 'Not Qualified', bg: 'bg-red-500', icon: XCircle }
+    if (s === 'deactive' || s === 'inactive' || s === 'deactivated')
+      return { label: 'Deactive', bg: 'bg-slate-900', icon: XCircle }
+
+    return { label: 'Unknown', bg: 'bg-slate-400', icon: AlertCircle }
   }
 
   const getTypeIcon = (type: string) => {
@@ -720,7 +766,7 @@ export default function TrackingPage() {
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">STATUS</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">PIPELINE</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">CONTACT</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">LAST UPDATE</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">PRIORITY</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">ACTIONS</th>
                   </tr>
                 </thead>
@@ -749,10 +795,11 @@ export default function TrackingPage() {
                             ? String((item.metadata as any).manualInstallerName)
                             : 'Manual Entry')
                       const installerCompany = item.Installer?.companyName || null
+                      const installerPhone = item.Installer?.phone || '-'
                       const installerEmail = item.Installer?.email || '-'
-                      const contactName = item.Installer 
-                        ? `${item.Installer.firstName} ${item.Installer.lastName}`
-                        : '-'
+                      const installerStatusCircle = item.Installer ? getInstallerStatusCircle(item.Installer.status) : null
+                      const InstallerStatusIcon = installerStatusCircle?.icon
+                      const avatarRing = item.Installer ? getInstallerAvatarRing(item.Installer.status) : null
                       
                       return (
                         <>
@@ -765,7 +812,11 @@ export default function TrackingPage() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-4">
                                 <div className="relative">
-                                  <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md bg-slate-200 flex items-center justify-center">
+                                  <div
+                                    className={`relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 shadow-md bg-slate-200 flex items-center justify-center ${
+                                      avatarRing ? avatarRing.ring : ''
+                                    }`}
+                                  >
                                     {item.Installer ? (
                                       <>
                                         {item.Installer.photoUrl ? (
@@ -780,7 +831,11 @@ export default function TrackingPage() {
                                             }}
                                           />
                                         ) : (
-                                          <div className="w-full h-full flex items-center justify-center bg-brand-green text-white font-bold text-sm">
+                                          <div
+                                            className={`w-full h-full flex items-center justify-center text-white font-bold text-sm ${
+                                              avatarRing ? avatarRing.initialsBg : 'bg-brand-green'
+                                            }`}
+                                          >
                                             {getInitials(item.Installer.firstName, item.Installer.lastName)}
                                           </div>
                                         )}
@@ -793,15 +848,41 @@ export default function TrackingPage() {
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                                <div>
-                                  <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
-                                    {installerName}
-                                  </p>
-                                  {installerCompany && (
-                                    <p className="text-sm text-slate-500">{installerCompany}</p>
+                                  {installerStatusCircle && InstallerStatusIcon && (
+                                    <div
+                                      title={installerStatusCircle.label}
+                                      className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${installerStatusCircle.bg}`}
+                                    >
+                                      <InstallerStatusIcon className="w-3 h-3 text-white" />
+                                    </div>
                                   )}
                                 </div>
+                                {item.Installer ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => router.push(`/dashboard/installers/${item.Installer!.id}`)}
+                                    className="text-left group/profile"
+                                    title="Open installer profile"
+                                  >
+                                    <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
+                                      {installerName}
+                                    </p>
+                                    {installerCompany && (
+                                      <p className="text-sm text-slate-500 group-hover/profile:text-slate-700 transition-colors">
+                                        {installerCompany}
+                                      </p>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <div>
+                                    <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
+                                      {installerName}
+                                    </p>
+                                    {installerCompany && (
+                                      <p className="text-sm text-slate-500">{installerCompany}</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -823,31 +904,21 @@ export default function TrackingPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              {contactName !== '-' ? (
+                              {installerEmail !== '-' ? (
                                 <div>
-                                  <p className="text-sm font-medium text-slate-900">{contactName}</p>
-                                  <p className="text-xs text-slate-500">{installerEmail}</p>
+                                  <p className="text-sm font-medium text-slate-900">{installerEmail}</p>
+                                  <p className="text-xs text-slate-500">{installerPhone}</p>
                                 </div>
                               ) : (
                                 <span className="text-slate-400">-</span>
                               )}
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-slate-600">{new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                <button
-                                  onClick={() => {
-                                    setEditingItem(item.id)
-                                    setEditNotes(item.notes || '')
-                                    setEditStatus(item.status)
-                                    setEditType(item.type)
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                  title="Edit"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                              </div>
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold capitalize ${getPriorityBadge(item.priority)}`}
+                              >
+                                {item.priority}
+                              </span>
                             </td>
                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
@@ -877,7 +948,7 @@ export default function TrackingPage() {
                                     <textarea
                                       value={editNotes}
                                       onChange={(e) => setEditNotes(e.target.value)}
-                                      placeholder="Add notes..."
+                                      placeholder="Update description..."
                                       className="px-3 py-1 text-sm border border-slate-300 rounded-lg w-48"
                                       rows={2}
                                     />
@@ -903,6 +974,18 @@ export default function TrackingPage() {
                                   </div>
                                 ) : (
                                   <>
+                                    <button
+                                      onClick={() => {
+                                        setEditingItem(item.id)
+                                        setEditNotes(item.description || '')
+                                        setEditStatus(item.status)
+                                        setEditType(item.type)
+                                      }}
+                                      className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"
+                                      title="Update"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </button>
                                     <button
                                       onClick={() => setExpanded({ ...expanded, [item.id]: !expanded[item.id] })}
                                       className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"

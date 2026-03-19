@@ -193,19 +193,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <section className="pb-8 bg-brand-green overflow-hidden flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-white/90">
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-              {session && (
-                <Link href="/dashboard" className="hover:text-white transition-colors">
-                  Admin Dashboard
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="pb-8 bg-brand-green overflow-hidden flex-1" />
 
     </div>
   )

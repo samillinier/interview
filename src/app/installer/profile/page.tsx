@@ -364,6 +364,8 @@ export default function InstallerProfilePage() {
   const [historicalData, setHistoricalData] = useState<any[]>([])
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [editingHistory, setEditingHistory] = useState<any | null>(null)
+  // Installers should not see / edit Historical Data
+  const SHOW_HISTORICAL_DATA = false
   const [historyForm, setHistoryForm] = useState<any>({
     year: new Date().getFullYear().toString(),
     // Basic Information
@@ -2010,7 +2012,7 @@ export default function InstallerProfilePage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Agreements</span>}
+            {sidebarOpen && <span>Form</span>}
           </Link>
           <Link
             href="/installer/attachments"
@@ -2018,13 +2020,6 @@ export default function InstallerProfilePage() {
           >
             <Paperclip className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link
-            href="/installer/payment"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/referrals"
@@ -3503,7 +3498,7 @@ export default function InstallerProfilePage() {
               </div>
             </div>
 
-            {/* Insurance & Certificate Expiry Dates - Full Width Section */}
+            {/* Insurance & Certificate - Full Width Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -3512,7 +3507,7 @@ export default function InstallerProfilePage() {
             >
               <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Insurance & Certificate Expiry Dates</h2>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Insurance & Certificate</h2>
                   <p className="text-sm text-slate-500">Manage your insurance and certificate expiration dates</p>
                 </div>
                 <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
@@ -5882,116 +5877,117 @@ export default function InstallerProfilePage() {
             </div>
           </motion.div>
 
-          {/* Historical Data Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-8 mb-6"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-brand-green" />
+          {SHOW_HISTORICAL_DATA && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-8 mb-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Historical Data</h2>
+                    <p className="text-sm text-slate-500">Add and manage your past years' profile data</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Historical Data</h2>
-                  <p className="text-sm text-slate-500">Add and manage your past years' profile data</p>
-                </div>
-              </div>
-              <button
-                onClick={handleAddHistory}
-                className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
-              >
-                <Plus className="w-5 h-5" />
-                Add Historical Data
-              </button>
-            </div>
-
-            {historicalData.length === 0 ? (
-              <div className="bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center">
-                <Calendar className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">No historical data yet</h3>
-                <p className="text-slate-500 mb-6">Add your past years' profile information to track your history</p>
                 <button
                   onClick={handleAddHistory}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
                 >
                   <Plus className="w-5 h-5" />
-                  Add Your First Historical Entry
+                  Add Historical Data
                 </button>
               </div>
-            ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {historicalData.map((history) => (
-                  <motion.div
-                    key={history.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all"
+
+              {historicalData.length === 0 ? (
+                <div className="bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300 p-12 text-center">
+                  <Calendar className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-700 mb-2">No historical data yet</h3>
+                  <p className="text-slate-500 mb-6">Add your past years' profile information to track your history</p>
+                  <button
+                    onClick={handleAddHistory}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-12 h-12 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-6 h-6 text-brand-green" />
+                    <Plus className="w-5 h-5" />
+                    Add Your First Historical Entry
+                  </button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {historicalData.map((history) => (
+                    <motion.div
+                      key={history.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-12 h-12 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                            <Calendar className="w-6 h-6 text-brand-green" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-slate-900 text-lg">Year {history.year}</h3>
+                            {history.companyName && <p className="text-sm text-slate-600">{history.companyName}</p>}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-slate-900 text-lg">
-                            Year {history.year}
-                          </h3>
-                          {history.companyName && (
-                            <p className="text-sm text-slate-600">{history.companyName}</p>
-                          )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEditHistory(history)}
+                            className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteHistory(history.id, history.year)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleEditHistory(history)}
-                          className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-all"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteHistory(history.id, history.year)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+                      <div className="space-y-2 text-sm">
+                        {history.firstName && history.lastName && (
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <User className="w-4 h-4 text-slate-400" />
+                            <span>
+                              {history.firstName} {history.lastName}
+                            </span>
+                          </div>
+                        )}
+                        {history.phone && (
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <Phone className="w-4 h-4 text-slate-400" />
+                            <span>{history.phone}</span>
+                          </div>
+                        )}
+                        {history.yearsOfExperience && (
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <Briefcase className="w-4 h-4 text-slate-400" />
+                            <span>{history.yearsOfExperience} years experience</span>
+                          </div>
+                        )}
+                        {history.companyCity && history.companyState && (
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <MapPin className="w-4 h-4 text-slate-400" />
+                            <span>
+                              {history.companyCity}, {history.companyState}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      {history.firstName && history.lastName && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <User className="w-4 h-4 text-slate-400" />
-                          <span>{history.firstName} {history.lastName}</span>
-                        </div>
-                      )}
-                      {history.phone && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <Phone className="w-4 h-4 text-slate-400" />
-                          <span>{history.phone}</span>
-                        </div>
-                      )}
-                      {history.yearsOfExperience && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <Briefcase className="w-4 h-4 text-slate-400" />
-                          <span>{history.yearsOfExperience} years experience</span>
-                        </div>
-                      )}
-                      {history.companyCity && history.companyState && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <MapPin className="w-4 h-4 text-slate-400" />
-                          <span>{history.companyCity}, {history.companyState}</span>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
 
           {/* Location Map (uses saved Address) */}
           {(() => {
@@ -6425,7 +6421,7 @@ export default function InstallerProfilePage() {
       )}
 
       {/* Historical Data Modal */}
-      {showHistoryModal && (
+      {SHOW_HISTORICAL_DATA && showHistoryModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   Bell,
-  CreditCard,
   ExternalLink,
   FileText,
   LayoutDashboard,
@@ -36,9 +35,8 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
     () => [
       { href: '/installer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/installer/profile', label: 'Profile', icon: User },
-      { href: '/installer/agreements', label: 'Agreements', icon: FileText },
+      { href: '/installer/agreements', label: 'Form', icon: FileText },
       { href: '/installer/attachments', label: 'Attachments', icon: Paperclip },
-      { href: '/installer/payment', label: 'Account', icon: CreditCard },
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
       { href: '/installer/help', label: 'Help', icon: HelpCircle },

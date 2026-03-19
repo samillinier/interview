@@ -224,7 +224,8 @@ export async function GET(
        * Access control:
        * - If an installer token is present and valid, allow the installer to fetch their own record.
        * - Otherwise, require a dashboard session (Admin or Moderator).
-       * - Moderators can only access Qualified installers (status = "passed").
+       * - Moderators can only access Qualified/Pending/Not Qualified installers
+       *   (status in ["qualified", "passed", "pending", "failed"]).
        */
       const token = getInstallerTokenFromRequest(request)
       if (token) {
@@ -247,7 +248,7 @@ export async function GET(
         if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
 
         const st = String(installer.status || '').toLowerCase()
-        if (admin.role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(st)) {
+        if (admin.role === 'MODERATOR' && !['qualified', 'passed', 'pending', 'failed'].includes(st)) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
       }

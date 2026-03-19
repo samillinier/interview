@@ -26,7 +26,7 @@ export async function PATCH(
     const id = resolvedParams.id
 
     const body = await request.json()
-    const { status, type, notes, resolvedBy } = body
+    const { status, type, description, notes, resolvedBy } = body
 
     const updateData: any = {}
     
@@ -44,6 +44,9 @@ export async function PATCH(
     if (type !== undefined) {
       updateData.type = type
     }
+    if (description !== undefined) {
+      updateData.description = description
+    }
     if (notes !== undefined) {
       updateData.notes = notes
     }
@@ -57,6 +60,7 @@ export async function PATCH(
             id: true,
             firstName: true,
             lastName: true,
+            phone: true,
             email: true,
             companyName: true,
             photoUrl: true,

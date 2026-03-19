@@ -153,7 +153,7 @@ export default function InstallerAgreementsPage() {
             }`}
           >
             <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Agreements</span>}
+            {sidebarOpen && <span>Form</span>}
           </Link>
           <Link
             href="/installer/attachments"
@@ -161,13 +161,6 @@ export default function InstallerAgreementsPage() {
           >
             <Paperclip className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link
-            href="/installer/payment"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/referrals"
@@ -230,41 +223,38 @@ export default function InstallerAgreementsPage() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-5 lg:pb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                <FileText className="w-6 h-6 text-brand-green" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">Agreements</h1>
+                <h1 className="text-[2rem] sm:text-3xl leading-tight font-bold text-slate-900">Agreements</h1>
                 <p className="text-sm text-slate-500">Sign required forms using Adobe Sign</p>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto w-full">
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+        <main className="p-4 sm:p-6 lg:p-8 w-full">
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6 w-full">
             <div className="grid gap-4">
               <a
                 href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhB5j-mH_p2ruL7INNqrKVKTBR2ncZH-koaIAKG71Adn7Y-twmq0L10ntLY98fB-vjc*"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
+                className="group flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
               >
-                <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-brand-green" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">W-9 Form</div>
-                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                      Form
-                    </span>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">W-9 Form</div>
                   </div>
-                  <div className="text-sm text-slate-600 mt-1">W-9 FORM - Fillable Form</div>
+                  <div className="text-sm text-slate-600 mt-1 leading-snug">W-9 FORM - Fillable Form</div>
                 </div>
-                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1">
+                <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1 flex-shrink-0 self-start">
                   <ExternalLink className="w-4 h-4" />
                 </div>
               </a>
@@ -273,37 +263,56 @@ export default function InstallerAgreementsPage() {
                 href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhD6ZgUjSyD1XPnftzSvkU-VqsxteBEqz1hpXmXiNGqkahKR0pZRusQ4zRcPAlT13oI*"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
+                className="group flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
               >
-                <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-brand-green" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">
                       Background Authorization and Release Form
                     </div>
-                    <span className="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                      Form
-                    </span>
                   </div>
-                  <div className="text-sm text-slate-600 mt-1">BACKGROUND AUTHORIZATION AND RELEASE FORM - Fillable Form</div>
+                  <div className="text-sm text-slate-600 mt-1 leading-snug">BACKGROUND AUTHORIZATION AND RELEASE FORM - Fillable Form</div>
                 </div>
-                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1">
+                <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1 flex-shrink-0 self-start">
+                  <ExternalLink className="w-4 h-4" />
+                </div>
+              </a>
+
+              <a
+                href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhAd0WrFu09RPnBzKPqIax8km7WWIE8tVGYIBPYHGAcUxfksKfAtUS9e0QrNNL0Uk6I*"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">
+                      Independent Contractor Banking
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-600 mt-1 leading-snug">Independent Contractor Banking - Fillable Form</div>
+                </div>
+                <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1 flex-shrink-0 self-start">
                   <ExternalLink className="w-4 h-4" />
                 </div>
               </a>
 
               <Link
                 href="/installer/agreements/nda"
-                className="group flex items-start gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
+                className="group flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
               >
-                <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-6 h-6 text-brand-green" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">NDA Agreement</div>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">NDA Agreement</div>
                     {installer?.ndaAgreedAt ? (
                       <span className="text-xs font-bold text-success-700 bg-success-100 border border-success-200 px-2 py-0.5 rounded-full">
                         Completed
@@ -314,9 +323,9 @@ export default function InstallerAgreementsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-slate-600 mt-1">Review and accept the NDA.</div>
+                  <div className="text-sm text-slate-600 mt-1 leading-snug">Review and accept the NDA.</div>
                 </div>
-                <div className="ml-auto text-slate-400 group-hover:text-brand-green transition-colors">→</div>
+                <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex-shrink-0 self-start">→</div>
               </Link>
             </div>
           </div>

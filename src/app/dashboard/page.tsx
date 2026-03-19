@@ -1123,9 +1123,9 @@ function DashboardPageContent() {
   useEffect(() => {
     if (status === 'authenticated') {
       const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
-      if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(statusFilter)) {
+      if (role === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(statusFilter)) {
         // Reset to a valid default for moderators
-        const validStatus = 'pending'
+        const validStatus = 'all'
         setStatusFilter(validStatus)
         updateURL({ status: validStatus, page: 1 })
       }
@@ -1150,8 +1150,8 @@ function DashboardPageContent() {
       
       // Validate status for moderators
       const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
-      if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(urlStatus)) {
-        urlStatus = 'pending' // Default to pending for moderators
+      if (role === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(urlStatus)) {
+        urlStatus = 'all' // Default to all for moderators
       }
       
       // Only update state if URL params differ from current state
@@ -1719,10 +1719,10 @@ function DashboardPageContent() {
                   const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
                   
                   // Validate for moderators - only allow valid statuses
-                  if (role === 'MODERATOR' && !['passed', 'pending', 'failed'].includes(newStatus)) {
-                    // If invalid, reset to pending
-                    setStatusFilter('pending')
-                    updateURL({ status: 'pending', page: 1 })
+                  if (role === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(newStatus)) {
+                    // If invalid, reset to all
+                    setStatusFilter('all')
+                    updateURL({ status: 'all', page: 1 })
                   } else {
                     setStatusFilter(newStatus)
                     updateURL({ status: newStatus, page: 1 })
@@ -1732,8 +1732,10 @@ function DashboardPageContent() {
               >
                 {((session?.user as any)?.role as any) === 'MODERATOR' ? (
                   <>
+                    <option value="all">All Status</option>
                     <option value="pending">Pending</option>
-                    <option value="passed">Qualified</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="passed">Passed</option>
                     <option value="failed">Not Qualified</option>
                   </>
                 ) : (

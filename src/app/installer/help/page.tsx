@@ -201,7 +201,7 @@ export default function InstallerHelpPage() {
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
             <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Agreements</span>}
+            {sidebarOpen && <span>Form</span>}
           </Link>
           <Link
             href="/installer/attachments"
@@ -209,13 +209,6 @@ export default function InstallerHelpPage() {
           >
             <Paperclip className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link
-            href="/installer/payment"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <CreditCard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Account</span>}
           </Link>
           <Link
             href="/installer/referrals"
@@ -307,7 +300,7 @@ export default function InstallerHelpPage() {
                     <HelpCircle className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Installer Portal Step-by-Step Guide</h2>
+                    <h2 className="text-xl font-bold text-slate-900">Installer Portal Guide</h2>
                     <p className="text-sm text-slate-600 mt-1">Complete guide to navigate and use all features</p>
                   </div>
                 </div>
@@ -421,17 +414,6 @@ export default function InstallerHelpPage() {
                 </div>
               </div>
 
-              {/* PDF Guide Section */}
-              <div className="border-t border-slate-200 pt-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Complete Step-by-Step Guide</h3>
-                <div className="w-full h-[calc(100vh-500px)] min-h-[600px] rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-                  <iframe
-                    src="/Installer_Portal_Step_By_Step_Guide.pdf"
-                    className="w-full h-full"
-                    title="Installer Portal Step-by-Step Guide"
-                  />
-                </div>
-              </div>
             </div>
           </motion.div>
         </main>
