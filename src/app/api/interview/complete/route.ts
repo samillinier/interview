@@ -2,6 +2,69 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { extractInterviewData } from '@/lib/openai'
 import { calculateScore, determinePassFail } from '@/lib/utils'
+import { Resend } from 'resend'
+
+const QUALIFIED_LOGIN_URL = 'https://job.floorinteriorservices.com/installer/login'
+
+function buildQualifiedEmailHtml(logoUrl: string) {
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px; padding: 20px 0;">
+          <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
+        </div>
+
+        <h1 style="font-size: 22px; color: #0f172a; margin: 0 0 18px 0;">Action Required: Complete Your AI Interview &amp; Profile</h1>
+
+        <p>Thank you for your interest in partnering with Floor Interior Services. We’re excited to move forward with your onboarding.</p>
+
+        <p>At the moment, it looks like your AI interview has not been completed, which is required to proceed to the next steps in the onboarding process.</p>
+
+        <p>Please log in to the installer portal using the link below and complete your on boarding process along with the required profile information. Make sure to use the same email address you used to start the process, as this is how your profile is tracked in our system.</p>
+
+        <div style="text-align: center; margin: 26px 0;">
+          <a href="${QUALIFIED_LOGIN_URL}" style="background-color: #22c55e; color: white; padding: 13px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+            Continue Onboarding
+          </a>
+        </div>
+
+        <p style="font-size: 13px; color: #666;">If the button doesn't work, copy and paste this link:</p>
+        <p style="word-break: break-all; font-size: 13px; color: #2563eb;">${QUALIFIED_LOGIN_URL}</p>
+
+        <p>Once completed, your profile will be reviewed, and we will guide you through the remaining onboarding steps.</p>
+
+        <p>If you have any questions or need assistance at any point, please don’t hesitate to reach out — we’re here to help.</p>
+
+        <p>We look forward to working with you.</p>
+
+        <p>Best regards,<br />Floor Interior Services Team</p>
+      </body>
+    </html>
+  `
+}
+
+const qualifiedText = `Action Required: Complete Your AI Interview & Profile
+
+Thank you for your interest in partnering with Floor Interior Services. We’re excited to move forward with your onboarding.
+
+At the moment, it looks like your AI interview has not been completed, which is required to proceed to the next steps in the onboarding process.
+
+Please log in to the installer portal using the link below and complete your on boarding process along with the required profile information. Make sure to use the same email address you used to start the process, as this is how your profile is tracked in our system.
+
+${QUALIFIED_LOGIN_URL}
+
+Once completed, your profile will be reviewed, and we will guide you through the remaining onboarding steps.
+
+If you have any questions or need assistance at any point, please don’t hesitate to reach out — we’re here to help.
+
+We look forward to working with you.
+
+Best regards,`
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +119,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Update installer record with extracted data
-    await prisma.installer.update({
+    const updatedInstaller = await prisma.installer.update({
       where: { id: interview.installerId },
       data: {
         firstName: extractedData.firstName || interview.Installer.firstName,
@@ -66,6 +129,11 @@ export async function POST(request: NextRequest) {
         flooringSkills: extractedData.flooringSkills
           ? JSON.stringify(extractedData.flooringSkills)
           : null,
+        primaryFlooringSurface:
+          typeof extractedData.primaryFlooringSurface === 'string' &&
+          extractedData.primaryFlooringSurface.trim()
+            ? extractedData.primaryFlooringSurface.trim()
+            : interview.Installer.primaryFlooringSurface,
         hasOwnCrew: extractedData.hasOwnCrew ?? false,
         crewSize: extractedData.crewSize,
         hasOwnTools: false, // Not currently asked in interview
@@ -120,6 +188,42 @@ export async function POST(request: NextRequest) {
         transcript,
       },
     })
+
+    // Send one-time email when installer passes (qualified)
+    if (passed && updatedInstaller.email && !updatedInstaller.passedInterviewEmailSentAt) {
+      const resendApiKey = process.env.RESEND_API_KEY
+      if (resendApiKey) {
+        const resend = new Resend(resendApiKey)
+        const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+        const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Services'
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
+        const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+
+        try {
+          await resend.emails.send({
+            from: `${fromName} <${fromEmail}>`,
+            to: updatedInstaller.email,
+            subject: 'Action Required: Complete Your AI Interview & Profile',
+            html: buildQualifiedEmailHtml(logoUrl),
+            text: qualifiedText,
+          })
+
+          await prisma.installer.updateMany({
+            where: {
+              id: updatedInstaller.id,
+              passedInterviewEmailSentAt: null,
+            },
+            data: {
+              passedInterviewEmailSentAt: new Date(),
+            },
+          })
+        } catch (e: any) {
+          console.error('Failed to send passed interview email:', e?.message || e)
+        }
+      } else {
+        console.warn('RESEND_API_KEY not configured - passed interview email not sent')
+      }
+    }
 
     return NextResponse.json({
       success: true,
