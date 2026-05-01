@@ -129,11 +129,6 @@ export async function POST(request: NextRequest) {
         flooringSkills: extractedData.flooringSkills
           ? JSON.stringify(extractedData.flooringSkills)
           : null,
-        primaryFlooringSurface:
-          typeof extractedData.primaryFlooringSurface === 'string' &&
-          extractedData.primaryFlooringSurface.trim()
-            ? extractedData.primaryFlooringSurface.trim()
-            : interview.Installer.primaryFlooringSurface,
         hasOwnCrew: extractedData.hasOwnCrew ?? false,
         crewSize: extractedData.crewSize,
         hasOwnTools: false, // Not currently asked in interview
@@ -189,8 +184,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Send one-time email when installer passes (qualified)
-    if (passed && updatedInstaller.email && !updatedInstaller.passedInterviewEmailSentAt) {
+    // Send email when installer passes (qualified).
+    if (passed && updatedInstaller.email) {
       const resendApiKey = process.env.RESEND_API_KEY
       if (resendApiKey) {
         const resend = new Resend(resendApiKey)
@@ -206,16 +201,6 @@ export async function POST(request: NextRequest) {
             subject: 'Action Required: Complete Your AI Interview & Profile',
             html: buildQualifiedEmailHtml(logoUrl),
             text: qualifiedText,
-          })
-
-          await prisma.installer.updateMany({
-            where: {
-              id: updatedInstaller.id,
-              passedInterviewEmailSentAt: null,
-            },
-            data: {
-              passedInterviewEmailSentAt: new Date(),
-            },
           })
         } catch (e: any) {
           console.error('Failed to send passed interview email:', e?.message || e)
