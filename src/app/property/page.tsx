@@ -8,6 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Shield, CheckCircle2, AlertCircle } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 function PropertyPortalContent() {
   const router = useRouter()
@@ -196,7 +197,7 @@ export default function PropertyPortalPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-brand-green border-t-transparent rounded-full animate-spin" />
+        <LogoHeartbeatLoader />
       </div>
     }>
       <PropertyPortalContent />

@@ -31,7 +31,13 @@ export async function POST(request: Request) {
       body,
       // Called before generating the signed upload token
       onBeforeGenerateToken: async (pathname: string) => {
-        if (!pathname || !pathname.startsWith('documents/')) {
+        const allowed =
+          typeof pathname === 'string' &&
+          (pathname.startsWith('documents/') ||
+            pathname.startsWith('corrections/') ||
+            pathname.startsWith('updates/') ||
+            /^installers\/[^/]+\/agreements\//u.test(pathname))
+        if (!allowed) {
           throw new Error('Invalid upload path')
         }
 

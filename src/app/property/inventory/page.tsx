@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { motion } from 'framer-motion'
 import { 
   User, 
@@ -16,7 +16,6 @@ import {
   Edit,
   Trash2,
   Save,
-  XCircle,
   MapPin,
   Calendar,
   Phone,
@@ -26,18 +25,25 @@ import {
   Hash,
   CreditCard,
   Gauge,
+  Armchair,
+  Monitor,
+  Laptop,
+  Truck,
   Package,
-  DollarSign,
-  ShoppingCart,
-  Warehouse,
   Tag,
   FileText,
-    BarChart3,
-    AlertTriangle,
-    CheckCircle2,
-    Image as ImageIcon,
-    Upload,
-    Settings
+  BarChart3,
+  CheckCircle2,
+  DollarSign,
+  Search,
+  Image as ImageIcon,
+  Upload,
+  Settings,
+  ClipboardCheck,
+  ChevronRight,
+  ZoomIn,
+  ArrowLeft,
+  Archive
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -45,6 +51,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import {
+  InventoryBarcode,
+  getInventoryBarcodeEncodeValue,
+  getInventoryBarcodePayload,
+  getInventoryLabelBarcodeValue,
+} from '@/components/InventoryBarcode'
+import { WORKROOM_OPTIONS } from '@/lib/questions'
 
 interface PropertyProfile {
   id: string
@@ -61,7 +75,7 @@ interface InventoryItem {
   quantity: number
   unitOfMeasure?: string
   cost?: number
-  price?: number
+  usagePlacement?: string | null
   supplier?: string
   supplierContact?: string
   location?: string
@@ -74,11 +88,116 @@ interface InventoryItem {
   manufacturer?: string
   barcode?: string
   serialNumber?: string
+  purchaseDate?: string
   lastRestocked?: string
+  warrantyDate?: string
+  expirationDate?: string
+  condition?: string | null
+  maintenanceNotes?: string | null
   notes?: string
   photoUrl?: string
+  responsiblePerson?: string | null
   createdAt: string
   updatedAt: string
+}
+
+const OFFICE_EQUIPMENT_CATEGORY_HINTS = [
+  'Furniture & seating',
+  'IT & AV',
+  'Office supplies',
+  'Printing & imaging',
+  'Kitchen / break room',
+  'Safety & facilities',
+]
+
+function formatUsagePlacement(value?: string | null) {
+  const labels: Record<string, string> = {
+    in_use: 'In use',
+    in_storage: 'In storage',
+    checked_out: 'Checked out',
+  }
+  return value ? labels[value] ?? value : 'In use'
+}
+
+function getUsagePlacementMeta(value?: string | null) {
+  const current = value || 'in_use'
+  const meta: Record<string, { label: string; className: string }> = {
+    in_use: {
+      label: 'In use',
+      className: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+    },
+    in_storage: {
+      label: 'In storage',
+      className: 'border border-slate-200 bg-slate-100 text-slate-700',
+    },
+    checked_out: {
+      label: 'Checked out',
+      className: 'border border-sky-200 bg-sky-50 text-sky-700',
+    },
+  }
+  return meta[current] ?? meta.in_use
+}
+
+function getConditionMeta(value?: string | null) {
+  const current = value || 'good'
+  const meta: Record<string, { label: string; className: string }> = {
+    new: {
+      label: 'New',
+      className: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+    },
+    excellent: {
+      label: 'Excellent',
+      className: 'border border-lime-200 bg-lime-50 text-lime-700',
+    },
+    good: {
+      label: 'Good',
+      className: 'border border-brand-green/20 bg-brand-green/10 text-brand-green-dark',
+    },
+    fair: {
+      label: 'Fair',
+      className: 'border border-amber-200 bg-amber-50 text-amber-700',
+    },
+    'needs-repair': {
+      label: 'Needs repair',
+      className: 'border border-red-200 bg-red-50 text-red-700',
+    },
+    retired: {
+      label: 'Retired',
+      className: 'border border-slate-300 bg-slate-100 text-slate-600',
+    },
+  }
+  return meta[current] ?? meta.good
+}
+
+function normalizeInventorySearchValue(value?: string | null) {
+  if (value == null || value === '') return ''
+  return String(value)
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function getStockStatusMeta(status: 'low' | 'critical' | 'full' | 'ok') {
+  const meta = {
+    critical: {
+      label: 'Critical',
+      className: 'border border-red-200 bg-red-50 text-red-700',
+    },
+    low: {
+      label: 'Reorder soon',
+      className: 'border border-amber-200 bg-amber-50 text-amber-700',
+    },
+    full: {
+      label: 'At max',
+      className: 'border border-sky-200 bg-sky-50 text-sky-700',
+    },
+    ok: {
+      label: 'OK',
+      className: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+    },
+  }
+
+  return meta[status]
 }
 
 export default function InventoryPage() {
@@ -99,6 +218,14 @@ export default function InventoryPage() {
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null)
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [photoLightbox, setPhotoLightbox] = useState<{ url: string; alt: string } | null>(null)
+  /** Client-only id so the label barcode can render before first save (payload INV:{id}). */
+  const [draftLabelId, setDraftLabelId] = useState<string | null>(null)
+  /** Touch / rugged handheld (e.g. Zebra): enable camera capture before first save. */
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false)
+  const newItemPhotoInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     itemName: '',
     sku: '',
@@ -106,11 +233,12 @@ export default function InventoryPage() {
     quantity: '',
     unitOfMeasure: 'unit',
     cost: '',
-    price: '',
+    usagePlacement: 'in_use',
     supplier: '',
     supplierContact: '',
     location: '',
     warehouse: '',
+    responsiblePerson: '',
     reorderLevel: '',
     minimumStock: '',
     maximumStock: '',
@@ -119,7 +247,12 @@ export default function InventoryPage() {
     manufacturer: '',
     barcode: '',
     serialNumber: '',
+    purchaseDate: '',
     lastRestocked: '',
+    warrantyDate: '',
+    expirationDate: '',
+    condition: 'good',
+    maintenanceNotes: '',
     notes: '',
   })
 
@@ -150,6 +283,33 @@ export default function InventoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, (session?.user as any)?.userType, session?.user?.email])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(pointer: coarse)')
+    const apply = () => setIsCoarsePointer(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+
+  useEffect(() => {
+    if (!photoLightbox) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPhotoLightbox(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [photoLightbox])
+
+  const mergeInventoryPhotoUrl = (inventoryId: string, photoUrl: string) => {
+    setInventory((prev) =>
+      prev.map((it) => (it.id === inventoryId ? { ...it, photoUrl } : it))
+    )
+    setEditingItem((prev) =>
+      prev && prev.id === inventoryId ? { ...prev, photoUrl } : prev
+    )
+  }
+
   const loadPropertyAndInventory = async () => {
     try {
       setIsLoading(true)
@@ -166,8 +326,10 @@ export default function InventoryPage() {
         const propertyData = await propertyResponse.json()
         setProperty(propertyData)
         
-        // Load inventory
-        const inventoryResponse = await fetch(`/api/properties/${propertyData.id}/inventory`)
+        // Load inventory (never use cached JSON — photo URLs change after upload)
+        const inventoryResponse = await fetch(`/api/properties/${propertyData.id}/inventory`, {
+          cache: 'no-store',
+        })
         if (inventoryResponse.ok) {
           const inventoryData = await inventoryResponse.json()
           setInventory(inventoryData.inventory || [])
@@ -179,6 +341,23 @@ export default function InventoryPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const uploadInventoryPhoto = async (file: File, inventoryId: string) => {
+    if (!property) throw new Error('Missing property')
+    const formDataUpload = new FormData()
+    formDataUpload.append('photo', file)
+    formDataUpload.append('inventoryId', inventoryId)
+    formDataUpload.append('propertyId', property.id)
+    const response = await fetch(
+      `/api/properties/${property.id}/inventory/${inventoryId}/upload-photo`,
+      { method: 'POST', body: formDataUpload }
+    )
+    const uploadData = await response.json()
+    if (!response.ok) {
+      throw new Error(uploadData.error || 'Failed to upload photo')
+    }
+    return uploadData
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -205,22 +384,47 @@ export default function InventoryPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to save inventory item')
+        throw new Error(data.error || 'Failed to save equipment')
       }
 
-      setSuccess(editingItem ? 'Inventory item updated successfully!' : 'Inventory item added successfully!')
+      const savedInventoryId = editingItem?.id ?? data?.id
+
+      if (selectedPhotoFile && savedInventoryId) {
+        try {
+          const uploadResult = await uploadInventoryPhoto(
+            selectedPhotoFile,
+            String(savedInventoryId)
+          )
+          if (uploadResult?.photoUrl) {
+            mergeInventoryPhotoUrl(String(savedInventoryId), uploadResult.photoUrl)
+          }
+          setSuccess(
+            editingItem
+              ? 'Equipment updated — photo saved!'
+              : 'Equipment added — photo saved!'
+          )
+        } catch (uploadErr: any) {
+          setSuccess(editingItem ? 'Equipment updated successfully!' : 'Equipment added successfully!')
+          setError(uploadErr?.message || 'Photo upload failed — try uploading again from this form.')
+        }
+      } else {
+        setSuccess(editingItem ? 'Equipment updated successfully!' : 'Equipment added successfully!')
+      }
+
       setShowAddModal(false)
       setEditingItem(null)
       resetForm()
+      if (newItemPhotoInputRef.current) newItemPhotoInputRef.current.value = ''
       loadPropertyAndInventory()
     } catch (err: any) {
-      setError(err.message || 'Failed to save inventory item')
+      setError(err.message || 'Failed to save equipment')
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleEdit = (item: InventoryItem) => {
+    setDraftLabelId(null)
     setEditingItem(item)
     setPhotoPreview(item.photoUrl || null)
     setSelectedPhotoFile(null)
@@ -231,11 +435,15 @@ export default function InventoryPage() {
       quantity: item.quantity?.toString() || '0',
       unitOfMeasure: item.unitOfMeasure || 'unit',
       cost: item.cost?.toString() || '',
-      price: item.price?.toString() || '',
+      usagePlacement:
+        item.usagePlacement && ['in_use', 'in_storage', 'checked_out'].includes(item.usagePlacement)
+          ? item.usagePlacement
+          : 'in_use',
       supplier: item.supplier || '',
       supplierContact: item.supplierContact || '',
       location: item.location || '',
       warehouse: item.warehouse || '',
+      responsiblePerson: item.responsiblePerson || '',
       reorderLevel: item.reorderLevel?.toString() || '',
       minimumStock: item.minimumStock?.toString() || '',
       maximumStock: item.maximumStock?.toString() || '',
@@ -244,7 +452,12 @@ export default function InventoryPage() {
       manufacturer: item.manufacturer || '',
       barcode: item.barcode || '',
       serialNumber: item.serialNumber || '',
+      purchaseDate: item.purchaseDate ? new Date(item.purchaseDate).toISOString().split('T')[0] : '',
       lastRestocked: item.lastRestocked ? new Date(item.lastRestocked).toISOString().split('T')[0] : '',
+      warrantyDate: item.warrantyDate ? new Date(item.warrantyDate).toISOString().split('T')[0] : '',
+      expirationDate: item.expirationDate ? new Date(item.expirationDate).toISOString().split('T')[0] : '',
+      condition: item.condition || 'good',
+      maintenanceNotes: item.maintenanceNotes || '',
       notes: item.notes || '',
     })
     setShowAddModal(true)
@@ -277,28 +490,14 @@ export default function InventoryPage() {
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('photo', selectedPhotoFile)
-      formData.append('inventoryId', editingItem.id)
-      formData.append('propertyId', property.id)
-
-      const response = await fetch(
-        `/api/properties/${property.id}/inventory/${editingItem.id}/upload-photo`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload photo')
+      const uploadResult = await uploadInventoryPhoto(selectedPhotoFile, editingItem.id)
+      if (uploadResult?.photoUrl) {
+        mergeInventoryPhotoUrl(editingItem.id, uploadResult.photoUrl)
+        setPhotoPreview(uploadResult.photoUrl)
       }
-
       setSuccess('Photo uploaded successfully!')
       setSelectedPhotoFile(null)
-      loadPropertyAndInventory()
+      await loadPropertyAndInventory()
     } catch (err: any) {
       setError(err.message || 'Failed to upload photo')
     } finally {
@@ -308,7 +507,7 @@ export default function InventoryPage() {
 
   const handleDelete = async (itemId: string) => {
     if (!property) return
-    if (!confirm('Are you sure you want to delete this inventory item?')) return
+    if (!confirm('Are you sure you want to delete this equipment record?')) return
 
     try {
       const response = await fetch(`/api/properties/${property.id}/inventory/${itemId}`, {
@@ -316,13 +515,13 @@ export default function InventoryPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete inventory item')
+        throw new Error('Failed to delete equipment')
       }
 
-      setSuccess('Inventory item deleted successfully!')
+      setSuccess('Equipment deleted successfully!')
       loadPropertyAndInventory()
     } catch (err: any) {
-      setError(err.message || 'Failed to delete inventory item')
+      setError(err.message || 'Failed to delete equipment')
     }
   }
 
@@ -334,11 +533,12 @@ export default function InventoryPage() {
       quantity: '',
       unitOfMeasure: 'unit',
       cost: '',
-      price: '',
+      usagePlacement: 'in_use',
       supplier: '',
       supplierContact: '',
       location: '',
       warehouse: '',
+      responsiblePerson: '',
       reorderLevel: '',
       minimumStock: '',
       maximumStock: '',
@@ -347,12 +547,39 @@ export default function InventoryPage() {
       manufacturer: '',
       barcode: '',
       serialNumber: '',
+      purchaseDate: '',
       lastRestocked: '',
+      warrantyDate: '',
+      expirationDate: '',
+      condition: 'good',
+      maintenanceNotes: '',
       notes: '',
     })
     setPhotoPreview(null)
     setSelectedPhotoFile(null)
+    setDraftLabelId(null)
   }
+
+  const openNewEquipmentModal = () => {
+    resetForm()
+    setEditingItem(null)
+    setDraftLabelId(
+      typeof globalThis.crypto !== 'undefined' && 'randomUUID' in globalThis.crypto
+        ? globalThis.crypto.randomUUID()
+        : `draft-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+    )
+    setShowAddModal(true)
+  }
+
+  useEffect(() => {
+    if (showAddModal && !editingItem && !draftLabelId) {
+      setDraftLabelId(
+        typeof globalThis.crypto !== 'undefined' && 'randomUUID' in globalThis.crypto
+          ? globalThis.crypto.randomUUID()
+          : `draft-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+      )
+    }
+  }, [showAddModal, editingItem, draftLabelId])
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/property/login' })
@@ -371,21 +598,118 @@ export default function InventoryPage() {
     return 'ok'
   }
 
+  const focusSearchInput = () => {
+    searchInputRef.current?.focus()
+    searchInputRef.current?.select()
+  }
+
+  /** Same idea as HTML oninput + form submit: value updates filter live; Enter runs submit handler. */
+  const handleBarcodeFieldInput = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }
+
+  const handleBarcodeFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    requestAnimationFrame(() => {
+      const isLg = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+      const target = isLg
+        ? document.getElementById('equipment-list-table')
+        : document.getElementById('equipment-list-mobile')
+      target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
+  }
+
+  const normalizedSearchQuery = normalizeInventorySearchValue(searchQuery)
+
+  useEffect(() => {
+    if (!isCoarsePointer || showAddModal || inventory.length === 0) return
+
+    const armSearch = () => {
+      if (showAddModal) return
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+    }
+
+    /** Keep CRM search focused so the scanner does not type into Chrome’s URL bar (which opens Google). */
+    const focusIfIdle = () => {
+      if (showAddModal) return
+      const el = document.activeElement
+      const tag = el?.tagName
+      const isOtherField =
+        (tag === 'INPUT' && el !== searchInputRef.current) ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        el?.getAttribute('contenteditable') === 'true'
+
+      if (!isOtherField || el === searchInputRef.current) {
+        armSearch()
+      }
+    }
+
+    /** After leaving the tab (e.g. Google opened) and coming back, re-arm CRM search. */
+    const onBecameVisible = () => {
+      if (document.visibilityState !== 'visible' || showAddModal) return
+      window.setTimeout(armSearch, 120)
+    }
+
+    const timeoutId = window.setTimeout(focusIfIdle, 250)
+    window.addEventListener('focus', focusIfIdle)
+    document.addEventListener('visibilitychange', onBecameVisible)
+    window.addEventListener('pageshow', onBecameVisible)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.removeEventListener('focus', focusIfIdle)
+      document.removeEventListener('visibilitychange', onBecameVisible)
+      window.removeEventListener('pageshow', onBecameVisible)
+    }
+  }, [inventory.length, isCoarsePointer, showAddModal])
+
   const filteredInventory = inventory.filter(item => {
     if (filterCategory !== 'all' && item.category !== filterCategory) return false
     if (filterStatus !== 'all' && item.status !== filterStatus) return false
+    if (normalizedSearchQuery) {
+      const searchableValues = [
+        item.itemName,
+        item.sku,
+        item.barcode,
+        item.serialNumber,
+        item.category,
+        item.warehouse,
+        item.responsiblePerson,
+        item.brand,
+        item.manufacturer,
+        item.notes,
+        item.location,
+        item.id,
+        getInventoryBarcodeEncodeValue(item.id),
+        getInventoryLabelBarcodeValue(item.id, item.warehouse),
+        getInventoryBarcodePayload(item.id),
+      ]
+      const normalizedValues = searchableValues
+        .map((value) => normalizeInventorySearchValue(value))
+        .filter(Boolean)
+
+      if (!normalizedValues.some((value) => value.includes(normalizedSearchQuery))) {
+        return false
+      }
+    }
     return true
   })
 
   const categories = Array.from(new Set(inventory.map(item => item.category).filter(Boolean)))
+  const labelPreviewId = editingItem?.id ?? draftLabelId
+  const lineItemCount = inventory.length
+  const inUseCount = inventory.filter(
+    (item) => !item.usagePlacement || item.usagePlacement === 'in_use'
+  ).length
+  const inStorageCount = inventory.filter((item) => item.usagePlacement === 'in_storage').length
+  const retiredCount = inventory.filter((item) => item.status === 'retired').length
 
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading inventory...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -419,7 +743,7 @@ export default function InventoryPage() {
             {sidebarOpen && (
               <div>
                 <h1 className="font-bold text-primary-900 text-sm">Property Portal</h1>
-                <p className="text-xs text-primary-500">Inventory</p>
+                <p className="text-xs text-primary-500">Office equipment</p>
               </div>
             )}
           </div>
@@ -457,8 +781,17 @@ export default function InventoryPage() {
             href="/property/inventory"
             className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Inventory</span>}
+            <Armchair className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Equipment</span>}
+          </Link>
+          <Link
+            href="/property/safety-walk"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Safety Walk</span>}
           </Link>
           <Link
             href="/property/help"
@@ -521,25 +854,10 @@ export default function InventoryPage() {
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">Inventory Management</h1>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                resetForm()
-                setEditingItem(null)
-                setShowAddModal(true)
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              Add Item
-            </motion.button>
-          </div>
+          <div className="h-[73px] lg:h-[72px]" />
         </header>
 
-        <main className="p-4 lg:p-6 pt-16 lg:pt-6">
+        <main className="px-4 pb-6 pt-6 lg:p-6">
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -560,68 +878,78 @@ export default function InventoryPage() {
             </motion.div>
           )}
 
-          {/* Stats Cards */}
+          {/* Stats Cards — desktop / laptop only (hidden on mobile) */}
           {inventory.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="mb-6 hidden gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-4">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200"
+                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <div className="flex items-center justify-between">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-green/80 to-brand-green-dark/80" />
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-primary-500 mb-1">Total Items</p>
-                    <p className="text-2xl font-bold text-primary-900">{inventory.length}</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Line items</p>
+                    <p className="mt-3 text-3xl font-bold text-slate-900">{lineItemCount}</p>
+                    <p className="mt-1 text-sm text-slate-500">Tracked pieces of equipment</p>
                   </div>
-                  <Package className="w-10 h-10 text-brand-green/20" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-green/10 text-brand-green">
+                    <Armchair className="h-6 w-6" />
+                  </div>
                 </div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200"
+                transition={{ delay: 0.08 }}
+                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <div className="flex items-center justify-between">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400/80 to-indigo-500/80" />
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-primary-500 mb-1">Total Value</p>
-                    <p className="text-2xl font-bold text-primary-900">
-                      ${inventory.reduce((sum, item) => sum + (item.cost || 0) * item.quantity, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">In use</p>
+                    <p className="mt-3 text-3xl font-bold text-slate-900">{inUseCount}</p>
+                    <p className="mt-1 text-sm text-slate-500">Active onsite (default placement)</p>
                   </div>
-                  <DollarSign className="w-10 h-10 text-brand-green/20" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+                    <Monitor className="h-6 w-6" />
+                  </div>
                 </div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200"
+                transition={{ delay: 0.16 }}
+                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <div className="flex items-center justify-between">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400/80 to-slate-600/80" />
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-primary-500 mb-1">Low Stock</p>
-                    <p className="text-2xl font-bold text-danger-600">
-                      {inventory.filter(item => getStockStatus(item) === 'low' || getStockStatus(item) === 'critical').length}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Retired</p>
+                    <p className="mt-3 text-3xl font-bold text-slate-900">{retiredCount}</p>
+                    <p className="mt-1 text-sm text-slate-500">No longer in service</p>
                   </div>
-                  <AlertTriangle className="w-10 h-10 text-danger-600/20" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                    <Archive className="h-6 w-6" />
+                  </div>
                 </div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200"
+                transition={{ delay: 0.24 }}
+                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <div className="flex items-center justify-between">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-300/80 to-slate-500/80" />
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm text-primary-500 mb-1">Active Items</p>
-                    <p className="text-2xl font-bold text-primary-900">
-                      {inventory.filter(item => item.status === 'active').length}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">In storage</p>
+                    <p className="mt-3 text-3xl font-bold text-slate-900">{inStorageCount}</p>
+                    <p className="mt-1 text-sm text-slate-500">Available but not deployed</p>
                   </div>
-                  <CheckCircle2 className="w-10 h-10 text-brand-green/20" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                    <Package className="h-6 w-6" />
+                  </div>
                 </div>
               </motion.div>
             </div>
@@ -629,32 +957,113 @@ export default function InventoryPage() {
 
           {/* Filters */}
           {inventory.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg p-4 mb-6 flex flex-wrap gap-4">
-              <div className="flex items-center gap-2">
-                <Tag className="w-5 h-5 text-primary-500" />
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="px-4 py-2 rounded-xl border-2 border-slate-200 focus:border-brand-green outline-none"
+            <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-lg font-semibold text-slate-900">Equipment library</h2>
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                      {filteredInventory.length} shown
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Browse equipment, print labels, and keep assignments organized by workroom.
+                  </p>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={openNewEquipmentModal}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-green to-brand-green-dark px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
                 >
-                  <option value="all">All Categories</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                  <Plus className="h-5 w-5" />
+                  Add equipment
+                </motion.button>
               </div>
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary-500" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 rounded-xl border-2 border-slate-200 focus:border-brand-green outline-none"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="discontinued">Discontinued</option>
-                </select>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <div className="flex w-full flex-col gap-2 lg:max-w-xl">
+                  <form
+                    className="flex flex-col gap-2"
+                    onSubmit={handleBarcodeFormSubmit}
+                    autoComplete="off"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <div className="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
+                        <Search className="h-4 w-4 text-slate-500" />
+                        <input
+                          ref={searchInputRef}
+                          name="barcode"
+                          id="property-inventory-barcode"
+                          type="text"
+                          inputMode="text"
+                          enterKeyHint="search"
+                          autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                          value={searchQuery}
+                          onChange={handleBarcodeFieldInput}
+                          autoFocus={inventory.length > 0 && !showAddModal && isCoarsePointer}
+                          placeholder="Search equipment, SKU, barcode, serial, workroom, or custodian"
+                          className="w-full bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
+                          aria-label="Barcode or search"
+                        />
+                        {searchQuery ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchQuery('')
+                              searchInputRef.current?.focus()
+                            }}
+                            className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                          >
+                            Clear
+                          </button>
+                        ) : null}
+                      </div>
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={focusSearchInput}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-green/20 bg-brand-green/10 px-4 py-2.5 text-sm font-semibold text-brand-green transition-colors hover:bg-brand-green/15"
+                      >
+                        <Search className="h-4 w-4" />
+                        Scan / Search
+                      </motion.button>
+                    </div>
+                  </form>
+                </div>
+                <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex">
+                  <Tag className="h-4 w-4 text-slate-500" />
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="bg-transparent pr-6 text-sm font-medium text-slate-700 outline-none"
+                    aria-label="Filter by equipment type"
+                  >
+                    <option value="all">All types</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex">
+                  <BarChart3 className="h-4 w-4 text-slate-500" />
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="bg-transparent pr-6 text-sm font-medium text-slate-700 outline-none"
+                    aria-label="Filter by status"
+                  >
+                    <option value="all">All status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="discontinued">Retired</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -663,128 +1072,299 @@ export default function InventoryPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-lg border border-slate-200 p-16 text-center"
+              className="mx-auto max-w-2xl rounded-[2rem] border border-slate-200 bg-white px-6 py-10 text-center shadow-lg sm:px-10 sm:py-14"
             >
-              <div className="w-24 h-24 bg-brand-green/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Package className="w-12 h-12 text-brand-green" />
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-brand-green/10 sm:h-24 sm:w-24">
+                <Armchair className="h-10 w-10 text-brand-green sm:h-12 sm:w-12" />
               </div>
-              <h3 className="text-2xl font-bold text-primary-900 mb-2">No Inventory Items Yet</h3>
-              <p className="text-primary-500 mb-8 text-lg">Get started by adding your first inventory item.</p>
+              <h3 className="mx-auto mb-3 max-w-xs text-3xl font-bold leading-tight text-primary-900 sm:max-w-md sm:text-2xl">
+                No equipment added yet
+              </h3>
+              <p className="mx-auto mb-7 max-w-sm text-base leading-7 text-primary-500 sm:mb-8 sm:max-w-md sm:text-lg">
+                Add desks, chairs, monitors, printers, and supplies to start your equipment list.
+              </p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  resetForm()
-                  setEditingItem(null)
-                  setShowAddModal(true)
-                }}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
+                onClick={openNewEquipmentModal}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-green to-brand-green-dark px-6 py-4 text-base font-semibold text-white shadow-md transition-all hover:shadow-lg sm:w-auto sm:px-8"
               >
                 <Plus className="w-5 h-5" />
-                Add Your First Item
+                Add equipment
               </motion.button>
             </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden"
+              className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-8px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/[0.04]"
             >
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
+              <div className="border-b border-slate-100 bg-gradient-to-br from-white via-slate-50/40 to-brand-green/[0.04] px-5 py-5 sm:px-7 sm:py-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-green/15 to-brand-green/5 text-brand-green shadow-sm ring-1 ring-brand-green/20">
+                      <Package className="h-6 w-6" strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">Equipment list</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                        Workrooms, usage, condition, dates, labels, and custodians in one place.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-brand-green/15 bg-white/90 px-4 py-2 text-xs font-semibold text-brand-green shadow-sm backdrop-blur-sm sm:self-center">
+                    <span className="h-2 w-2 rounded-full bg-brand-green shadow-[0_0_0_3px_rgba(34,197,94,0.2)]" />
+                    {filteredInventory.length} visible item{filteredInventory.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile: tappable cards — opens full detail (edit) panel */}
+              <div id="equipment-list-mobile" className="border-b border-slate-100 px-4 pb-4 pt-1 lg:hidden">
+                {filteredInventory.length === 0 ? (
+                  <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-10 text-center">
+                    <Search className="h-8 w-8 text-slate-300" />
+                    <h4 className="mt-3 text-base font-semibold text-slate-900">No equipment matched</h4>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                      Try another search or clear the search box.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredInventory.map((item, index) => {
+                      const singleMatch = filteredInventory.length === 1
+                      const heroMediaClass = singleMatch
+                        ? 'relative h-[min(52vh,300px)] min-h-[220px] w-full bg-slate-100'
+                        : 'relative aspect-[4/3] w-full bg-slate-100'
+                      const heroPlaceholderClass = singleMatch
+                        ? 'flex h-[min(52vh,300px)] min-h-[220px] w-full items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100'
+                        : 'flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100'
+                      return (
+                      <motion.button
+                        key={item.id}
+                        type="button"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        onClick={() => handleEdit(item)}
+                        className="touch-manipulation w-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm ring-1 ring-slate-900/[0.04] transition active:scale-[0.99] active:bg-slate-50/80"
+                      >
+                        {item.photoUrl ? (
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className={`${heroMediaClass} cursor-zoom-in outline-none ring-inset focus-visible:ring-2 focus-visible:ring-brand-green`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPhotoLightbox({ url: item.photoUrl!, alt: item.itemName })
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setPhotoLightbox({ url: item.photoUrl!, alt: item.itemName })
+                              }
+                            }}
+                          >
+                            <img
+                              key={`${item.id}-${item.photoUrl ?? ''}`}
+                              src={item.photoUrl}
+                              alt={item.itemName}
+                              className="pointer-events-none h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className={heroPlaceholderClass}>
+                            <Laptop className={`text-slate-300 ${singleMatch ? 'h-20 w-20' : 'h-16 w-16'}`} strokeWidth={1.25} />
+                          </div>
+                        )}
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900">
+                              {item.itemName}
+                            </h4>
+                            <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+                          </div>
+                          <div className="mt-2 flex max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <span className="inline-flex shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-900 ring-1 ring-sky-100">
+                              {item.category || 'Uncategorized'}
+                            </span>
+                            {item.warehouse ? (
+                              <span className="inline-flex shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">
+                                {item.warehouse}
+                              </span>
+                            ) : (
+                              <span className="shrink-0 text-[11px] text-slate-400">—</span>
+                            )}
+                            <span
+                              className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${getUsagePlacementMeta(item.usagePlacement).className}`}
+                            >
+                              {formatUsagePlacement(item.usagePlacement)}
+                            </span>
+                            <span
+                              className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${getConditionMeta(item.condition).className}`}
+                            >
+                              {getConditionMeta(item.condition).label}
+                            </span>
+                            <span className="inline-flex min-w-0 shrink-0 items-center gap-1 text-[11px] text-slate-500">
+                              <Users className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
+                              <span className="max-w-[7.5rem] truncate">
+                                {item.responsiblePerson?.trim() || 'No custodian'}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto lg:block">
+                <table id="equipment-list-table" className="min-w-full">
+                  <thead className="sticky top-0 z-[1] border-b border-slate-200/90 bg-slate-50/90 backdrop-blur-md">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Item</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">SKU</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Quantity</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Cost</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Stock Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Actions</th>
+                      <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:px-6 sm:py-4">Equipment</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Workroom</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Usage</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Condition</th>
+                      <th className="px-4 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredInventory.map((item, index) => {
-                      const stockStatus = getStockStatus(item)
+                  <tbody className="divide-y divide-slate-100/90">
+                    {filteredInventory.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12">
+                          <div className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
+                            <Search className="h-8 w-8 text-slate-300" />
+                            <h4 className="mt-3 text-base font-semibold text-slate-900">No equipment matched your search</h4>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                              Try a different barcode, SKU, serial number, item name, or clear one of the filters.
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredInventory.map((item, index) => {
                       return (
                         <motion.tr
                           key={item.id}
-                          initial={{ opacity: 0, x: -20 }}
+                          initial={{ opacity: 0, x: -12 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-transparent transition-all group"
+                          transition={{ delay: index * 0.04 }}
+                          onClick={() => handleEdit(item)}
+                          className="group cursor-pointer transition-colors hover:bg-gradient-to-r hover:from-slate-50/90 hover:to-white"
                         >
-                          <td className="px-6 py-4 text-sm font-medium text-primary-900">
-                            <div className="flex items-center gap-3">
+                          <td className="min-w-[20rem] px-5 py-3 align-middle sm:min-w-[24rem] sm:px-6">
+                            <div className="flex min-w-0 flex-nowrap items-center gap-3">
                               {item.photoUrl ? (
-                                <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                                <button
+                                  type="button"
+                                  className="group/thumb relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100 shadow-sm ring-1 ring-slate-200/80 transition hover:ring-brand-green/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setPhotoLightbox({ url: item.photoUrl!, alt: item.itemName })
+                                  }}
+                                  title="View larger"
+                                  aria-label={`View larger photo: ${item.itemName}`}
+                                >
                                   <img
+                                    key={`${item.id}-${item.photoUrl ?? ''}`}
                                     src={item.photoUrl}
-                                    alt={item.itemName}
-                                    className="w-full h-full object-cover"
+                                    alt=""
+                                    className="h-full w-full object-cover"
                                   />
-                                </div>
+                                  <span className="pointer-events-none absolute inset-0 bg-black/0 transition group-hover/thumb:bg-black/10" aria-hidden />
+                                </button>
                               ) : (
-                                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                  <Package className="w-5 h-5 text-slate-400" />
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 ring-1 ring-slate-200/80">
+                                  <Laptop className="h-5 w-5 text-slate-400" strokeWidth={1.5} />
                                 </div>
                               )}
-                              <span>{item.itemName}</span>
+                              <span className="min-w-0 flex-1 truncate text-left text-[15px] font-semibold leading-none text-slate-900">
+                                {item.itemName}
+                              </span>
+                              <span className="inline-flex shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium leading-none text-sky-900 ring-1 ring-sky-100/80">
+                                {item.category || 'Uncategorized'}
+                              </span>
+                              {item.sku ? (
+                                <span className="shrink-0 font-mono text-[11px] leading-none text-slate-500">
+                                  SKU {item.sku}
+                                </span>
+                              ) : null}
+                              <span className="inline-flex max-w-[10rem] shrink-0 items-center gap-1.5 text-xs leading-none text-slate-500">
+                                <Users className="h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                                <span className="truncate">
+                                  {item.responsiblePerson?.trim() || 'No custodian'}
+                                </span>
+                              </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-primary-600 font-mono">
-                            {item.sku || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-primary-600">
-                            {item.category || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-primary-900">
-                            <div className="flex items-center gap-1">
-                              {item.quantity.toLocaleString()} {item.unitOfMeasure || 'unit'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-primary-600">
-                            {item.cost ? (
-                              <div className="flex items-center gap-1">
-                                <DollarSign className="w-4 h-4 text-brand-green" />
-                                {item.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                              </div>
+                          <td className="whitespace-nowrap px-4 py-3 align-middle text-sm">
+                            {item.warehouse ? (
+                              <span className="inline-flex rounded-full border border-emerald-100/80 bg-emerald-50/90 px-3 py-1 text-xs font-semibold leading-none text-emerald-900 shadow-sm">
+                                {item.warehouse}
+                              </span>
                             ) : (
-                              'N/A'
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs leading-none text-slate-400 ring-1 ring-slate-100">
+                                <MapPin className="h-3 w-3 shrink-0 opacity-60" />
+                                Not set
+                              </span>
                             )}
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex px-3 py-1.5 text-xs font-semibold rounded-full ${
-                              stockStatus === 'critical' 
-                                ? 'bg-red-100 text-red-800 border border-red-200' 
-                                : stockStatus === 'low'
-                                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                                : stockStatus === 'full'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : 'bg-green-100 text-green-800 border border-green-200'
-                            }`}>
-                              {stockStatus === 'critical' ? 'Critical' : stockStatus === 'low' ? 'Low Stock' : stockStatus === 'full' ? 'Full' : 'OK'}
+                          <td className="whitespace-nowrap px-4 py-3 align-middle">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold leading-none shadow-sm ${getUsagePlacementMeta(
+                                item.usagePlacement
+                              ).className}`}
+                            >
+                              {formatUsagePlacement(item.usagePlacement)}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="whitespace-nowrap px-4 py-3 align-middle">
                             <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold leading-none shadow-sm ${getConditionMeta(
+                                  item.condition
+                                ).className}`}
+                              >
+                                {getConditionMeta(item.condition).label}
+                              </span>
+                              <span className="text-[13px] text-slate-300">·</span>
+                              <span className="text-xs font-medium leading-none text-slate-500">
+                                {item.status === 'active'
+                                  ? 'Active'
+                                  : item.status === 'inactive'
+                                  ? 'Inactive'
+                                  : 'Retired'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 align-middle">
+                            <div className="flex items-center justify-end gap-1.5 opacity-80 transition-opacity group-hover:opacity-100">
                               <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleEdit(item)}
-                                className="p-2 text-brand-green hover:bg-brand-green/10 rounded-xl transition-all"
+                                whileHover={{ scale: 1.04 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEdit(item)
+                                }}
+                                className="rounded-xl border border-slate-200/90 bg-white p-2.5 text-brand-green shadow-sm transition-all hover:border-brand-green/35 hover:bg-brand-green/[0.06] hover:shadow-md"
                                 title="Edit"
                               >
-                                <Edit className="w-4 h-4" />
+                                <Edit className="h-4 w-4" />
                               </motion.button>
                               <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => handleDelete(item.id)}
-                                className="p-2 text-danger-600 hover:bg-danger-50 rounded-xl transition-all"
+                                whileHover={{ scale: 1.04 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(item.id)
+                                }}
+                                className="rounded-xl border border-slate-200/90 bg-white p-2.5 text-danger-600 shadow-sm transition-all hover:border-danger-200 hover:bg-danger-50 hover:shadow-md"
                                 title="Delete"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-4 w-4" />
                               </motion.button>
                             </div>
                           </td>
@@ -799,59 +1379,114 @@ export default function InventoryPage() {
         </main>
       </div>
 
-      {/* Add/Edit Modal */}
+      {photoLightbox ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Equipment photo"
+          onClick={() => setPhotoLightbox(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 z-[1] rounded-full bg-white/15 p-2.5 text-white transition hover:bg-white/25"
+            onClick={() => setPhotoLightbox(null)}
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img
+            src={photoLightbox.url}
+            alt={photoLightbox.alt}
+            className="max-h-[min(90vh,900px)] max-w-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : null}
+
+      {/* Add/Edit Modal — full panel (matches Fleet) */}
       {showAddModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed top-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
+            onClick={() => {
               setShowAddModal(false)
               setEditingItem(null)
               resetForm()
-            }
-          }}
-        >
+            }}
+          />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed top-0 right-0 bottom-0 z-40 flex items-stretch justify-center p-0 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowAddModal(false)
+                setEditingItem(null)
+                resetForm()
+              }
+            }}
           >
-            <div className="sticky top-0 bg-gradient-to-r from-brand-green to-brand-green-dark px-8 py-6 flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Package className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">
-                    {editingItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
-                  </h2>
-                  <p className="text-white/80 text-sm mt-1">
-                    {editingItem ? 'Update item information' : 'Enter item details'}
-                  </p>
-                </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 12 }}
+              className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col min-h-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+            <form
+              onSubmit={handleSubmit}
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
+            >
+              <div className="shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 sm:px-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setEditingItem(null)
+                    resetForm()
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setEditingItem(null)
+                    resetForm()
+                  }}
+                  className="rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-100"
+                  aria-label="Close"
+                >
+                  <X className="h-6 w-6" />
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setShowAddModal(false)
-                  setEditingItem(null)
-                  resetForm()
-                }}
-                className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
-              >
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1">
+              <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-6 pt-6">
+              {labelPreviewId && (
+                <div className="mb-8 border-b border-slate-200 bg-slate-50/50 -mx-8 px-4 py-4 sm:px-8">
+                  <div className="mx-auto flex w-full max-w-6xl justify-end">
+                    <div className="w-full max-w-[400px]">
+                      <InventoryBarcode
+                        inventoryId={labelPreviewId}
+                        alignEnd
+                        workroom={formData.warehouse?.trim() || undefined}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Basic Information Section */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Package className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Basic Information</h3>
+                  <Armchair className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Basics</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -861,14 +1496,14 @@ export default function InventoryPage() {
                     className="md:col-span-2"
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Package className="w-4 h-4 text-brand-green" />
-                      Item Name *
+                      <Armchair className="w-4 h-4 text-brand-green" />
+                      Equipment name *
                     </label>
                     <input
                       type="text"
                       value={formData.itemName}
                       onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
-                      placeholder="Enter item name"
+                      placeholder="e.g. Herman Miller Aeron, Dell 27&quot; monitor"
                       required
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     />
@@ -880,13 +1515,13 @@ export default function InventoryPage() {
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <Hash className="w-4 h-4 text-brand-green" />
-                      SKU
+                      Asset or internal ID
                     </label>
                     <input
                       type="text"
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      placeholder="SKU-001"
+                      placeholder="Property asset tag, PO line, or internal code"
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
                     />
                   </motion.div>
@@ -897,15 +1532,21 @@ export default function InventoryPage() {
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <Tag className="w-4 h-4 text-brand-green" />
-                      Category
+                      Type / category
                     </label>
                     <input
                       type="text"
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      placeholder="Category"
+                      placeholder="e.g. IT & AV, Furniture & seating"
+                      list="office-equipment-categories"
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     />
+                    <datalist id="office-equipment-categories">
+                      {OFFICE_EQUIPMENT_CATEGORY_HINTS.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
                   </motion.div>
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -914,14 +1555,14 @@ export default function InventoryPage() {
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <BarChart3 className="w-4 h-4 text-brand-green" />
-                      Quantity *
+                      Quantity on hand *
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      placeholder="0"
+                      placeholder="How many units, sets, or stations"
                       required
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     />
@@ -933,22 +1574,24 @@ export default function InventoryPage() {
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <Gauge className="w-4 h-4 text-brand-green" />
-                      Unit of Measure
+                      Count as
                     </label>
                     <select
                       value={formData.unitOfMeasure}
                       onChange={(e) => setFormData({ ...formData, unitOfMeasure: e.target.value })}
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     >
-                      <option value="unit">Unit</option>
+                      <option value="unit">Each</option>
+                      <option value="piece">Piece</option>
                       <option value="box">Box</option>
                       <option value="case">Case</option>
-                      <option value="pallet">Pallet</option>
-                      <option value="piece">Piece</option>
+                      <option value="set">Set</option>
+                      <option value="pair">Pair</option>
+                      <option value="station">Workstation</option>
                       <option value="roll">Roll</option>
-                      <option value="sheet">Sheet</option>
-                      <option value="sqft">Square Foot</option>
-                      <option value="sqyd">Square Yard</option>
+                      <option value="sheet">Ream / pack</option>
+                      <option value="sqft">Square foot</option>
+                      <option value="pallet">Pallet</option>
                       <option value="lb">Pound</option>
                       <option value="kg">Kilogram</option>
                       <option value="gallon">Gallon</option>
@@ -958,171 +1601,11 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              {/* Pricing & Cost Section */}
+              {/* Where it lives */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <DollarSign className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Pricing & Cost</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.35 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
-                      Cost per Unit
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.cost}
-                        onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                        placeholder="0.00"
-                        className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                      />
-                    </div>
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
-                      Selling Price
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        placeholder="0.00"
-                        className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                      />
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Stock Management Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <BarChart3 className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Stock Management</h3>
-                </div>
-                <div className="grid md:grid-cols-3 gap-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <AlertTriangle className="w-4 h-4 text-brand-green" />
-                      Reorder Level
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.reorderLevel}
-                      onChange={(e) => setFormData({ ...formData, reorderLevel: e.target.value })}
-                      placeholder="0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                    />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <BarChart3 className="w-4 h-4 text-brand-green" />
-                      Minimum Stock
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.minimumStock}
-                      onChange={(e) => setFormData({ ...formData, minimumStock: e.target.value })}
-                      placeholder="0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                    />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.55 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <BarChart3 className="w-4 h-4 text-brand-green" />
-                      Maximum Stock
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.maximumStock}
-                      onChange={(e) => setFormData({ ...formData, maximumStock: e.target.value })}
-                      placeholder="0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                    />
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Supplier Information Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <ShoppingCart className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Supplier Information</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Users className="w-4 h-4 text-brand-green" />
-                      Supplier
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.supplier}
-                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                      placeholder="Supplier name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                    />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.65 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Phone className="w-4 h-4 text-brand-green" />
-                      Supplier Contact
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.supplierContact}
-                      onChange={(e) => setFormData({ ...formData, supplierContact: e.target.value })}
-                      placeholder="Contact info"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                    />
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Location & Storage Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Warehouse className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Location & Storage</h3>
+                  <Building2 className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Site & placement</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1132,13 +1615,13 @@ export default function InventoryPage() {
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
-                      Location
+                      Room or area
                     </label>
                     <input
                       type="text"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      placeholder="Storage location"
+                      placeholder="e.g. Open office B, IT closet, break room"
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     />
                   </motion.div>
@@ -1148,25 +1631,62 @@ export default function InventoryPage() {
                     transition={{ delay: 0.75 }}
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Warehouse className="w-4 h-4 text-brand-green" />
-                      Warehouse
+                      <Building2 className="w-4 h-4 text-brand-green" />
+                      Workroom (site)
+                    </label>
+                    <select
+                      value={formData.warehouse}
+                      onChange={(e) =>
+                        setFormData({ ...formData, warehouse: e.target.value })
+                      }
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    >
+                      <option value="">Select workroom</option>
+                      {WORKROOM_OPTIONS.map((room) => (
+                        <option key={room} value={room}>
+                          {room}
+                        </option>
+                      ))}
+                      {formData.warehouse &&
+                        !(WORKROOM_OPTIONS as readonly string[]).includes(formData.warehouse) && (
+                          <option value={formData.warehouse}>
+                            {formData.warehouse} (saved text — choose a workroom)
+                          </option>
+                        )}
+                    </select>
+                    {formData.warehouse &&
+                      !(WORKROOM_OPTIONS as readonly string[]).includes(formData.warehouse) && (
+                        <p className="mt-2 text-xs text-amber-700">
+                          This item used a free-text site. Select one of the 10 workrooms to update it.
+                        </p>
+                      )}
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.78 }}
+                    className="md:col-span-2"
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <User className="w-4 h-4 text-brand-green" />
+                      Responsible person or team
                     </label>
                     <input
                       type="text"
-                      value={formData.warehouse}
-                      onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
-                      placeholder="Warehouse name"
+                      value={formData.responsiblePerson}
+                      onChange={(e) => setFormData({ ...formData, responsiblePerson: e.target.value })}
+                      placeholder="Name, role, or department accountable for this equipment"
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     />
                   </motion.div>
                 </div>
               </div>
 
-              {/* Product Details Section */}
+              {/* Identification */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <FileText className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Product Details</h3>
+                  <Laptop className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Make & identification</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1216,7 +1736,7 @@ export default function InventoryPage() {
                       type="text"
                       value={formData.barcode}
                       onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                      placeholder="Barcode"
+                      placeholder="Asset barcode if labeled"
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
                     />
                   </motion.div>
@@ -1244,7 +1764,7 @@ export default function InventoryPage() {
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
-                      Last Restocked
+                      Last received / restocked
                     </label>
                     <input
                       type="date"
@@ -1259,8 +1779,187 @@ export default function InventoryPage() {
                     transition={{ delay: 1.05 }}
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Shield className="w-4 h-4 text-brand-green" />
-                      Status
+                      <Calendar className="w-4 h-4 text-brand-green" />
+                      Expiration date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.expirationDate}
+                      onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Purchase & warranty */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                  <DollarSign className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Purchase & warranty</h3>
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.15 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Calendar className="w-4 h-4 text-brand-green" />
+                      Purchase date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.purchaseDate}
+                      onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Calendar className="w-4 h-4 text-brand-green" />
+                      Warranty date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.warrantyDate}
+                      onChange={(e) => setFormData({ ...formData, warrantyDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.25 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <DollarSign className="w-4 h-4 text-brand-green" />
+                      Cost
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.cost}
+                        onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      />
+                    </div>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.3 }}
+                    className="min-w-0"
+                  >
+                    <label className="mb-2 flex gap-2 text-sm font-semibold text-primary-700">
+                      <Package className="mt-0.5 h-4 w-4 shrink-0 text-brand-green" />
+                      <span className="leading-snug">
+                        Is the item currently in use, in storage, or checked out?
+                      </span>
+                    </label>
+                    <select
+                      value={formData.usagePlacement}
+                      onChange={(e) => setFormData({ ...formData, usagePlacement: e.target.value })}
+                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 outline-none transition-all focus:border-brand-green focus:bg-white focus:ring-2 focus:ring-brand-green/20"
+                    >
+                      <option value="in_use">In use</option>
+                      <option value="in_storage">In storage</option>
+                      <option value="checked_out">Checked out</option>
+                    </select>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Vendor */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                  <Truck className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Vendor / procurement</h3>
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Users className="w-4 h-4 text-brand-green" />
+                      Preferred vendor
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.supplier}
+                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                      placeholder="Vendor or contract holder"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.65 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Phone className="w-4 h-4 text-brand-green" />
+                      Vendor contact
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.supplierContact}
+                      onChange={(e) => setFormData({ ...formData, supplierContact: e.target.value })}
+                      placeholder="Phone, email, or portal"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Condition & maintenance */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                  <Gauge className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Condition & maintenance</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.35 }}
+                    className="min-w-0"
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Gauge className="w-4 h-4 text-brand-green shrink-0" />
+                      <span className="truncate">Condition</span>
+                    </label>
+                    <select
+                      value={formData.condition}
+                      onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    >
+                      <option value="new">New</option>
+                      <option value="excellent">Excellent</option>
+                      <option value="good">Good</option>
+                      <option value="fair">Fair</option>
+                      <option value="needs-repair">Needs repair</option>
+                      <option value="retired">Retired</option>
+                    </select>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.38 }}
+                    className="min-w-0"
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Shield className="w-4 h-4 text-brand-green shrink-0" />
+                      <span className="truncate">Status</span>
                     </label>
                     <select
                       value={formData.status}
@@ -1269,8 +1968,26 @@ export default function InventoryPage() {
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
-                      <option value="discontinued">Discontinued</option>
+                      <option value="discontinued">Retired</option>
                     </select>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.4 }}
+                    className="col-span-2"
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <FileText className="w-4 h-4 text-brand-green" />
+                      Maintenance notes
+                    </label>
+                    <textarea
+                      value={formData.maintenanceNotes}
+                      onChange={(e) => setFormData({ ...formData, maintenanceNotes: e.target.value })}
+                      rows={3}
+                      placeholder="Service history, issues found, repairs needed, or maintenance reminders"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                    />
                   </motion.div>
                 </div>
               </div>
@@ -1290,24 +2007,184 @@ export default function InventoryPage() {
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={4}
-                    placeholder="Enter any additional notes or information..."
+                    placeholder="Warranty, service notes, custodian, or other context…"
                     className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
                   />
                 </motion.div>
               </div>
 
               {/* Photo Section */}
-              <div className="mb-8">
+              <div className="mb-0">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
                   <ImageIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Photo</h3>
+                  <h3 className="text-lg font-semibold text-primary-900">Photo (optional)</h3>
                 </div>
-                {editingItem ? (
-                  <div className="grid md:grid-cols-2 gap-6">
+                {!editingItem && isCoarsePointer ? (
+                  <div className="grid items-start gap-6 md:grid-cols-2">
+                    <div className="flex w-full flex-col items-start">
+                      <label className="flex w-full items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                        <ImageIcon className="w-4 h-4 text-brand-green" />
+                        Preview
+                      </label>
+                      {photoPreview ? (
+                        <div className="flex w-full flex-col items-start">
+                          <div className="flex w-full justify-start">
+                            <div className="relative h-32 w-44 max-w-full shrink-0 overflow-hidden rounded-xl border-2 border-slate-200 bg-white">
+                              <button
+                                type="button"
+                                className="absolute inset-0 z-0 cursor-zoom-in bg-transparent p-0"
+                                onClick={() =>
+                                  setPhotoLightbox({
+                                    url: photoPreview,
+                                    alt:
+                                      formData.itemName?.trim() || 'Equipment photo preview',
+                                  })
+                                }
+                                aria-label="View photo full size"
+                              />
+                              <img
+                                src={photoPreview}
+                                alt=""
+                                className="pointer-events-none relative z-[1] block h-full w-full object-contain object-[left_top]"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setPhotoPreview(null)
+                                  setSelectedPhotoFile(null)
+                                  if (newItemPhotoInputRef.current)
+                                    newItemPhotoInputRef.current.value = ''
+                                }}
+                                className="absolute right-1.5 top-1.5 z-[2] rounded-full bg-danger-600 p-1 text-white transition-colors hover:bg-danger-700"
+                                aria-label="Remove photo"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPhotoLightbox({
+                                url: photoPreview,
+                                alt:
+                                  formData.itemName?.trim() || 'Equipment photo preview',
+                              })
+                            }
+                            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green transition-colors hover:text-brand-green-dark hover:underline"
+                          >
+                            <ZoomIn className="h-4 w-4 shrink-0" aria-hidden />
+                            View large
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex h-32 w-44 max-w-full shrink-0 items-center justify-center self-start rounded-xl border-2 border-dashed border-slate-300 bg-slate-50">
+                          <p className="text-sm text-slate-500">No photo yet</p>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="mb-3 text-sm text-primary-600">
+                        Tap the area below to open the camera. The image uploads when you save this item.
+                      </p>
+                      <input
+                        ref={newItemPhotoInputRef}
+                        id="inventory-new-photo-capture"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="sr-only"
+                        onChange={handlePhotoSelect}
+                      />
+                      <label
+                        htmlFor="inventory-new-photo-capture"
+                        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 transition-colors hover:border-brand-green hover:bg-brand-green/5"
+                      >
+                        <ImageIcon className="mb-2 h-12 w-12 text-brand-green" />
+                        <span className="font-medium text-primary-900">Tap to take photo</span>
+                        <span className="mt-1 text-xs text-slate-500">Camera opens on this device</span>
+                      </label>
+                      {selectedPhotoFile && (
+                        <p className="mt-3 text-sm font-medium text-brand-green">Photo captured — save equipment to upload.</p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid items-start gap-6 md:grid-cols-2">
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 1.15 }}
+                      className="flex w-full flex-col items-start"
+                    >
+                      <label className="flex w-full items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                        <ImageIcon className="w-4 h-4 text-brand-green" />
+                        Preview
+                      </label>
+                      {photoPreview ? (
+                        <div className="flex w-full flex-col items-start">
+                          <div className="flex w-full justify-start">
+                            <div className="relative h-32 w-44 max-w-full shrink-0 overflow-hidden rounded-xl border-2 border-slate-200 bg-white">
+                              <button
+                                type="button"
+                                className="absolute inset-0 z-0 cursor-zoom-in bg-transparent p-0"
+                                onClick={() =>
+                                  setPhotoLightbox({
+                                    url: photoPreview,
+                                    alt:
+                                      formData.itemName?.trim() || 'Equipment photo preview',
+                                  })
+                                }
+                                aria-label="View photo full size"
+                              />
+                              <img
+                                src={photoPreview}
+                                alt=""
+                                className="pointer-events-none relative z-[1] block h-full w-full object-contain object-[left_top]"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setPhotoPreview(null)
+                                  setSelectedPhotoFile(null)
+                                }}
+                                className="absolute top-1.5 right-1.5 z-[2] p-1 bg-danger-600 text-white rounded-full hover:bg-danger-700 transition-colors"
+                                aria-label="Remove photo"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPhotoLightbox({
+                                url: photoPreview,
+                                alt:
+                                  formData.itemName?.trim() || 'Equipment photo preview',
+                              })
+                            }
+                            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green transition-colors hover:text-brand-green-dark hover:underline"
+                          >
+                            <ZoomIn className="h-4 w-4 shrink-0" aria-hidden />
+                            View large
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex h-32 w-44 max-w-full shrink-0 flex-col items-center justify-center self-start rounded-xl border-2 border-dashed border-slate-300 bg-slate-50">
+                          <div className="text-center px-2">
+                            <ImageIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                            <p className="text-sm text-slate-500">No photo selected</p>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.2 }}
                     >
                       <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                         <Upload className="w-4 h-4 text-brand-green" />
@@ -1316,13 +2193,15 @@ export default function InventoryPage() {
                       <input
                         type="file"
                         accept="image/*"
+                        capture={isCoarsePointer ? 'environment' : undefined}
                         onChange={handlePhotoSelect}
                         className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
                       />
-                      {selectedPhotoFile && (
+                      {selectedPhotoFile && editingItem && (
                         <motion.button
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
+                          type="button"
                           onClick={handlePhotoUpload}
                           disabled={uploadingPhoto}
                           className="mt-3 w-full px-4 py-2 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50"
@@ -1335,60 +2214,23 @@ export default function InventoryPage() {
                           ) : (
                             <>
                               <Upload className="w-4 h-4" />
-                              Upload Photo
+                              Upload Photo Now
                             </>
                           )}
                         </motion.button>
                       )}
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.2 }}
-                    >
-                      <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                        <ImageIcon className="w-4 h-4 text-brand-green" />
-                        Preview
-                      </label>
-                      {photoPreview ? (
-                        <div className="relative w-full h-48 rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50">
-                          <img
-                            src={photoPreview}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            onClick={() => {
-                              setPhotoPreview(null)
-                              setSelectedPhotoFile(null)
-                            }}
-                            className="absolute top-2 right-2 p-1 bg-danger-600 text-white rounded-full hover:bg-danger-700 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-full h-48 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
-                          <div className="text-center">
-                            <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-                            <p className="text-sm text-slate-500">No photo selected</p>
-                          </div>
-                        </div>
+                      {selectedPhotoFile && !editingItem && (
+                        <p className="mt-3 text-sm text-primary-600">
+                          Photo will upload automatically when you save this equipment.
+                        </p>
                       )}
                     </motion.div>
                   </div>
-                ) : (
-                  <div className="bg-slate-50 rounded-xl p-6 border-2 border-dashed border-slate-300">
-                    <div className="text-center">
-                      <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                      <p className="text-sm text-slate-600 font-medium mb-1">Photo upload available after saving</p>
-                      <p className="text-xs text-slate-500">Save this item first, then you can add a photo by editing it.</p>
-                    </div>
-                  </div>
                 )}
               </div>
+              </div>
 
-              <div className="sticky bottom-0 bg-white border-t border-slate-200 px-8 py-6 -mx-8 -mb-8 mt-8 flex items-center justify-end gap-4">
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-white px-8 py-4">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -1398,7 +2240,7 @@ export default function InventoryPage() {
                     setEditingItem(null)
                     resetForm()
                   }}
-                  className="px-8 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all"
+                  className="rounded-xl border-2 border-slate-300 px-6 py-2.5 font-semibold text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50"
                 >
                   Cancel
                 </motion.button>
@@ -1407,24 +2249,25 @@ export default function InventoryPage() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-green to-brand-green-dark px-6 py-2.5 font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                       Saving...
                     </>
                   ) : (
                     <>
-                      <Save className="w-5 h-5" />
-                      {editingItem ? 'Update Item' : 'Add Item'}
+                      <Save className="h-5 w-5" />
+                      {editingItem ? 'Save changes' : 'Add equipment'}
                     </>
                   )}
                 </motion.button>
               </div>
             </form>
+            </motion.div>
           </motion.div>
-        </motion.div>
+        </>
       )}
     </div>
   )

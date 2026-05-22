@@ -21,8 +21,10 @@ function generateToken(payload: any): string {
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json()
+    const login = String(username || '').trim()
+    const normalizedEmail = login.toLowerCase()
 
-    if (!username || !password) {
+    if (!login || !password) {
       return NextResponse.json(
         { error: 'Username and password are required' },
         { status: 400 }
@@ -33,8 +35,8 @@ export async function POST(request: NextRequest) {
     const installer = await prisma.installer.findFirst({
       where: {
         OR: [
-          { username },
-          { email: username }, // Allow login with email too
+          { username: login },
+          { email: { equals: normalizedEmail, mode: 'insensitive' } }, // Allow login with email too
         ],
       },
     })

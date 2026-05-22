@@ -4,7 +4,44 @@ import {
   generateInterviewResponse,
   generateSpeech,
 } from '@/lib/openai'
-import { getInterviewQuestions, WORKROOM_OPTIONS } from '@/lib/questions'
+import { getInterviewQuestions, WORKROOM_OPTIONS, FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
+import { extractLikelyPhone } from '@/lib/phone'
+
+function isNoValue(input: string): boolean {
+  const value = (input || '').trim().toLowerCase()
+  if (!value) return true
+  return ['none', 'n/a', 'na', 'skip', 'prefer not to say'].includes(value)
+}
+
+function extractLikelyNumber(input: string): number | null {
+  const match = (input || '').match(/\d+/)
+  if (!match) return null
+  const value = parseInt(match[0], 10)
+  return Number.isFinite(value) ? value : null
+}
+
+function parseLikelyBoolean(input: string): boolean | null {
+  const value = (input || '').trim().toLowerCase()
+  if (!value) return null
+
+  const yesWords = [
+    'yes', 'y', 'yeah', 'yep', 'sure', 'true', 'si', 'sí', 'claro',
+  ]
+  const noWords = [
+    'no', 'n', 'nope', 'nah', 'false',
+  ]
+
+  if (yesWords.some((w) => value === w || value.startsWith(`${w} `) || value.includes(` ${w} `))) return true
+  if (noWords.some((w) => value === w || value.startsWith(`${w} `) || value.includes(` ${w} `))) return false
+  return null
+}
+
+function splitCsv(input: string): string[] {
+  return (input || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,59 +73,100 @@ export async function POST(request: NextRequest) {
     // Save the response
     const currentQuestion = questions[currentQuestionIndex]
     
-    // Save interactive selections directly to installer record
-    if (currentQuestion.id === 'skills' && userResponse && userResponse !== 'None') {
+    // Persist core profile fields as soon as they are answered in interview.
+    if (userResponse && !isNoValue(userResponse)) {
       try {
-        // Parse the comma-separated skills into an array
-        const skillsArray = userResponse.split(',').map(s => s.trim()).filter(s => s.length > 0)
-        
-        // Update installer with flooring skills immediately
-        await prisma.installer.update({
-          where: { id: interview.installerId },
-          data: {
-            flooringSkills: JSON.stringify(skillsArray),
-          },
-        })
-        console.log('Flooring skills saved:', skillsArray)
+        const installerUpdateData: Record<string, any> = {}
+        const qid = currentQuestion.id
+
+        if (qid === 'intro') {
+          const cleaned = userResponse.trim()
+          const parts = cleaned.split(/\s+/).filter(Boolean)
+          if (parts.length >= 2) {
+            installerUpdateData.firstName = parts[0]
+            installerUpdateData.lastName = parts.slice(1).join(' ')
+          }
+        } else if (qid === 'contact') {
+          const phone = extractLikelyPhone(userResponse)
+          if (phone) installerUpdateData.phone = phone
+        } else if (qid === 'experience') {
+          const years = extractLikelyNumber(userResponse)
+          if (years !== null) installerUpdateData.yearsOfExperience = years
+        } else if (qid === 'skills') {
+          const skillsArray = splitCsv(userResponse)
+          if (skillsArray.length > 0) installerUpdateData.flooringSkills = JSON.stringify(skillsArray)
+        } else if (qid === 'primary_surface') {
+          const t = userResponse.trim()
+          const allowed = new Set(FLOORING_SURFACE_OPTIONS as readonly string[])
+          if (t && allowed.has(t)) installerUpdateData.primaryFlooringSurface = t
+        } else if (qid === 'general_liability') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.hasGeneralLiability = value
+        } else if (qid === 'auto_liability') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.hasCommercialAutoLiability = value
+        } else if (qid === 'workers_comp') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.hasWorkersComp = value
+        } else if (qid === 'crew') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.hasOwnCrew = value
+        } else if (qid === 'crew_size') {
+          const crewSize = extractLikelyNumber(userResponse)
+          if (crewSize !== null) installerUpdateData.crewSize = String(crewSize)
+        } else if (qid === 'workroom') {
+          const selectedWorkroom = WORKROOM_OPTIONS.find((opt) =>
+            userResponse.toLowerCase().includes(opt.toLowerCase()),
+          ) || userResponse.trim()
+          installerUpdateData.workroom = selectedWorkroom
+        } else if (qid === 'workers_comp_exemption') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.hasWorkersCompExemption = value
+        } else if (qid === 'sunbiz_registered') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.isSunbizRegistered = value
+        } else if (qid === 'sunbiz_active') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.isSunbizActive = value
+        } else if (qid === 'business_license') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.hasBusinessLicense = value
+        } else if (qid === 'background_check') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) installerUpdateData.canPassBackgroundCheck = value
+        } else if (qid === 'background_details') {
+          installerUpdateData.backgroundCheckDetails = userResponse.trim()
+        } else if (qid === 'vehicle') {
+          installerUpdateData.vehicleDescription = userResponse.trim()
+          installerUpdateData.hasVehicle = true
+        } else if (qid === 'work_schedule') {
+          installerUpdateData.mondayToFridayAvailability = userResponse.trim()
+        } else if (qid === 'saturday_availability') {
+          installerUpdateData.saturdayAvailability = userResponse.trim()
+        } else if (qid === 'open_to_travel') {
+          const value = parseLikelyBoolean(userResponse)
+          if (value !== null) {
+            installerUpdateData.openToTravel = value
+            installerUpdateData.willingToTravel = value
+          }
+        } else if (qid === 'travel_locations') {
+          const locationsArray = splitCsv(userResponse)
+          if (locationsArray.length > 0) {
+            installerUpdateData.travelLocations = JSON.stringify(locationsArray)
+            installerUpdateData.openToTravel = true
+            installerUpdateData.willingToTravel = true
+          }
+        }
+
+        if (Object.keys(installerUpdateData).length > 0) {
+          await prisma.installer.update({
+            where: { id: interview.installerId },
+            data: installerUpdateData,
+          })
+          console.log('Installer interview fields saved immediately:', Object.keys(installerUpdateData))
+        }
       } catch (error) {
-        console.error('Error saving flooring skills:', error)
-      }
-    }
-    
-    // Save workroom if provided
-    if (currentQuestion.id === 'workroom' && userResponse && userResponse !== 'None') {
-      try {
-        // Extract workroom from response (could be just the name or full sentence)
-        const selectedWorkroom = WORKROOM_OPTIONS.find(opt => 
-          userResponse.toLowerCase().includes(opt.toLowerCase())
-        ) || userResponse.trim()
-        
-        await prisma.installer.update({
-          where: { id: interview.installerId },
-          data: {
-            workroom: selectedWorkroom,
-          },
-        })
-        console.log('Workroom saved:', selectedWorkroom)
-      } catch (error) {
-        console.error('Error saving workroom:', error)
-      }
-    }
-    
-    // Save travel locations if provided
-    if (currentQuestion.id === 'travel_locations' && userResponse && userResponse !== 'None') {
-      try {
-        const locationsArray = userResponse.split(',').map(s => s.trim()).filter(s => s.length > 0)
-        await prisma.installer.update({
-          where: { id: interview.installerId },
-          data: {
-            travelLocations: JSON.stringify(locationsArray),
-            openToTravel: true,
-          },
-        })
-        console.log('Travel locations saved:', locationsArray)
-      } catch (error) {
-        console.error('Error saving travel locations:', error)
+        console.error('Error saving interview fields immediately:', error)
       }
     }
     

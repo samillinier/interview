@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { cookies } from 'next/headers'
+import { writeAdminAuditLog } from '@/lib/audit'
 
 // Helper to get session in App Router
 async function getSession(request: NextRequest) {
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Require an authenticated user, and only allow ADMIN role to view/manage users
+    // Require an authenticated user, and only allow ADMIN/MANAGER role to view/manage users
     const email = session?.user?.email?.toLowerCase()
     if (!email) {
       console.error('No email found in session. Session:', session)
@@ -154,8 +155,8 @@ export async function GET(request: NextRequest) {
     if (!currentAdminForRole?.isActive) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-    if (currentAdminForRole.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    if (currentAdminForRole.role !== 'ADMIN' && currentAdminForRole.role !== 'MANAGER' && currentAdminForRole.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     // Return admins list
@@ -357,11 +358,17 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && (currentAdmin as any).role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     const { email, name, role } = await request.json()
+    const requestedRole = typeof role === 'string' ? role.toUpperCase() : ''
+    const currentRole = String((currentAdmin as any).role || '').toUpperCase()
+
+    if (requestedRole === 'SUPER_ADMIN' && currentRole !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Super admin role can only be assigned by a Super Admin' }, { status: 403 })
+    }
 
     if (!email) {
       return NextResponse.json(
@@ -387,7 +394,14 @@ export async function POST(request: NextRequest) {
       data: {
         email: email.toLowerCase().trim(),
         name: name || null,
-        role: role === 'MODERATOR' ? 'MODERATOR' : role === 'MANAGER' ? 'MANAGER' : 'ADMIN',
+        role:
+          requestedRole === 'SUPER_ADMIN'
+            ? 'SUPER_ADMIN'
+            : requestedRole === 'MODERATOR'
+              ? 'MODERATOR'
+              : requestedRole === 'MANAGER'
+                ? 'MANAGER'
+                : 'ADMIN',
         createdBy: currentAdmin.id,
         isActive: true,
       },
@@ -401,6 +415,21 @@ export async function POST(request: NextRequest) {
         createdBy: true,
       },
     })
+
+    try {
+      await writeAdminAuditLog({
+        adminEmail: String(currentAdmin.email || '').toLowerCase(),
+        adminId: currentAdmin.id,
+        action: 'admin.create',
+        targetType: 'admin',
+        targetId: newAdmin.id,
+        targetLabel: newAdmin.email,
+        before: null,
+        after: { role: newAdmin.role, isActive: newAdmin.isActive },
+      })
+    } catch (e) {
+      console.error('audit admin.create failed', e)
+    }
 
     return NextResponse.json({ 
       success: true,

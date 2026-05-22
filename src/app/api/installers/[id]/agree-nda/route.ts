@@ -53,7 +53,11 @@ export async function POST(
     const body = await request.json().catch(() => ({}))
     const { signature, name, date } = body
 
-    // Create/update InstallerAgreement record for NDA
+    const approvalSource = access.actor === 'admin' ? 'admin_direct' : 'installer_acceptance'
+    const approvedAtIso = now.toISOString()
+    const installerSignedDate = date || approvedAtIso.slice(0, 10)
+
+    // NDA is auto-approved as soon as the installer agrees.
     const agreement = await prisma.installerAgreement.upsert({
       where: {
         installerId_type: {
@@ -62,55 +66,57 @@ export async function POST(
         },
       },
       update: {
-        status: 'pending_admin',
+        status: 'approved',
         payload: {
           installerSignature: signature || null,
           installerName: name || null,
-          installerSignedDate: date || now.toISOString().slice(0, 10),
+          installerSignedDate,
+          autoApproval: {
+            approvedAt: approvedAtIso,
+            approvedBy: approvalSource,
+          },
         },
         signedAt: now,
+        approvedAt: now,
+        approvedBy: approvalSource,
+        adminSignature: null,
+        adminSignedDate: null,
       },
       create: {
         installerId,
         type: 'nda',
-        status: 'pending_admin',
+        status: 'approved',
         payload: {
           installerSignature: signature || null,
           installerName: name || null,
-          installerSignedDate: date || now.toISOString().slice(0, 10),
+          installerSignedDate,
+          autoApproval: {
+            approvedAt: approvedAtIso,
+            approvedBy: approvalSource,
+          },
         },
         signedAt: now,
+        approvedAt: now,
+        approvedBy: approvalSource,
       },
     })
 
-    // Create an admin approval task when installer submits
-    const source = `agreement:nda:${agreement.id}`
-    const already = await prisma.installerChangeRequest.findFirst({
-      where: { installerId, status: 'pending', source },
-      select: { id: true },
-    })
-
-    if (!already) {
-      const installer = await prisma.installer.findUnique({
-        where: { id: installerId },
-        select: { email: true },
-      })
-      await prisma.installerChangeRequest.create({
-        data: {
-          installerId,
-          status: 'pending',
-          source,
-          sections: ['Agreements'],
-          submittedBy: installer?.email || null,
-          payload: {
-            action: 'approve_agreement',
-            agreementId: agreement.id,
-            agreementType: 'nda',
-            title: 'Non-Disclosure Agreement (NDA)',
-          },
+    // Clean up any legacy NDA approval tasks created before NDA was auto-approved.
+    await prisma.installerChangeRequest.updateMany({
+      where: {
+        installerId,
+        status: 'pending',
+        source: {
+          startsWith: 'agreement:nda:',
         },
-      })
-    }
+      },
+      data: {
+        status: 'approved',
+        reviewedAt: now,
+        reviewedBy: null,
+        rejectionReason: null,
+      },
+    })
 
     // Update installer with NDA agreement timestamp (for backward compatibility)
     const installer = await prisma.installer.update({
@@ -122,7 +128,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'NDA agreement recorded successfully and submitted for approval',
+      message: 'NDA agreement recorded successfully and approved automatically',
       installer,
       agreement,
     })

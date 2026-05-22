@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { Fragment, useState, useEffect, Suspense, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -15,7 +15,6 @@ import {
   Download,
   Edit,
   Trash2,
-  Briefcase,
   LayoutDashboard,
   Menu,
   X,
@@ -47,7 +46,10 @@ import {
   Activity,
   Settings,
   StickyNote,
-  Eye
+  Eye,
+  ClipboardList,
+  ClipboardCheck,
+  Megaphone,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -55,6 +57,9 @@ import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -159,8 +164,128 @@ interface Installer {
   yearsOfExperience?: number
   flooringSkills?: string
   flooringSpecialties?: string
+  workroom?: string | null
+  primaryFlooringSurface?: string | null
   status: string
   photoUrl?: string
+  matchedStaffMember?: {
+    id: string
+    firstName: string
+    lastName: string
+    email?: string | null
+    photoUrl?: string | null
+    title?: string | null
+  } | null
+  profileCompletionPercent?: number
+  remarks?: string | null
+  managerRemarks?: string | null
+  licenseExpiry?: string | null
+  btrExpiry?: string | null
+  llrpExpiry?: string | null
+  workersCompExemExpiry?: string | null
+  generalLiabilityExpiry?: string | null
+  automobileLiabilityExpiry?: string | null
+  employersLiabilityExpiry?: string | null
+}
+
+function formatPrimarySurfaceLabel(surface: string | null | undefined): string | null {
+  const raw = String(surface || '').trim()
+  if (!raw) return null
+  const s = raw.toLowerCase()
+  // Keep the UI clean: strip long descriptions but still show the surface they answered.
+  if (/\blvp\b|luxury\s+vinyl\s+plank/.test(s)) return 'LVP'
+  if (/\blvt\b|luxury\s+vinyl\s+tile/.test(s)) return 'LVT'
+  if (/\bvct\b|vinyl\s+composition\s+tile/.test(s)) return 'VCT'
+  if (s.includes('vinyl')) return 'LVP'
+  if (s.includes('carpet tile')) return 'Carpet Tile'
+  if (s.includes('carpet')) return 'Carpet'
+  if (s.includes('porcelain')) return 'Porcelain Tile'
+  if (s.includes('ceramic')) return 'Ceramic Tile'
+  if (s.includes('stone')) return 'Stone Tile'
+  if (s.includes('engineered') && s.includes('hardwood')) return 'Engineered Hardwood'
+  if (s.includes('hardwood')) return 'Hardwood'
+  if (s.includes('laminate')) return 'Laminate'
+  if (s.includes('bamboo')) return 'Bamboo'
+  return raw.replace(/\s*\([^)]*\)/g, '').trim() || null
+}
+
+function formatInstallerRemark(rawRemark: string | null | undefined): string {
+  const raw = String(rawRemark || '').trim()
+  if (!raw) return ''
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      const remarks = parsed
+        .map((item) => ({
+          note: String(item?.note || '').trim(),
+          date: String(item?.date || '').trim(),
+          createdAt: String(item?.createdAt || '').trim(),
+        }))
+        .filter((item) => item.note)
+        .sort((a, b) => {
+          const at = new Date(a.createdAt || a.date || 0).getTime()
+          const bt = new Date(b.createdAt || b.date || 0).getTime()
+          return bt - at
+        })
+      const latest = remarks[0]
+      if (!latest) return ''
+      return latest.date ? `${latest.note} (${latest.date})` : latest.note
+    }
+  } catch {
+    // Fall back to the raw string for older remark data.
+  }
+
+  return raw
+}
+
+function getInstallerSearchHeadsUp(installer: Installer, role: string) {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const thirtyDaysFromNow = new Date(now)
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+  const items: Array<{ type: 'remark' | 'expired' | 'expiring'; label: string; detail: string }> = []
+  const isManager = role === 'MANAGER'
+  const remark = formatInstallerRemark(isManager ? installer.managerRemarks : installer.remarks)
+  const managerRemark = isManager ? '' : formatInstallerRemark(installer.managerRemarks)
+
+  if (remark) {
+    items.push({ type: 'remark', label: isManager ? 'Latest remark' : 'Latest admin remark', detail: remark })
+  }
+
+  if (managerRemark) {
+    items.push({ type: 'remark', label: 'Latest manager remark', detail: managerRemark })
+  }
+
+  if (isManager) return items
+
+  const expiryFields: Array<{ label: string; value?: string | null }> = [
+    { label: 'License', value: installer.licenseExpiry },
+    { label: 'BTR', value: installer.btrExpiry },
+    { label: 'LLRP', value: installer.llrpExpiry },
+    { label: 'Workers Comp Exemption', value: installer.workersCompExemExpiry },
+    { label: 'General Liability', value: installer.generalLiabilityExpiry },
+    { label: 'Auto Liability', value: installer.automobileLiabilityExpiry },
+    { label: 'Employers Liability', value: installer.employersLiabilityExpiry },
+  ]
+
+  for (const field of expiryFields) {
+    if (!field.value) continue
+    const date = new Date(field.value)
+    if (Number.isNaN(date.getTime())) continue
+    date.setHours(0, 0, 0, 0)
+    if (date < now) {
+      items.push({ type: 'expired', label: `${field.label} expired`, detail: formatDate(field.value) })
+    } else if (date <= thirtyDaysFromNow) {
+      items.push({ type: 'expiring', label: `${field.label} expires soon`, detail: formatDate(field.value) })
+    }
+  }
+
+  return items
 }
 
 function DashboardPageContent() {
@@ -168,11 +293,19 @@ function DashboardPageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | ''
   
   // Initialize state from URL params
   const urlPage = searchParams?.get('page') ? parseInt(searchParams.get('page')!) : 1
   const urlSearch = searchParams?.get('search') || ''
   const urlStatus = searchParams?.get('status') || 'all'
+  const urlExperience = searchParams?.get('experience') || 'all'
+  const urlState = searchParams?.get('state') || 'all'
+  const urlSkill = searchParams?.get('skill') || 'all'
+  const urlSurface = searchParams?.get('surface') || 'all'
+  const urlCertificateRisk = searchParams?.get('certificateRisk') || 'all'
+  const urlWorkroom = searchParams?.get('workroom') || 'all'
+  const urlCounty = searchParams?.get('county') || 'all'
   
   const [installers, setInstallers] = useState<Installer[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -180,6 +313,13 @@ function DashboardPageContent() {
   const [searchQuery, setSearchQuery] = useState(urlSearch)
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(urlSearch)
   const [statusFilter, setStatusFilter] = useState(urlStatus)
+  const [experienceFilter, setExperienceFilter] = useState(urlExperience)
+  const [stateFilter, setStateFilter] = useState(urlState)
+  const [skillFilter, setSkillFilter] = useState(urlSkill)
+  const [surfaceFilter, setSurfaceFilter] = useState(urlSurface)
+  const [certificateRiskFilter, setCertificateRiskFilter] = useState(urlCertificateRisk)
+  const [workroomFilter, setWorkroomFilter] = useState(urlWorkroom)
+  const [countyFilter, setCountyFilter] = useState(urlCounty)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [currentPage, setCurrentPage] = useState(urlPage)
   const [totalPages, setTotalPages] = useState(1)
@@ -200,9 +340,102 @@ function DashboardPageContent() {
   const [expiringItems, setExpiringItems] = useState<Array<{
     installerId: string
     installerName: string
+    photoUrl?: string | null
     items: Array<{ name: string; expiryDate: string; status: 'expired' | 'expiring' }>
   }>>([])
   const [isLoadingExpirations, setIsLoadingExpirations] = useState(false)
+  const [expiryInstallerSearch, setExpiryInstallerSearch] = useState('')
+  const [expiryStatusFilter, setExpiryStatusFilter] = useState<{ expired: boolean; expiring: boolean }>({
+    expired: true,
+    expiring: true,
+  })
+  const EXPIRY_TYPE_OPTIONS = useMemo(
+    () => [
+      { id: 'SUNBIZ', label: 'Sunbiz', subtitle: 'State registry' },
+      { id: 'LLRP', label: 'LLRP', subtitle: 'Lead registry' },
+      { id: 'LEAD_FIRM', label: 'Lead Firm', subtitle: 'Lead firm cert.' },
+      { id: 'BTR', label: 'BTR', subtitle: 'Business tax receipt' },
+      { id: 'WCE', label: "Workers' Comp Exemption", subtitle: 'WC exemption' },
+      { id: 'WC', label: 'Workers Comp', subtitle: "Workers' comp" },
+      { id: 'GL', label: 'General Liability', subtitle: 'Gen. liability' },
+      { id: 'AL', label: 'Automobile Liability', subtitle: 'Auto liability' },
+      { id: 'BATCH_ID', label: 'Batch ID', subtitle: 'Upload batch' },
+    ],
+    []
+  )
+  const [expiryTypeFilter, setExpiryTypeFilter] = useState<Record<string, boolean>>(() => {
+    const all: Record<string, boolean> = {}
+    for (const opt of [
+      'SUNBIZ',
+      'LLRP',
+      'LEAD_FIRM',
+      'BTR',
+      'WCE',
+      'WC',
+      'GL',
+      'AL',
+      'BATCH_ID',
+    ]) {
+      all[opt] = true
+    }
+    return all
+  })
+
+  const getExpiryAbbrevForItemName = (name: string): string => {
+    const n = String(name || '').toLowerCase()
+    if (n.startsWith('llrp') || n.includes('llrp')) return 'LLRP'
+    if (n.startsWith('btr') || n.includes('business tax')) return 'BTR'
+    if (n.includes('workers compensation') && n.includes('exem')) return 'WCE'
+    if (n.includes('general liability')) return 'GL'
+    if (n.includes('automobile liability') || n.includes('auto liability')) return 'AL'
+    if (n.includes('sunbiz')) return 'SUNBIZ'
+    if (n.includes("workers' comp") || n.includes('workers comp')) return 'WC'
+    if (n.includes('lead firm')) return 'LEAD_FIRM'
+    if (n.includes('batch') && n.includes('id')) return 'BATCH_ID'
+    return 'OTHER'
+  }
+
+  const filteredExpiryItems = useMemo(() => {
+    const anyEnabled = Object.values(expiryTypeFilter).some(Boolean)
+    if (!anyEnabled) return []
+    const keep = (itemName: string) => Boolean(expiryTypeFilter[getExpiryAbbrevForItemName(itemName)])
+    const q = expiryInstallerSearch.trim().toLowerCase()
+    const statusEnabled = expiryStatusFilter
+    const keepStatus = (s: 'expired' | 'expiring') => (s === 'expired' ? statusEnabled.expired : statusEnabled.expiring)
+
+    const rows = expiringItems
+      .map((row) => {
+        const items = row.items.filter((i) => keep(i.name) && keepStatus(i.status))
+        return { ...row, items }
+      })
+      .filter((row) => row.items.length > 0)
+      .filter((row) => (q ? row.installerName.toLowerCase().includes(q) : true))
+
+    rows.sort((a, b) => a.installerName.localeCompare(b.installerName, undefined, { sensitivity: 'base' }))
+    return rows
+  }, [expiringItems, expiryInstallerSearch, expiryStatusFilter, expiryTypeFilter])
+
+  const filteredExpirationStats = useMemo(() => {
+    let expired = 0
+    let expiring = 0
+    for (const row of filteredExpiryItems) {
+      for (const i of row.items) {
+        if (i.status === 'expired') expired++
+        else expiring++
+      }
+    }
+    return { expired, expiring, total: expired + expiring }
+  }, [filteredExpiryItems])
+
+  const getInitialsFromName = (name: string) => {
+    const parts = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    const a = parts[0]?.[0] || ''
+    const b = parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : ''
+    return (a + b).toUpperCase() || '—'
+  }
   const [deleteConfirm, setDeleteConfirm] = useState<{
     show: boolean
     installerId: string | null
@@ -216,7 +449,9 @@ function DashboardPageContent() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
+  const [updatesCount, setUpdatesCount] = useState(0)
 
   // Fetch pending approvals count
   const fetchPendingApprovalsCount = async () => {
@@ -250,14 +485,28 @@ function DashboardPageContent() {
     }
   }
 
+  const fetchUpdatesCount = async () => {
+    try {
+      const response = await fetch('/api/admin/updates/count', { cache: 'no-store' })
+      if (response.ok) {
+        const data = await response.json().catch(() => ({}))
+        setUpdatesCount(Number(data?.count || 0))
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     if (status === 'authenticated') {
       fetchPendingApprovalsCount()
       fetchUnreadMessagesCount()
+      fetchUpdatesCount()
       // Refresh count every 30 seconds
       const interval = setInterval(() => {
         fetchPendingApprovalsCount()
         fetchUnreadMessagesCount()
+        fetchUpdatesCount()
       }, 30000)
       return () => clearInterval(interval)
     }
@@ -463,10 +712,17 @@ function DashboardPageContent() {
       const params = new URLSearchParams()
       if (debouncedSearchQuery.trim()) params.append('search', debouncedSearchQuery.trim())
       if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (experienceFilter !== 'all') params.append('experience', experienceFilter)
+      if (stateFilter !== 'all') params.append('state', stateFilter)
+      if (skillFilter !== 'all') params.append('skill', skillFilter)
+      if (surfaceFilter !== 'all') params.append('surface', surfaceFilter)
+      if (certificateRiskFilter !== 'all') params.append('certificateRisk', certificateRiskFilter)
+      if (workroomFilter !== 'all') params.append('workroom', workroomFilter)
+      if (countyFilter !== 'all') params.append('county', countyFilter)
       params.append('page', page.toString())
       params.append('limit', itemsPerPage.toString())
 
-      const response = await fetch(`/api/installers?${params.toString()}`)
+      const response = await fetch(`/api/installers?${params.toString()}`, { cache: 'no-store' })
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -565,6 +821,7 @@ function DashboardPageContent() {
           return {
             installerId: item.installerId,
             installerName: item.installerName,
+            photoUrl: item.photoUrl ?? null,
             items: item.expiringItems.map((i: any) => ({
               name: i.name,
               expiryDate: new Date(i.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -588,7 +845,7 @@ function DashboardPageContent() {
   }
 
   // Update URL with current state
-  const updateURL = (updates: { page?: number; search?: string; status?: string }) => {
+  const updateURL = (updates: { page?: number; search?: string; status?: string; experience?: string; state?: string; skill?: string; surface?: string; certificateRisk?: string; workroom?: string; county?: string }) => {
     const params = new URLSearchParams(searchParams?.toString() || '')
     
     if (updates.page !== undefined) {
@@ -614,6 +871,62 @@ function DashboardPageContent() {
         params.set('status', updates.status)
       }
     }
+
+    if (updates.experience !== undefined) {
+      if (updates.experience === 'all') {
+        params.delete('experience')
+      } else {
+        params.set('experience', updates.experience)
+      }
+    }
+
+    if (updates.state !== undefined) {
+      if (updates.state === 'all') {
+        params.delete('state')
+      } else {
+        params.set('state', updates.state)
+      }
+    }
+
+    if (updates.skill !== undefined) {
+      if (updates.skill === 'all') {
+        params.delete('skill')
+      } else {
+        params.set('skill', updates.skill)
+      }
+    }
+
+    if (updates.surface !== undefined) {
+      if (updates.surface === 'all') {
+        params.delete('surface')
+      } else {
+        params.set('surface', updates.surface)
+      }
+    }
+
+    if (updates.certificateRisk !== undefined) {
+      if (updates.certificateRisk === 'all') {
+        params.delete('certificateRisk')
+      } else {
+        params.set('certificateRisk', updates.certificateRisk)
+      }
+    }
+
+    if (updates.workroom !== undefined) {
+      if (updates.workroom === 'all') {
+        params.delete('workroom')
+      } else {
+        params.set('workroom', updates.workroom)
+      }
+    }
+
+    if (updates.county !== undefined) {
+      if (updates.county === 'all') {
+        params.delete('county')
+      } else {
+        params.set('county', updates.county)
+      }
+    }
     
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
     router.replace(newUrl, { scroll: false })
@@ -625,6 +938,13 @@ function DashboardPageContent() {
     if (currentPage > 1) params.set('page', currentPage.toString())
     if (debouncedSearchQuery.trim()) params.set('search', debouncedSearchQuery.trim())
     if (statusFilter !== 'all') params.set('status', statusFilter)
+    if (experienceFilter !== 'all') params.set('experience', experienceFilter)
+    if (stateFilter !== 'all') params.set('state', stateFilter)
+    if (skillFilter !== 'all') params.set('skill', skillFilter)
+    if (surfaceFilter !== 'all') params.set('surface', surfaceFilter)
+    if (certificateRiskFilter !== 'all') params.set('certificateRisk', certificateRiskFilter)
+    if (workroomFilter !== 'all') params.set('workroom', workroomFilter)
+    if (countyFilter !== 'all') params.set('county', countyFilter)
     return params.toString() ? `?${params.toString()}` : ''
   }
 
@@ -1119,18 +1439,36 @@ function DashboardPageContent() {
     }
   }, [status, router])
 
+  useEffect(() => {
+    let cancelled = false
+    const loadSignatureCount = async () => {
+      try {
+        const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setSignatureNotSignedCount(count)
+      } catch {
+        // ignore
+      }
+    }
+    loadSignatureCount()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Validate status filter for moderators whenever it changes
   useEffect(() => {
     if (status === 'authenticated') {
-      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
-      if (role === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(statusFilter)) {
+      if (normalizedRole === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(statusFilter)) {
         // Reset to a valid default for moderators
         const validStatus = 'all'
         setStatusFilter(validStatus)
         updateURL({ status: validStatus, page: 1 })
       }
     }
-  }, [statusFilter, status, session])
+  }, [statusFilter, status, normalizedRole])
 
   // Debounce search query
   useEffect(() => {
@@ -1147,10 +1485,16 @@ function DashboardPageContent() {
       const urlPage = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1
       const urlSearch = searchParams.get('search') || ''
       let urlStatus = searchParams.get('status') || 'all'
+      const urlExperience = searchParams.get('experience') || 'all'
+      const urlState = searchParams.get('state') || 'all'
+      const urlSkill = searchParams.get('skill') || 'all'
+      const urlSurface = searchParams.get('surface') || 'all'
+      const urlCertificateRisk = searchParams.get('certificateRisk') || 'all'
+      const urlWorkroom = searchParams.get('workroom') || 'all'
+      const urlCounty = searchParams.get('county') || 'all'
       
       // Validate status for moderators
-      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
-      if (role === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(urlStatus)) {
+      if (normalizedRole === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(urlStatus)) {
         urlStatus = 'all' // Default to all for moderators
       }
       
@@ -1159,6 +1503,13 @@ function DashboardPageContent() {
       if (urlSearch !== searchQuery) setSearchQuery(urlSearch)
       if (urlSearch !== debouncedSearchQuery) setDebouncedSearchQuery(urlSearch)
       if (urlStatus !== statusFilter) setStatusFilter(urlStatus)
+      if (urlExperience !== experienceFilter) setExperienceFilter(urlExperience)
+      if (urlState !== stateFilter) setStateFilter(urlState)
+      if (urlSkill !== skillFilter) setSkillFilter(urlSkill)
+      if (urlSurface !== surfaceFilter) setSurfaceFilter(urlSurface)
+      if (urlCertificateRisk !== certificateRiskFilter) setCertificateRiskFilter(urlCertificateRisk)
+      if (urlWorkroom !== workroomFilter) setWorkroomFilter(urlWorkroom)
+      if (urlCounty !== countyFilter) setCountyFilter(urlCounty)
       
       // Initial load with URL params
       if (!hasLoadedInstallersOnce) {
@@ -1171,12 +1522,23 @@ function DashboardPageContent() {
   // Update URL when search/filter changes and fetch installers (but not on initial mount)
   useEffect(() => {
     if (status === 'authenticated' && hasLoadedInstallersOnce) {
-      updateURL({ search: debouncedSearchQuery, status: statusFilter, page: 1 })
+      updateURL({
+        search: debouncedSearchQuery,
+        status: statusFilter,
+        experience: experienceFilter,
+        state: stateFilter,
+        skill: skillFilter,
+        surface: surfaceFilter,
+        certificateRisk: certificateRiskFilter,
+        workroom: workroomFilter,
+        county: countyFilter,
+        page: 1,
+      })
       fetchStats()
       fetchInstallers(1)
       setCurrentPage(1)
     }
-  }, [debouncedSearchQuery, statusFilter])
+  }, [debouncedSearchQuery, statusFilter, experienceFilter, stateFilter, skillFilter, surfaceFilter, certificateRiskFilter, workroomFilter, countyFilter])
 
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -1187,45 +1549,47 @@ function DashboardPageContent() {
     'w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 appearance-none'
 
   const getStatusBadge = (status: string) => {
+    const badgeClass = 'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap'
+    const iconClass = 'w-3.5 h-3.5 shrink-0'
     switch (status) {
       case 'passed':
       case 'qualified':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600">
-            <CheckCircle2 className="w-4 h-4" />
+          <span className={`${badgeClass} text-blue-600`}>
+            <CheckCircle2 className={iconClass} />
             Qualified
           </span>
         )
       case 'failed':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-600">
-            <XCircle className="w-4 h-4" />
+          <span className={`${badgeClass} text-red-600`}>
+            <XCircle className={iconClass} />
             Not Qualified
           </span>
         )
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-yellow-600">
-            <Clock className="w-4 h-4" />
+          <span className={`${badgeClass} text-yellow-600`}>
+            <Clock className={iconClass} />
             Pending
           </span>
         )
       case 'active':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-brand-green-dark">
-            <CheckCircle2 className="w-4 h-4" />
+          <span className={`${badgeClass} text-brand-green-dark`}>
+            <CheckCircle2 className={iconClass} />
             Active
           </span>
         )
       case 'deactive':
         return (
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-900">
-            <XCircle className="w-4 h-4" />
+          <span className={`${badgeClass} text-slate-900`}>
+            <XCircle className={iconClass} />
             Deactive
           </span>
         )
       default:
-        return <span className="text-sm text-slate-500 capitalize">{status}</span>
+        return <span className="text-xs text-slate-500 capitalize whitespace-nowrap">{status}</span>
     }
   }
 
@@ -1234,10 +1598,7 @@ function DashboardPageContent() {
   if (status === 'loading' || (isLoading && !hasLoadedInstallersOnce)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading dashboard...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -1253,287 +1614,109 @@ function DashboardPageContent() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        {/* Logo */}
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/approvals"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Approvals</span>
-                  {pendingApprovalsCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/tracking"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Activity className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Tracking</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/analytics"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Analytics</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/notifications"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-            >
-              <Bell className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Notifications</span>
-                </div>
-              )}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Messages</span>
-                {unreadMessagesCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {unreadMessagesCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/remarks"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <StickyNote className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Remarks</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/settings"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Settings</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/property/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
-            >
-              <Building2 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Property Portal</span>}
-            </Link>
-          )}
-        </nav>
-
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            {session?.user?.image ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                <Image
-                  src={session.user.image}
-                  alt={session.user?.name || session.user?.email || 'Admin'}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-brand-green" />
-              </div>
-            )}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {session.user?.name || 'Admin'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{session.user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
       <AdminMobileMenu pathname={pathname} />
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 lg:pt-8 pb-8">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-20 lg:pt-8 pb-8">
+        {/* Key metrics — Analytics-style cards; same five stats as before */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-3 sm:p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-4 sm:p-5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+            <div className="h-1.5 w-full rounded-full bg-brand-green/90 mb-4" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Applicants</p>
-                <p className="text-xl sm:text-2xl font-bold text-slate-900 mb-0.5">{stats.total}</p>
+                <p className="text-2xl sm:text-3xl leading-none font-black tracking-tight text-slate-900 mb-0.5">{stats.total}</p>
                 <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">All registered</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 rounded-lg flex items-center justify-center group-hover:bg-slate-200 transition-colors flex-shrink-0 ml-2 shadow-md">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/10 flex items-center justify-center shadow-sm flex-shrink-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-lg border border-blue-200/40 p-3 sm:p-4 hover:shadow-xl hover:border-blue-300/60 transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-4 sm:p-5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+            <div className="h-1.5 w-full rounded-full bg-brand-green mb-4" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] sm:text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Qualified</p>
-                <p className="text-xl sm:text-2xl font-bold text-blue-600 mb-0.5">{stats.qualified}</p>
+                <p className="text-2xl sm:text-3xl leading-none font-black tracking-tight text-blue-600 mb-0.5">{stats.qualified}</p>
                 <p className="text-[9px] sm:text-[10px] text-blue-500/80">{stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors flex-shrink-0 ml-2 shadow-lg shadow-blue-500/30">
-                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-3 sm:p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-4 sm:p-5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+            <div className="h-1.5 w-full rounded-full bg-brand-green mb-4" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Not Qualified</p>
-                <p className="text-xl sm:text-2xl font-bold text-red-600 mb-0.5">{stats.notQualified}</p>
+                <p className="text-2xl sm:text-3xl leading-none font-black tracking-tight text-red-600 mb-0.5">{stats.notQualified}</p>
                 <p className="text-[9px] sm:text-[10px] text-red-500/80">{stats.total > 0 ? Math.round((stats.notQualified / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-lg flex items-center justify-center group-hover:bg-red-200 transition-colors flex-shrink-0 ml-2 shadow-md">
-                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0">
+                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            whileHover={{ y: -2, transition: { duration: 0.2 } }}
-            className="bg-white rounded-lg shadow-lg border border-slate-200/50 p-3 sm:p-4 hover:shadow-xl transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-4 sm:p-5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+            <div className="h-1.5 w-full rounded-full bg-brand-green mb-4" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Pending Review</p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-600 mb-0.5">{stats.pending}</p>
+                <p className="text-2xl sm:text-3xl leading-none font-black tracking-tight text-yellow-600 mb-0.5">{stats.pending}</p>
                 <p className="text-[9px] sm:text-[10px] text-yellow-500/80">{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-100 rounded-lg flex items-center justify-center group-hover:bg-yellow-200 transition-colors flex-shrink-0 ml-2 shadow-md">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            whileHover={{ y: -2, transition: { duration: 0.2 } }}
             onClick={() => {
               setStatusFilter('active')
               setCurrentPage(1)
             }}
-            className="bg-gradient-to-br from-brand-green/10 to-brand-green/5 rounded-lg shadow-lg border border-brand-green/30 p-3 sm:p-4 hover:shadow-xl hover:border-brand-green/50 transition-all duration-200 group cursor-pointer"
+            className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-4 sm:p-5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+            <div className="h-1.5 w-full rounded-full bg-brand-green mb-4" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] sm:text-[10px] font-semibold text-brand-green-dark uppercase tracking-wider mb-1">Active</p>
-                <p className="text-xl sm:text-2xl font-bold text-brand-green-dark mb-0.5">{stats.active}</p>
+                <p className="text-2xl sm:text-3xl leading-none font-black tracking-tight text-brand-green-dark mb-0.5">{stats.active}</p>
                 <p className="text-[9px] sm:text-[10px] text-brand-green/80">{stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total</p>
               </div>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-brand-green rounded-lg flex items-center justify-center group-hover:bg-brand-green-dark transition-colors flex-shrink-0 ml-2 shadow-lg shadow-brand-green/30">
-                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
               </div>
             </div>
           </motion.div>
@@ -1583,8 +1766,127 @@ function DashboardPageContent() {
                 transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
+                {/* Type filters */}
+                <div className="pt-6">
+                  <div className="rounded-2xl border border-slate-200/70 bg-white shadow-sm p-4 pb-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Filter types</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allOn = Object.values(expiryTypeFilter).every(Boolean)
+                          const next: Record<string, boolean> = {}
+                          for (const opt of EXPIRY_TYPE_OPTIONS) next[opt.id] = !allOn
+                          setExpiryTypeFilter(next)
+                        }}
+                        className="text-xs font-semibold text-brand-green hover:text-brand-green-dark"
+                      >
+                        {Object.values(expiryTypeFilter).every(Boolean) ? 'Clear all' : 'Select all'}
+                      </button>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="relative w-full flex-1">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-green/80" />
+                        <input
+                          type="text"
+                          value={expiryInstallerSearch}
+                          onChange={(e) => setExpiryInstallerSearch(e.target.value)}
+                          placeholder="Search installer…"
+                          className="w-full rounded-full border border-brand-green/30 bg-brand-green/5 py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-800 outline-none transition-colors placeholder:text-brand-green/60 focus:border-brand-green focus:bg-white focus:ring-2 focus:ring-brand-green/25"
+                        />
+                      </div>
+                      {expiryInstallerSearch.trim() ? (
+                        <button
+                          type="button"
+                          onClick={() => setExpiryInstallerSearch('')}
+                          className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                          title="Clear search"
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpiryStatusFilter((prev) => ({ ...prev, expired: !prev.expired }))
+                        }
+                        className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-[11px] font-extrabold tracking-tight transition-all ${
+                          expiryStatusFilter.expired
+                            ? 'border-red-300 bg-red-50 text-red-700'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                        title="Toggle expired items"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Expired
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpiryStatusFilter((prev) => ({ ...prev, expiring: !prev.expiring }))
+                        }
+                        className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-[11px] font-extrabold tracking-tight transition-all ${
+                          expiryStatusFilter.expiring
+                            ? 'border-yellow-300 bg-yellow-50 text-yellow-800'
+                            : 'border-slate-200 bg-white text-slate-700'
+                        }`}
+                        title="Toggle expiring soon items"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Expiring soon
+                      </button>
+                      {!expiryStatusFilter.expired && !expiryStatusFilter.expiring ? (
+                        <span className="text-xs font-semibold text-slate-400">No status selected</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {EXPIRY_TYPE_OPTIONS.map((opt: { id: string; label: string; subtitle: string }) => (
+                        <label
+                          key={opt.id}
+                          className={`group inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 cursor-pointer transition-all select-none ${
+                            expiryTypeFilter[opt.id]
+                              ? 'border-brand-green bg-white shadow-[0_1px_0_rgba(16,185,129,0.08)]'
+                              : 'border-slate-200 bg-white'
+                          } hover:border-brand-green/60 justify-start`}
+                          title={opt.subtitle}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={Boolean(expiryTypeFilter[opt.id])}
+                            onChange={(e) =>
+                              setExpiryTypeFilter((prev) => ({ ...prev, [opt.id]: e.target.checked }))
+                            }
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={`inline-flex h-3.5 w-3.5 items-center justify-center rounded border ${
+                              expiryTypeFilter[opt.id] ? 'border-brand-green bg-white' : 'border-slate-300 bg-white'
+                            }`}
+                          >
+                            {expiryTypeFilter[opt.id] ? (
+                              <span className="block h-1.5 w-1.5 rotate-45 border-b-2 border-r-2 border-brand-green mb-0.5" />
+                            ) : null}
+                          </span>
+                          <span
+                            className={`text-[11px] font-extrabold tracking-tight ${
+                              expiryTypeFilter[opt.id] ? 'text-brand-green-dark' : 'text-slate-700'
+                            }`}
+                          >
+                            {opt.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-4">
                   <motion.div
                     whileHover={{ y: -2, transition: { duration: 0.2 } }}
                     className="bg-red-50 border-2 border-red-200 rounded-xl p-5"
@@ -1593,7 +1895,7 @@ function DashboardPageContent() {
                       <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">Expired</p>
                       <XCircle className="w-5 h-5 text-red-600" />
                     </div>
-                    <p className="text-3xl font-bold text-red-600 mb-1">{expirationStats.expired}</p>
+                    <p className="text-3xl font-bold text-red-600 mb-1">{filteredExpirationStats.expired}</p>
                     <p className="text-xs text-red-500">Requires immediate attention</p>
                   </motion.div>
 
@@ -1605,7 +1907,7 @@ function DashboardPageContent() {
                       <p className="text-xs font-semibold text-yellow-700 uppercase tracking-wide">Expiring Soon</p>
                       <AlertTriangle className="w-5 h-5 text-yellow-600" />
                     </div>
-                    <p className="text-3xl font-bold text-yellow-600 mb-1">{expirationStats.expiring}</p>
+                    <p className="text-3xl font-bold text-yellow-600 mb-1">{filteredExpirationStats.expiring}</p>
                     <p className="text-xs text-yellow-500">Needs renewal soon</p>
                   </motion.div>
 
@@ -1617,7 +1919,7 @@ function DashboardPageContent() {
                       <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Total Issues</p>
                       <FileCheck className="w-5 h-5 text-slate-600" />
                     </div>
-                    <p className="text-3xl font-bold text-slate-700 mb-1">{expirationStats.total}</p>
+                    <p className="text-3xl font-bold text-slate-700 mb-1">{filteredExpirationStats.total}</p>
                     <p className="text-xs text-slate-500">Items requiring action</p>
                   </motion.div>
                 </div>
@@ -1627,11 +1929,15 @@ function DashboardPageContent() {
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-brand-green" />
                   </div>
-                ) : expiringItems.length > 0 ? (
+                ) : filteredExpiryItems.length > 0 ? (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-slate-900 mb-4">Installers with Expiring/Expired Items</h3>
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {expiringItems.map((item, idx) => (
+                      {filteredExpiryItems.map(
+                        (
+                          item: { installerId: string; installerName: string; photoUrl?: string | null; items: Array<{ name: string; expiryDate: string; status: 'expired' | 'expiring' }> },
+                          idx: number
+                        ) => (
                         <motion.div
                           key={item.installerId}
                           initial={{ opacity: 0, x: -20 }}
@@ -1642,21 +1948,37 @@ function DashboardPageContent() {
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-brand-green/10 rounded-lg flex items-center justify-center">
-                                <User className="w-5 h-5 text-brand-green" />
+                              <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-brand-green/10 border border-brand-green/20">
+                                {item.photoUrl ? (
+                                  <Image
+                                    src={item.photoUrl}
+                                    alt={item.installerName}
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-xs font-black text-brand-green-dark">
+                                    {getInitialsFromName(item.installerName)}
+                                  </span>
+                                )}
                               </div>
                               <div>
                                 <p className="font-semibold text-slate-900">{item.installerName}</p>
                                 <p className="text-xs text-slate-500">
                                   {item.items.length} item{item.items.length !== 1 ? 's' : ''}{' '}
-                                  {item.items.some((i) => i.status === 'expired') ? 'expired' : 'expiring'}
+                                  {item.items.some((i: { status: 'expired' | 'expiring' }) => i.status === 'expired') ? 'expired' : 'expiring'}
                                 </p>
                               </div>
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-400" />
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {item.items.map((expItem, expIdx) => (
+                            {item.items.map(
+                              (
+                                expItem: { name: string; expiryDate: string; status: 'expired' | 'expiring' },
+                                expIdx: number
+                              ) => (
                               <span
                                 key={expIdx}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
@@ -1716,7 +2038,7 @@ function DashboardPageContent() {
                 value={statusFilter}
                 onChange={(e) => {
                   const newStatus = e.target.value
-                  const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | undefined
+                  const role = normalizedRole as 'ADMIN' | 'MODERATOR' | 'MANAGER' | ''
                   
                   // Validate for moderators - only allow valid statuses
                   if (role === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(newStatus)) {
@@ -1730,7 +2052,7 @@ function DashboardPageContent() {
                 }}
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[120px]"
               >
-                {((session?.user as any)?.role as any) === 'MODERATOR' ? (
+                {normalizedRole === 'MODERATOR' ? (
                   <>
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
@@ -1742,43 +2064,64 @@ function DashboardPageContent() {
                   <>
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
-                    <option value="passed">Qualified</option>
+                    <option value="qualified">Qualified</option>
                     <option value="failed">Not Qualified</option>
                     <option value="active">Active</option>
                     <option value="deactive">Deactive</option>
                   </>
                 )}
               </select>
-              <button
-                onClick={() => {
-                  fetchStats()
-                  fetchInstallers(1)
-                  setCurrentPage(1)
-                }}
-                className="px-3 sm:px-4 py-3 min-w-[44px] min-h-[44px] border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all hover:border-brand-green/30 flex items-center justify-center"
-                aria-label="Refresh"
-              >
-                <RefreshCw className="w-5 h-5 text-slate-600" />
-              </button>
             </div>
-            <div className="flex gap-2 sm:gap-3">
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base"
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              <select
+                value={workroomFilter}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setWorkroomFilter(next)
+                  updateURL({ workroom: next, page: 1 })
+                }}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[160px]"
               >
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Add Installer</span>
-                <span className="sm:hidden">Add</span>
-              </button>
-              <button className="px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-slate-500/30 hover:shadow-xl text-sm sm:text-base">
-                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Export</span>
-              </button>
+                <option value="all">All Workrooms</option>
+                {WORKROOM_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={surfaceFilter}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setSurfaceFilter(next)
+                  updateURL({ surface: next, page: 1 })
+                }}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[170px]"
+              >
+                <option value="all">All Surfaces</option>
+                {FLOORING_SURFACE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {formatPrimarySurfaceLabel(opt) || opt}
+                  </option>
+                ))}
+              </select>
+
+              {normalizedRole !== 'MANAGER' ? (
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base"
+                >
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Add Installer</span>
+                  <span className="sm:hidden">Add</span>
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden lg:-ml-3 lg:-mr-6 xl:-ml-6 xl:-mr-10 2xl:-ml-12 2xl:-mr-16">
           {/* Mobile Card View */}
           <div className="lg:hidden space-y-3 p-4">
             {installers.length === 0 ? (
@@ -1788,7 +2131,20 @@ function DashboardPageContent() {
                 <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
               </div>
             ) : (
-              installers.map((installer) => (
+              installers.map((installer) => {
+                const matchedHelper = installer.matchedStaffMember
+                const displayPhotoUrl = matchedHelper?.photoUrl || installer.photoUrl
+                const displayInitials = matchedHelper
+                  ? getInitials(matchedHelper.firstName, matchedHelper.lastName)
+                  : getInitials(installer.firstName, installer.lastName)
+                const displayAlt = matchedHelper
+                  ? `${matchedHelper.firstName} ${matchedHelper.lastName}`.trim() || 'Helper'
+                  : `${installer.firstName} ${installer.lastName}`.trim()
+                const headsUpItems =
+                  debouncedSearchQuery.trim() && installers.length === 1
+                    ? getInstallerSearchHeadsUp(installer, normalizedRole)
+                    : []
+                return (
                 <div
                   key={installer.id}
                   onClick={() => router.push(`/dashboard/installers/${installer.id}${getReturnURL()}`)}
@@ -1803,7 +2159,7 @@ function DashboardPageContent() {
                         installer.status === 'failed' || installer.status === 'notQualified' ? 'ring-4 ring-red-500' :
                         'ring-4 ring-yellow-500'
                       }`}>
-                        {!installer.photoUrl && (
+                        {!displayPhotoUrl && (
                           <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${
                             installer.status === 'active' ? 'bg-brand-green' :
                             installer.status === 'deactive' ? 'bg-slate-900' :
@@ -1811,13 +2167,13 @@ function DashboardPageContent() {
                             installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-500' :
                             'bg-yellow-500'
                           }`}>
-                            {getInitials(installer.firstName, installer.lastName)}
+                            {displayInitials}
                           </div>
                         )}
-                        {installer.photoUrl && (
+                        {displayPhotoUrl && (
                           <Image
-                            src={installer.photoUrl}
-                            alt={`${installer.firstName} ${installer.lastName}`}
+                            src={displayPhotoUrl}
+                            alt={displayAlt}
                             width={56}
                             height={56}
                             className="w-full h-full object-cover"
@@ -1840,37 +2196,89 @@ function DashboardPageContent() {
                         {installer.firstName} {installer.lastName}
                       </p>
                       <p className="text-xs text-slate-500 truncate mb-2">{installer.email}</p>
+                      {matchedHelper ? (
+                        <p className="mb-2 inline-flex max-w-full items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                          <span className="truncate">
+                            Helper: {matchedHelper.firstName} {matchedHelper.lastName}
+                          </span>
+                        </p>
+                      ) : null}
                       {installer.companyName && (
                         <div className="flex items-center gap-2 mb-2">
                           <Building2 className="w-3 h-3 text-slate-600 flex-shrink-0" />
                           <span className="text-xs font-medium text-slate-600 truncate">{installer.companyName}</span>
                         </div>
                       )}
-                      <div className="mt-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         {getStatusBadge(installer.status)}
+                        {installer.workroom ? (
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
+                            {installer.workroom}
+                          </span>
+                        ) : null}
+                        {formatPrimarySurfaceLabel(installer.primaryFlooringSurface) ? (
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
+                            {formatPrimarySurfaceLabel(installer.primaryFlooringSurface)}
+                          </span>
+                        ) : null}
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-400">
+                          {installer.profileCompletionPercent ?? 0}% complete
+                        </span>
                       </div>
                     </div>
                   </div>
+                  {headsUpItems.length > 0 ? (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-amber-700">Heads up</p>
+                      <div className="flex flex-col gap-2">
+                        {headsUpItems.map((item, idx) => (
+                          <div
+                            key={`${item.label}-${idx}`}
+                            className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs ${
+                              item.type === 'remark'
+                                ? 'border-amber-200 bg-white text-slate-700'
+                                : item.type === 'expired'
+                                  ? 'border-red-200 bg-red-50 text-red-700'
+                                  : 'border-yellow-200 bg-yellow-50 text-yellow-800'
+                            }`}
+                          >
+                            {item.type === 'remark' ? (
+                              <StickyNote className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-700" />
+                            ) : (
+                              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-bold leading-snug">{item.label}</p>
+                              <p className="mt-0.5 break-words leading-snug">{item.detail}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ))
+              )})
             )}
           </div>
 
           {/* Desktop Table View */}
           <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full min-w-[800px]">
+            <table className="w-full min-w-[1220px]">
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Installer</th>
+                  <th className="pl-8 pr-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Installer</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Workroom</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Surface</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Completion</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {installers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-16 text-center">
+                    <td colSpan={7} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Users className="w-12 h-12 text-slate-300" />
                         <p className="text-slate-500 font-medium">No installers found</p>
@@ -1879,13 +2287,26 @@ function DashboardPageContent() {
                     </td>
                   </tr>
                 ) : (
-                  installers.map((installer) => (
+                  installers.map((installer) => {
+                    const matchedHelper = installer.matchedStaffMember
+                    const displayPhotoUrl = matchedHelper?.photoUrl || installer.photoUrl
+                    const displayInitials = matchedHelper
+                      ? getInitials(matchedHelper.firstName, matchedHelper.lastName)
+                      : getInitials(installer.firstName, installer.lastName)
+                    const displayAlt = matchedHelper
+                      ? `${matchedHelper.firstName} ${matchedHelper.lastName}`.trim() || 'Helper'
+                      : `${installer.firstName} ${installer.lastName}`.trim()
+                    const headsUpItems =
+                      debouncedSearchQuery.trim() && installers.length === 1
+                        ? getInstallerSearchHeadsUp(installer, normalizedRole)
+                        : []
+                    return (
+                    <Fragment key={installer.id}>
                     <tr 
-                      key={installer.id} 
                       className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-emerald-50/30 transition-all duration-200 cursor-pointer group"
                       onClick={() => router.push(`/dashboard/installers/${installer.id}${getReturnURL()}`)}
                     >
-                      <td className="px-6 py-4">
+                      <td className="pl-8 pr-6 py-4">
                         <div className="flex items-center gap-4">
                           <div className="relative">
                             {/* Status-based border color */}
@@ -1897,7 +2318,7 @@ function DashboardPageContent() {
                               'ring-4 ring-yellow-500'
                             }`}>
                               {/* Fallback initials - only show when no photo */}
-                              {!installer.photoUrl && (
+                              {!displayPhotoUrl && (
                                 <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${
                                   installer.status === 'active' ? 'bg-brand-green' :
                                   installer.status === 'deactive' ? 'bg-slate-900' :
@@ -1905,14 +2326,14 @@ function DashboardPageContent() {
                                   installer.status === 'failed' || installer.status === 'notQualified' ? 'bg-red-500' :
                                   'bg-yellow-500'
                                 }`}>
-                              {getInitials(installer.firstName, installer.lastName)}
+                              {displayInitials}
                             </div>
                               )}
                             {/* Photo overlay - shows if available and loads successfully */}
-                            {installer.photoUrl && (
+                            {displayPhotoUrl && (
                               <Image
-                                src={installer.photoUrl}
-                                alt={`${installer.firstName} ${installer.lastName}`}
+                                src={displayPhotoUrl}
+                                alt={displayAlt}
                                 width={48}
                                 height={48}
                                 className="w-full h-full object-cover"
@@ -1936,6 +2357,11 @@ function DashboardPageContent() {
                               {installer.firstName} {installer.lastName}
                             </p>
                             <p className="text-sm text-slate-500">{installer.email}</p>
+                            {matchedHelper ? (
+                              <p className="mt-1 max-w-56 truncate text-xs font-semibold text-blue-700">
+                                Helper: {matchedHelper.firstName} {matchedHelper.lastName}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -1954,6 +2380,29 @@ function DashboardPageContent() {
                       <td className="px-6 py-4">
                         {getStatusBadge(installer.status)}
                       </td>
+                      <td className="px-6 py-4">
+                        {installer.workroom ? (
+                          <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{installer.workroom}</span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {installer.primaryFlooringSurface ? (
+                          <span className="text-sm font-medium text-slate-700">
+                            {formatPrimarySurfaceLabel(installer.primaryFlooringSurface) || '-'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                          <span className="text-sm font-semibold text-slate-400">
+                            {installer.profileCompletionPercent ?? 0}%
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <button 
@@ -1962,7 +2411,7 @@ function DashboardPageContent() {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          {((session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR') && (
+                          {(normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR') && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1977,7 +2426,42 @@ function DashboardPageContent() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    {headsUpItems.length > 0 ? (
+                      <tr className="bg-white">
+                        <td colSpan={7} className="px-8 py-3">
+                          <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wide text-amber-700">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Heads up
+                          </div>
+                          <div className="grid gap-2 xl:grid-cols-2">
+                            {headsUpItems.map((item, idx) => (
+                              <div
+                                key={`${item.label}-${idx}`}
+                                className={`flex min-w-0 items-start gap-2 rounded-xl border px-3 py-2 text-xs shadow-sm ${
+                                  item.type === 'remark'
+                                    ? 'border-amber-200 bg-white text-slate-700'
+                                    : item.type === 'expired'
+                                      ? 'border-red-200 bg-red-50 text-red-700'
+                                      : 'border-yellow-200 bg-yellow-50 text-yellow-800'
+                                }`}
+                              >
+                                {item.type === 'remark' ? (
+                                  <StickyNote className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-700" />
+                                ) : (
+                                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-black leading-snug">{item.label}</p>
+                                  <p className="mt-0.5 line-clamp-2 break-words font-medium leading-snug">{item.detail}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                    </Fragment>
+                  )})
                 )}
               </tbody>
             </table>
@@ -1985,7 +2469,7 @@ function DashboardPageContent() {
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+            <div className="grid grid-cols-1 gap-3 px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white lg:grid-cols-[1fr_auto_1fr] lg:items-center">
               <div className="text-sm text-slate-600">
                 Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
                 <span className="font-semibold text-slate-900">
@@ -1994,7 +2478,8 @@ function DashboardPageContent() {
                 of <span className="font-semibold text-slate-900">{totalCount}</span> installers
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex w-full justify-center overflow-x-auto lg:col-start-2">
+                <div className="flex min-w-max items-center gap-2 px-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
@@ -2004,23 +2489,21 @@ function DashboardPageContent() {
                 </button>
                 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  {Array.from({ length: Math.min(20, totalPages) }, (_, i) => {
+                    const visiblePageCount = Math.min(20, totalPages)
+                    const halfWindow = Math.floor(visiblePageCount / 2)
+                    const startPage =
+                      totalPages <= visiblePageCount
+                        ? 1
+                        : Math.max(1, Math.min(currentPage - halfWindow, totalPages - visiblePageCount + 1))
                     let pageNum: number
-                    if (totalPages <= 5) {
-                      pageNum = i + 1
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
+                    pageNum = startPage + i
                     
                     return (
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                        className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${
                           currentPage === pageNum
                             ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
                             : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
@@ -2039,7 +2522,10 @@ function DashboardPageContent() {
                 >
                   <ChevronRight className="w-5 h-5 text-slate-600" />
                 </button>
+                </div>
               </div>
+
+              <div className="hidden lg:block" />
             </div>
           )}
         </div>
@@ -4772,10 +5258,7 @@ export default function DashboardPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading dashboard...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-600" />
       </div>
     }>
       <DashboardPageContent />

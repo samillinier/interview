@@ -99,7 +99,7 @@ export const authOptions: NextAuthOptions = {
         })
 
         // Only allow ADMIN role (not MODERATOR) to access property portal
-        if (admin && admin.isActive && (admin as any).role === 'ADMIN') {
+        if (admin && admin.isActive && ((admin as any).role === 'ADMIN' || (admin as any).role === 'SUPER_ADMIN')) {
           console.log('✅ Admin authorized (admin database):', email)
           return true
         }
@@ -167,6 +167,18 @@ export const authOptions: NextAuthOptions = {
       } catch (error) {
         console.error('❌ Error checking admin authorization:', error)
         
+        // Local dev safeguard:
+        // If DB connectivity is temporarily unavailable, don't block OAuth sign-in.
+        // This keeps local development moving while Neon/DNS issues are resolved.
+        const isLocalDevAuth =
+          (process.env.NEXTAUTH_URL || '').includes('localhost') ||
+          (process.env.NEXT_PUBLIC_APP_URL || '').includes('localhost')
+
+        if (isLocalDevAuth) {
+          console.log('✅ User authorized (local dev fallback):', email)
+          return true
+        }
+
         // Fallback to hardcoded list if database check fails
         if (FALLBACK_ALLOWED_EMAILS.includes(email)) {
           console.log('✅ User authorized (fallback due to DB error):', email)
@@ -225,9 +237,10 @@ export const authOptions: NextAuthOptions = {
           const admin = (await prisma.admin.findUnique({
             where: { email },
           })) as any
-          if (admin?.isActive && (admin.role === 'ADMIN' || admin.role === 'MANAGER' || admin.role === 'MODERATOR')) {
-            ;(token as any).role = admin.role
-            ;(token as any).isAdmin = admin.role === 'ADMIN'
+          const normalizedRole = String(admin?.role || '').toUpperCase()
+          if (admin?.isActive && (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR')) {
+            ;(token as any).role = normalizedRole
+            ;(token as any).isAdmin = normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
             // Only set userType to admin if they're NOT a property user
             // This ensures property users go to property dashboard
             if (!(token as any).isProperty) {

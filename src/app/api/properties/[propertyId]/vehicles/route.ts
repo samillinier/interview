@@ -4,6 +4,15 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isAdmin } from '@/lib/property-access'
 
+function normalizeVehicleCategory(input: unknown): string | null {
+  if (input === undefined || input === null) return null
+  const value = String(input).trim().toLowerCase()
+  if (!value) return null
+  if (value === 'cat') return 'car'
+  if (value === 'car' || value === 'forklift') return value
+  return null
+}
+
 // GET - Get all vehicles for a property
 export async function GET(
   request: NextRequest,
@@ -92,6 +101,7 @@ export async function POST(
 
     const body = await request.json()
     const {
+      category,
       vehicleYear,
       vehicleMake,
       vehicleModel,
@@ -108,6 +118,7 @@ export async function POST(
     const vehicle = await prisma.vehicle.create({
       data: {
         propertyId: params.propertyId,
+        category: normalizeVehicleCategory(category),
         vehicleYear: vehicleYear ? parseInt(vehicleYear) : null,
         vehicleMake,
         vehicleModel,

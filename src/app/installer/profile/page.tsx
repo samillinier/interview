@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { 
   User, 
@@ -38,7 +38,8 @@ import {
   Trash2,
   Users,
   ExternalLink,
-  HelpCircle
+  HelpCircle,
+  ClipboardList
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -47,6 +48,8 @@ import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { InstallerBarcode } from '@/components/InstallerBarcode'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
 
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
@@ -545,105 +548,63 @@ export default function InstallerProfilePage() {
     }
   }
   
-  // Calculate profile completion percentage
-  const calculateProfileCompletion = (): number => {
-    if (!installer) return 0
-    
-    const fields = [
-      // Basic Info (20%)
-      installer.firstName,
-      installer.lastName,
-      installer.phone,
-      installer.email,
-      installer.photoUrl,
-      // Company Info (15%)
-      installer.companyName,
-      installer.companyTitle,
-      installer.companyStreetAddress,
-      installer.companyCity,
-      installer.companyState,
-      installer.companyZipCode,
-      installer.companyCounty,
-      installer.companyAddress,
-      // Experience & Skills (10%)
-      installer.yearsOfExperience,
-      installer.flooringSkills,
-      installer.hasOwnCrew,
-      installer.crewSize,
-      // Insurance & Registration (15%)
-      installer.hasInsurance,
-      installer.insuranceType,
-      installer.hasLicense,
-      installer.licenseNumber,
-      installer.hasGeneralLiability,
-      installer.hasCommercialAutoLiability,
-      installer.hasWorkersComp,
-      installer.isSunbizRegistered,
-      installer.hasBusinessLicense,
-      // Tools & Equipment (5%)
-      installer.hasOwnTools,
-      installer.toolsDescription,
-      installer.hasVehicle,
-      installer.vehicleDescription,
-      // Travel & Availability (10%)
-      installer.willingToTravel,
-      installer.maxTravelDistance,
-      installer.canStartImmediately,
-      installer.preferredStartDate,
-      installer.mondayToFridayAvailability,
-      installer.saturdayAvailability,
-      // Carpet Installation (5%)
-      installer.wantsToAddCarpet !== undefined,
-      installer.installsStretchInCarpet !== undefined,
-      installer.dailyStretchInCarpetSqft,
-      installer.installsGlueDownCarpet !== undefined,
-      // Hardwood Installation (5%)
-      installer.wantsToAddHardwood !== undefined,
-      installer.installsNailDownSolidHardwood !== undefined,
-      installer.dailyNailDownSolidHardwoodSqft,
-      installer.installsStapleDownEngineeredHardwood !== undefined,
-      // Laminate Installation (5%)
-      installer.wantsToAddLaminate !== undefined,
-      installer.dailyLaminateSqft,
-      installer.installsLaminateOnStairs !== undefined,
-      // Vinyl Installation (5%)
-      installer.wantsToAddVinyl !== undefined,
-      installer.installsSheetVinyl !== undefined,
-      installer.installsLuxuryVinylPlank !== undefined,
-      installer.dailyLuxuryVinylPlankSqft,
-      installer.installsLuxuryVinylTile !== undefined,
-      installer.installsVinylCompositionTile !== undefined,
-      installer.dailyVinylCompositionTileSqft,
-      // Tile Installation (5%)
-      installer.wantsToAddTile !== undefined,
-      installer.installsCeramicTile !== undefined,
-      installer.dailyCeramicTileSqft,
-      installer.installsPorcelainTile !== undefined,
-      installer.dailyPorcelainTileSqft,
-      installer.installsStoneTile !== undefined,
-      installer.dailyStoneTileSqft,
-      installer.offersTileRemoval !== undefined,
-      installer.installsTileBacksplash !== undefined,
-      installer.dailyTileBacksplashSqft,
-      // Additional Work (5%)
-      installer.movesFurniture !== undefined,
-      installer.installsTrim !== undefined,
+  const profilePoints = useMemo(() => {
+    const safeStr = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+    const isTruthyStr = (v: unknown) => safeStr(v).length > 0
+    const hasDoc = (type: string) =>
+      Array.isArray(documents) && documents.some((d: any) => String(d?.type || '') === type)
+
+    if (!installer) {
+      return {
+        earnedPoints: 0,
+        totalPoints: 105,
+        percent: 0,
+        items: [] as Array<{ key: string; label: string; points: number; earned: boolean; optional?: boolean }>,
+      }
+    }
+
+    const coreProfileComplete =
+      isTruthyStr(installer.firstName) &&
+      isTruthyStr(installer.lastName) &&
+      isTruthyStr(installer.phone) &&
+      (isTruthyStr(installer.companyName) || isTruthyStr(installer.companyAddress)) &&
+      isTruthyStr(installer.companyStreetAddress) &&
+      isTruthyStr(installer.companyCity) &&
+      isTruthyStr(installer.companyState) &&
+      isTruthyStr(installer.companyZipCode)
+
+    const items: Array<{ key: string; label: string; points: number; earned: boolean; optional?: boolean }> = [
+      { key: 'signup', label: 'Sign up bonus', points: 50, earned: true },
+      { key: 'photo', label: 'Profile photo', points: 10, earned: Boolean(installer.photoUrl) },
+      { key: 'profile', label: 'Profile completion', points: 10, earned: coreProfileComplete },
+      {
+        key: 'sunbiz',
+        label: 'Sunbiz',
+        points: 5,
+        earned: Boolean((installer as any).isSunbizActive || (installer as any).isSunbizRegistered || hasDoc('sunbiz')),
+      },
+      { key: 'coi', label: 'COI (General Liability)', points: 10, earned: hasDoc('liability_insurance') || Boolean((installer as any).hasGeneralLiability) },
+      {
+        key: 'wce',
+        label: "WCE (Workers' Comp Exemption)",
+        points: 5,
+        earned: hasDoc('workers_comp_certificate') || Boolean((installer as any).hasWorkersCompExemption),
+      },
+      { key: 'wc', label: "WC (Workers' Comp)", points: 5, earned: hasDoc('workers_comp') || Boolean((installer as any).hasWorkersComp) },
+      {
+        key: 'helpers',
+        label: 'Optional: Add helpers',
+        points: 5,
+        optional: true,
+        earned: Array.isArray(staffMembers) && staffMembers.length > 0,
+      },
     ]
-    
-    const filledFields = fields.filter(field => {
-      if (field === undefined || field === null) return false
-      if (typeof field === 'string' && field.trim() === '') return false
-      if (typeof field === 'number' && field === 0) return false
-      return true
-    }).length
-    
-    const totalFields = fields.length
-    const percentage = Math.round((filledFields / totalFields) * 100)
-    
-    return Math.min(percentage, 100)
-  }
-  
-  const profileCompletion = installer ? calculateProfileCompletion() : 0
+
+    const earnedPoints = items.reduce((sum, it) => sum + (it.earned ? it.points : 0), 0)
+    const totalPoints = items.reduce((sum, it) => sum + it.points, 0)
+    const percent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0
+    return { earnedPoints, totalPoints, percent: Math.min(percent, 100), items }
+  }, [installer, documents, staffMembers])
   // Additional editable fields
   const [yearsOfExperience, setYearsOfExperience] = useState<number | undefined>(undefined)
   const [hasOwnCrew, setHasOwnCrew] = useState<boolean>(false)
@@ -1894,7 +1855,7 @@ export default function InstallerProfilePage() {
         // Update installer with the response data
         setInstaller(data.installer)
         setShowNDAModal(false)
-        setSuccess('NDA agreement recorded successfully!')
+        setSuccess(data.message || 'NDA agreement recorded successfully!')
         setTimeout(() => setSuccess(''), 3000)
       } else {
         throw new Error(data.error || 'Failed to record NDA agreement')
@@ -1912,10 +1873,7 @@ export default function InstallerProfilePage() {
       <div className="min-h-screen interview-gradient">
         <InstallerMobileMenu pathname={pathname} />
         <div className="pt-16 flex items-center justify-center min-h-screen px-4">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-            <p className="text-primary-600">Loading profile...</p>
-          </div>
+          <LogoHeartbeatLoader />
         </div>
       </div>
     )
@@ -2029,6 +1987,15 @@ export default function InstallerProfilePage() {
             {sidebarOpen && <span>Referrals</span>}
           </Link>
           <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
+          </Link>
+          <Link
             href="/installer/notifications"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
@@ -2102,19 +2069,19 @@ export default function InstallerProfilePage() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-semibold text-slate-700">Profile Completion</p>
-                        <p className="text-lg font-bold bg-gradient-to-br from-brand-green to-brand-green-dark bg-clip-text text-transparent">
-                          {profileCompletion}%
+                        <p className="text-lg font-bold bg-gradient-to-br from-brand-green to-brand-green-dark bg-clip-text text-transparent leading-tight">
+                          {profilePoints.percent}%
                         </p>
                       </div>
                       <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${profileCompletion}%` }}
+                          animate={{ width: `${profilePoints.percent}%` }}
                           transition={{ duration: 0.8, ease: "easeOut" }}
                           className={`h-full rounded-full ${
-                            profileCompletion < 30
+                            profilePoints.percent < 30
                               ? 'bg-gradient-to-r from-red-400 to-red-500'
-                              : profileCompletion < 60
+                              : profilePoints.percent < 60
                               ? 'bg-gradient-to-r from-amber-400 to-amber-500'
                               : 'bg-gradient-to-r from-brand-green to-brand-green-dark'
                           } shadow-lg`}
@@ -2122,7 +2089,7 @@ export default function InstallerProfilePage() {
                       </div>
                     </div>
                     <div className="flex-shrink-0">
-                      {profileCompletion === 100 && (
+                      {profilePoints.percent === 100 && (
                         <div className="w-12 h-12 rounded-full bg-success-100 flex items-center justify-center">
                           <CheckCircle2 className="w-6 h-6 text-success-600" />
                         </div>
@@ -2565,19 +2532,7 @@ export default function InstallerProfilePage() {
                     />
                   ) : (
                     installer?.digitalId ? (
-                      installer.digitalId.startsWith('http://') || installer.digitalId.startsWith('https://') ? (
-                        <a
-                          href={installer.digitalId}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-700 text-lg hover:underline transition-colors"
-                        >
-                          <span className="break-all">{installer.digitalId}</span>
-                          <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                        </a>
-                      ) : (
-                        <p className="font-semibold text-slate-900 text-lg">{installer.digitalId}</p>
-                      )
+                      <DigitalIdDisplay value={installer.digitalId} />
                     ) : (
                       <span className="text-slate-400 italic">Not provided</span>
                     )
@@ -3224,7 +3179,7 @@ export default function InstallerProfilePage() {
                         <Shield className="w-5 h-5 text-brand-green" />
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Workers Compensation</p>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Workers Comp Exemption</p>
                         {isEditing ? (
                           <div className="space-y-2">
                             <div className="flex items-center gap-4">
@@ -3316,7 +3271,7 @@ export default function InstallerProfilePage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-brand-green" />
-                  Business Tax Receipt
+                  Business Tax Receipt (BTR)
                 </h3>
 
                 <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
@@ -3524,7 +3479,7 @@ export default function InstallerProfilePage() {
                   </h3>
                   <div className="grid md:grid-cols-3 gap-4">
                     <MultiExpirationDatePicker
-                      label="LLRP"
+                      label="LLRP & Lead Certificate"
                       values={llrpExpiryDates}
                       onChange={(next) => {
                         setLlrpExpiryDates(next)
@@ -3540,7 +3495,7 @@ export default function InstallerProfilePage() {
                       isEditing={isEditing}
                     />
                     <MultiExpirationDatePicker
-                      label="Workers Compensation Exem Certificate"
+                      label="Workers Comp Exemption"
                       values={workersCompExemExpiryDates}
                       onChange={(next) => {
                         setWorkersCompExemExpiryDates(next)
@@ -3566,7 +3521,7 @@ export default function InstallerProfilePage() {
                       isEditing={isEditing}
                     />
                     <MultiExpirationDatePicker
-                      label="Automobile Liability"
+                      label="Auto Insurance"
                       values={automobileLiabilityExpiryDates}
                       onChange={(next) => {
                         setAutomobileLiabilityExpiryDates(next)
@@ -3576,7 +3531,7 @@ export default function InstallerProfilePage() {
                       addLabel="Add policy date"
                     />
                     <ExpirationDatePicker
-                      label="Employer's Liability"
+                      label="Workers' Compensation"
                       value={employersLiabilityExpiry}
                       onChange={setEmployersLiabilityExpiry}
                       isEditing={isEditing}
@@ -3709,18 +3664,7 @@ export default function InstallerProfilePage() {
                       {staff.digitalId && (
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <CreditCard className="w-4 h-4 text-slate-400" />
-                          {staff.digitalId.startsWith('http://') || staff.digitalId.startsWith('https://') ? (
-                            <a
-                              href={staff.digitalId}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 hover:underline"
-                            >
-                              Digital ID
-                            </a>
-                          ) : (
-                            <span className="truncate">{staff.digitalId}</span>
-                          )}
+                          <DigitalIdDisplay value={staff.digitalId} size="sm" className="min-w-0 flex-1" />
                         </div>
                       )}
                       {staff.expirationDate && (
@@ -6883,7 +6827,7 @@ export default function InstallerProfilePage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Workers Comp</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Workers Comp Exemption</label>
                       <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input

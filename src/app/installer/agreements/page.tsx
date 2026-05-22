@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Bell,
   CreditCard,
+  ClipboardList,
   ExternalLink,
   FileText,
   FileCheck,
@@ -21,7 +22,17 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+
+/** Matches Adobe embed: `...esignWidget?wid=...*&hosted=false` (see generate-independent-contractor-contract API). */
+const DEFAULT_INDEPENDENT_CONTRACTOR_ADOBE_WIDGET =
+  'https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhDs4AEhql4PJpxJSBr3jAUYbOPkCUDhFvx9stwDoWbP6-TE_Cn8JqgWp0ME6NGCegg*'
+
+function adobeWidgetUrlWithHostedFalse(url: string) {
+  if (/[?&]hosted=/.test(url)) return url
+  return url.includes('?') ? `${url}&hosted=false` : `${url}?hosted=false`
+}
 
 type InstallerProfile = {
   id: string
@@ -40,6 +51,17 @@ export default function InstallerAgreementsPage() {
   const [installer, setInstaller] = useState<InstallerProfile | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
   const [error, setError] = useState('')
+  const [independentContractorServices, setIndependentContractorServices] = useState<{
+    /** Primary card link: completed PDF from admin if set, else signing form */
+    link: string
+    signFormLink: string | null
+    completedLink: string | null
+    status: string
+    title: string
+  } | null>(null)
+  const [uploadedAgreements, setUploadedAgreements] = useState<
+    Array<{ id: string; title: string; fileUrl: string; createdAt?: string | null }>
+  >([])
 
   useEffect(() => {
     const run = async () => {
@@ -74,6 +96,56 @@ export default function InstallerAgreementsPage() {
           setInstaller(profileData.installer)
         }
 
+        // Best-effort: load generated Independent Contractor Services Agreement link
+        // so installers can sign the exact prefilled document.
+        try {
+          const agreementRes = await fetch(`/api/installers/${id}/agreements/independent-contractor-services`, {
+            headers: { Authorization: `Bearer ${tok}` },
+          })
+          if (agreementRes.ok) {
+            const agreementData = await agreementRes.json().catch(() => null)
+            const redirectUrl = agreementData?.agreement?.payload?.adobe?.redirectUrl
+            const completedUrl = agreementData?.agreement?.payload?.adobe?.signedDocumentUrl
+            if (redirectUrl || completedUrl) {
+              const sign = redirectUrl ? String(redirectUrl) : null
+              const done = completedUrl ? String(completedUrl) : null
+              setIndependentContractorServices({
+                link: done || sign || '',
+                signFormLink: sign,
+                completedLink: done,
+                status: agreementData?.agreement?.status || 'draft',
+                title: 'Independent Contractor Services Agreement',
+              })
+            }
+          }
+        } catch {
+          // ignore, fallback to static card below
+        }
+
+        // Admin-uploaded agreements (read-only for installer)
+        try {
+          const agreementsRes = await fetch(`/api/installers/${id}/agreements`, {
+            headers: { Authorization: `Bearer ${tok}` },
+            cache: 'no-store',
+          })
+          if (agreementsRes.ok) {
+            const agreementsData = await agreementsRes.json().catch(() => null)
+            const list = Array.isArray(agreementsData?.agreements) ? agreementsData.agreements : []
+            const uploaded = list
+              .filter((a: any) => typeof a?.type === 'string' && a.type.startsWith('admin-uploaded-agreement:'))
+              .map((a: any) => ({
+                id: String(a.id),
+                title: String(a?.payload?.title || 'Uploaded Agreement'),
+                fileUrl: String(a?.payload?.fileUrl || ''),
+                createdAt: a?.createdAt ? String(a.createdAt) : null,
+              }))
+              .filter((a: any) => a.fileUrl)
+            setUploadedAgreements(uploaded)
+          }
+        } catch {
+          // ignore
+        }
+
         try {
           const nRes = await fetch(`/api/notifications/count?installerId=${id}`, {
             headers: { Authorization: `Bearer ${tok}` },
@@ -95,10 +167,7 @@ export default function InstallerAgreementsPage() {
   if (checking) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading…</p>
-        </div>
+        <LogoHeartbeatLoader size={72} />
       </div>
     )
   }
@@ -168,6 +237,15 @@ export default function InstallerAgreementsPage() {
           >
             <ExternalLink className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link
             href="/installer/notifications"
@@ -282,7 +360,7 @@ export default function InstallerAgreementsPage() {
               </a>
 
               <a
-                href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhAd0WrFu09RPnBzKPqIax8km7WWIE8tVGYIBPYHGAcUxfksKfAtUS9e0QrNNL0Uk6I*"
+                href={DEFAULT_INDEPENDENT_CONTRACTOR_ADOBE_WIDGET}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
@@ -302,6 +380,58 @@ export default function InstallerAgreementsPage() {
                   <ExternalLink className="w-4 h-4" />
                 </div>
               </a>
+
+              {independentContractorServices?.link && (
+                <div className="rounded-xl border border-slate-200 p-3.5 sm:p-4 space-y-3">
+                  <a
+                    href={independentContractorServices.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-start gap-3 sm:gap-4 rounded-xl hover:bg-slate-50 transition-colors -m-1 p-1"
+                  >
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start gap-2">
+                        <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">
+                          {independentContractorServices.title}
+                        </div>
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                            independentContractorServices.status === 'approved'
+                              ? 'bg-success-100 border-success-200 text-success-700'
+                              : 'bg-warning-100 border-warning-200 text-warning-700'
+                          }`}
+                        >
+                          {independentContractorServices.status === 'approved'
+                            ? 'Completed'
+                            : 'Pending Approval'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-slate-600 mt-1 leading-snug">
+                        {independentContractorServices.completedLink
+                          ? 'View your signed Independent Contractor Services Agreement (saved copy).'
+                          : 'Open your prefilled agreement to sign in Adobe.'}
+                      </div>
+                      {independentContractorServices.completedLink && (
+                        <a
+                          href={independentContractorServices.completedLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand-green hover:text-brand-green-dark underline"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          View Agreement
+                        </a>
+                      )}
+                    </div>
+                    <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1 flex-shrink-0 self-start">
+                      <ExternalLink className="w-4 h-4" />
+                    </div>
+                  </a>
+                </div>
+              )}
 
               <Link
                 href="/installer/agreements/nda"
@@ -327,6 +457,43 @@ export default function InstallerAgreementsPage() {
                 </div>
                 <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex-shrink-0 self-start">→</div>
               </Link>
+
+              {uploadedAgreements.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-bold text-slate-900">Uploaded by Admin</div>
+                    <span className="text-xs font-semibold text-slate-500">{uploadedAgreements.length}</span>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {uploadedAgreements.map((a) => (
+                      <a
+                        key={a.id}
+                        href={a.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-brand-green/40 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                          <FileCheck className="w-5 h-5 text-brand-green" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">
+                            {a.title}
+                          </div>
+                          {a.createdAt ? (
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              Uploaded: {new Date(a.createdAt).toLocaleDateString()}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="ml-1 text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1 flex-shrink-0 self-start">
+                          <ExternalLink className="w-4 h-4" />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>

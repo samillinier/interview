@@ -12,9 +12,10 @@ import {
   HelpCircle,
   Building2,
   Car,
-  Package,
+  Armchair,
   Settings,
-  Shield
+  Shield,
+  ClipboardCheck
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -22,6 +23,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 export default function PropertyHelpPage() {
   const { data: session, status } = useSession()
@@ -52,7 +55,7 @@ export default function PropertyHelpPage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-brand-green animate-spin" />
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -106,8 +109,17 @@ export default function PropertyHelpPage() {
             href="/property/inventory"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Inventory</span>}
+            <Armchair className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Equipment</span>}
+          </Link>
+          <Link
+            href="/property/safety-walk"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Safety Walk</span>}
           </Link>
           <Link
             href="/property/help"
@@ -167,11 +179,10 @@ export default function PropertyHelpPage() {
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="px-4 lg:px-6 py-4">
-          </div>
+          <div className={`pr-4 lg:px-6 py-4 ${propertyMobileSafeLeftPad}`} />
         </header>
 
-        <main className="p-4 lg:p-6 pt-16 lg:pt-6">
+        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

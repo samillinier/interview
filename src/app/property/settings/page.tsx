@@ -19,18 +19,21 @@ import {
   Shield,
   Building2,
   Car,
-  Package,
+  Armchair,
   HelpCircle,
   LayoutDashboard,
   Menu,
   X,
   LogOut,
+  ClipboardCheck,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface PropertyUser {
   id: string
@@ -44,23 +47,12 @@ interface PropertyUser {
   companyAddress: string | null
 }
 
-interface AdminUser {
-  id: string
-  email: string
-  name: string | null
-  role: 'ADMIN' | 'MODERATOR'
-  isActive: boolean
-  createdAt: string
-  createdBy: string | null
-}
-
 export default function PropertySettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [properties, setProperties] = useState<PropertyUser[]>([])
-  const [admins, setAdmins] = useState<AdminUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -126,7 +118,6 @@ export default function PropertySettingsPage() {
       const data = await response.json()
       console.log('Fetched properties data:', data)
       setProperties(data.properties || [])
-      setAdmins(data.admins || [])
     } catch (err: any) {
       console.error('Error fetching properties:', err)
       setError(err.message || 'Failed to load property users. Please try refreshing the page.')
@@ -247,10 +238,7 @@ export default function PropertySettingsPage() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading settings...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -317,8 +305,17 @@ export default function PropertySettingsPage() {
             href="/property/inventory"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Inventory</span>}
+            <Armchair className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Equipment</span>}
+          </Link>
+          <Link
+            href="/property/safety-walk"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Safety Walk</span>}
           </Link>
           <Link
             href="/property/help"
@@ -382,7 +379,7 @@ export default function PropertySettingsPage() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="pr-4 pl-16 lg:px-6 py-6">
+          <div className={`pr-4 lg:px-6 py-6 ${propertyMobileSafeLeftPad}`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center">
                 <Settings className="w-6 h-6 text-brand-green" />
@@ -395,7 +392,7 @@ export default function PropertySettingsPage() {
           </div>
         </header>
 
-        <main className="p-6 lg:p-8 max-w-6xl mx-auto">
+        <main className={`p-6 lg:p-8 max-w-6xl mx-auto ${propertyMobileSafeLeftPad}`}>
         {success && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -430,8 +427,10 @@ export default function PropertySettingsPage() {
                 <Shield className="w-6 h-6 text-brand-green" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Property Users & Admins</h2>
-                <p className="text-sm text-slate-500">Manage property users and admins who can access the portal</p>
+                <h2 className="text-2xl font-bold text-slate-900">Property Users</h2>
+                <p className="text-sm text-slate-500">
+                  Manage property portal accounts. Dashboard administrator accounts are managed in PRM Settings.
+                </p>
               </div>
             </div>
             <button
@@ -443,8 +442,8 @@ export default function PropertySettingsPage() {
             </button>
           </div>
 
-          {/* Combined List */}
-          {properties.length === 0 && admins.length === 0 ? (
+          {/* Property users list */}
+          {properties.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 font-medium mb-2">No users found</p>
@@ -546,64 +545,6 @@ export default function PropertySettingsPage() {
                       <Trash2 className="w-5 h-5" />
                     )}
                   </button>
-                </motion.div>
-              ))}
-              
-              {/* Admins */}
-              {admins.map((admin) => (
-                <motion.div
-                  key={`admin-${admin.id}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200 hover:bg-blue-100 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      admin.isActive ? 'bg-blue-500/10' : 'bg-slate-200'
-                    }`}>
-                      <Shield className={`w-6 h-6 ${admin.isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-slate-900">
-                          {admin.name || admin.email.split('@')[0]}
-                        </p>
-                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-500/10 text-blue-700">
-                          Admin
-                        </span>
-                        {admin.isActive ? (
-                          <span className="px-2 py-0.5 bg-success-100 text-success-700 text-xs font-semibold rounded-full">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs font-semibold rounded-full">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-4 h-4" />
-                          <span className="truncate">{admin.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            Added {new Date(admin.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 pr-2">
-                    <span className="px-3 py-2 border border-blue-300 rounded-lg text-sm bg-white text-blue-700 font-medium">
-                      Admin Access
-                    </span>
-                  </div>
                 </motion.div>
               ))}
             </div>

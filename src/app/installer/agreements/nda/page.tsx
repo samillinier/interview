@@ -9,6 +9,7 @@ import {
   Bell,
   CheckCircle2,
   CreditCard,
+  ClipboardList,
   ExternalLink,
   FileText,
   LayoutDashboard,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 type InstallerProfile = {
   id: string
@@ -121,7 +123,7 @@ export default function NDAPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to record NDA agreement')
 
       setInstaller(data.installer)
-      setSuccess('NDA agreement recorded successfully!')
+      setSuccess(data.message || 'NDA agreement recorded successfully!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (e: any) {
       setError(e.message || 'Failed to record NDA agreement. Please try again.')
@@ -133,10 +135,7 @@ export default function NDAPage() {
   if (loading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading NDA…</p>
-        </div>
+        <LogoHeartbeatLoader size={72} />
       </div>
     )
   }
@@ -196,6 +195,15 @@ export default function NDAPage() {
           <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <ExternalLink className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5 flex-shrink-0" />

@@ -25,20 +25,27 @@ import {
   ExternalLink,
   Clock,
   LogOut,
-  ChevronRight,
+  FileCheck,
   Building2,
   RefreshCw,
-  Activity
+  Activity,
+  FileText,
+  ClipboardList,
+  ClipboardCheck,
+  Megaphone,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface Remark {
   date: string | null
   note: string
   createdAt: string
+  source?: string
 }
 
 interface InstallerWithRemarks {
@@ -49,7 +56,10 @@ interface InstallerWithRemarks {
   phone: string | null
   status: string
   companyName: string | null
+  photoUrl?: string | null
   remarksCount: number
+  adminRemarksCount?: number
+  managerRemarksCount?: number
   remarks: Remark[]
   createdAt: string
   updatedAt: string
@@ -59,6 +69,8 @@ export default function RemarksPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
+  const role = String((session?.user as any)?.role || '').toUpperCase()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [installers, setInstallers] = useState<InstallerWithRemarks[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,12 +79,16 @@ export default function RemarksPage() {
   const [expandedInstallers, setExpandedInstallers] = useState<Set<string>>(new Set())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
+  const [updatesCount, setUpdatesCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
+      return
     }
-  }, [status, router])
+  }, [status, router, role])
 
   const fetchPendingApprovalsCount = async () => {
     try {
@@ -90,17 +106,74 @@ export default function RemarksPage() {
     }
   }
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchPendingApprovalsCount()
-      const interval = setInterval(fetchPendingApprovalsCount, 30000)
-      return () => clearInterval(interval)
+  const fetchSignatureNotSignedCount = async () => {
+    try {
+      const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+      if (res.status === 401) {
+        setSignatureNotSignedCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setSignatureNotSignedCount(data?.count || 0)
+      }
+    } catch {
+      // ignore
     }
-  }, [status])
+  }
+
+  const fetchUnreadMessagesCount = async () => {
+    try {
+      const res = await fetch('/api/notifications?type=message', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      const messages = data?.notifications || []
+      const unreadCount = messages.filter((m: any) => {
+        const isFromInstaller = !m.senderId || (m.senderId !== 'admin' && m.senderType !== 'admin')
+        return !m.isRead && isFromInstaller
+      }).length
+      setUnreadMessagesCount(unreadCount)
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchUpdatesCount = async () => {
+    try {
+      const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      setUpdatesCount(Number(data?.count || 0))
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
-    fetchInstallersWithRemarks()
-  }, [])
+    if (status === 'authenticated') {
+      fetchUpdatesCount()
+      if (role === 'MANAGER') {
+        const interval = setInterval(fetchUpdatesCount, 30000)
+        return () => clearInterval(interval)
+      }
+      fetchPendingApprovalsCount()
+      fetchSignatureNotSignedCount()
+      fetchUnreadMessagesCount()
+      const interval = setInterval(() => {
+        fetchPendingApprovalsCount()
+        fetchSignatureNotSignedCount()
+        fetchUnreadMessagesCount()
+        fetchUpdatesCount()
+      }, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [status, role])
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchInstallersWithRemarks()
+    }
+  }, [status, role])
 
   // Refresh when pathname changes (user navigates back to this page)
   useEffect(() => {
@@ -136,6 +209,7 @@ export default function RemarksPage() {
   }, [])
 
   const fetchInstallersWithRemarks = async (showRefreshing = false) => {
+    if (status !== 'authenticated') return
     try {
       if (showRefreshing) {
         setIsRefreshing(true)
@@ -189,6 +263,20 @@ export default function RemarksPage() {
     }
   }
 
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '?'
+  }
+
+  const getInstallerAvatarRing = (status?: string | null) => {
+    const s = String(status || '').toLowerCase()
+    if (s === 'active') return { ring: 'ring-4 ring-brand-green', initialsBg: 'bg-brand-green' }
+    if (s === 'deactive' || s === 'inactive' || s === 'deactivated') return { ring: 'ring-4 ring-slate-900', initialsBg: 'bg-slate-900' }
+    if (s === 'passed' || s === 'qualified') return { ring: 'ring-4 ring-blue-500', initialsBg: 'bg-blue-500' }
+    if (s === 'failed' || s === 'notqualified' || s === 'not_qualified') return { ring: 'ring-4 ring-red-500', initialsBg: 'bg-red-500' }
+    if (s === 'pending') return { ring: 'ring-4 ring-yellow-500', initialsBg: 'bg-yellow-500' }
+    return { ring: 'ring-4 ring-slate-300', initialsBg: 'bg-slate-500' }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
@@ -239,10 +327,7 @@ export default function RemarksPage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -250,195 +335,23 @@ export default function RemarksPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/approvals"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Approvals</span>
-                  {pendingApprovalsCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/tracking"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Activity className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Tracking</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/analytics"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Analytics</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/notifications"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/notifications'
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Bell className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Notifications</span>
-                </div>
-              )}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/remarks"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <StickyNote className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Remarks</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/settings"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Settings</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/property/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
-            >
-              <Building2 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Property Portal</span>}
-            </Link>
-          )}
-        </nav>
+      <AdminMobileMenu pathname={pathname} />
 
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            {session?.user?.image ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                <Image
-                  src={session.user.image}
-                  alt={session.user?.name || session.user?.email || 'Admin'}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center flex-shrink-0">
-                <User className="w-6 h-6 text-white" />
-              </div>
-            )}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-primary-900 truncate">
-                  {session?.user?.name || session?.user?.email || 'Admin'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">Admin User</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className={`w-full flex items-center gap-3 px-4 py-2 text-primary-600 hover:bg-slate-100 rounded-lg transition-colors ${
-              !sidebarOpen && 'justify-center'
-            }`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="lg:ml-64 flex-1 flex flex-col overflow-hidden">
-        <AdminMobileMenu pathname={pathname} />
+      <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <div className="bg-white border-b border-slate-200 pr-4 pl-16 lg:px-6 pt-16 lg:pt-6 pb-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-1">
                 <div className="p-2 bg-brand-green/10 rounded-xl">
                   <StickyNote className="w-6 h-6 text-brand-green" />
                 </div>
-                <h1 className="text-3xl font-bold text-slate-900">Installer Remarks</h1>
+              <h1 className="text-3xl font-bold text-slate-900">{role === 'MANAGER' ? 'Manager Remarks' : 'Installer Remarks'}</h1>
               </div>
-              <p className="text-slate-600 ml-14">Track and manage admin remarks for installers</p>
+              <p className="text-slate-600 ml-14">
+                {role === 'MANAGER' ? 'Track manager remarks you add for installers' : 'Track and manage admin and manager remarks for installers'}
+              </p>
             </div>
             <button
               onClick={handleRefresh}
@@ -488,9 +401,8 @@ export default function RemarksPage() {
 
           {/* Results */}
           {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading remarks...</p>
+            <div className="flex justify-center py-12">
+              <LogoHeartbeatLoader size={72} />
             </div>
           ) : filteredInstallers.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-slate-200">
@@ -508,6 +420,9 @@ export default function RemarksPage() {
             <div className="space-y-6">
               {filteredInstallers.map((installer) => {
                 const expanded = isExpanded(installer.id)
+                const avatarRing = getInstallerAvatarRing(installer.status)
+                const displayInitials = getInitials(installer.firstName, installer.lastName)
+                const displayName = `${installer.firstName} ${installer.lastName}`.trim()
                 return (
                   <motion.div
                     key={installer.id}
@@ -517,15 +432,33 @@ export default function RemarksPage() {
                   >
                     <div className="p-6">
                       {/* Installer Header - Clickable to expand/collapse */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
+                      <div className="flex items-start justify-between mb-4 gap-4">
+                        <div className="relative flex-shrink-0">
+                          <div className={`relative w-14 h-14 rounded-full overflow-hidden shadow-md ${avatarRing.ring}`}>
+                            {!installer.photoUrl && (
+                              <div className={`absolute inset-0 flex items-center justify-center text-white font-bold text-sm ${avatarRing.initialsBg}`}>
+                                {displayInitials}
+                              </div>
+                            )}
+                            {installer.photoUrl && (
+                              <Image
+                                src={installer.photoUrl}
+                                alt={displayName}
+                                width={56}
+                                height={56}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
                           <button
                             onClick={() => toggleInstaller(installer.id)}
                             className="flex items-center gap-3 mb-3 flex-wrap group w-full text-left"
                           >
-                            <div className={`transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}>
-                              <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-brand-green" />
-                            </div>
                             {installer.companyName ? (
                               <>
                                 <h3 className="text-xl font-bold text-slate-900 group-hover:text-brand-green transition-colors">
@@ -548,8 +481,13 @@ export default function RemarksPage() {
                             <span className="px-3 py-1 bg-brand-green/10 text-brand-green border border-brand-green/20 rounded-full text-xs font-semibold">
                               {installer.remarksCount} {installer.remarksCount === 1 ? 'Remark' : 'Remarks'}
                             </span>
+                            {(installer.managerRemarksCount || 0) > 0 && (
+                              <span className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
+                                {installer.managerRemarksCount} Manager
+                              </span>
+                            )}
                           </button>
-                          <div className="flex flex-wrap items-center gap-6 text-sm text-slate-600 ml-8">
+                          <div className="flex flex-wrap items-center gap-6 text-sm text-slate-600">
                             {installer.companyName && (
                               <div className="flex items-center gap-2">
                                 <div className="p-1.5 bg-slate-100 rounded-lg">
@@ -629,9 +567,18 @@ export default function RemarksPage() {
                                         )}
                                         <p className="text-slate-900 whitespace-pre-wrap leading-relaxed">{remark.note}</p>
                                       </div>
-                                      <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        <span className="font-medium">{formatDateTime(remark.createdAt)}</span>
+                                      <div className="flex flex-col items-end gap-2">
+                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                                          remark.source === 'manager'
+                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                            : 'bg-brand-green/10 text-brand-green border-brand-green/20'
+                                        }`}>
+                                          {remark.source === 'manager' ? 'Manager' : 'Admin'}
+                                        </span>
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+                                          <Clock className="w-3.5 h-3.5" />
+                                          <span className="font-medium">{formatDateTime(remark.createdAt)}</span>
+                                        </div>
                                       </div>
                                     </div>
                                   </motion.div>

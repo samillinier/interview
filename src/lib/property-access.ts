@@ -29,7 +29,7 @@ export async function isAdmin(userEmail: string | null | undefined): Promise<boo
     })
     
     // Only ADMIN role (not MODERATOR or MANAGER) can see all data
-    return admin?.isActive === true && admin?.role === 'ADMIN'
+    return admin?.isActive === true && (admin?.role === 'ADMIN' || admin?.role === 'SUPER_ADMIN')
   } catch (error) {
     console.error('Error checking admin status:', error)
     return false
@@ -65,7 +65,7 @@ export async function isAdminOrManager(userEmail: string | null | undefined): Pr
       where: { email: userEmail.toLowerCase().trim() },
     })
     
-    return admin?.isActive === true && (admin?.role === 'ADMIN' || admin?.role === 'MANAGER')
+    return admin?.isActive === true && ((admin?.role === 'ADMIN' || admin?.role === 'SUPER_ADMIN') || admin?.role === 'MANAGER')
   } catch (error) {
     console.error('Error checking admin/manager status:', error)
     return false
@@ -75,6 +75,33 @@ export async function isAdminOrManager(userEmail: string | null | undefined): Pr
 /**
  * Get the admin role for a user
  */
+/**
+ * Resolve a location for property portal document/photo routes.
+ * Admins may manage locations across properties (location id only).
+ * Property users must match both propertyId and locationId.
+ */
+export async function findLocationForPropertyRequest(
+  propertyId: string,
+  locationId: string,
+  userEmail: string | null | undefined,
+) {
+  if (!locationId) return null
+
+  if (await isAdminOrManager(userEmail)) {
+    return prisma.location.findFirst({
+      where: { id: locationId },
+      select: { id: true, propertyId: true },
+    })
+  }
+
+  if (!propertyId) return null
+
+  return prisma.location.findFirst({
+    where: { id: locationId, propertyId },
+    select: { id: true, propertyId: true },
+  })
+}
+
 export async function getAdminRole(userEmail: string | null | undefined): Promise<'ADMIN' | 'MODERATOR' | 'MANAGER' | null> {
   if (!userEmail) return null
   

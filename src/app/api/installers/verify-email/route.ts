@@ -4,8 +4,9 @@ import prisma from '@/lib/db'
 export async function POST(request: NextRequest) {
   try {
     const { token, email } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
-    if (!token || !email) {
+    if (!token || !normalizedEmail) {
       return NextResponse.json(
         { error: 'Token and email are required' },
         { status: 400 }
@@ -13,8 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Find installer by email
-    const installer = await prisma.installer.findUnique({
-      where: { email },
+    const installer = await prisma.installer.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
     })
 
     if (!installer) {

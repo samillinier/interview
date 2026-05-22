@@ -114,13 +114,6 @@ export default function InstallerPortalPage() {
           <p className="text-sm text-primary-600 mb-4">
             If you haven't created an account yet, you can do so after completing your interview.
           </p>
-          <Link
-            href="/interview"
-            className="inline-flex items-center gap-2 text-brand-green hover:underline font-medium"
-          >
-            Start Interview
-            <ArrowRight className="w-4 h-4" />
-          </Link>
         </motion.div>
       </div>
     </div>

@@ -5,8 +5,9 @@ import bcrypt from 'bcryptjs'
 export async function POST(request: NextRequest) {
   try {
     const { token, email, password } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
-    if (!token || !email || !password) {
+    if (!token || !normalizedEmail || !password) {
       return NextResponse.json(
         { error: 'Token, email, and password are required' },
         { status: 400 }
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Find installer by email and token
     const installer = await prisma.installer.findFirst({
       where: {
-        email,
+        email: { equals: normalizedEmail, mode: 'insensitive' },
         passwordResetToken: token,
       },
     })
@@ -57,21 +58,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if installer has a password (they should have one to reset it)
-    if (!installer.passwordHash) {
-      return NextResponse.json(
-        { error: 'No password set for this account' },
-        { status: 400 }
-      )
-    }
-
     // Hash the new password
     const passwordHash = await bcrypt.hash(password, 10)
+
+    // Ensure accounts that only existed with email/name can log in after setting a password.
+    const baseUsername = installer.email
+      .split('@')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_') || 'installer'
+
+    let finalUsername = installer.username || baseUsername
+    if (!installer.username) {
+      let counter = 1
+      while (true) {
+        const existing = await prisma.installer.findFirst({
+          where: { username: finalUsername },
+          select: { id: true },
+        })
+        if (!existing || existing.id === installer.id) break
+        finalUsername = `${baseUsername}_${counter}`
+        counter++
+      }
+    }
 
     // Update password and clear reset token
     await prisma.installer.update({
       where: { id: installer.id },
       data: {
+        username: finalUsername,
         passwordHash,
         passwordResetToken: null,
         // If you have passwordResetTokenExpiresAt field, clear it here too

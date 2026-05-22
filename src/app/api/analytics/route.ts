@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
+/** Always compute from DB; avoid CDN/browser serving stale totals on production. */
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const noStoreHeaders = {
+  'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+  Pragma: 'no-cache',
+} as const
+
 export async function GET(request: NextRequest) {
   try {
     // Get all installers with their related data
@@ -11,6 +20,7 @@ export async function GET(request: NextRequest) {
           take: 1,
         },
         Document: true,
+        InstallerAgreement: true,
         StaffMember: true,
         Notification: true,
         JobApplication: true,
@@ -29,6 +39,16 @@ export async function GET(request: NextRequest) {
       status,
       count,
     }))
+
+    // Tracker stage distribution
+    const trackerStageCounts: Record<string, number> = {}
+    installers.forEach(installer => {
+      const stage = installer.trackerStage || 'PENDING'
+      trackerStageCounts[stage] = (trackerStageCounts[stage] || 0) + 1
+    })
+    const trackerStageDistribution = Object.entries(trackerStageCounts)
+      .map(([stage, count]) => ({ stage, count }))
+      .sort((a, b) => b.count - a.count)
 
     // Experience distribution
     const experienceRanges = [
@@ -65,6 +85,7 @@ export async function GET(request: NextRequest) {
 
     // Get current date once for all date calculations
     const now = new Date()
+    const activeInstallers = installers.filter((i) => (i.status || '').toLowerCase() === 'active')
 
     // Registration trends (last 6 months)
     const months: string[] = []
@@ -138,13 +159,13 @@ export async function GET(request: NextRequest) {
     
     // 1. Insurance & Compliance Analytics
     const insuranceCoverage = {
-      generalLiability: installers.filter(i => i.hasGeneralLiability === true).length,
-      commercialAuto: installers.filter(i => i.hasCommercialAutoLiability === true).length,
-      workersComp: installers.filter(i => i.hasWorkersComp === true).length,
-      workersCompExemption: installers.filter(i => i.hasWorkersCompExemption === true).length,
-      sunbizRegistered: installers.filter(i => i.isSunbizRegistered === true).length,
-      sunbizActive: installers.filter(i => i.isSunbizActive === true).length,
-      businessLicense: installers.filter(i => i.hasBusinessLicense === true).length,
+      generalLiability: activeInstallers.filter(i => i.hasGeneralLiability === true).length,
+      commercialAuto: activeInstallers.filter(i => i.hasCommercialAutoLiability === true).length,
+      workersComp: activeInstallers.filter(i => i.hasWorkersComp === true).length,
+      workersCompExemption: activeInstallers.filter(i => i.hasWorkersCompExemption === true).length,
+      sunbizRegistered: activeInstallers.filter(i => i.isSunbizRegistered === true).length,
+      sunbizActive: activeInstallers.filter(i => i.isSunbizActive === true).length,
+      businessLicense: activeInstallers.filter(i => i.hasBusinessLicense === true).length,
     }
 
     // Certificate expiry tracking
@@ -153,7 +174,7 @@ export async function GET(request: NextRequest) {
     const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
     const certificateExpiry = {
-      expiring30Days: installers.filter(i => {
+      expiring30Days: activeInstallers.filter(i => {
         const expiries = [
           i.llrpExpiry,
           i.btrExpiry,
@@ -165,7 +186,7 @@ export async function GET(request: NextRequest) {
         ].filter(Boolean) as Date[]
         return expiries.some(exp => exp && exp > now && exp <= thirtyDaysFromNow)
       }).length,
-      expiring60Days: installers.filter(i => {
+      expiring60Days: activeInstallers.filter(i => {
         const expiries = [
           i.llrpExpiry,
           i.btrExpiry,
@@ -177,7 +198,7 @@ export async function GET(request: NextRequest) {
         ].filter(Boolean) as Date[]
         return expiries.some(exp => exp && exp > now && exp <= sixtyDaysFromNow)
       }).length,
-      expiring90Days: installers.filter(i => {
+      expiring90Days: activeInstallers.filter(i => {
         const expiries = [
           i.llrpExpiry,
           i.btrExpiry,
@@ -189,7 +210,7 @@ export async function GET(request: NextRequest) {
         ].filter(Boolean) as Date[]
         return expiries.some(exp => exp && exp > now && exp <= ninetyDaysFromNow)
       }).length,
-      expired: installers.filter(i => {
+      expired: activeInstallers.filter(i => {
         const expiries = [
           i.llrpExpiry,
           i.btrExpiry,
@@ -230,6 +251,7 @@ export async function GET(request: NextRequest) {
       withTools: installers.filter(i => i.hasOwnTools === true).length,
       withVehicles: installers.filter(i => i.hasVehicle === true).length,
       totalStaffMembers: installers.reduce((sum, i) => sum + i.StaffMember.length, 0),
+      installersWithTeams: installers.filter(i => i.StaffMember.length > 0).length,
     }
 
     // 3. Service & Availability Analytics
@@ -288,6 +310,144 @@ export async function GET(request: NextRequest) {
     const workroomDistribution = Object.entries(workroomCounts)
       .map(([workroom, count]) => ({ workroom, count }))
       .sort((a, b) => b.count - a.count)
+
+    // County distribution
+    const countyCounts: Record<string, number> = {}
+    installers.forEach(installer => {
+      const county = (installer.companyCounty || '').trim()
+      if (county) {
+        countyCounts[county] = (countyCounts[county] || 0) + 1
+      }
+    })
+    const countyDistribution = Object.entries(countyCounts)
+      .map(([county, count]) => ({ county, count }))
+      .sort((a, b) => b.count - a.count)
+
+    const workroomCoords: Record<string, { lat: number; lng: number }> = {
+      albany: { lat: 31.5785, lng: -84.1557 },
+      sarasota: { lat: 27.3364, lng: -82.5307 },
+      tampa: { lat: 27.9506, lng: -82.4572 },
+      naples: { lat: 26.142, lng: -81.7948 },
+      ocala: { lat: 29.1872, lng: -82.1401 },
+      lakeland: { lat: 28.0395, lng: -81.9498 },
+      'panama city': { lat: 30.1588, lng: -85.6602 },
+      gainesville: { lat: 29.6516, lng: -82.3248 },
+      tallahassee: { lat: 30.4383, lng: -84.2807 },
+      dothan: { lat: 31.2232, lng: -85.3905 },
+    }
+    const countyCoords: Record<string, { lat: number; lng: number }> = {
+      hillsborough: { lat: 27.9904, lng: -82.3018 },
+      pinellas: { lat: 27.8764, lng: -82.7779 },
+      sarasota: { lat: 27.1845, lng: -82.3658 },
+      manatee: { lat: 27.4823, lng: -82.354 },
+      pasco: { lat: 28.3016, lng: -82.4572 },
+      polk: { lat: 27.9886, lng: -81.6974 },
+      orange: { lat: 28.5383, lng: -81.3792 },
+      miami_dade: { lat: 25.7617, lng: -80.1918 },
+      broward: { lat: 26.1901, lng: -80.3659 },
+      palm_beach: { lat: 26.7056, lng: -80.0364 },
+      collier: { lat: 26.1732, lng: -81.8079 },
+      lee: { lat: 26.6406, lng: -81.8723 },
+      alachua: { lat: 29.6516, lng: -82.3248 },
+      leon: { lat: 30.4383, lng: -84.2807 },
+      bay: { lat: 30.1805, lng: -85.6846 },
+    }
+    const normalizeCountyKey = (name: string) =>
+      (name || '')
+        .toLowerCase()
+        .replace(/\bcounty\b/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+
+    // Travel radius distribution (map radius readiness)
+    const travelRadiusDistribution = [
+      { range: '0-25 mi', count: 0 },
+      { range: '26-50 mi', count: 0 },
+      { range: '51-100 mi', count: 0 },
+      { range: '100+ mi', count: 0 },
+      { range: 'Not provided', count: 0 },
+    ]
+    installers.forEach(installer => {
+      const d = installer.maxTravelDistance
+      if (d === null || d === undefined) travelRadiusDistribution[4].count++
+      else if (d <= 25) travelRadiusDistribution[0].count++
+      else if (d <= 50) travelRadiusDistribution[1].count++
+      else if (d <= 100) travelRadiusDistribution[2].count++
+      else travelRadiusDistribution[3].count++
+    })
+
+    // Geo pins for map (workroom + county centroids)
+    const workroomPins = Object.entries(workroomCounts)
+      .map(([workroom, count]) => {
+        const c = workroomCoords[workroom.toLowerCase()]
+        if (!c) return null
+        const installersInGroup = installers.filter(i => (i.workroom || '').toLowerCase() === workroom.toLowerCase())
+        const distances = installersInGroup
+          .map(i => i.maxTravelDistance)
+          .filter((v): v is number => typeof v === 'number' && !Number.isNaN(v))
+        const avgRadiusMiles = distances.length ? distances.reduce((a, b) => a + b, 0) / distances.length : 0
+        return { label: workroom, type: 'workroom' as const, lat: c.lat, lng: c.lng, count, avgRadiusMiles }
+      })
+      .filter((v): v is { label: string; type: 'workroom'; lat: number; lng: number; count: number; avgRadiusMiles: number } => v !== null)
+
+    const countyPins = Object.entries(countyCounts)
+      .map(([county, count]) => {
+        const c = countyCoords[normalizeCountyKey(county)]
+        if (!c) return null
+        const installersInGroup = installers.filter(i => (i.companyCounty || '').trim().toLowerCase() === county.toLowerCase())
+        const distances = installersInGroup
+          .map(i => i.maxTravelDistance)
+          .filter((v): v is number => typeof v === 'number' && !Number.isNaN(v))
+        const avgRadiusMiles = distances.length ? distances.reduce((a, b) => a + b, 0) / distances.length : 0
+        return { label: county, type: 'county' as const, lat: c.lat, lng: c.lng, count, avgRadiusMiles }
+      })
+      .filter((v): v is { label: string; type: 'county'; lat: number; lng: number; count: number; avgRadiusMiles: number } => v !== null)
+
+    const geoPins = [...workroomPins, ...countyPins]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 60)
+
+    // Document/certificate compliance analytics
+    const normalizeDocType = (type: string): string => {
+      const t = (type || '').toLowerCase().trim()
+      if (t === 'w9' || t === 'w-9' || t === 'form-w-9') return 'w9'
+      if (t === 'workers_comp' || t === 'workers_compensation') return 'workers_comp'
+      if (t === 'business_tax_receipt' || t === 'btr' || t === 'business_registration') return 'business_registration'
+      return t
+    }
+    const docTypeToLabel: Record<string, string> = {
+      sunbiz: 'Sunbiz',
+      business_registration: 'Business Tax Receipt',
+      liability_insurance: 'Liability Insurance',
+      w9: 'W-9 Form',
+      workers_comp: 'Workers Compensation',
+      auto_insurance: 'Auto Insurance',
+      workers_comp_certificate: 'Workers Compensation Certificate',
+      lead_firm_certificate: 'Lead Firm Certificate',
+      lrrp: 'Lead Renovator Certificate',
+      employers_liability: 'Employer Liability Insurance',
+    }
+    const complianceDocumentTypes = Object.keys(docTypeToLabel)
+    const complianceDocuments = complianceDocumentTypes.map((docType) => {
+      const docs = allDocuments.filter(d => normalizeDocType(d.type) === docType)
+      const installersWithDoc = new Set(docs.map(d => d.installerId)).size
+      const withExpiry = docs.filter(d => !!d.expiryDate).length
+      const expired = docs.filter(d => d.expiryDate && new Date(d.expiryDate) <= now).length
+      const expiring30Days = docs.filter(d => {
+        if (!d.expiryDate) return false
+        const ex = new Date(d.expiryDate)
+        return ex > now && ex <= thirtyDaysFromNow
+      }).length
+      return {
+        type: docType,
+        label: docTypeToLabel[docType],
+        totalUploaded: docs.length,
+        installersWithDoc,
+        withExpiry,
+        expired,
+        expiring30Days,
+      }
+    })
 
     // 4. Installation Capabilities Analytics
     const installationCapabilities = {
@@ -430,6 +590,69 @@ export async function GET(request: NextRequest) {
       serviceAgreementSigned: installers.filter(i => i.serviceAgreementSignedAt !== null).length,
     }
 
+    // 6.1 Agreement signature analytics (Independent Contractor Services Agreement)
+    const allAgreements = installers.flatMap(i => i.InstallerAgreement || [])
+    const independentContractorAgreements = allAgreements.filter(
+      (a: any) => a.type === 'independent-contractor-services-agreement'
+    )
+    const agreementAnalytics = {
+      independentContractor: {
+        totalRecords: independentContractorAgreements.length,
+        signed: independentContractorAgreements.filter((a: any) => !!a.signedAt).length,
+        notSigned: independentContractorAgreements.filter((a: any) => !a.signedAt).length,
+        approved: independentContractorAgreements.filter((a: any) => a.status === 'approved').length,
+        pendingAdmin: independentContractorAgreements.filter((a: any) => a.status === 'pending_admin').length,
+        draft: independentContractorAgreements.filter((a: any) => a.status === 'draft').length,
+        withoutRecord: installers.filter(
+          (i: any) => !(i.InstallerAgreement || []).some((a: any) => a.type === 'independent-contractor-services-agreement')
+        ).length,
+      },
+    }
+
+    // Profile completeness analytics
+    const completionFields: Array<keyof typeof installers[number]> = [
+      'phone',
+      'workroom',
+      'companyName',
+      'companyCounty',
+      'companyState',
+      'yearsOfExperience',
+      'flooringSkills',
+      'hasGeneralLiability',
+      'hasCommercialAutoLiability',
+      'hasWorkersComp',
+      'isSunbizRegistered',
+      'hasBusinessLicense',
+      'canPassBackgroundCheck',
+      'paymentAccountNumber',
+      'paymentRoutingNumber',
+      'photoUrl',
+    ]
+    const completionByInstaller = installers.map((i: any) => {
+      let filled = 0
+      for (const f of completionFields) {
+        const v = i[f]
+        if (typeof v === 'boolean') {
+          if (v === true) filled++
+        } else if (typeof v === 'number') {
+          if (!Number.isNaN(v)) filled++
+        } else if (v !== null && v !== undefined && String(v).trim() !== '') {
+          filled++
+        }
+      }
+      const percent = (filled / completionFields.length) * 100
+      return percent
+    })
+    const profileCompletionAnalytics = {
+      averageCompletionPercent:
+        completionByInstaller.length > 0
+          ? completionByInstaller.reduce((a, b) => a + b, 0) / completionByInstaller.length
+          : 0,
+      highCompletion: completionByInstaller.filter((p) => p >= 80).length,
+      mediumCompletion: completionByInstaller.filter((p) => p >= 50 && p < 80).length,
+      lowCompletion: completionByInstaller.filter((p) => p < 50).length,
+    }
+
     // 7. Job & Application Analytics
     const allJobApplications = installers.flatMap(i => i.JobApplication)
     const jobAnalytics = {
@@ -489,7 +712,42 @@ export async function GET(request: NextRequest) {
       ).length,
     }
 
-    return NextResponse.json({
+    // 10. Registration by weekday & by calendar month (all signups, server-local dates)
+    const weekdayOrder = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ] as const
+    const weekdayBucket: Record<string, number> = {}
+    weekdayOrder.forEach((d) => {
+      weekdayBucket[d] = 0
+    })
+    const monthBucket = Array.from({ length: 12 }, () => 0)
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+    installers.forEach((installer) => {
+      const created = new Date(installer.createdAt)
+      const jsDay = created.getDay() // 0 Sun … 6 Sat
+      const monIdx = jsDay === 0 ? 6 : jsDay - 1
+      weekdayBucket[weekdayOrder[monIdx]]++
+      monthBucket[created.getMonth()]++
+    })
+
+    const registrationByWeekday = weekdayOrder.map((day) => ({
+      day,
+      count: weekdayBucket[day] || 0,
+    }))
+    const registrationByCalendarMonth = monthLabels.map((month, i) => ({
+      month,
+      count: monthBucket[i] || 0,
+    }))
+
+    return NextResponse.json(
+      {
       totalInstallers,
       qualified: installers.filter(i => i.status === 'passed' || i.status === 'qualified').length,
       notQualified: installers.filter(i => i.status === 'failed').length,
@@ -497,6 +755,7 @@ export async function GET(request: NextRequest) {
       averageExperience,
       totalExperience,
       statusDistribution,
+      trackerStageDistribution,
       experienceDistribution,
       flooringSkillsBreakdown,
       registrationTrends,
@@ -513,19 +772,29 @@ export async function GET(request: NextRequest) {
       availabilityAnalytics,
       topServiceAreas,
       workroomDistribution,
+      countyDistribution,
+      travelRadiusDistribution,
+      geoPins,
+      complianceDocuments,
       installationCapabilities,
       engagementAnalytics,
       notificationEngagement,
       paymentAnalytics,
+      agreementAnalytics,
+      profileCompletionAnalytics,
       jobAnalytics,
       qualityAnalytics,
       backgroundAnalytics,
-    })
+      registrationByWeekday,
+      registrationByCalendarMonth,
+    },
+      { headers: noStoreHeaders }
+    )
   } catch (error: any) {
     console.error('Error fetching analytics:', error)
     return NextResponse.json(
       { error: 'Failed to fetch analytics', details: error.message },
-      { status: 500 }
+      { status: 500, headers: noStoreHeaders }
     )
   }
 }

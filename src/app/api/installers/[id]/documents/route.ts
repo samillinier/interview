@@ -64,30 +64,36 @@ export async function POST(
           type,
           name: name || 'Document',
           url,
-          verified: false, // Documents need admin verification
+          verified: type === 'business_registration', // BTR is auto-verified by the system
         },
       })
 
-      // Create a change request for admin verification
-      try {
-        await prisma.installerChangeRequest.create({
-          data: {
-            installerId,
-            payload: {
-              action: 'verify_document',
-              documentId: document.id,
-              documentType: type,
-              documentName: name || 'Document',
-              documentUrl: url,
+      if (type === 'business_registration') {
+        // IMPORTANT:
+        // Don't OCR/parse inline during upload; it can time out and cause "Failed to upload document".
+        // The client triggers extraction after upload (separate call), and/or admin can set manually.
+      } else {
+        // Create a change request for admin verification (non-BTR docs)
+        try {
+          await prisma.installerChangeRequest.create({
+            data: {
+              installerId,
+              payload: {
+                action: 'verify_document',
+                documentId: document.id,
+                documentType: type,
+                documentName: name || 'Document',
+                documentUrl: url,
+              },
+              sections: ['Attachments'],
+              status: 'pending',
+              source: 'attachments',
             },
-            sections: ['Attachments'],
-            status: 'pending',
-            source: 'attachments',
-          },
-        })
-      } catch (changeRequestError) {
-        console.error('Failed to create change request for document:', changeRequestError)
-        // Don't fail the upload if change request creation fails
+          })
+        } catch (changeRequestError) {
+          console.error('Failed to create change request for document:', changeRequestError)
+          // Don't fail the upload if change request creation fails
+        }
       }
 
       return NextResponse.json({ document })
@@ -167,30 +173,36 @@ export async function POST(
         type,
         name: file.name,
         url: fileUrl,
-        verified: false, // Documents need admin verification
+          verified: type === 'business_registration', // BTR is auto-verified by the system
       },
     })
 
-    // Create a change request for admin verification
-    try {
-      await prisma.installerChangeRequest.create({
-        data: {
-          installerId,
-          payload: {
-            action: 'verify_document',
-            documentId: document.id,
-            documentType: type,
-            documentName: file.name,
-            documentUrl: fileUrl,
+    if (type === 'business_registration') {
+      // IMPORTANT:
+      // Don't OCR/parse inline during upload; it can time out and cause "Failed to upload document".
+      // The client triggers extraction after upload (separate call), and/or admin can set manually.
+    } else {
+      // Create a change request for admin verification (non-BTR docs)
+      try {
+        await prisma.installerChangeRequest.create({
+          data: {
+            installerId,
+            payload: {
+              action: 'verify_document',
+              documentId: document.id,
+              documentType: type,
+              documentName: file.name,
+              documentUrl: fileUrl,
+            },
+            sections: ['Attachments'],
+            status: 'pending',
+            source: 'attachments',
           },
-          sections: ['Attachments'],
-          status: 'pending',
-          source: 'attachments',
-        },
-      })
-    } catch (changeRequestError) {
-      console.error('Failed to create change request for document:', changeRequestError)
-      // Don't fail the upload if change request creation fails
+        })
+      } catch (changeRequestError) {
+        console.error('Failed to create change request for document:', changeRequestError)
+        // Don't fail the upload if change request creation fails
+      }
     }
 
     return NextResponse.json({ document })

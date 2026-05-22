@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import {
@@ -14,7 +14,8 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import MessageBubble from '@/components/MessageBubble'
-import { getInterviewQuestions, WORKROOM_OPTIONS } from '@/lib/questions'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { getInterviewQuestions, WORKROOM_OPTIONS, FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { getSupportedMimeType, isMobile, resumeAudioContext, isMediaRecorderSupported, isIOS } from '@/lib/utils'
 
 interface Message {
@@ -92,24 +93,20 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
   // Flooring skills state
   const [selectedFlooringSkills, setSelectedFlooringSkills] = useState<string[]>([])
-  const flooringSkillOptions = [
-    'Carpet',
-    'Vinyl Sheet Roll',
-    'LVP (Luxury Vinyl Plank)',
-    'LVT (Luxury Vinyl Tile)',
-    'VCT (Vinyl Composition Tile)',
-    'Hardwood',
-    'Engineered Hardwood',
-    'Bamboo',
-    'Laminate',
-    'Ceramic Tile',
-    'Porcelain Tile',
-    'Stone Tile',
-    'Carpet Tile',
-  ]
+  const [selectedPrimarySurface, setSelectedPrimarySurface] = useState<string>('')
+
+  const primarySurfaceChoices = useMemo(() => {
+    if (selectedFlooringSkills.length === 0) return [...FLOORING_SURFACE_OPTIONS]
+    return FLOORING_SURFACE_OPTIONS.filter((o) => selectedFlooringSkills.includes(o))
+  }, [selectedFlooringSkills])
 
   // Workroom selection state
   const [selectedWorkroom, setSelectedWorkroom] = useState<string>('')
+
+  useEffect(() => {
+    const q = getInterviewQuestions(language)[currentQuestionIndex]
+    if (q?.id === 'primary_surface') setSelectedPrimarySurface('')
+  }, [currentQuestionIndex, language])
 
   // Scroll to top when messages change (newest messages at top)
   useEffect(() => {
@@ -124,7 +121,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     return () => clearTimeout(timeoutId)
   }, [messages.length, isProcessing, pendingResponse])
 
-  // Tab shake effect when Anna is speaking
+  // Tab shake effect when Alice is speaking
   useEffect(() => {
     if (isSpeaking && typeof document !== 'undefined') {
       const originalTitle = document.title
@@ -697,6 +694,11 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     await processResponse(undefined, response)
   }
 
+  const handlePrimarySurfaceSubmit = async () => {
+    if (!selectedPrimarySurface) return
+    await processResponse(undefined, selectedPrimarySurface)
+  }
+
   // Handle workroom submission
   const handleWorkroomSubmit = async () => {
     const response = selectedWorkroom || 'None'
@@ -725,10 +727,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   if (isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading interview...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -815,23 +814,24 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {/* Show create account option - always show for new installers */}
-          <div className="bg-brand-green/10 border border-brand-green/20 rounded-2xl p-4 mb-6 text-left">
-            <p className="text-sm text-primary-700 mb-3">
-              <strong>Create your account</strong> to manage your profile and view your interview results anytime.
-            </p>
-            <button
-              onClick={() => {
-                const params = new URLSearchParams()
-                if (result.installerId) params.set('installerId', result.installerId)
-                if (result.email) params.set('email', result.email)
-                router.push(`/create-account?${params.toString()}`)
-              }}
-              className="w-full py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
-            >
-              Create Account
-            </button>
-          </div>
+          {result.passed && (
+            <div className="bg-brand-green/10 border border-brand-green/20 rounded-2xl p-4 mb-6 text-left">
+              <p className="text-sm text-primary-700 mb-3">
+                <strong>Next step:</strong> create your account to manage your profile and continue onboarding. Please use the same email address you used for this interview so we can match your account to your application.
+              </p>
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams()
+                  if (result.installerId) params.set('installerId', result.installerId)
+                  if (result.email) params.set('email', result.email)
+                  router.push(`/create-account?${params.toString()}`)
+                }}
+                className="w-full py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
+              >
+                Create Account
+              </button>
+            </div>
+          )}
 
           <div className="flex gap-3">
             {result.hasAccount && (
@@ -958,7 +958,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
               <div className="bg-primary-50 rounded-xl p-4">
                 <p className="text-sm text-slate-600 mb-4">Select all flooring types you are skilled in installing:</p>
                 <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
-                  {flooringSkillOptions.map((skill) => (
+                  {FLOORING_SURFACE_OPTIONS.map((skill) => (
                     <button
                       key={skill}
                       onClick={() => {
@@ -983,6 +983,44 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
               <button
                 onClick={handleFlooringSkillsSubmit}
                 disabled={isProcessing || isSpeaking || selectedFlooringSkills.length === 0}
+                className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {/* Primary surface (single choice) — after multi-select skills */}
+          {questionType === 'primary_flooring_surface' && (
+            <div className="space-y-4">
+              <div className="bg-primary-50 rounded-xl p-4">
+                <p className="text-sm text-slate-600 mb-4">
+                  {language === 'es'
+                    ? 'Elija un solo tipo de piso en el que tenga más experiencia y se sienta más fuerte (pulse otro para cambiar):'
+                    : 'Choose the one surface you are most experienced and strongest at (tap another to change):'}
+                </p>
+                <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
+                  {primarySurfaceChoices.map((surface) => (
+                    <button
+                      key={surface}
+                      type="button"
+                      onClick={() => setSelectedPrimarySurface(surface)}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                        selectedPrimarySurface === surface
+                          ? 'bg-brand-green text-white'
+                          : 'bg-white text-slate-700 border border-primary-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {selectedPrimarySurface === surface && '✓ '}
+                      {surface}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handlePrimarySurfaceSubmit}
+                disabled={isProcessing || isSpeaking || !selectedPrimarySurface}
                 className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
@@ -1128,7 +1166,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
           )}
 
           {/* Pending Response Preview - for editing before sending */}
-          {pendingResponse !== null && questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' && questionType !== 'workroom_selection' ? (
+          {pendingResponse !== null && questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' && questionType !== 'primary_flooring_surface' && questionType !== 'workroom_selection' ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1173,7 +1211,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 </button>
               </div>
             </motion.div>
-          ) : questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' && questionType !== 'workroom_selection' ? (
+          ) : questionType !== 'installation_experience' && questionType !== 'travel_availability' && questionType !== 'flooring_skills' && questionType !== 'primary_flooring_surface' && questionType !== 'workroom_selection' ? (
             <>
               {/* Mode toggle */}
               <div className="flex justify-center mb-4">

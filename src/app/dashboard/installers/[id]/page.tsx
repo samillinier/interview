@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -34,6 +34,8 @@ import {
   Square,
   MessageSquare,
   Users as UsersIcon,
+  ClipboardList,
+  ClipboardCheck,
   Paperclip,
   CreditCard,
   Download,
@@ -47,6 +49,7 @@ import {
   ChevronUp,
   Plus,
   Edit2,
+  Pencil,
   Trash2,
   Save,
   Users,
@@ -56,7 +59,8 @@ import {
   StickyNote,
   Share2,
   MoreVertical,
-  Check
+  Upload,
+  Megaphone
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -64,6 +68,10 @@ import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerBarcode } from '@/components/InstallerBarcode'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
+import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -79,8 +87,8 @@ const DOCUMENT_TYPES: Array<{
   },
   {
     id: 'business_registration',
-    name: 'Business Tax Receipt',
-    description: 'Business tax receipt certificate',
+    name: 'Business Tax Receipt (BTR)',
+    description: 'Business tax receipt (BTR)',
     required: true,
   },
   {
@@ -91,8 +99,8 @@ const DOCUMENT_TYPES: Array<{
   },
   {
     id: 'liability_insurance',
-    name: 'Liability Insurance',
-    description: 'General liability insurance certificate',
+    name: 'General Liability',
+    description: 'General liability',
     required: true,
   },
   {
@@ -109,8 +117,8 @@ const DOCUMENT_TYPES: Array<{
   },
   {
     id: 'workers_comp_certificate',
-    name: "WORKERS' COMPENSATION CERTIFICATE",
-    description: 'Workers compensation certificate',
+    name: "Workers' Comp Exemption Certificate or Report",
+    description: "Workers' comp exemption certificate or report",
     required: false,
   },
   {
@@ -121,8 +129,8 @@ const DOCUMENT_TYPES: Array<{
   },
   {
     id: 'employers_liability',
-    name: "Employer's Liability Insurance",
-    description: "Employer's liability insurance certificate",
+    name: 'Additional Documents',
+    description: 'Additional documents',
     required: false,
   },
   {
@@ -221,13 +229,26 @@ function ExpirationDatePicker({
         {getStatusBadge()}
       </div>
       {isEditing ? (
-        <input
-          type="date"
-          max="2099-12-31"
-          value={value ? new Date(value).toISOString().split('T')[0] : ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            max="2099-12-31"
+            value={value ? new Date(value).toISOString().split('T')[0] : ''}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+          />
+          {value ? (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 hover:bg-white hover:text-slate-700"
+              title="Clear date"
+            >
+              <X className="w-4 h-4" />
+              Clear
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-slate-400" />
@@ -246,6 +267,7 @@ interface InstallerProfile {
   phone?: string
   digitalId?: string
   workroom?: string
+  primaryFlooringSurface?: string | null
   username?: string
   status: string
   trackerStage?: string
@@ -277,6 +299,7 @@ interface InstallerProfile {
   canPassBackgroundCheck?: boolean
   backgroundCheckDetails?: string
   insuranceType?: string
+  complianceStatus?: 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | null
   hasLicense?: boolean
   licenseNumber?: string
   licenseExpiry?: string
@@ -298,7 +321,8 @@ interface InstallerProfile {
   followUpDate?: string
   followUpReason?: string
   passFailReason?: string
-  remarks?: string  // JSON array of remarks
+  remarks?: string  // JSON array of admin remarks
+  managerRemarks?: string  // JSON array of manager remarks
   photoUrl?: string
   companyName?: string
   companyTitle?: string
@@ -367,10 +391,11 @@ export default function InstallerProfileViewPage() {
   const searchParams = useSearchParams()
   const { data: session, status: sessionStatus } = useSession()
   const installerId = params?.id as string
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
   
   // Check if user is a manager or moderator (restricted access)
-  const isManager = (session?.user as any)?.role === 'MANAGER'
-  const isModerator = (session?.user as any)?.role === 'MODERATOR'
+  const isManager = normalizedRole === 'MANAGER'
+  const isModerator = normalizedRole === 'MODERATOR'
   const canDelete = !isManager && !isModerator
   
   // Get return URL from query params (preserves pagination state)
@@ -398,19 +423,24 @@ export default function InstallerProfileViewPage() {
   const [success, setSuccess] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
+  const [updatesCount, setUpdatesCount] = useState(0)
   const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [isSendingAgreementEmail, setIsSendingAgreementEmail] = useState(false)
   const [showShareDropdown, setShowShareDropdown] = useState(false)
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
+  const [isGeneratingContract, setIsGeneratingContract] = useState(false)
   
   // Editable fields
   const [status, setStatus] = useState<string>('pending')
   const [trackerStage, setTrackerStage] = useState<string>('PENDING')
-  const [notificationMethod, setNotificationMethod] = useState<'email' | 'notification' | 'both'>('both')
+  const [notificationMethod, setNotificationMethod] = useState<'none' | 'email' | 'notification' | 'both'>('none')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
   const [digitalId, setDigitalId] = useState('')
   const [workroom, setWorkroom] = useState('')
+  const [primaryFlooringSurface, setPrimaryFlooringSurface] = useState('')
   const [yearsOfExperience, setYearsOfExperience] = useState<number | undefined>(undefined)
   const [flooringSpecialties, setFlooringSpecialties] = useState('')
   const [flooringSkills, setFlooringSkills] = useState('')
@@ -422,6 +452,7 @@ export default function InstallerProfileViewPage() {
   const [vehicleDescription, setVehicleDescription] = useState('')
   const [hasInsurance, setHasInsurance] = useState<boolean>(false)
   const [insuranceType, setInsuranceType] = useState('')
+  const [complianceStatus, setComplianceStatus] = useState<'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | ''>('NOT_COMPLIANT')
   const [hasLicense, setHasLicense] = useState<boolean | undefined>(undefined)
   const [licenseNumber, setLicenseNumber] = useState('')
   const [licenseExpiry, setLicenseExpiry] = useState('')
@@ -432,6 +463,8 @@ export default function InstallerProfileViewPage() {
   const [isSunbizRegistered, setIsSunbizRegistered] = useState<boolean | undefined>(undefined)
   const [isSunbizActive, setIsSunbizActive] = useState<boolean | undefined>(undefined)
   const [hasBusinessLicense, setHasBusinessLicense] = useState<boolean | undefined>(undefined)
+  const [canPassBackgroundCheck, setCanPassBackgroundCheck] = useState<boolean | undefined>(undefined)
+  const [backgroundCheckDetails, setBackgroundCheckDetails] = useState('')
   const [feiEin, setFeiEin] = useState('')
   const [employerLiabilityPolicyNumber, setEmployerLiabilityPolicyNumber] = useState('')
   const [llrpExpiry, setLlrpExpiry] = useState('')
@@ -490,6 +523,7 @@ export default function InstallerProfileViewPage() {
   const [installsTrim, setInstallsTrim] = useState<boolean | undefined>(undefined)
   const [notes, setNotes] = useState('')
   const [remarks, setRemarks] = useState<Array<{date: string | null, note: string, createdAt: string}>>([])
+  const [managerRemarks, setManagerRemarks] = useState<Array<{date: string | null, note: string, createdAt: string}>>([])
   const [remarkDate, setRemarkDate] = useState('')
   const [remarkNote, setRemarkNote] = useState('')
   const [showRemarkPopover, setShowRemarkPopover] = useState(false)
@@ -499,6 +533,11 @@ export default function InstallerProfileViewPage() {
   const [deleteRemarkConfirm, setDeleteRemarkConfirm] = useState<{ show: boolean; index: number | null }>({ show: false, index: null })
   const [documents, setDocuments] = useState<any[]>([])
   const [agreements, setAgreements] = useState<any[]>([])
+  const [agreementUploadTitle, setAgreementUploadTitle] = useState('')
+  const [agreementUploadFile, setAgreementUploadFile] = useState<File | null>(null)
+  const [isUploadingAgreement, setIsUploadingAgreement] = useState(false)
+  const [agreementUploadInlineError, setAgreementUploadInlineError] = useState('')
+  const [agreementUploadInlineSuccess, setAgreementUploadInlineSuccess] = useState('')
   const [uploadingDocumentType, setUploadingDocumentType] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
     show: false,
@@ -509,6 +548,8 @@ export default function InstallerProfileViewPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [editingVerificationLink, setEditingVerificationLink] = useState<string | null>(null)
   const [verificationLinks, setVerificationLinks] = useState<{ [key: string]: { link: string; status: string } }>({})
+  const [btrParseBusyByDocId, setBtrParseBusyByDocId] = useState<Record<string, boolean>>({})
+  const [btrParseErrorByDocId, setBtrParseErrorByDocId] = useState<Record<string, string>>({})
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
   const [staffMembers, setStaffMembers] = useState<any[]>([])
   const [failedImageLoads, setFailedImageLoads] = useState<Set<string>>(new Set())
@@ -534,9 +575,11 @@ export default function InstallerProfileViewPage() {
     status: 'active',
   })
   const [staffPhotoFile, setStaffPhotoFile] = useState<File | null>(null)
+  const [staffFormImageError, setStaffFormImageError] = useState(false)
   const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState(false)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const installerProfilePhotoInputRef = useRef<HTMLInputElement>(null)
   const [historyForm, setHistoryForm] = useState<any>({
     year: new Date().getFullYear().toString(),
     firstName: '',
@@ -632,7 +675,13 @@ export default function InstallerProfileViewPage() {
     } else if (sessionStatus === 'authenticated' && installerId) {
       fetchInstallerProfile()
       fetchPendingApprovalsCount()
-      const interval = setInterval(fetchPendingApprovalsCount, 30000)
+      fetchSignatureNotSignedCount()
+      fetchUpdatesCount()
+      const interval = setInterval(() => {
+        fetchPendingApprovalsCount()
+        fetchSignatureNotSignedCount()
+        fetchUpdatesCount()
+      }, 30000)
       return () => clearInterval(interval)
     }
   }, [sessionStatus, installerId, router])
@@ -666,6 +715,141 @@ export default function InstallerProfileViewPage() {
     }
   }
 
+  const fetchSignatureNotSignedCount = async () => {
+    try {
+      const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+      if (res.status === 401) {
+        setSignatureNotSignedCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setSignatureNotSignedCount(data.count || 0)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchUpdatesCount = async () => {
+    try {
+      const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      setUpdatesCount(Number(data?.count || 0))
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleGenerateIndependentContractorContract = async () => {
+    if (!installerId) return
+    setIsGeneratingContract(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/admin/installers/${installerId}/generate-independent-contractor-contract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || data?.details || 'Failed to generate contract')
+      }
+
+      if (data?.redirectUrl) {
+        const signerNameDebug = data?.prefill?.signerName ? String(data.prefill.signerName) : ''
+        const emailDebug = data?.prefill?.email ? String(data.prefill.email) : ''
+
+        // Debug: show what URL params were actually generated for Adobe.
+        let adobeParamSummary = ''
+        try {
+          const urlStr = String(data.redirectUrl)
+          const u = new URL(urlStr)
+          // After our change, the eSign widget field defaults are in the URL fragment: `#key=value&...`
+          const fragment = u.hash?.startsWith('#') ? u.hash.slice(1) : ''
+          const h = new URLSearchParams(fragment)
+          const short = (v: string | null) => (v ? (v.length > 30 ? `${v.slice(0, 30)}…` : v) : '—')
+          const get = (k: string) => h.get(k) ?? u.searchParams.get(k)
+          adobeParamSummary = `Adobe URL params: firstName=${short(get('firstName'))}, lastName=${short(
+            get('lastName')
+          )}, signerName=${short(get('signerName'))}, email=${short(get('email'))}, companyName=${short(
+            get('companyName')
+          )}`
+        } catch {
+          adobeParamSummary = 'Adobe URL params: (unparseable redirectUrl)'
+        }
+
+        const mapHint =
+          data?.adobeFieldMapConfigured === false
+            ? ' Note: Adobe field map not set—if the form is empty, enable “Default value may come from URL” on each field in Acrobat Sign and set env ADOBE_IC_WIDGET_FIELD_MAP (see src/lib/adobeIcWidgetFieldMap.ts).'
+            : ''
+        setSuccess(
+          `Contract generated. Prefill: ${signerNameDebug ? signerNameDebug : '—'} / ${emailDebug ? emailDebug : '—'}. ${adobeParamSummary}${mapHint}`
+        )
+        setShowShareDropdown(false)
+        if (data?.redirectUrl) {
+          // Helpful for debugging: lets you confirm which params were sent.
+          try {
+            await navigator.clipboard.writeText(String(data.redirectUrl))
+          } catch {
+            // ignore clipboard errors
+          }
+        }
+        window.open(String(data.redirectUrl), '_blank', 'noopener,noreferrer')
+        setTimeout(() => setSuccess(''), data?.adobeFieldMapConfigured === false ? 12000 : 3000)
+      } else {
+        throw new Error('Adobe Sign redirectUrl missing from response')
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to generate contract. Please try again.')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setIsGeneratingContract(false)
+    }
+  }
+
+  const handleSendIndependentContractorServicesAgreementEmail = async (agreement: any) => {
+    if (!installerId) return
+    setIsSendingAgreementEmail(true)
+    setError('')
+    setSuccess('')
+    try {
+      const response = await fetch(
+        `/api/admin/installers/${installerId}/agreements/independent-contractor-services/send`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agreementId: agreement?.id ?? null }),
+        }
+      )
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data?.error || data?.details || 'Failed to send email')
+      }
+
+      // If Resend isn't configured we return 200 with sent=false and a copyable link.
+      if (data?.sent === false && data?.redirectUrl) {
+        try {
+          await navigator.clipboard.writeText(String(data.redirectUrl))
+        } catch {
+          // ignore clipboard errors
+        }
+        setSuccess(data?.message || 'Email not sent (configured missing). Link copied.')
+      } else {
+        setSuccess(data?.message || 'Email sent successfully!')
+      }
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to send email')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setIsSendingAgreementEmail(false)
+    }
+  }
+
   // Initialize state when installer data is loaded
   useEffect(() => {
     if (installer && !isEditing) {
@@ -676,6 +860,7 @@ export default function InstallerProfileViewPage() {
       setPhone(installer.phone || '')
       setDigitalId(installer.digitalId || '')
       setWorkroom(installer.workroom || '')
+      setPrimaryFlooringSurface(installer.primaryFlooringSurface || '')
       setYearsOfExperience(installer.yearsOfExperience)
       setPhotoUrl(installer.photoUrl || null)
       setFlooringSpecialties(installer.flooringSpecialties || '')
@@ -688,6 +873,7 @@ export default function InstallerProfileViewPage() {
       setVehicleDescription(installer.vehicleDescription || '')
       setHasInsurance(installer.hasInsurance || false)
       setInsuranceType(installer.insuranceType || '')
+      setComplianceStatus((installer.complianceStatus as any) || 'NOT_COMPLIANT')
       setHasLicense(installer.hasLicense)
       setLicenseNumber(installer.licenseNumber || '')
       setLicenseExpiry(installer.licenseExpiry ? new Date(installer.licenseExpiry).toISOString().split('T')[0] : '')
@@ -698,6 +884,8 @@ export default function InstallerProfileViewPage() {
       setIsSunbizRegistered(installer.isSunbizRegistered)
       setIsSunbizActive(installer.isSunbizActive)
       setHasBusinessLicense(installer.hasBusinessLicense)
+      setCanPassBackgroundCheck(installer.canPassBackgroundCheck)
+      setBackgroundCheckDetails(installer.backgroundCheckDetails || '')
       setFeiEin(installer.feiEin || '')
       setEmployerLiabilityPolicyNumber(installer.employerLiabilityPolicyNumber || '')
       setLlrpExpiry(installer.llrpExpiry ? new Date(installer.llrpExpiry).toISOString().split('T')[0] : '')
@@ -793,6 +981,20 @@ export default function InstallerProfileViewPage() {
       } else {
         setRemarks([])
       }
+      if (installer.managerRemarks) {
+        try {
+          const parsedManagerRemarks = JSON.parse(installer.managerRemarks)
+          if (Array.isArray(parsedManagerRemarks)) {
+            setManagerRemarks(parsedManagerRemarks.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
+          } else {
+            setManagerRemarks([])
+          }
+        } catch {
+          setManagerRemarks([])
+        }
+      } else {
+        setManagerRemarks([])
+      }
     }
   }, [installer, isEditing])
 
@@ -800,7 +1002,7 @@ export default function InstallerProfileViewPage() {
     try {
       setIsLoading(true)
       setError('')
-      const response = await fetch(`/api/installers/${installerId}`)
+      const response = await fetch(`/api/installers/${installerId}`, { cache: 'no-store' })
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
@@ -859,17 +1061,18 @@ export default function InstallerProfileViewPage() {
     }
   }
 
-  const refreshDocuments = async () => {
-    if (!installerId) return
+  const refreshDocuments = async (): Promise<any[]> => {
+    if (!installerId) return []
     const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
     if (docsResponse.ok) {
       const docsContentType = docsResponse.headers.get('content-type')
       if (docsContentType && docsContentType.includes('application/json')) {
         const docsData = await docsResponse.json()
-        setDocuments(docsData.documents || [])
+        const nextDocuments = docsData.documents || []
+        setDocuments(nextDocuments)
         // Initialize verification links state
         const linksState: { [key: string]: { link: string; status: string } } = {}
-        docsData.documents?.forEach((doc: any) => {
+        nextDocuments?.forEach((doc: any) => {
           if (doc.id) {
             linksState[doc.id] = {
               link: doc.verificationLink || '',
@@ -878,8 +1081,63 @@ export default function InstallerProfileViewPage() {
           }
         })
         setVerificationLinks(linksState)
+        return nextDocuments
       }
     }
+    return []
+  }
+
+  const parseBtrExpiryForDocument = async (documentId: string) => {
+    if (!installerId || !documentId) return
+    setBtrParseBusyByDocId((prev) => ({ ...prev, [documentId]: true }))
+    setBtrParseErrorByDocId((prev) => {
+      const copy = { ...prev }
+      delete copy[documentId]
+      return copy
+    })
+    try {
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000)
+      const res = await fetch(`/api/installers/${installerId}/documents/${documentId}`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
+      window.clearTimeout(timeoutId)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || `Parse failed (HTTP ${res.status})`)
+      }
+      const data = await res.json().catch(() => ({}))
+      const nextDocuments = await refreshDocuments()
+      const parsedDoc = nextDocuments.find((d: any) => d?.id === documentId)
+      if (parsedDoc?.expiryDate) {
+        setBtrExpiry(new Date(parsedDoc.expiryDate).toISOString().split('T')[0])
+        setSuccess('BTR expiry detected')
+      } else {
+        setBtrParseErrorByDocId((prev) => ({
+          ...prev,
+          [documentId]: data?.message || 'No expiry date found',
+        }))
+      }
+      setTimeout(() => setSuccess(''), 2000)
+    } catch (e: any) {
+      const message = e?.name === 'AbortError' ? 'Parse timed out' : e?.message || 'Parse failed'
+      setBtrParseErrorByDocId((prev) => ({ ...prev, [documentId]: message }))
+    } finally {
+      setBtrParseBusyByDocId((prev) => ({ ...prev, [documentId]: false }))
+    }
+  }
+
+  const tryParseLatestBtrExpiry = async (docs: any[]) => {
+    const target = (docs || []).find((d: any) => {
+      const name = String(d?.name || d?.fileName || d?.file_name || '').toLowerCase()
+      return (
+        d?.type === 'business_registration' &&
+        !d?.expiryDate &&
+        (name.endsWith('.pdf') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg'))
+      )
+    })
+    if (target?.id) await parseBtrExpiryForDocument(target.id)
   }
 
   const refreshAgreements = async () => {
@@ -892,6 +1150,83 @@ export default function InstallerProfileViewPage() {
       }
     } catch (e) {
       console.error('Error refreshing agreements:', e)
+    }
+  }
+
+  const handleUploadAgreement = async () => {
+    if (!installerId) return
+    if (!agreementUploadFile) {
+      setError('Please select a file to upload.')
+      setTimeout(() => setError(''), 4000)
+      setAgreementUploadInlineError('Please select a file to upload.')
+      setAgreementUploadInlineSuccess('')
+      return
+    }
+    const title = agreementUploadTitle.trim()
+    if (!title) {
+      setError('Please enter a title for this agreement.')
+      setTimeout(() => setError(''), 4000)
+      setAgreementUploadInlineError('Please enter a title for this agreement.')
+      setAgreementUploadInlineSuccess('')
+      return
+    }
+
+    try {
+      setIsUploadingAgreement(true)
+      setError('')
+      setAgreementUploadInlineError('')
+      setAgreementUploadInlineSuccess('')
+
+      // Allow up to 10MB (uploads go direct-to-Blob to avoid serverless body limits)
+      if (agreementUploadFile.size > 10 * 1024 * 1024) {
+        throw new Error('File size must be less than 10MB.')
+      }
+
+      const safeName = agreementUploadFile.name.replace(/[^\w.\-() ]+/g, '_')
+      const blobPath = `installers/${installerId}/agreements/${Date.now()}-${safeName}`
+      const blob = await upload(blobPath, agreementUploadFile, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
+      })
+
+      const res = await fetch(`/api/admin/installers/${installerId}/agreements/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          fileUrl: blob.url,
+          fileName: agreementUploadFile.name,
+        }),
+      })
+      const contentType = res.headers.get('content-type') || ''
+      const data =
+        contentType.includes('application/json')
+          ? await res.json().catch(() => ({}))
+          : await res
+              .text()
+              .then((t) => ({ details: t }))
+              .catch(() => ({}))
+      if (!res.ok) {
+        const msg =
+          [data.details, data.error].filter(Boolean).join(' — ') || `Failed to save agreement (HTTP ${res.status})`
+        throw new Error(msg)
+      }
+
+      setAgreementUploadTitle('')
+      setAgreementUploadFile(null)
+      setSuccess('Agreement uploaded')
+      setTimeout(() => setSuccess(''), 3000)
+      setAgreementUploadInlineSuccess('Agreement uploaded.')
+      setAgreementUploadInlineError('')
+      await refreshAgreements()
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to upload agreement'
+      setError(msg)
+      setTimeout(() => setError(''), 5000)
+      setAgreementUploadInlineError(msg)
+      setAgreementUploadInlineSuccess('')
+    } finally {
+      setIsUploadingAgreement(false)
     }
   }
 
@@ -927,9 +1262,9 @@ export default function InstallerProfileViewPage() {
       const latest = sorted[0]
       const raw = (latest?.verificationLinkStatus || '').toString().toLowerCase()
       if (!raw) return null
-      if (raw === 'active') return 'active'
-      if (raw === 'inactive') return 'inactive'
-      if (raw === 'missing') return 'missing'
+      if (raw === 'active' || raw === 'compliant') return 'active'
+      if (raw === 'inactive' || raw === 'not_compliant' || raw === 'non_compliant' || raw === 'not active') return 'inactive'
+      if (raw === 'missing' || raw === 'in_progress' || raw === 'in progress') return 'missing'
       if (raw === 'expired') return 'expired'
       if (raw === 'na' || raw === 'n/a') return 'na'
       return null
@@ -937,9 +1272,9 @@ export default function InstallerProfileViewPage() {
 
     const statusTextFromKey = (k: ComplianceStatusKey): string => {
       if (k === 'na') return 'N/A'
-      if (k === 'inactive') return 'Inactive'
-      if (k === 'missing') return 'Missing'
       if (k === 'expired') return 'Expired'
+      if (k === 'inactive') return 'Not active'
+      if (k === 'missing') return 'Missing'
       return 'Active'
     }
 
@@ -954,11 +1289,11 @@ export default function InstallerProfileViewPage() {
       }
     }
 
-    const statusFromExpiry = (expiry: string | undefined, missingIs: 'inactive' | 'missing' = 'inactive'): ComplianceStatusKey => {
-      if (!expiry) return missingIs
+    const statusFromExpiry = (expiry: string | undefined): ComplianceStatusKey => {
+      if (!expiry) return 'missing'
       const s = getExpirationStatus(expiry)
       if (s === 'expired') return 'expired'
-      if (s === 'none') return missingIs
+      if (s === 'none') return 'missing'
       return 'active'
     }
 
@@ -973,43 +1308,63 @@ export default function InstallerProfileViewPage() {
       const liabilityOverride = getLatestDocStatusForType('liability_insurance')
       const autoOverride = getLatestDocStatusForType('auto_insurance')
       const employersLiabilityOverride = getLatestDocStatusForType('employers_liability')
+      const independentContractorAgreement = (agreements || []).find((a: any) => {
+        const type = String(a?.type || '').trim().toLowerCase()
+        const title = String(a?.payload?.title || '').trim().toLowerCase()
+        return (
+          type === 'independent-contractor-services-agreement' ||
+          (type.startsWith('admin-uploaded-agreement:') && title === 'independent contractor services agreement')
+        )
+      })
+      const backgroundStatusFromCompliance =
+        complianceStatus === 'COMPLIANT'
+          ? 'COMPLIANT'
+          : complianceStatus === 'NOT_COMPLIANT'
+            ? 'NOT_COMPLIANT'
+            : complianceStatus === 'IN_PROGRESS'
+              ? 'IN_PROGRESS'
+              : canPassBackgroundCheck === true
+                ? 'COMPLIANT'
+                : canPassBackgroundCheck === false
+                  ? 'NOT_COMPLIANT'
+                  : 'IN_PROGRESS'
 
       // Helper to get status: use manual override if set, otherwise check if document exists
-      const getStatus = (override: ComplianceStatusKey | null, hasDocument: boolean, defaultIfNoDoc: ComplianceStatusKey = 'missing'): ComplianceStatusKey => {
+      const getStatus = (override: ComplianceStatusKey | null, hasDocument: boolean): ComplianceStatusKey => {
         if (override !== null) return override
-        return hasDocument ? 'inactive' : defaultIfNoDoc
+        return hasDocument ? 'active' : 'missing'
       }
 
       return [
         {
           key: 'sunbiz',
           name: 'Sunbiz (Business Registration)',
-          statusKey: getStatus(sunbizOverride, hasDoc('sunbiz'), 'missing'),
-          statusText: statusTextFromKey(getStatus(sunbizOverride, hasDoc('sunbiz'), 'missing')),
+          statusKey: getStatus(sunbizOverride, hasDoc('sunbiz')),
+          statusText: statusTextFromKey(getStatus(sunbizOverride, hasDoc('sunbiz'))),
           date: 'N/A',
           dates: [] as string[],
         },
         {
           key: 'lrrp',
           name: 'LLRP (Lead Renovator)',
-          statusKey: getStatus(lrrpOverride, hasDoc('lrrp'), 'missing'),
-          statusText: statusTextFromKey(getStatus(lrrpOverride, hasDoc('lrrp'), 'missing')),
+          statusKey: statusFromExpiry(llrpExpiry || ''),
+          statusText: statusTextFromKey(statusFromExpiry(llrpExpiry || '')),
           date: llrpExpiry || '',
           dates: [] as string[],
         },
         {
           key: 'lead_firm_certificate',
           name: 'Lead Firm Certificate',
-          statusKey: getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'), 'missing'),
-          statusText: statusTextFromKey(getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'), 'missing')),
+          statusKey: getStatus(leadFirmOverride, hasDoc('lead_firm_certificate')),
+          statusText: statusTextFromKey(getStatus(leadFirmOverride, hasDoc('lead_firm_certificate'))),
           date: getLatestDocExpiryForType('lead_firm_certificate') || '',
           dates: [] as string[],
         },
         {
           key: 'business_registration',
           name: 'Business Tax Receipt (BTR)',
-          statusKey: getStatus(btrOverride, hasDoc('business_registration'), 'missing'),
-          statusText: statusTextFromKey(getStatus(btrOverride, hasDoc('business_registration'), 'missing')),
+          statusKey: statusFromExpiry(btrExpiry || ''),
+          statusText: statusTextFromKey(statusFromExpiry(btrExpiry || '')),
           date: btrExpiry || (hasDoc('business_registration') ? 'N/A' : ''),
           dates: [] as string[],
         },
@@ -1018,18 +1373,18 @@ export default function InstallerProfileViewPage() {
           name: "Workers' Compensation",
           statusKey: hasWorkersCompExemption === false 
             ? ('na' as const)
-            : getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'), 'missing'),
+            : getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp')),
           statusText: hasWorkersCompExemption === false
             ? 'N/A'
-            : statusTextFromKey(getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'), 'missing')),
+            : statusTextFromKey(getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'))),
           date: (workersCompExemExpiryDates || []).filter(Boolean).slice().sort()[0] || '',
           dates: (workersCompExemExpiryDates || []).filter(Boolean).slice().sort(),
         },
         {
           key: 'general_liability',
           name: 'General Liability Insurance',
-          statusKey: getStatus(liabilityOverride, hasDoc('liability_insurance'), 'missing'),
-          statusText: statusTextFromKey(getStatus(liabilityOverride, hasDoc('liability_insurance'), 'missing')),
+          statusKey: statusFromExpiry(generalLiabilityExpiry || ''),
+          statusText: statusTextFromKey(statusFromExpiry(generalLiabilityExpiry || '')),
           date: generalLiabilityExpiry || '',
           dates: [] as string[],
         },
@@ -1038,10 +1393,10 @@ export default function InstallerProfileViewPage() {
           name: 'Automobile Liability Insurance',
           statusKey: hasCommercialAutoLiability === false
             ? ('na' as const)
-            : getStatus(autoOverride, hasDoc('auto_insurance'), 'missing'),
+            : statusFromExpiry((automobileLiabilityExpiryDates || []).filter(Boolean).slice().sort()[0] || ''),
           statusText: hasCommercialAutoLiability === false
             ? 'N/A'
-            : statusTextFromKey(getStatus(autoOverride, hasDoc('auto_insurance'), 'missing')),
+            : statusTextFromKey(statusFromExpiry((automobileLiabilityExpiryDates || []).filter(Boolean).slice().sort()[0] || '')),
           date: (automobileLiabilityExpiryDates || []).filter(Boolean).slice().sort()[0] || '',
           dates: (automobileLiabilityExpiryDates || []).filter(Boolean).slice().sort(),
         },
@@ -1049,12 +1404,54 @@ export default function InstallerProfileViewPage() {
           key: 'employers_liability',
           name: "Employer's Liability Insurance",
           statusKey: employerLiabilityPolicyNumber
-            ? getStatus(employersLiabilityOverride, hasDoc('employers_liability'), 'missing')
+            ? statusFromExpiry(employersLiabilityExpiry || '')
             : ('na' as const),
           statusText: employerLiabilityPolicyNumber
-            ? statusTextFromKey(getStatus(employersLiabilityOverride, hasDoc('employers_liability'), 'missing'))
+            ? statusTextFromKey(statusFromExpiry(employersLiabilityExpiry || ''))
             : 'N/A',
           date: employerLiabilityPolicyNumber ? (employersLiabilityExpiry || '') : 'N/A',
+          dates: [] as string[],
+        },
+        {
+          key: 'background_check',
+          name: 'Background Check',
+          statusKey:
+            backgroundStatusFromCompliance === 'COMPLIANT'
+              ? ('active' as const)
+              : backgroundStatusFromCompliance === 'NOT_COMPLIANT'
+                ? ('inactive' as const)
+                : ('missing' as const),
+          statusText:
+            backgroundStatusFromCompliance === 'COMPLIANT'
+              ? 'Compliant'
+              : backgroundStatusFromCompliance === 'NOT_COMPLIANT'
+                ? 'Not compliant'
+                : 'In progress',
+          date: 'N/A',
+          dates: [] as string[],
+        },
+        {
+          key: 'signature_signed',
+          name: 'Signature Signed',
+          statusKey: (() => {
+            const statusRaw = (independentContractorAgreement as any)?.status
+            const statusNorm = String(statusRaw || '').trim().toLowerCase()
+            const isSigned =
+              Boolean(independentContractorAgreement?.signedAt) ||
+              Boolean(independentContractorAgreement?.adminSignedDate) ||
+              statusNorm === 'approved'
+            return isSigned ? ('active' as const) : ('inactive' as const)
+          })(),
+          statusText: (() => {
+            const statusRaw = (independentContractorAgreement as any)?.status
+            const statusNorm = String(statusRaw || '').trim().toLowerCase()
+            const isSigned =
+              Boolean(independentContractorAgreement?.signedAt) ||
+              Boolean(independentContractorAgreement?.adminSignedDate) ||
+              statusNorm === 'approved'
+            return isSigned ? 'Signed' : 'Not signed'
+          })(),
+          date: 'N/A',
           dates: [] as string[],
         },
         // Add staff members to compliance status
@@ -1112,11 +1509,16 @@ export default function InstallerProfileViewPage() {
       employerLiabilityPolicyNumber,
       employersLiabilityExpiry,
       staffMembers,
+      agreements,
     ])
 
     const complianceCounts = useMemo(() => {
-      const base = { active: 0, inactive: 0, missing: 0, expired: 0, na: 0 }
-      for (const r of complianceRows) base[r.statusKey]++
+  const base = { active: 0, inactive: 0, missing: 0, expired: 0, na: 0 }
+      for (const r of complianceRows) {
+        // Rows with custom labels (Compliant/Not compliant/In progress) shouldn't affect the doc summary pills.
+        if ((r as any)?.key === 'background_check') continue
+        base[r.statusKey]++
+      }
       return base
     }, [complianceRows])
 
@@ -1151,7 +1553,10 @@ export default function InstallerProfileViewPage() {
         throw new Error(err?.error || 'Failed to upload document')
       }
 
-      await refreshDocuments()
+      const nextDocuments = await refreshDocuments()
+      if (type === 'business_registration') {
+        await tryParseLatestBtrExpiry(nextDocuments)
+      }
       setSuccess('Attachment uploaded')
       setTimeout(() => setSuccess(''), 2000)
     } catch (e: any) {
@@ -1552,6 +1957,15 @@ export default function InstallerProfileViewPage() {
 
       // Build payload, then strip empty-string fields to avoid wiping existing DB values.
       // To intentionally clear a field, the API expects `null` (not an empty string).
+      const canPassBackgroundCheckFromCompliance =
+        complianceStatus === 'COMPLIANT'
+          ? true
+          : complianceStatus === 'NOT_COMPLIANT'
+            ? false
+            : complianceStatus === 'IN_PROGRESS'
+              ? null
+              : (canPassBackgroundCheck ?? false)
+
       const payload: any = {
         status,
         trackerStage,
@@ -1561,6 +1975,7 @@ export default function InstallerProfileViewPage() {
         phone,
         digitalId: digitalId.trim() || null,
         workroom: workroom.trim() || null,
+        primaryFlooringSurface: primaryFlooringSurface.trim() || null,
         yearsOfExperience,
         flooringSpecialties,
         flooringSkills,
@@ -1572,6 +1987,7 @@ export default function InstallerProfileViewPage() {
         vehicleDescription: hasVehicle === false ? null : vehicleDescription,
         hasInsurance,
         insuranceType,
+        complianceStatus: complianceStatus || 'NOT_COMPLIANT',
         hasLicense,
         licenseNumber,
         licenseExpiry: licenseExpiry || null,
@@ -1582,30 +1998,32 @@ export default function InstallerProfileViewPage() {
         isSunbizRegistered,
         isSunbizActive,
         hasBusinessLicense,
+        canPassBackgroundCheck: canPassBackgroundCheckFromCompliance,
+        backgroundCheckDetails,
         feiEin,
         employerLiabilityPolicyNumber,
-        llrpExpiry: llrpExpiry ? new Date(llrpExpiry).toISOString() : undefined,
-        btrExpiry: btrExpiry ? new Date(btrExpiry).toISOString() : undefined,
+        llrpExpiry: llrpExpiry ? new Date(llrpExpiry).toISOString() : null,
+        btrExpiry: btrExpiry ? new Date(btrExpiry).toISOString() : null,
         workersCompExemExpiryDates: Array.isArray(workersCompExemExpiryDates)
           ? workersCompExemExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
-          : undefined,
+          : null,
         workersCompExemExpiry:
           Array.isArray(workersCompExemExpiryDates) && workersCompExemExpiryDates.length > 0
             ? new Date(workersCompExemExpiryDates.slice().sort()[0]).toISOString()
             : workersCompExemExpiry
               ? new Date(workersCompExemExpiry).toISOString()
-              : undefined,
-        generalLiabilityExpiry: generalLiabilityExpiry ? new Date(generalLiabilityExpiry).toISOString() : undefined,
+              : null,
+        generalLiabilityExpiry: generalLiabilityExpiry ? new Date(generalLiabilityExpiry).toISOString() : null,
         automobileLiabilityExpiryDates: Array.isArray(automobileLiabilityExpiryDates)
           ? automobileLiabilityExpiryDates.map((d) => (d || '').trim()).filter(Boolean)
-          : undefined,
+          : null,
         automobileLiabilityExpiry:
           Array.isArray(automobileLiabilityExpiryDates) && automobileLiabilityExpiryDates.length > 0
             ? new Date(automobileLiabilityExpiryDates.slice().sort()[0]).toISOString()
             : automobileLiabilityExpiry
               ? new Date(automobileLiabilityExpiry).toISOString()
-              : undefined,
-        employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : undefined,
+              : null,
+        employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : null,
         willingToTravel,
         maxTravelDistance,
         canStartImmediately,
@@ -1758,13 +2176,15 @@ export default function InstallerProfileViewPage() {
       }
       
       // Add to existing remarks
-      const updatedRemarks = [...remarks, newRemark]
+      const activeRemarks = isManager ? managerRemarks : remarks
+      const updatedRemarks = [...activeRemarks, newRemark]
+      const remarkField = isManager ? 'managerRemarks' : 'remarks'
       
       const response = await fetch(`/api/installers/${installerId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          remarks: JSON.stringify(updatedRemarks),
+          [remarkField]: JSON.stringify(updatedRemarks),
         }),
       })
 
@@ -1775,7 +2195,11 @@ export default function InstallerProfileViewPage() {
 
       const data = await response.json()
       setInstaller(data.installer)
-      setRemarks(updatedRemarks)
+      if (isManager) {
+        setManagerRemarks(updatedRemarks)
+      } else {
+        setRemarks(updatedRemarks)
+      }
       setRemarkDate('')
       setRemarkNote('')
       setShowRemarkDate(false)
@@ -1804,13 +2228,15 @@ export default function InstallerProfileViewPage() {
       setError('')
       
       // Remove remark at index
-      const updatedRemarks = remarks.filter((_, i) => i !== deleteRemarkConfirm.index)
+      const activeRemarks = isManager ? managerRemarks : remarks
+      const updatedRemarks = activeRemarks.filter((_, i) => i !== deleteRemarkConfirm.index)
+      const remarkField = isManager ? 'managerRemarks' : 'remarks'
       
       const response = await fetch(`/api/installers/${installerId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          remarks: updatedRemarks.length > 0 ? JSON.stringify(updatedRemarks) : null,
+          [remarkField]: updatedRemarks.length > 0 ? JSON.stringify(updatedRemarks) : null,
         }),
       })
 
@@ -1821,7 +2247,11 @@ export default function InstallerProfileViewPage() {
 
       const data = await response.json()
       setInstaller(data.installer)
-      setRemarks(updatedRemarks)
+      if (isManager) {
+        setManagerRemarks(updatedRemarks)
+      } else {
+        setRemarks(updatedRemarks)
+      }
       setDeleteRemarkConfirm({ show: false, index: null })
       setSuccess('Remark deleted successfully!')
       setTimeout(() => setSuccess(''), 3000)
@@ -1967,6 +2397,7 @@ export default function InstallerProfileViewPage() {
       status: 'active',
     })
     setStaffPhotoFile(null)
+    setStaffFormImageError(false)
     setShowStaffModal(true)
   }
 
@@ -1985,6 +2416,7 @@ export default function InstallerProfileViewPage() {
       status: staff.status || 'active',
     })
     setStaffPhotoFile(null)
+    setStaffFormImageError(false)
     setShowStaffModal(true)
   }
 
@@ -2052,6 +2484,10 @@ export default function InstallerProfileViewPage() {
         setIsUploadingStaffPhoto(false)
       }
 
+      if (!staffPhotoFile && staffFormImageError) {
+        photoUrl = ''
+      }
+
       const url = editingStaff
         ? `/api/installers/${installerId}/staff/${editingStaff.id}`
         : `/api/installers/${installerId}/staff`
@@ -2097,6 +2533,7 @@ export default function InstallerProfileViewPage() {
         status: 'active',
       })
       setStaffPhotoFile(null)
+      setStaffFormImageError(false)
       setSuccess('Staff member saved successfully!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
@@ -2173,6 +2610,11 @@ export default function InstallerProfileViewPage() {
       setError('Failed to upload photo. Please try again.')
     } finally {
       setIsUploadingPhoto(false)
+      try {
+        e.currentTarget.value = ''
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -2212,114 +2654,70 @@ export default function InstallerProfileViewPage() {
     }
   }
 
-  // Calculate profile completion percentage
-  const calculateProfileCompletion = (): number => {
-    if (!installer) return 0
-    
-    const fields = [
-      // Basic Info
-      installer.firstName,
-      installer.lastName,
-      installer.phone,
-      installer.email,
-      installer.photoUrl,
-      // Company Info
-      installer.companyName,
-      installer.companyTitle,
-      installer.companyStreetAddress,
-      installer.companyCity,
-      installer.companyState,
-      installer.companyZipCode,
-      installer.companyCounty,
-      installer.companyAddress,
-      // Experience & Skills
-      installer.yearsOfExperience,
-      installer.flooringSkills,
-      installer.hasOwnCrew !== undefined,
-      installer.crewSize,
-      // Insurance & Registration
-      installer.hasInsurance !== undefined,
-      installer.insuranceType,
-      installer.hasLicense !== undefined,
-      installer.licenseNumber,
-      installer.hasGeneralLiability !== undefined,
-      installer.hasCommercialAutoLiability !== undefined,
-      installer.hasWorkersComp !== undefined,
-      installer.isSunbizRegistered !== undefined,
-      installer.hasBusinessLicense !== undefined,
-      // Tools & Equipment
-      installer.hasOwnTools !== undefined,
-      installer.toolsDescription,
-      installer.hasVehicle !== undefined,
-      installer.vehicleDescription,
-      // Travel & Availability
-      installer.willingToTravel !== undefined,
-      installer.maxTravelDistance,
-      installer.canStartImmediately !== undefined,
-      installer.preferredStartDate,
-      installer.mondayToFridayAvailability,
-      installer.saturdayAvailability,
-      // Carpet Installation
-      installer.wantsToAddCarpet !== undefined,
-      installer.installsStretchInCarpet !== undefined,
-      installer.dailyStretchInCarpetSqft,
-      installer.installsGlueDownCarpet !== undefined,
-      // Hardwood Installation
-      installer.wantsToAddHardwood !== undefined,
-      installer.installsNailDownSolidHardwood !== undefined,
-      installer.dailyNailDownSolidHardwoodSqft,
-      installer.installsStapleDownEngineeredHardwood !== undefined,
-      // Laminate Installation
-      installer.wantsToAddLaminate !== undefined,
-      installer.dailyLaminateSqft,
-      installer.installsLaminateOnStairs !== undefined,
-      // Vinyl Installation
-      installer.wantsToAddVinyl !== undefined,
-      installer.installsSheetVinyl !== undefined,
-      installer.installsLuxuryVinylPlank !== undefined,
-      installer.dailyLuxuryVinylPlankSqft,
-      installer.installsLuxuryVinylTile !== undefined,
-      installer.installsVinylCompositionTile !== undefined,
-      installer.dailyVinylCompositionTileSqft,
-      // Tile Installation
-      installer.wantsToAddTile !== undefined,
-      installer.installsCeramicTile !== undefined,
-      installer.dailyCeramicTileSqft,
-      installer.installsPorcelainTile !== undefined,
-      installer.dailyPorcelainTileSqft,
-      installer.installsStoneTile !== undefined,
-      installer.dailyStoneTileSqft,
-      installer.offersTileRemoval !== undefined,
-      installer.installsTileBacksplash !== undefined,
-      installer.dailyTileBacksplashSqft,
-      // Additional Work
-      installer.movesFurniture !== undefined,
-      installer.installsTrim !== undefined,
-    ]
-    
-    const filledFields = fields.filter(field => {
-      if (field === undefined || field === null) return false
-      if (typeof field === 'string' && field.trim() === '') return false
-      if (typeof field === 'number' && field === 0) return false
-      return true
-    }).length
-    
-    const totalFields = fields.length
-    const percentage = Math.round((filledFields / totalFields) * 100)
-    
-    return Math.min(percentage, 100)
-  }
+  const profilePoints = useMemo(() => {
+    const safeStr = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+    const isTruthyStr = (v: unknown) => safeStr(v).length > 0
+    const hasDoc = (type: string) =>
+      Array.isArray(documents) && documents.some((d: any) => String(d?.type || '') === type)
 
-  const profileCompletion = installer ? calculateProfileCompletion() : 0
-  const isProfileUnfinished = installer ? (profileCompletion < 100 || !installer.overallScore) : false
+    if (!installer) {
+      return {
+        earnedPoints: 0,
+        totalPoints: 105,
+        percent: 0,
+        items: [] as Array<{ key: string; label: string; points: number; earned: boolean; optional?: boolean }>,
+      }
+    }
+
+    const coreProfileComplete =
+      isTruthyStr(installer.firstName) &&
+      isTruthyStr(installer.lastName) &&
+      isTruthyStr(installer.phone) &&
+      (isTruthyStr(installer.companyName) || isTruthyStr(installer.companyAddress)) &&
+      isTruthyStr(installer.companyStreetAddress) &&
+      isTruthyStr(installer.companyCity) &&
+      isTruthyStr(installer.companyState) &&
+      isTruthyStr(installer.companyZipCode)
+
+    const items: Array<{ key: string; label: string; points: number; earned: boolean; optional?: boolean }> = [
+      { key: 'signup', label: 'Sign up bonus', points: 50, earned: true },
+      { key: 'photo', label: 'Profile photo', points: 10, earned: Boolean(installer.photoUrl) },
+      { key: 'profile', label: 'Profile completion', points: 10, earned: coreProfileComplete },
+      {
+        key: 'sunbiz',
+        label: 'Sunbiz',
+        points: 5,
+        earned: Boolean((installer as any).isSunbizActive || (installer as any).isSunbizRegistered || hasDoc('sunbiz')),
+      },
+      { key: 'coi', label: 'COI (General Liability)', points: 10, earned: hasDoc('liability_insurance') || Boolean((installer as any).hasGeneralLiability) },
+      {
+        key: 'wce',
+        label: "WCE (Workers' Comp Exemption)",
+        points: 5,
+        earned: hasDoc('workers_comp_certificate') || Boolean((installer as any).hasWorkersCompExemption),
+      },
+      { key: 'wc', label: "WC (Workers' Comp)", points: 5, earned: hasDoc('workers_comp') || Boolean((installer as any).hasWorkersComp) },
+      {
+        key: 'helpers',
+        label: 'Optional: Add helpers',
+        points: 5,
+        optional: true,
+        earned: Array.isArray(staffMembers) && staffMembers.length > 0,
+      },
+    ]
+
+    const earnedPoints = items.reduce((sum, it) => sum + (it.earned ? it.points : 0), 0)
+    const totalPoints = items.reduce((sum, it) => sum + it.points, 0)
+    const percent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0
+    return { earnedPoints, totalPoints, percent: Math.min(percent, 100), items }
+  }, [installer, documents, staffMembers])
+
+  const isProfileUnfinished = installer ? (profilePoints.percent < 100 || !installer.overallScore) : false
 
   if (sessionStatus === 'loading' || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading installer profile...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -2344,171 +2742,16 @@ export default function InstallerProfileViewPage() {
     )
   }
 
+  const visibleRemarks = isManager ? managerRemarks : remarks
+  const remarkTitle = isManager ? 'Manager Remarks' : 'Admin Remarks'
+  const remarkButtonTitle = isManager ? 'Manager Remark' : 'Admin Remark'
+  const canShowManagerRemarksToAdmin = !isManager && managerRemarks.length > 0
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname.startsWith('/dashboard/installers') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <UsersIcon className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/approvals"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Approvals</span>
-                  {pendingApprovalsCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/tracking"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Activity className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Tracking</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/analytics"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Analytics</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/notifications"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Bell className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Notifications</span>}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/remarks"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <StickyNote className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Remarks</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/settings"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Settings</span>}
-            </Link>
-          )}
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            {session?.user?.image ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                <Image
-                  src={session.user.image}
-                  alt={session.user?.name || session.user?.email || 'Admin'}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-brand-green" />
-              </div>
-            )}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {session.user?.name || 'Admin'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{session.user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
       <AdminMobileMenu pathname={pathname} />
 
       {/* Main Content */}
@@ -2551,7 +2794,7 @@ export default function InstallerProfileViewPage() {
                   </div>
                 )}
                 
-                {/* Admin Remark - Hover Popover */}
+                {/* Remarks - managers only see manager remarks; admins see admin remarks plus manager notes. */}
                 <div 
                   className="relative"
                   onMouseEnter={() => setShowRemarkPopover(true)}
@@ -2560,14 +2803,14 @@ export default function InstallerProfileViewPage() {
                   <button
                     onClick={() => setShowRemarkPopover(!showRemarkPopover)}
                     className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-medium ${
-                      remarks.length > 0 
+                      visibleRemarks.length > 0 || canShowManagerRemarksToAdmin
                         ? 'bg-brand-green/10 text-brand-green border-2 border-brand-green/30' 
                         : 'bg-slate-100 text-slate-700'
                     }`}
-                    title="Admin Remark"
+                    title={remarkButtonTitle}
                   >
                     <StickyNote className="w-5 h-5" />
-                    {remarks.length > 0 && (
+                    {(visibleRemarks.length > 0 || canShowManagerRemarksToAdmin) && (
                       <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-green rounded-full border-2 border-white" />
                     )}
                   </button>
@@ -2594,8 +2837,8 @@ export default function InstallerProfileViewPage() {
                                 <StickyNote className="w-5 h-5 text-brand-green" />
                               </div>
                               <div>
-                                <h3 className="text-xl font-bold text-slate-900">Admin Remarks</h3>
-                                <p className="text-xs text-slate-500">{remarks.length} {remarks.length === 1 ? 'remark' : 'remarks'}</p>
+                                <h3 className="text-xl font-bold text-slate-900">{remarkTitle}</h3>
+                                <p className="text-xs text-slate-500">{visibleRemarks.length} {visibleRemarks.length === 1 ? 'remark' : 'remarks'}</p>
                               </div>
                             </div>
                             <button
@@ -2612,12 +2855,12 @@ export default function InstallerProfileViewPage() {
                         
                         {/* Display all saved remarks */}
                         <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
-                          {remarks.length > 0 ? (
-                            remarks.map((remark, index) => (
+                          {visibleRemarks.length > 0 ? (
+                            visibleRemarks.map((remark, index) => (
                               <div key={index} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative">
                                 <div className="flex items-start justify-between mb-2">
                                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                    Remark #{remarks.length - index}
+                                    Remark #{visibleRemarks.length - index}
                                   </p>
                                   <button
                                     onClick={() => setDeleteRemarkConfirm({ show: true, index })}
@@ -2657,6 +2900,45 @@ export default function InstallerProfileViewPage() {
                             <div className="text-center py-8 text-slate-400">
                               <StickyNote className="w-12 h-12 mx-auto mb-2 opacity-50" />
                               <p className="text-sm">No remarks yet</p>
+                            </div>
+                          )}
+                          {canShowManagerRemarksToAdmin && (
+                            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
+                              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                                Manager remarks visible to admin
+                              </p>
+                              {managerRemarks.map((remark, index) => (
+                                <div key={`manager-${index}`} className="p-4 bg-blue-50 rounded-lg border border-blue-200 relative">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                                      Manager Remark #{managerRemarks.length - index}
+                                    </p>
+                                  </div>
+                                  {remark.date && (
+                                    <p className="text-sm text-slate-700 mb-2">
+                                      <span className="font-semibold">Date:</span>{' '}
+                                      {new Date(remark.date).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      })}
+                                    </p>
+                                  )}
+                                  <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                    <span className="font-semibold">Note:</span>{' '}
+                                    {remark.note}
+                                  </p>
+                                  <p className="text-xs text-slate-400 mt-2">
+                                    {new Date(remark.createdAt).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -2722,7 +3004,7 @@ export default function InstallerProfileViewPage() {
                                 value={remarkNote}
                                 onChange={(e) => setRemarkNote(e.target.value)}
                                 className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none shadow-sm"
-                                placeholder="Enter admin note..."
+                                placeholder={isManager ? 'Enter manager note...' : 'Enter admin note...'}
                                 rows={5}
                               />
                             </div>
@@ -2814,6 +3096,18 @@ export default function InstallerProfileViewPage() {
                                   <Share2 className="w-4 h-4 text-slate-500" />
                                   <span className="font-medium">Share Profile</span>
                                 </button>
+                                <button
+                                  onClick={async () => {
+                                    await handleGenerateIndependentContractorContract()
+                                  }}
+                                  disabled={isGeneratingContract}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors text-left disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  <FileText className="w-4 h-4 text-slate-500" />
+                                  <span className="font-medium">
+                                    {isGeneratingContract ? 'Generating…' : 'Generate Contract'}
+                                  </span>
+                                </button>
                               </div>
                             </>
                           )}
@@ -2863,12 +3157,12 @@ export default function InstallerProfileViewPage() {
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-slate-900 font-medium">Profile Completion</h3>
-                <span className="text-brand-green font-semibold">{profileCompletion}%</span>
+                <span className="text-brand-green font-semibold">{profilePoints.percent}%</span>
               </div>
               <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${profileCompletion}%` }}
+                  animate={{ width: `${profilePoints.percent}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   className="h-full bg-brand-green rounded-full"
                 />
@@ -2887,6 +3181,16 @@ export default function InstallerProfileViewPage() {
                 {/* Profile Photo on Left */}
                 <div className="flex-shrink-0">
                   <div className="relative group">
+                    <input
+                      ref={installerProfilePhotoInputRef}
+                      id="installer-profile-photo-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      disabled={isUploadingPhoto || isManager}
+                      className="hidden"
+                      aria-label="Change installer profile photo"
+                    />
                     {/* Status-based border color */}
                     <div className={`w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
                       installer.status === 'active' ? 'ring-4 ring-brand-green' :
@@ -2968,20 +3272,33 @@ export default function InstallerProfileViewPage() {
                             <Download className="w-3 h-3" />
                             Download
                           </button>
+                          {!isManager && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                installerProfilePhotoInputRef.current?.click()
+                              }}
+                              disabled={isUploadingPhoto}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Change installer photo"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Change
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
                     
                     {/* Upload photo overlay - only show when no photo exists */}
-                    {!(photoUrl || installer.photoUrl) && (
-                      <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center z-30">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoUpload}
-                          disabled={isUploadingPhoto}
-                          className="hidden"
-                        />
+                    {!(photoUrl || installer.photoUrl) && !isManager && (
+                      <label
+                        htmlFor="installer-profile-photo-input"
+                        className={`absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-30 ${
+                          isUploadingPhoto ? 'cursor-wait pointer-events-none' : 'cursor-pointer'
+                        }`}
+                      >
                         {isUploadingPhoto ? (
                           <Loader2 className="w-6 h-6 text-white animate-spin" />
                         ) : (
@@ -3037,7 +3354,7 @@ export default function InstallerProfileViewPage() {
                             <option value="deactive">Deactive</option>
                           </select>
 
-                          {(status === 'pending' || status === 'failed') && (
+                          {status === 'pending' && (
                             <button
                               onClick={async () => {
                                 if (!installerId) return
@@ -3072,7 +3389,7 @@ export default function InstallerProfileViewPage() {
                               }}
                               disabled={isSendingEmail}
                               className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                              title={status === 'pending' ? 'Send AI Interview email' : 'Send Profile Completion email'}
+                              title="Send qualified + complete profile email"
                             >
                               {isSendingEmail ? (
                                 <>
@@ -3109,9 +3426,10 @@ export default function InstallerProfileViewPage() {
                           <label className="text-sm font-semibold text-slate-700">Notify installer via:</label>
                           <select
                             value={notificationMethod}
-                            onChange={(e) => setNotificationMethod(e.target.value as 'email' | 'notification' | 'both')}
+                            onChange={(e) => setNotificationMethod(e.target.value as 'none' | 'email' | 'notification' | 'both')}
                             className="px-3 py-1.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 text-sm"
                           >
+                            <option value="none">Do not notify</option>
                             <option value="both">Email & Notification</option>
                             <option value="email">Email Only</option>
                             <option value="notification">Notification Only</option>
@@ -3120,88 +3438,41 @@ export default function InstallerProfileViewPage() {
                       </div>
                     ) : (
                       <>
-                      {/* Show tracker stages for managers, compliance status for others */}
-                      {isManager ? (
-                        <div className="mt-4">
-                          {(() => {
-                            const stages = [
-                              { key: 'PENDING', label: 'Pending' },
-                              { key: 'QUALIFIED', label: 'Qualified' },
-                              { key: 'WAITING_FOR_APPROVAL', label: 'Waiting for Approval' },
-                              { key: 'VERIFICATION_IN_PROGRESS', label: 'Verification in Progress' },
-                              { key: 'BACKGROUND', label: 'Background' },
-                              { key: 'ACTIVE_APPROVED', label: 'Active / Approved' },
-                            ] as const
+                      {/* Managers should not see tracker-stage pills */}
+                      <div className="mt-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setComplianceOpen((v) => !v)}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                            title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
+                          >
+                            <BarChart3 className="w-4 h-4 text-brand-green" />
+                            <span>Compliance Status</span>
+                            {complianceOpen ? (
+                              <ChevronUp className="w-4 h-4 text-slate-500" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-slate-500" />
+                            )}
+                          </button>
 
-                            const currentKey = String(trackerStage || 'PENDING').toUpperCase()
-                            const currentIdx = Math.max(0, stages.findIndex((s) => s.key === currentKey))
-
-                            return (
-                              <div className="-mx-2 px-2">
-                                <div className="w-full bg-transparent border border-transparent rounded-full px-0 py-0 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:w-max lg:whitespace-nowrap lg:overflow-x-auto lg:hide-scrollbar">
-                                  {stages.map((s, idx) => {
-                                    const isCurrent = idx === currentIdx
-                                    const isDone = idx < currentIdx
-                                    const showCheck = isDone || isCurrent
-                                    const base =
-                                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors'
-                                    const cls = isCurrent
-                                      ? `${base} bg-brand-green text-white shadow-sm`
-                                      : isDone
-                                        ? `${base} bg-white text-brand-green border border-brand-green/30`
-                                        : `${base} bg-white text-slate-500 border border-slate-200`
-
-                                    return (
-                                      <div key={s.key} className="flex items-center flex-shrink-0">
-                                        <span className={cls}>
-                                          {showCheck && <CheckCircle2 className="w-3.5 h-3.5" />}
-                                          {s.label}
-                                        </span>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="mt-4">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setComplianceOpen((v) => !v)}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                              title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
-                            >
-                              <BarChart3 className="w-4 h-4 text-brand-green" />
-                              <span>Compliance Status</span>
-                              {complianceOpen ? (
-                                <ChevronUp className="w-4 h-4 text-slate-500" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-slate-500" />
-                              )}
-                            </button>
-
-                            <div className="flex flex-wrap items-center gap-2 text-xs">
-                              <span className="px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-bold">
-                                Active {complianceCounts.active}
-                              </span>
-                              <span className="px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold">
-                                Expired {complianceCounts.expired}
-                              </span>
-                              <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 font-bold">
-                                Missing {complianceCounts.missing}
-                              </span>
-                              <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold">
-                                Inactive {complianceCounts.inactive}
-                              </span>
-                            </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                              Active {complianceCounts.active}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold">
+                              Not active {complianceCounts.inactive}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                              Missing {complianceCounts.missing}
+                            </span>
+                            <span className="px-2 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold">
+                              Expired {complianceCounts.expired}
+                            </span>
                           </div>
                         </div>
-                      )}
-                      {!isManager && (
-                        <div className="mt-4">
+                      </div>
+                      <div className="mt-4">
 
                           {complianceOpen && (
                             <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -3210,13 +3481,15 @@ export default function InstallerProfileViewPage() {
                                 const badgeClasses =
                                   row.statusKey === 'active'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : row.statusKey === 'expired'
+                                    : row.statusKey === 'inactive'
                                       ? 'bg-red-50 text-red-700 border-red-200'
-                                      : row.statusKey === 'inactive'
+                                      : row.statusKey === 'missing'
                                         ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                        : row.statusKey === 'na'
-                                          ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                                        : row.statusKey === 'expired'
+                                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                          : row.statusKey === 'na'
+                                            ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                            : 'bg-slate-50 text-slate-700 border-slate-200'
 
                                 const formattedDate = formatExpiryDate(row.date)
                                 const dateStatus = row.date ? getExpirationStatus(row.date) : 'none'
@@ -3282,7 +3555,6 @@ export default function InstallerProfileViewPage() {
                             </div>
                           )}
                         </div>
-                      )}
                       </>
                     )}
                   </div>
@@ -3415,19 +3687,7 @@ export default function InstallerProfileViewPage() {
                       />
                     ) : (
                       installer.digitalId ? (
-                        installer.digitalId.startsWith('http://') || installer.digitalId.startsWith('https://') ? (
-                          <a
-                            href={installer.digitalId}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 font-semibold text-blue-600 hover:text-blue-700 text-lg hover:underline transition-colors"
-                          >
-                            <span>Digital ID</span>
-                            <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                          </a>
-                        ) : (
-                          <p className="font-semibold text-slate-900 text-lg">{installer.digitalId}</p>
-                        )
+                        <DigitalIdDisplay value={installer.digitalId} />
                       ) : (
                         <span className="text-slate-400 italic">Not provided</span>
                       )
@@ -3470,6 +3730,35 @@ export default function InstallerProfileViewPage() {
                     ) : (
                       <p className="font-semibold text-slate-900 text-lg">
                         {installer.workroom || <span className="text-slate-400 italic">Not provided</span>}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Square className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Surface</p>
+                    {isEditing ? (
+                      <select
+                        value={primaryFlooringSurface}
+                        onChange={(e) => setPrimaryFlooringSurface(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      >
+                        <option value="">Select surface</option>
+                        {FLOORING_SURFACE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="font-semibold text-slate-900 text-lg">
+                        {installer.primaryFlooringSurface || <span className="text-slate-400 italic">Not provided</span>}
                       </p>
                     )}
                   </div>
@@ -3965,18 +4254,7 @@ export default function InstallerProfileViewPage() {
                       {staff.digitalId && (
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <CreditCard className="w-4 h-4 text-slate-400" />
-                          {staff.digitalId.startsWith('http://') || staff.digitalId.startsWith('https://') ? (
-                            <a
-                              href={staff.digitalId}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 hover:underline"
-                            >
-                              Digital ID
-                            </a>
-                          ) : (
-                            <span className="truncate">{staff.digitalId}</span>
-                          )}
+                          <DigitalIdDisplay value={staff.digitalId} size="sm" className="min-w-0 flex-1" />
                         </div>
                       )}
                       {staff.expirationDate && (
@@ -4108,6 +4386,36 @@ export default function InstallerProfileViewPage() {
                                       {docName}
                                     </p>
                                     <div className="flex items-center gap-2 flex-shrink-0">
+                                      {doc?.type === 'business_registration' && btrParseBusyByDocId[doc.id] && (
+                                        <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-1 rounded-full">
+                                          Parsing...
+                                        </span>
+                                      )}
+                                      {doc?.type === 'business_registration' && btrParseErrorByDocId[doc.id] && (
+                                        <span className="text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded-full">
+                                          {btrParseErrorByDocId[doc.id]}
+                                        </span>
+                                      )}
+                                      {doc?.type === 'business_registration' && doc?.expiryDate && (
+                                        <span className="text-[11px] font-semibold text-slate-700 bg-slate-50 border border-slate-200 px-2 py-1 rounded-full">
+                                          Valid until{' '}
+                                          {(() => {
+                                            const d = new Date(doc.expiryDate)
+                                            return Number.isNaN(d.getTime()) ? String(doc.expiryDate) : d.toLocaleDateString()
+                                          })()}
+                                        </span>
+                                      )}
+                                      {doc?.type === 'business_registration' && !doc?.expiryDate && (
+                                        <button
+                                          type="button"
+                                          onClick={() => parseBtrExpiryForDocument(doc.id)}
+                                          disabled={Boolean(btrParseBusyByDocId[doc.id])}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+                                          title="Auto-detect BTR expiry date from this file"
+                                        >
+                                          {btrParseBusyByDocId[doc.id] ? 'Parsing...' : 'Parse expiry'}
+                                        </button>
+                                      )}
                                       {doc?.id && (
                                         <div className="relative">
                                           <select
@@ -4329,16 +4637,90 @@ export default function InstallerProfileViewPage() {
                 <h2 className="text-2xl font-bold text-slate-900 mb-1">Agreements</h2>
                 <p className="text-sm text-slate-500">Signed agreements and legal documents</p>
               </div>
-              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                <FileCheck className="w-6 h-6 text-brand-green" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                  <FileCheck className="w-6 h-6 text-brand-green" />
+                </div>
               </div>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">Upload agreement (admin only)</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Add a titled agreement PDF/DOC/image to this installer.</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_auto] gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Title</label>
+                  <input
+                    type="text"
+                    value={agreementUploadTitle}
+                    onChange={(e) => setAgreementUploadTitle(e.target.value)}
+                    placeholder="e.g., Updated Independent Contractor Agreement"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">File</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    onChange={(e) => setAgreementUploadFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-800 file:shadow-sm file:ring-1 file:ring-slate-200 hover:file:bg-slate-50"
+                  />
+                  {agreementUploadFile ? (
+                    <p className="mt-1 text-[11px] text-slate-500 truncate" title={agreementUploadFile.name}>
+                      Selected: {agreementUploadFile.name}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleUploadAgreement()}
+                  disabled={isUploadingAgreement}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-50"
+                >
+                  {isUploadingAgreement ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Upload
+                </button>
+              </div>
+              <p className="mt-3 text-[11px] text-slate-500">Allowed: PDF, DOC, DOCX, JPG, PNG (Max 10MB).</p>
+              {agreementUploadInlineError ? (
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {agreementUploadInlineError}
+                </div>
+              ) : null}
+              {agreementUploadInlineSuccess ? (
+                <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                  {agreementUploadInlineSuccess}
+                </div>
+              ) : null}
             </div>
 
             {(() => {
               // Filter to only show signed agreements (must have signedAt date)
               const signedAgreements = agreements.filter((agreement: any) => {
                 // Only show agreements that have been signed by the installer
-                return agreement.signedAt != null
+                // Hide legacy agreements that are no longer part of the current onboarding flow.
+                const isLegacyToHide =
+                  agreement.type === 'background-authorization-release' ||
+                  agreement.type === 'background-authorization' ||
+                  agreement.type === 'service-agreement'
+
+                if (isLegacyToHide) return false
+
+                const isAdminUpload =
+                  typeof agreement.type === 'string' && agreement.type.startsWith('admin-uploaded-agreement:')
+
+                // For Independent Contractor Services Agreement, we want admins to be able
+                // to see the generated prefilled Adobe Sign link even before installer signs.
+                return (
+                  isAdminUpload ||
+                  agreement.signedAt != null ||
+                  agreement.type === 'independent-contractor-services-agreement'
+                )
               })
 
               if (signedAgreements.length === 0) {
@@ -4355,6 +4737,10 @@ export default function InstallerProfileViewPage() {
                 <div className="space-y-4">
                   {signedAgreements.map((agreement: any) => {
                   const getAgreementName = (type: string) => {
+                    if (type.startsWith('admin-uploaded-agreement:')) {
+                      const t = String(agreement?.payload?.title || '').trim()
+                      return t || 'Uploaded Agreement'
+                    }
                     switch (type) {
                       case 'background-authorization-release':
                       case 'background-authorization':
@@ -4367,6 +4753,8 @@ export default function InstallerProfileViewPage() {
                         return 'Non-Disclosure Agreement (NDA)'
                       case 'service-agreement':
                         return 'Service Agreement'
+                      case 'independent-contractor-services-agreement':
+                        return 'Independent Contractor Services Agreement'
                       default:
                         return type.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
                     }
@@ -4415,18 +4803,17 @@ export default function InstallerProfileViewPage() {
                         )
                       case 'draft':
                       default:
-                        return (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold">
-                            <FileText className="w-3.5 h-3.5" />
-                            Draft
-                          </span>
-                        )
+                        return null
                     }
                   }
 
                   const agreementRoute = getAgreementRoute(agreement.type)
                   const signedDate = agreement.signedAt ? new Date(agreement.signedAt).toLocaleDateString() : null
                   const approvedDate = agreement.approvedAt ? new Date(agreement.approvedAt).toLocaleDateString() : null
+                  const adobeRedirectUrl = agreement?.payload?.adobe?.redirectUrl || null
+                  const adobeSignedDocumentUrl = agreement?.payload?.adobe?.signedDocumentUrl || null
+                  const hasAdobeLinks = !!(adobeRedirectUrl || adobeSignedDocumentUrl)
+                  const uploadedFileUrl = agreement?.payload?.fileUrl || null
 
                   return (
                     <motion.div
@@ -4437,7 +4824,7 @@ export default function InstallerProfileViewPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-3 mb-1">
                             <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
                               <FileCheck className="w-5 h-5 text-brand-green" />
                             </div>
@@ -4473,7 +4860,42 @@ export default function InstallerProfileViewPage() {
                             </div>
                           )}
                         </div>
-                        {agreementRoute && (
+                        {agreement?.type === 'independent-contractor-services-agreement' && hasAdobeLinks && (
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
+                            {adobeSignedDocumentUrl && (
+                              <a
+                                href={adobeSignedDocumentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-white transition-colors font-medium text-sm whitespace-nowrap"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Agreement
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleSendIndependentContractorServicesAgreementEmail(agreement)}
+                              disabled={isSendingAgreementEmail}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isSendingAgreementEmail ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Sending…
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="w-4 h-4" />
+                                  Send to Installer Email
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                        {agreementRoute && !(
+                          agreement?.type === 'independent-contractor-services-agreement' && hasAdobeLinks
+                        ) && (
                           <Link
                             href={agreementRoute}
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-white transition-colors font-medium text-sm whitespace-nowrap"
@@ -4481,6 +4903,17 @@ export default function InstallerProfileViewPage() {
                             <Eye className="w-4 h-4" />
                             View Agreement
                           </Link>
+                        )}
+                        {!agreementRoute && uploadedFileUrl && (
+                          <a
+                            href={uploadedFileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-white transition-colors font-medium text-sm whitespace-nowrap"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Open File
+                          </a>
                         )}
                       </div>
                     </motion.div>
@@ -4551,6 +4984,45 @@ export default function InstallerProfileViewPage() {
                               </span>
                             ) : (
                               <span className="text-slate-400">No</span>
+                            )
+                          ) : (
+                            <span className="text-slate-400">Not provided</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="w-5 h-5 text-brand-green" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Compliance Status</p>
+                      {isEditing ? (
+                        <select
+                          value={complianceStatus}
+                          onChange={(e) => setComplianceStatus(e.target.value as any)}
+                          className="w-full max-w-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+                        >
+                          <option value="">Select…</option>
+                          <option value="COMPLIANT">Compliant</option>
+                          <option value="NOT_COMPLIANT">Not compliant</option>
+                          <option value="IN_PROGRESS">In progress</option>
+                        </select>
+                      ) : (
+                        <p className="font-semibold text-slate-900">
+                          {installer.complianceStatus ? (
+                            installer.complianceStatus === 'COMPLIANT' ? (
+                              <span className="text-success-600">Compliant</span>
+                            ) : installer.complianceStatus === 'NOT_COMPLIANT' ? (
+                              <span className="text-red-600">Not compliant</span>
+                            ) : (
+                              <span className="text-amber-600">In progress</span>
                             )
                           ) : (
                             <span className="text-slate-400">Not provided</span>
@@ -4865,7 +5337,7 @@ export default function InstallerProfileViewPage() {
                 </h3>
                 <div className="grid md:grid-cols-3 gap-4">
                   <ExpirationDatePicker
-                    label="LLRP"
+                    label="LLRP & Lead Certificate"
                     value={llrpExpiry}
                     onChange={setLlrpExpiry}
                     isEditing={isEditing}
@@ -4877,7 +5349,7 @@ export default function InstallerProfileViewPage() {
                     isEditing={isEditing}
                   />
                   <MultiExpirationDatePicker
-                    label="Workers Compensation Exem Certificate"
+                    label="Workers Comp Exemption"
                     values={workersCompExemExpiryDates}
                     onChange={(next) => {
                       setWorkersCompExemExpiryDates(next)
@@ -4903,7 +5375,7 @@ export default function InstallerProfileViewPage() {
                     isEditing={isEditing}
                   />
                   <MultiExpirationDatePicker
-                    label="Automobile Liability"
+                    label="Auto Insurance"
                     values={automobileLiabilityExpiryDates}
                     onChange={(next) => {
                       setAutomobileLiabilityExpiryDates(next)
@@ -4913,7 +5385,7 @@ export default function InstallerProfileViewPage() {
                     addLabel="Add policy date"
                   />
                   <ExpirationDatePicker
-                    label="Employer's Liability"
+                    label="Workers' Compensation"
                     value={employersLiabilityExpiry}
                     onChange={setEmployersLiabilityExpiry}
                     isEditing={isEditing}
@@ -5099,6 +5571,77 @@ export default function InstallerProfileViewPage() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50 md:col-span-2">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-5 h-5 text-brand-green" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Background Check</p>
+                    {isEditing ? (
+                      <>
+                        <div className="flex items-center gap-4 mt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="canPassBackgroundCheck"
+                              checked={canPassBackgroundCheck === true}
+                              onChange={() => setCanPassBackgroundCheck(true)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Compliant</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="canPassBackgroundCheck"
+                              checked={canPassBackgroundCheck === false}
+                              onChange={() => setCanPassBackgroundCheck(false)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">Not compliant</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="canPassBackgroundCheck"
+                              checked={canPassBackgroundCheck === undefined}
+                              onChange={() => setCanPassBackgroundCheck(undefined)}
+                              className="w-4 h-4 text-brand-green focus:ring-brand-green"
+                            />
+                            <span className="text-slate-900 font-medium">In progress</span>
+                          </label>
+                        </div>
+                        <textarea
+                          value={backgroundCheckDetails}
+                          onChange={(e) => setBackgroundCheckDetails(e.target.value)}
+                          className="w-full mt-3 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                          placeholder="Background check details (optional)"
+                          rows={3}
+                        />
+                      </>
+                    ) : (
+                      <div className="mt-1">
+                        <p className="font-semibold text-slate-900">
+                          {canPassBackgroundCheck === true ? (
+                            <span className="text-success-600">Compliant</span>
+                          ) : canPassBackgroundCheck === false ? (
+                            <span className="text-red-600">Not compliant</span>
+                          ) : (
+                            <span className="text-amber-600">In progress</span>
+                          )}
+                        </p>
+                        {backgroundCheckDetails ? (
+                          <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{backgroundCheckDetails}</p>
+                        ) : (
+                          <p className="text-sm text-slate-400 mt-1 italic">No details</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -9576,6 +10119,7 @@ export default function InstallerProfileViewPage() {
                     status: 'active',
                   })
                   setStaffPhotoFile(null)
+                  setStaffFormImageError(false)
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
@@ -9597,14 +10141,15 @@ export default function InstallerProfileViewPage() {
                         height={96}
                         className="w-full h-full object-cover"
                       />
-                    ) : staffForm.photoUrl ? (
+                    ) : staffForm.photoUrl && !staffFormImageError ? (
                       <>
                         <Image
                           src={staffForm.photoUrl}
-                          alt="Current photo"
+                          alt=""
                           width={96}
                           height={96}
                           className="w-full h-full object-cover"
+                          onError={() => setStaffFormImageError(true)}
                         />
                         {/* Photo hover menu - View and Download */}
                         <div className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-30 flex items-center justify-center">
@@ -9656,6 +10201,7 @@ export default function InstallerProfileViewPage() {
                         const file = e.target.files?.[0]
                         if (file) {
                           setStaffPhotoFile(file)
+                          setStaffFormImageError(false)
                         }
                       }}
                       className="hidden"
@@ -9666,10 +10212,17 @@ export default function InstallerProfileViewPage() {
                       className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
                     >
                       <User className="w-4 h-4" />
-                      {staffPhotoFile || staffForm.photoUrl ? 'Change Photo' : 'Upload Photo'}
+                      {staffPhotoFile || (staffForm.photoUrl && !staffFormImageError)
+                        ? 'Change Photo'
+                        : 'Upload Photo'}
                     </label>
                   </div>
                 </div>
+                {staffFormImageError && staffForm.photoUrl && (
+                  <p className="text-xs text-amber-700 mt-2 max-w-md">
+                    Saved photo is missing or expired. Upload a new photo, or save to clear the broken link.
+                  </p>
+                )}
               </div>
 
               {/* Basic Information */}

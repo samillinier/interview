@@ -17,7 +17,8 @@ export async function PATCH(
     })
     
     // Only admins can update tracking items
-    if (!admin?.isActive || admin.role !== 'ADMIN') {
+    const role = String((admin as any)?.role || '').toUpperCase()
+    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -96,7 +97,8 @@ export async function DELETE(
     })
     
     // Only admins can delete tracking items
-    if (!admin?.isActive || admin.role !== 'ADMIN') {
+    const role = String((admin as any)?.role || '').toUpperCase()
+    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 

@@ -8,6 +8,7 @@ import {
   Paperclip,
   CreditCard,
   Bell,
+  ClipboardList,
   ExternalLink,
   LogOut,
   Menu,
@@ -23,6 +24,7 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface InstallerProfile {
   id: string
@@ -117,10 +119,7 @@ export default function InstallerReferralsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading referrals…</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -169,6 +168,15 @@ export default function InstallerReferralsPage() {
           <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl transition-colors font-medium">
             <ExternalLink className="w-5 h-5" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
             <Bell className="w-5 h-5" />

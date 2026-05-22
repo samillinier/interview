@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const token = searchParams.get('token')
     const email = searchParams.get('email')
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
-    if (!token || !email) {
+    if (!token || !normalizedEmail) {
       return NextResponse.json(
         { valid: false, error: 'Token and email are required' },
         { status: 400 }
@@ -17,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Find installer by email and token
     const installer = await prisma.installer.findFirst({
       where: {
-        email,
+        email: { equals: normalizedEmail, mode: 'insensitive' },
         passwordResetToken: token,
       },
     })
@@ -26,14 +29,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         valid: false,
         error: 'Invalid or expired reset token',
-      })
-    }
-
-    // Check if installer has a password (they should have one to reset it)
-    if (!installer.passwordHash) {
-      return NextResponse.json({
-        valid: false,
-        error: 'No password set for this account',
       })
     }
 

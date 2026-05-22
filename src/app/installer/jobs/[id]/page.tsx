@@ -30,6 +30,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface Job {
   id: string
@@ -148,10 +149,7 @@ export default function InstallerJobDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading job details...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }

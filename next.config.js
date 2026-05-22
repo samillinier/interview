@@ -6,6 +6,13 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    outputFileTracingIncludes: {
+      '/api/installers/[id]/documents/[documentId]': [
+        './node_modules/@tesseract.js-data/eng/4.0.0/**',
+        './node_modules/tesseract.js/src/worker-script/node/**',
+        './node_modules/tesseract.js-core/**',
+      ],
+    },
   },
   images: {
     remotePatterns: [

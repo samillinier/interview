@@ -61,6 +61,10 @@ const config: Config = {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'bounce-subtle': 'bounce-subtle 2s infinite',
         'wave': 'wave 1.5s ease-in-out infinite',
+        /** Double-beat pulse for loading screens */
+        heartbeat: 'heartbeat 2.5s ease-in-out infinite',
+        /** Loading text trailing dots */
+        'ellipsis-blink': 'ellipsis-blink 0.9s ease-in-out infinite',
       },
       keyframes: {
         'bounce-subtle': {
@@ -70,6 +74,17 @@ const config: Config = {
         'wave': {
           '0%, 100%': { transform: 'scaleY(1)' },
           '50%': { transform: 'scaleY(1.5)' },
+        },
+        heartbeat: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '12%': { transform: 'scale(1.08)' },
+          '24%': { transform: 'scale(1)' },
+          '36%': { transform: 'scale(1.12)' },
+          '55%': { transform: 'scale(1)' },
+        },
+        'ellipsis-blink': {
+          '0%, 100%': { opacity: '0.2' },
+          '50%': { opacity: '1' },
         },
       },
     },

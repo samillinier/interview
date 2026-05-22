@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -11,9 +13,19 @@ export async function GET(request: NextRequest) {
 
     const admin = await prisma.admin.findUnique({ where: { email } })
     if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if ((admin as any)?.role === 'MANAGER') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
 
     const count = await prisma.installerChangeRequest.count({
-      where: { status: 'pending' },
+      where: {
+        status: 'pending',
+        NOT: {
+          source: {
+            startsWith: 'agreement:nda:',
+          },
+        },
+      },
     })
 
     return NextResponse.json({ success: true, count })

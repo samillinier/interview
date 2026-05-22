@@ -6,30 +6,24 @@ import crypto from 'crypto'
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json(
         { error: 'Email is required' },
         { status: 400 }
       )
     }
 
-    // Find installer by email
-    const installer = await prisma.installer.findUnique({
-      where: { email },
+    // Find installer by email. Use a case-insensitive lookup so recovery works
+    // even if the user types different casing than what is stored.
+    const installer = await prisma.installer.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
     })
 
     // Don't reveal if email exists or not (security best practice)
     // Always return success message
     if (!installer) {
-      return NextResponse.json({
-        success: true,
-        message: 'If an account exists with this email, a password reset link has been sent.',
-      })
-    }
-
-    // Check if installer has a password set
-    if (!installer.passwordHash) {
       return NextResponse.json({
         success: true,
         message: 'If an account exists with this email, a password reset link has been sent.',
@@ -55,7 +49,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = isDevelopment 
       ? 'http://localhost:3000'
       : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service.vercel.app')
-    const resetUrl = `${baseUrl}/installer/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
+    const resetUrl = `${baseUrl}/installer/reset-password?token=${resetToken}&email=${encodeURIComponent(installer.email)}`
 
     // Try to send email via Resend
     const resendApiKey = process.env.RESEND_API_KEY
@@ -73,7 +67,7 @@ export async function POST(request: NextRequest) {
         await resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
           to: installer.email,
-          subject: 'Reset Your Password',
+          subject: installer.passwordHash ? 'Reset Your Password' : 'Set Up Your Password',
           html: `
             <!DOCTYPE html>
             <html>
@@ -93,7 +87,11 @@ export async function POST(request: NextRequest) {
                 
                 <p>Hi ${installer.firstName || 'there'},</p>
                 
-                <p>We received a request to reset your password. Click the button below to create a new password:</p>
+                <p>${
+                  installer.passwordHash
+                    ? "We received a request to reset your password. Click the button below to create a new password:"
+                    : "Your installer account is ready. Click the button below to create your password and access your account:"
+                }</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${resetUrl}" 
@@ -106,7 +104,7 @@ export async function POST(request: NextRequest) {
                 <p style="word-break: break-all; color: #666; font-size: 12px;">${resetUrl}</p>
                 
                 <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                  This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
+                  This link will expire in 1 hour. If you didn't request this email, please ignore it.
                 </p>
                 
                 <p style="color: #666; font-size: 14px;">
@@ -148,8 +146,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: resendApiKey 
-          ? 'Password reset link generated. Check your email or use the link below.'
-          : 'Password reset link generated. Use the link below (email not configured).',
+          ? 'Password link generated. Check your email or use the link below.'
+          : 'Password link generated. Use the link below (email not configured).',
         resetUrl: resetUrl,
       })
     }

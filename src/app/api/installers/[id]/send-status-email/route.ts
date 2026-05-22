@@ -35,8 +35,8 @@ export async function POST(
 
     const { status } = await request.json()
 
-    if (!status || (status !== 'pending' && status !== 'failed')) {
-      return NextResponse.json({ error: 'Invalid status. Must be "pending" or "failed"' }, { status: 400 })
+    if (!status || status !== 'pending') {
+      return NextResponse.json({ error: 'Invalid status. Must be "pending"' }, { status: 400 })
     }
 
     // Check if installer has email
@@ -56,93 +56,65 @@ export async function POST(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
     const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
 
-    let subject = ''
-    let htmlContent = ''
+    const subject = "Congratulations! You're Qualified — Complete Your Profile ✅"
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+          <div style="text-align: center; margin-bottom: 24px; padding: 10px 0;">
+            <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto; border: none; outline: none;" />
+          </div>
 
-    if (status === 'pending') {
-      subject = 'Next Step: Complete Your AI Interview to Get Started 🚀'
-      htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-            <!-- Logo/Header Section -->
-            <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-              <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto; border: none; outline: none;" />
-            </div>
-            
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Next Step: Complete Your AI Interview</h1>
-            </div>
-            
-            <p>Hello ${installer.firstName || 'there'},</p>
-            
-            <p>Thank you for applying to partner with Floor Interior Services. We appreciate your interest in working with us! 🙌</p>
-            
-            <p>To move forward in the process, please complete our AI Interview. Please provide honest and accurate answers so our system can properly assess your application. Once the interview is completed and reviewed, you will receive the next steps if you qualify.</p>
-            
-            <div style="background-color: #f0f9ff; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0; border-radius: 4px;">
-              <p style="margin: 0; font-weight: bold; color: #1e40af;">🎥 AI Interview Walkthrough Tutorial:</p>
-              <p style="margin: 5px 0 0 0;">
-                <a href="https://www.youtube.com/watch?v=CIzMKhm3drM" style="color: #2563eb; text-decoration: none;">https://www.youtube.com/watch?v=CIzMKhm3drM</a>
-              </p>
-            </div>
-            
-            <p>We look forward to learning more about you and potentially welcoming you to our installer network.</p>
-            
-            <p>Thank you,<br>Floor Interior Services Team</p>
-          </body>
-        </html>
-      `
-    } else if (status === 'failed') {
-      subject = 'Action Required: Complete Your Installer Profile 📋'
-      htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-            <!-- Logo/Header Section -->
-            <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-              <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto; border: none; outline: none;" />
-            </div>
-            
-            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Action Required: Complete Your Installer Profile</h1>
-            </div>
-            
-            <p>Hello ${installer.firstName || 'there'},</p>
-            
-            <p>Thank you for your interest in partnering with Floor Interior Services and for completing the AI Interview. 🎉</p>
-            
-            <p>Your installer profile is currently incomplete. To proceed to the next stage, please follow the tutorial below and complete your profile as required.</p>
-            
-            <div style="background-color: #f0f9ff; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0; border-radius: 4px;">
-              <p style="margin: 0; font-weight: bold; color: #1e40af;">🎥 Installer Profile Tutorial:</p>
-              <p style="margin: 5px 0 0 0;">
-                <a href="https://www.youtube.com/watch?v=U6xgxn-eKNU" style="color: #2563eb; text-decoration: none;">https://www.youtube.com/watch?v=U6xgxn-eKNU</a>
-              </p>
-            </div>
-            
-            <p>To complete your profile, please make sure you:</p>
-            <ul style="margin: 15px 0; padding-left: 20px;">
-              <li style="margin-bottom: 8px;">1️⃣ Add your profile information</li>
-              <li style="margin-bottom: 8px;">2️⃣ Upload required documents in the Attachments section</li>
-              <li style="margin-bottom: 8px;">3️⃣ Enter the expiration dates for all applicable documents</li>
-            </ul>
-            
-            <p>Once everything is completed, our team will review your profile and notify you of the next steps.</p>
-            
-            <p>Thank you,<br>Floor Interior Services Team</p>
-          </body>
-        </html>
-      `
-    }
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 18px; border-radius: 12px; margin-bottom: 18px;">
+            <h1 style="color: #15803d; margin: 0; text-align: center; font-size: 22px;">You’re now a Qualified Installer 🥳</h1>
+          </div>
+
+          <p style="margin: 0 0 12px 0;">Hello${installer.firstName ? ` ${installer.firstName}` : ''},</p>
+
+          <p style="margin: 0 0 12px 0;">
+            Thank you for your interest in partnering with Floor Interior Services. Congratulations! You are now a qualified Installer!
+          </p>
+
+          <p style="margin: 0 0 16px 0;">
+            Please complete your profile using the same email you initially used, so we can move forward with your onboarding.
+          </p>
+
+          <div style="background-color: #f8fafc; border: 1px solid #e5e7eb; padding: 16px; margin: 18px 0; border-radius: 12px;">
+            <p style="margin: 0 0 10px 0; font-weight: 700; color: #111827;">You’re just a few steps away from getting onboarded:</p>
+            <ol style="margin: 0; padding-left: 22px; color: #111827;">
+              <li style="margin: 10px 0;">
+                <strong>Complete Your Profile</strong><br/>
+                Please log in and complete your installer profile using the same email you used for the AI interview:<br/>
+                <a href="https://job.floorinteriorservices.com/create-account" style="color: #16a34a; text-decoration: none; font-weight: 700;">https://job.floorinteriorservices.com/create-account</a>
+              </li>
+              <li style="margin: 10px 0;">
+                <strong>Submit Required Documents (COI, etc.)</strong><br/>
+                Upload all required documents through the portal.<br/>
+                <span style="display:inline-block; margin-top: 6px;">
+                  🎥 Video Guide:
+                  <a href="https://www.youtube.com/watch?v=U6xgxn-eKNU" style="color: #2563eb; text-decoration: none;">https://www.youtube.com/watch?v=U6xgxn-eKNU</a>
+                </span>
+              </li>
+              <li style="margin: 10px 0;">
+                <strong>Verification &amp; Approval</strong> ⏳<br/>
+                Once everything is submitted, we will review your documents, complete background checks, and finalize your onboarding.
+              </li>
+            </ol>
+          </div>
+
+          <p style="margin: 0 0 12px 0;">
+            If you have any questions or need help at any step, feel free to reach out — happy to help.
+          </p>
+
+          <p style="margin: 0 0 12px 0;">Looking forward to working with you!</p>
+          <p style="margin: 0;">Best regards,<br/>Floor Interior Services</p>
+        </body>
+      </html>
+    `
 
     await resend.emails.send({
       from: `${fromName} <${fromEmail}>`,

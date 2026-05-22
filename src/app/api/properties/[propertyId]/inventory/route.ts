@@ -26,7 +26,14 @@ export async function GET(
       const inventory = await prisma.inventory.findMany({
         orderBy: { createdAt: 'desc' },
       })
-      return NextResponse.json({ inventory })
+      return NextResponse.json(
+        { inventory },
+        {
+          headers: {
+            'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+          },
+        }
+      )
     }
     
     // Other users can only see their own property's inventory
@@ -46,7 +53,14 @@ export async function GET(
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({ inventory })
+    return NextResponse.json(
+      { inventory },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('Error fetching inventory:', error)
     return NextResponse.json(
@@ -98,7 +112,7 @@ export async function POST(
       quantity,
       unitOfMeasure,
       cost,
-      price,
+      usagePlacement,
       supplier,
       supplierContact,
       location,
@@ -111,8 +125,14 @@ export async function POST(
       manufacturer,
       barcode,
       serialNumber,
+      purchaseDate,
       lastRestocked,
+      warrantyDate,
+      expirationDate,
+      condition,
+      maintenanceNotes,
       notes,
+      responsiblePerson,
     } = body
 
     const inventoryItem = await prisma.inventory.create({
@@ -124,7 +144,9 @@ export async function POST(
         quantity: quantity ? parseFloat(quantity) : 0,
         unitOfMeasure: unitOfMeasure || 'unit',
         cost: cost ? parseFloat(cost) : null,
-        price: price ? parseFloat(price) : null,
+        usagePlacement: ['in_use', 'in_storage', 'checked_out'].includes(String(usagePlacement))
+          ? usagePlacement
+          : 'in_use',
         supplier,
         supplierContact,
         location,
@@ -137,8 +159,17 @@ export async function POST(
         manufacturer,
         barcode,
         serialNumber,
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         lastRestocked: lastRestocked ? new Date(lastRestocked) : null,
+        warrantyDate: warrantyDate ? new Date(warrantyDate) : null,
+        expirationDate: expirationDate ? new Date(expirationDate) : null,
+        condition: typeof condition === 'string' && condition.trim() ? condition.trim() : null,
+        maintenanceNotes:
+          typeof maintenanceNotes === 'string' && maintenanceNotes.trim()
+            ? maintenanceNotes.trim()
+            : null,
         notes,
+        responsiblePerson: responsiblePerson?.trim() || null,
       },
     })
 

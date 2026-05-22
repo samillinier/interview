@@ -25,13 +25,15 @@ import {
   Briefcase,
   ExternalLink,
   FileText,
-  HelpCircle
+  HelpCircle,
+  ClipboardList
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface Notification {
   id: string
@@ -65,6 +67,8 @@ export default function NotificationsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -238,16 +242,24 @@ export default function NotificationsPage() {
     }
   }
 
-  const handleDelete = async (notificationId: string) => {
-    if (!installer || !confirm('Are you sure you want to delete this notification?')) return
+  const requestDelete = (notificationId: string) => {
+    if (!installer) return
+    setDeleteTargetId(notificationId)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!installer || !deleteTargetId) return
 
     try {
-      const response = await fetch(`/api/installers/${installer.id}/notifications/${notificationId}`, {
+      const response = await fetch(`/api/installers/${installer.id}/notifications/${deleteTargetId}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
-        setNotifications(notifications.filter(n => n.id !== notificationId))
+        setNotifications(notifications.filter((n) => n.id !== deleteTargetId))
+        setDeleteConfirmOpen(false)
+        setDeleteTargetId(null)
       }
     } catch (err: any) {
       console.error('Error deleting notification:', err)
@@ -425,10 +437,7 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading notifications...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -516,6 +525,15 @@ export default function NotificationsPage() {
           >
             <ExternalLink className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link
             href="/installer/notifications"
@@ -1095,7 +1113,7 @@ export default function NotificationsPage() {
                         </button>
                       )}
                       <button
-                        onClick={() => handleDelete(notification.id)}
+                        onClick={() => requestDelete(notification.id)}
                         className="p-2 text-slate-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
                         title="Delete"
                       >
@@ -1109,6 +1127,55 @@ export default function NotificationsPage() {
           )}
         </main>
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteConfirmOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-3 sm:p-4 bg-black/45 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-notification-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setDeleteConfirmOpen(false)
+              setDeleteTargetId(null)
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/80">
+              <h3 id="delete-notification-title" className="text-sm font-semibold text-slate-900">
+                Remove this notification?
+              </h3>
+              <p className="text-xs text-slate-600 mt-1">
+                It will be removed from your notifications list.
+              </p>
+            </div>
+            <div className="px-5 py-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmOpen(false)
+                  setDeleteTargetId(null)
+                }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete()}
+                className="px-4 py-2.5 rounded-xl bg-danger-600 text-white hover:bg-danger-700 text-sm font-semibold"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

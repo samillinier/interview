@@ -27,7 +27,7 @@ import {
   Shield,
   Square,
   Car,
-  Package,
+  Armchair,
   Image as ImageIcon,
   Upload,
   Settings,
@@ -38,7 +38,8 @@ import {
   Lock,
   Trash2 as TrashIcon,
   Flame,
-  ChevronRight
+  ChevronRight,
+  ClipboardCheck,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -46,6 +47,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+
+type LocationDocumentCategory = 'lease' | 'misc'
+interface LocationDocument {
+  id: string
+  category: LocationDocumentCategory
+  name: string
+  url: string
+  createdAt: string
+}
 
 interface PropertyProfile {
   id: string
@@ -56,6 +68,7 @@ interface PropertyProfile {
 
 interface Location {
   id: string
+  propertyId?: string
   location?: string
   aliasLocation?: string
   propertyAddress?: string
@@ -105,6 +118,18 @@ export default function FacilitiesPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null)
+  const [locationDocs, setLocationDocs] = useState<LocationDocument[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsError, setDocsError] = useState('')
+  const [uploadingDocs, setUploadingDocs] = useState(false)
+  const [leaseDocFiles, setLeaseDocFiles] = useState<File[]>([])
+  const [miscDocFiles, setMiscDocFiles] = useState<File[]>([])
+  const getLocationPropertyId = (location?: Location | null) => {
+    const fromLocation = String(location?.propertyId || '').trim()
+    if (fromLocation) return fromLocation
+    return property?.id || ''
+  }
+
   const [formData, setFormData] = useState({
     location: '',
     aliasLocation: '',
@@ -182,20 +207,19 @@ export default function FacilitiesPage() {
     
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
+      const role = String((session?.user as any)?.role || '').toUpperCase()
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+
       if (!userType) {
         loadPropertyAndLocations()
         return
       }
-      
-      if (userType !== 'property') {
-        if (userType === 'admin') {
-          router.push('/dashboard')
-        } else {
-          router.push('/property/login')
-        }
+
+      if (userType !== 'property' && !isAdminRole) {
+        router.push(userType === 'admin' ? '/dashboard' : '/property/login')
         return
       }
-      
+
       loadPropertyAndLocations()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,7 +289,7 @@ export default function FacilitiesPage() {
 
     try {
       const url = editingLocation
-        ? `/api/properties/${property.id}/locations/${editingLocation.id}`
+        ? `/api/properties/${getLocationPropertyId(editingLocation)}/locations/${editingLocation.id}`
         : `/api/properties/${property.id}/locations`
       
       const method = editingLocation ? 'PATCH' : 'POST'
@@ -393,6 +417,13 @@ export default function FacilitiesPage() {
     setEditingLocation(location)
     setPhotoPreview(location.photoUrl || null)
     setSelectedPhotoFile(null)
+    setDocsError('')
+    setLeaseDocFiles([])
+    setMiscDocFiles([])
+    const locationPropertyId = getLocationPropertyId(location)
+    if (locationPropertyId && location?.id) {
+      void loadLocationDocuments(locationPropertyId, location.id)
+    }
     
     // Parse JSON fields if they exist
     let waterProviderData: any = {}
@@ -512,6 +543,70 @@ export default function FacilitiesPage() {
     setShowAddModal(true)
   }
 
+  const loadLocationDocuments = async (propertyId: string, locationId: string) => {
+    try {
+      setDocsLoading(true)
+      setDocsError('')
+      const res = await fetch(`/api/properties/${propertyId}/locations/${locationId}/documents`, {
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to load documents')
+      setLocationDocs(Array.isArray(data.documents) ? data.documents : [])
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to load documents')
+      setLocationDocs([])
+    } finally {
+      setDocsLoading(false)
+    }
+  }
+
+  const uploadLocationDocuments = async (
+    category: LocationDocumentCategory,
+    files: File[],
+    propertyId: string,
+    locationId: string,
+  ) => {
+    if (!files.length) return
+    try {
+      setUploadingDocs(true)
+      setDocsError('')
+      const fd = new FormData()
+      for (const file of files) fd.append('files', file)
+      fd.append('category', category)
+
+      const res = await fetch(`/api/properties/${propertyId}/locations/${locationId}/documents`, {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to upload documents')
+      await loadLocationDocuments(propertyId, locationId)
+      if (category === 'lease') setLeaseDocFiles([])
+      if (category === 'misc') setMiscDocFiles([])
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to upload documents')
+    } finally {
+      setUploadingDocs(false)
+    }
+  }
+
+  const deleteLocationDocument = async (docId: string, propertyId: string, locationId: string) => {
+    try {
+      setDocsError('')
+      const res = await fetch(
+        `/api/properties/${propertyId}/locations/${locationId}/documents/${docId}`,
+        { method: 'DELETE', credentials: 'include' },
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete document')
+      await loadLocationDocuments(propertyId, locationId)
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to delete document')
+    }
+  }
+
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -542,10 +637,11 @@ export default function FacilitiesPage() {
       const fd = new FormData()
       fd.append('photo', selectedPhotoFile)
       fd.append('locationId', locationId)
-      fd.append('propertyId', property.id)
+      const locationPropertyId = getLocationPropertyId(editingLocation)
+      fd.append('propertyId', locationPropertyId)
 
       const response = await fetch(
-        `/api/properties/${property.id}/locations/${locationId}/upload-photo`,
+        `/api/properties/${locationPropertyId}/locations/${locationId}/upload-photo`,
         {
           method: 'POST',
           body: fd,
@@ -580,8 +676,12 @@ export default function FacilitiesPage() {
     if (!property) return
     if (!confirm('Are you sure you want to delete this location?')) return
 
+    const locationToDelete = locations.find((l) => l.id === locationId)
+    const locationPropertyId = getLocationPropertyId(locationToDelete)
+    if (!locationPropertyId) return
+
     try {
-      const response = await fetch(`/api/properties/${property.id}/locations/${locationId}`, {
+      const response = await fetch(`/api/properties/${locationPropertyId}/locations/${locationId}`, {
         method: 'DELETE',
       })
 
@@ -676,10 +776,7 @@ export default function FacilitiesPage() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading facilities...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -759,8 +856,17 @@ export default function FacilitiesPage() {
               pathname === '/property/inventory' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
             }`}
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Inventory</span>}
+            <Armchair className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Equipment</span>}
+          </Link>
+          <Link
+            href="/property/safety-walk"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Safety Walk</span>}
           </Link>
           <Link
             href="/property/help"
@@ -825,8 +931,8 @@ export default function FacilitiesPage() {
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">Facilities</h1>
+          <div className={`pr-4 lg:px-6 py-4 flex items-center justify-between gap-3 ${propertyMobileSafeLeftPad}`}>
+            <h1 className="text-xl sm:text-2xl font-bold text-primary-900 min-w-0 break-words">Facilities</h1>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -843,7 +949,7 @@ export default function FacilitiesPage() {
           </div>
         </header>
 
-        <main className="p-4 lg:p-6 pt-16 lg:pt-6">
+        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -920,11 +1026,15 @@ export default function FacilitiesPage() {
                         <td className="px-6 py-4 text-sm font-medium text-primary-900">
                           <div className="flex items-center gap-3">
                             {location.photoUrl ? (
-                              <div className="w-28 h-28 overflow-hidden flex-shrink-0 rounded-3xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100 p-2 flex items-center justify-center">
-                                <img
+                              <div className="relative w-28 h-28 overflow-hidden flex-shrink-0 rounded-3xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100 p-2">
+                                <Image
                                   src={location.photoUrl}
                                   alt={location.location || 'Location'}
-                                  className="w-full h-full object-contain"
+                                  fill
+                                  sizes="112px"
+                                  className="object-contain"
+                                  loading="lazy"
+                                  unoptimized
                                 />
                               </div>
                             ) : (
@@ -1060,16 +1170,20 @@ export default function FacilitiesPage() {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setShowAddModal(false)
-                  setEditingLocation(null)
-                  resetForm()
-                }}
-                className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
-              >
-                <XCircle className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setEditingLocation(null)
+                    resetForm()
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
+                  aria-label="Close"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
@@ -1112,10 +1226,14 @@ export default function FacilitiesPage() {
               {/* Hero Image Section */}
               {(photoPreview || editingLocation?.photoUrl) && (
                 <div className="relative w-full h-64 md:h-80 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
-                  <img
+                  <Image
                     src={photoPreview || editingLocation?.photoUrl || ''}
                     alt={editingLocation?.location || editingLocation?.aliasLocation || 'Facility'}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 1024px"
+                    className="object-cover"
+                    loading="lazy"
+                    unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
@@ -1289,6 +1407,201 @@ export default function FacilitiesPage() {
                     />
                   </motion.div>
                 </div>
+              </div>
+
+              {/* Documents Section */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                  <FileText className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Documents</h3>
+                </div>
+
+                {!editingLocation?.id || !getLocationPropertyId(editingLocation) ? (
+                  <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+                    <p className="text-sm text-slate-600">
+                      Save this facility first, then you can upload documents.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {docsError ? (
+                      <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm">
+                        {docsError}
+                      </div>
+                    ) : null}
+
+                    {/* Lease documents */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-brand-green" />
+                          Lease documents
+                        </h4>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 items-start">
+                        <div>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={(e) => setLeaseDocFiles(Array.from(e.target.files || []))}
+                            className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                          />
+                          <p className="text-xs text-slate-500 mt-2">Allowed: PDF, DOC, DOCX, JPG, PNG. Up to 15MB each.</p>
+                        </div>
+                        <div className="flex md:justify-end">
+                          <button
+                            type="button"
+                            disabled={uploadingDocs || leaseDocFiles.length === 0}
+                            onClick={() =>
+                              uploadLocationDocuments(
+                                'lease',
+                                leaseDocFiles,
+                                getLocationPropertyId(editingLocation),
+                                editingLocation.id,
+                              )
+                            }
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white font-semibold hover:bg-brand-green-dark disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {uploadingDocs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                            Upload
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        {docsLoading ? (
+                          <div className="text-sm text-slate-600 flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Loading documents...
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {locationDocs.filter((d) => d.category === 'lease').length === 0 ? (
+                              <p className="text-sm text-slate-500">No lease documents uploaded yet.</p>
+                            ) : (
+                              locationDocs
+                                .filter((d) => d.category === 'lease')
+                                .map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200"
+                                  >
+                                    <a
+                                      href={doc.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-medium text-brand-green hover:underline truncate"
+                                      title={doc.name}
+                                    >
+                                      {doc.name}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        deleteLocationDocument(
+                                          doc.id,
+                                          getLocationPropertyId(editingLocation),
+                                          editingLocation.id,
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Misc documents */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-brand-green" />
+                          Miscellaneous documents
+                        </h4>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 items-start">
+                        <div>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={(e) => setMiscDocFiles(Array.from(e.target.files || []))}
+                            className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                          />
+                          <p className="text-xs text-slate-500 mt-2">Allowed: PDF, DOC, DOCX, JPG, PNG. Up to 15MB each.</p>
+                        </div>
+                        <div className="flex md:justify-end">
+                          <button
+                            type="button"
+                            disabled={uploadingDocs || miscDocFiles.length === 0}
+                            onClick={() =>
+                              uploadLocationDocuments(
+                                'misc',
+                                miscDocFiles,
+                                getLocationPropertyId(editingLocation),
+                                editingLocation.id,
+                              )
+                            }
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white font-semibold hover:bg-brand-green-dark disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {uploadingDocs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                            Upload
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        {docsLoading ? null : (
+                          <div className="space-y-2">
+                            {locationDocs.filter((d) => d.category === 'misc').length === 0 ? (
+                              <p className="text-sm text-slate-500">No miscellaneous documents uploaded yet.</p>
+                            ) : (
+                              locationDocs
+                                .filter((d) => d.category === 'misc')
+                                .map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200"
+                                  >
+                                    <a
+                                      href={doc.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-medium text-brand-green hover:underline truncate"
+                                      title={doc.name}
+                                    >
+                                      {doc.name}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        deleteLocationDocument(
+                                          doc.id,
+                                          getLocationPropertyId(editingLocation),
+                                          editingLocation.id,
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Contact Information Section */}
@@ -2117,11 +2430,11 @@ export default function FacilitiesPage() {
                 </div>
               </div>
 
-              {/* Garbage Remover Provider Section */}
+              {/* Dumpster Provider Section */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
                   <TrashIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Garbage Remover Provider Information</h3>
+                  <h3 className="text-lg font-semibold text-primary-900">Dumpster Provider Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div

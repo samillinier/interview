@@ -15,8 +15,9 @@ import {
   HelpCircle,
   Building2,
   Car,
-  Package,
+  Armchair,
   Settings,
+  ClipboardCheck,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -39,7 +40,8 @@ export function PropertyMobileMenu({ pathname, notificationCount = 0, onLogout }
       { href: '/property/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/property/facilities', label: 'Facilities', icon: Building2 },
       { href: '/property/fleet', label: 'Fleet', icon: Car },
-      { href: '/property/inventory', label: 'Inventory', icon: Package },
+      { href: '/property/inventory', label: 'Equipment', icon: Armchair },
+      { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck },
       { href: '/property/help', label: 'Help', icon: HelpCircle },
       { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
@@ -56,7 +58,7 @@ export function PropertyMobileMenu({ pathname, notificationCount = 0, onLogout }
       {/* Hamburger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="lg:hidden fixed top-3 left-3 z-50 p-2.5 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+        className="lg:hidden fixed z-50 p-2.5 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center top-[max(0.75rem,env(safe-area-inset-top,0px))] left-[max(0.75rem,env(safe-area-inset-left,0px))]"
         aria-label={open ? 'Close menu' : 'Open menu'}
       >
         <Menu className="w-6 h-6 text-slate-700" />

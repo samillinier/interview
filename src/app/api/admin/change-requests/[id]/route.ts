@@ -162,7 +162,7 @@ export async function PATCH(
 
     const admin = await prisma.admin.findUnique({ where: { email } })
     if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    if ((admin as any)?.role === 'MODERATOR') {
+    if ((admin as any)?.role === 'MODERATOR' || (admin as any)?.role === 'MANAGER') {
       return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
     }
 
@@ -173,6 +173,8 @@ export async function PATCH(
     const body = await request.json().catch(() => ({}))
     const action = body.action as string | undefined
     const rejectionReason = body.rejectionReason as string | undefined
+    const correctionUrl = typeof body.correctionUrl === 'string' ? body.correctionUrl.trim() : ''
+    const correctionName = typeof body.correctionName === 'string' ? body.correctionName.trim() : ''
 
     const changeRequest = await prisma.installerChangeRequest.findUnique({
       where: { id: requestId },
@@ -214,6 +216,9 @@ export async function PATCH(
             data: {
               verified: false,
               verifiedAt: null,
+              adminRejectionNote: rejectionReason?.trim() || null,
+              adminCorrectionUrl: correctionUrl || null,
+              adminCorrectionName: correctionName || null,
             },
             select: { id: true },
           })
@@ -249,30 +254,20 @@ export async function PATCH(
             content: isAgreement
               ? `Your submitted agreement was rejected.${reasonText ? ` Reason: ${reasonText}` : ''}`
               : isDocument
-              ? `Your uploaded ${documentName} was rejected and needs to be re-uploaded.${reasonText ? ` Reason: ${reasonText}` : ''}`
+              ? `Your uploaded ${documentName} was rejected.${reasonText ? ` Note from admin: ${reasonText}` : ''} Open Attachments to see details and upload a replacement if needed.`
               : `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was rejected.${reasonText ? ` Reason: ${reasonText}` : ''}`,
             priority: 'normal',
             link: isAgreement ? '/installer/agreements/background-authorization' : isDocument ? '/installer/attachments' : '/installer/profile',
             senderId: 'admin',
             senderType: 'admin',
+            attachmentUrl: isDocument && correctionUrl ? correctionUrl : null,
+            attachmentName: isDocument && correctionUrl ? correctionName || 'Correction file' : null,
           },
         })
       } catch (e) {
         console.error('Failed to notify installer about rejection:', e)
       }
 
-      // If no pending requests remain, flip installer status back to active (only if currently pending).
-      // (Skip this for agreement approvals; those shouldn't affect installer status.)
-      const remaining = await prisma.installerChangeRequest.count({
-        where: { installerId: changeRequest.installerId, status: 'pending' },
-      })
-      const isAgreementReject = (changeRequest.payload as any)?.action === 'approve_agreement'
-      if (!isAgreementReject && remaining === 0) {
-        await prisma.installer.updateMany({
-          where: { id: changeRequest.installerId, status: 'pending' },
-          data: { status: 'active' },
-        })
-      }
       return NextResponse.json({ success: true, request: updated })
     }
 
@@ -388,6 +383,9 @@ export async function PATCH(
           data: {
             verified: true,
             verifiedAt: now,
+            adminRejectionNote: null,
+            adminCorrectionUrl: null,
+            adminCorrectionName: null,
           },
         })
 
@@ -422,17 +420,6 @@ export async function PATCH(
         })
       } catch (e) {
         console.error('Failed to notify installer about document verification:', e)
-      }
-
-      // Check if there are remaining pending requests
-      const remaining = await prisma.installerChangeRequest.count({
-        where: { installerId: changeRequest.installerId, status: 'pending' },
-      })
-      if (remaining === 0) {
-        await prisma.installer.updateMany({
-          where: { id: changeRequest.installerId, status: 'pending' },
-          data: { status: 'active' },
-        })
       }
 
       return NextResponse.json({ success: true, request: updated })
@@ -487,16 +474,6 @@ export async function PATCH(
           })
         } catch (e) {
           console.error('Failed to notify installer about approval:', e)
-        }
-
-        const remaining = await prisma.installerChangeRequest.count({
-          where: { installerId: changeRequest.installerId, status: 'pending' },
-        })
-        if (remaining === 0) {
-          await prisma.installer.updateMany({
-            where: { id: changeRequest.installerId, status: 'pending' },
-            data: { status: 'active' },
-          })
         }
 
         return NextResponse.json({ success: true, staffMember, request: updatedRequest })
@@ -557,16 +534,6 @@ export async function PATCH(
           console.error('Failed to notify installer about approval:', e)
         }
 
-        const remaining = await prisma.installerChangeRequest.count({
-          where: { installerId: changeRequest.installerId, status: 'pending' },
-        })
-        if (remaining === 0) {
-          await prisma.installer.updateMany({
-            where: { id: changeRequest.installerId, status: 'pending' },
-            data: { status: 'active' },
-          })
-        }
-
         return NextResponse.json({ success: true, staffMember, request: updatedRequest })
       }
 
@@ -603,16 +570,6 @@ export async function PATCH(
           })
         } catch (e) {
           console.error('Failed to notify installer about approval:', e)
-        }
-
-        const remaining = await prisma.installerChangeRequest.count({
-          where: { installerId: changeRequest.installerId, status: 'pending' },
-        })
-        if (remaining === 0) {
-          await prisma.installer.updateMany({
-            where: { id: changeRequest.installerId, status: 'pending' },
-            data: { status: 'active' },
-          })
         }
 
         return NextResponse.json({ success: true, request: updatedRequest })
@@ -661,16 +618,6 @@ export async function PATCH(
       })
     } catch (e) {
       console.error('Failed to notify installer about approval:', e)
-    }
-
-    const remaining = await prisma.installerChangeRequest.count({
-      where: { installerId: changeRequest.installerId, status: 'pending' },
-    })
-    if (remaining === 0) {
-      await prisma.installer.updateMany({
-        where: { id: changeRequest.installerId, status: 'pending' },
-        data: { status: 'active' },
-      })
     }
 
     return NextResponse.json({ success: true, installer, request: updatedRequest })

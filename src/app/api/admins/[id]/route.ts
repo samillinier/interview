@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { writeAdminAuditLog } from '@/lib/audit'
 
 // DELETE - Remove an admin
 export async function DELETE(
@@ -54,8 +55,8 @@ export async function DELETE(
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && (currentAdmin as any).role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     const params = context.params
@@ -151,8 +152,8 @@ export async function PATCH(
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && (currentAdmin as any).role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     const params = context.params
@@ -160,6 +161,12 @@ export async function PATCH(
     const adminId = resolvedParams.id
 
     const { name, isActive, role } = await request.json()
+    const requestedRole = typeof role === 'string' ? role.toUpperCase() : ''
+    const currentRole = String((currentAdmin as any).role || '').toUpperCase()
+
+    if (requestedRole === 'SUPER_ADMIN' && currentRole !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Super admin role can only be assigned by a Super Admin' }, { status: 403 })
+    }
 
     // Prevent deactivating yourself
     if (adminId === currentAdmin.id && isActive === false) {
@@ -169,16 +176,26 @@ export async function PATCH(
       )
     }
 
+    const beforeAdmin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: { id: true, email: true, role: true, isActive: true, name: true },
+    })
+
     // Update admin
     const updatedAdmin = await prisma.admin.update({
       where: { id: adminId },
       data: {
         ...(name !== undefined && { name }),
         ...(isActive !== undefined && { isActive }),
-        ...(role !== undefined && { 
-          role: role === 'MODERATOR' ? 'MODERATOR' : 
-                role === 'MANAGER' ? 'MANAGER' : 
-                'ADMIN' 
+        ...(role !== undefined && {
+          role:
+            requestedRole === 'SUPER_ADMIN'
+              ? 'SUPER_ADMIN'
+              : requestedRole === 'MODERATOR'
+                ? 'MODERATOR'
+                : requestedRole === 'MANAGER'
+                  ? 'MANAGER'
+                  : 'ADMIN',
         }),
       },
       select: {
@@ -191,6 +208,23 @@ export async function PATCH(
         createdBy: true,
       },
     })
+
+    try {
+      if (role !== undefined && beforeAdmin && String(beforeAdmin.role || '').toUpperCase() !== String(updatedAdmin.role || '').toUpperCase()) {
+        await writeAdminAuditLog({
+          adminEmail: userEmail,
+          adminId: currentAdmin.id,
+          action: 'admin.role_change',
+          targetType: 'admin',
+          targetId: updatedAdmin.id,
+          targetLabel: updatedAdmin.email,
+          before: { role: beforeAdmin.role },
+          after: { role: updatedAdmin.role },
+        })
+      }
+    } catch (e) {
+      console.error('audit admin.role_change failed', e)
+    }
 
     return NextResponse.json({ 
       success: true,

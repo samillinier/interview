@@ -1,9 +1,26 @@
 // Interview questions configuration - client-safe file
 
+/** Surfaces shown in the skills question and primary-surface follow-up (keep labels in sync). */
+export const FLOORING_SURFACE_OPTIONS = [
+  'Carpet',
+  'Vinyl Sheet Roll',
+  'LVP (Luxury Vinyl Plank)',
+  'LVT (Luxury Vinyl Tile)',
+  'VCT (Vinyl Composition Tile)',
+  'Hardwood',
+  'Engineered Hardwood',
+  'Bamboo',
+  'Laminate',
+  'Ceramic Tile',
+  'Porcelain Tile',
+  'Stone Tile',
+  'Carpet Tile',
+] as const
+
 export const INTERVIEW_QUESTIONS_EN = [
   {
     id: 'intro',
-    text: "Hello, I'm Anna from Floor Interior Service. Thank you for your interest in becoming an installer with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
+    text: "Hello, I'm Alice from Floor Interior Service. Thank you for your interest in becoming an installer with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
     field: 'name',
     required: true,
   },
@@ -25,6 +42,13 @@ export const INTERVIEW_QUESTIONS_EN = [
     field: 'flooringSkills',
     required: true,
     type: 'flooring_skills', // Special type for interactive UI
+  },
+  {
+    id: 'primary_surface',
+    text: 'Of the flooring types you install, which one surface are you most experienced with and strongest at? Please choose only one.',
+    field: 'primaryFlooringSurface',
+    required: true,
+    type: 'primary_flooring_surface',
   },
   {
     id: 'general_liability',
@@ -141,7 +165,7 @@ export const INTERVIEW_QUESTIONS_EN = [
 export const INTERVIEW_QUESTIONS_ES = [
   {
     id: 'intro',
-    text: "Hola, soy Anna de Floor Interior Service. Gracias por su interés en convertirse en instalador con nosotros. Realizaré una breve evaluación de calificación para conocer su experiencia, certificaciones, equipo, capacidades de instalación y disponibilidad. Esto tomará solo unos minutos. Comencemos con su nombre y apellido.",
+    text: "Hola, soy Alice de Floor Interior Service. Gracias por su interés en convertirse en instalador con nosotros. Realizaré una breve evaluación de calificación para conocer su experiencia, certificaciones, equipo, capacidades de instalación y disponibilidad. Esto tomará solo unos minutos. Comencemos con su nombre y apellido.",
     field: 'name',
     required: true,
   },
@@ -163,6 +187,13 @@ export const INTERVIEW_QUESTIONS_ES = [
     field: 'flooringSkills',
     required: true,
     type: 'flooring_skills',
+  },
+  {
+    id: 'primary_surface',
+    text: 'De los tipos de piso que instala, ¿en cuál tiene más experiencia y se siente más fuerte? Elija solo uno.',
+    field: 'primaryFlooringSurface',
+    required: true,
+    type: 'primary_flooring_surface',
   },
   {
     id: 'general_liability',

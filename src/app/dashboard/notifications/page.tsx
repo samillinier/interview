@@ -15,6 +15,7 @@ import {
   LogOut,
   User,
   MessageSquare,
+  ClipboardCheck,
   ShieldAlert,
   FileText,
   Loader2,
@@ -27,14 +28,19 @@ import {
   BarChart3,
   Briefcase,
   StickyNote,
+  FileCheck,
   Building2,
-  Activity
+  Activity,
+  ClipboardList,
+  Megaphone
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
 
 interface Installer {
   id: string
@@ -66,6 +72,8 @@ export default function NotificationsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
+  const role = String((session?.user as any)?.role || '').toUpperCase()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [installers, setInstallers] = useState<Installer[]>([])
   const [selectedInstallers, setSelectedInstallers] = useState<string[]>([])
@@ -87,6 +95,8 @@ export default function NotificationsPage() {
   const [error, setError] = useState('')
   const [notificationCount, setNotificationCount] = useState(0)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
+  const [updatesCount, setUpdatesCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -95,14 +105,18 @@ export default function NotificationsPage() {
       fetchInstallers()
       fetchNotificationCount()
       fetchPendingApprovalsCount()
+      fetchSignatureNotSignedCount()
+      fetchUpdatesCount()
       // Refresh count every 30 seconds
       const interval = setInterval(() => {
         fetchNotificationCount()
         fetchPendingApprovalsCount()
+        fetchSignatureNotSignedCount()
+        fetchUpdatesCount()
       }, 30000)
       return () => clearInterval(interval)
     }
-  }, [status, router])
+  }, [status, router, role])
 
   const fetchNotificationCount = async () => {
     try {
@@ -127,6 +141,33 @@ export default function NotificationsPage() {
         const data = await res.json()
         setPendingApprovalsCount(data.count || 0)
       }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchSignatureNotSignedCount = async () => {
+    try {
+      const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+      if (res.status === 401) {
+        setSignatureNotSignedCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setSignatureNotSignedCount(data?.count || 0)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchUpdatesCount = async () => {
+    try {
+      const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      setUpdatesCount(Number(data?.count || 0))
     } catch {
       // ignore
     }
@@ -275,7 +316,7 @@ export default function NotificationsPage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-green" />
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -283,179 +324,7 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/approvals"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Approvals</span>
-                  {pendingApprovalsCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/tracking"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Activity className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Tracking</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/analytics"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Analytics</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/notifications"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/notifications'
-                  ? 'bg-white/20 text-white font-medium'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Bell className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Notifications</span>
-                </div>
-              )}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/remarks"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <StickyNote className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Remarks</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/settings"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Settings</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/property/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
-            >
-              <Building2 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Property Portal</span>}
-            </Link>
-          )}
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            {session?.user?.image ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                <Image
-                  src={session.user.image}
-                  alt={session.user?.name || session.user?.email || 'Admin'}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-brand-green" />
-              </div>
-            )}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {session?.user?.name || 'Admin'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{session?.user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
       <AdminMobileMenu pathname={pathname} />
 

@@ -110,7 +110,7 @@ export async function PATCH(
       quantity,
       unitOfMeasure,
       cost,
-      price,
+      usagePlacement,
       supplier,
       supplierContact,
       location,
@@ -123,8 +123,14 @@ export async function PATCH(
       manufacturer,
       barcode,
       serialNumber,
+      purchaseDate,
       lastRestocked,
+      warrantyDate,
+      expirationDate,
+      condition,
+      maintenanceNotes,
       notes,
+      responsiblePerson,
     } = body
 
     const updatedInventoryItem = await prisma.inventory.update({
@@ -136,7 +142,11 @@ export async function PATCH(
         ...(quantity !== undefined && { quantity: parseFloat(quantity) }),
         ...(unitOfMeasure !== undefined && { unitOfMeasure }),
         ...(cost !== undefined && { cost: cost ? parseFloat(cost) : null }),
-        ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(usagePlacement !== undefined && {
+          usagePlacement: ['in_use', 'in_storage', 'checked_out'].includes(String(usagePlacement))
+            ? usagePlacement
+            : 'in_use',
+        }),
         ...(supplier !== undefined && { supplier }),
         ...(supplierContact !== undefined && { supplierContact }),
         ...(location !== undefined && { location }),
@@ -149,8 +159,32 @@ export async function PATCH(
         ...(manufacturer !== undefined && { manufacturer }),
         ...(barcode !== undefined && { barcode }),
         ...(serialNumber !== undefined && { serialNumber }),
+        ...(purchaseDate !== undefined && {
+          purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
+        }),
         ...(lastRestocked !== undefined && { lastRestocked: lastRestocked ? new Date(lastRestocked) : null }),
+        ...(warrantyDate !== undefined && {
+          warrantyDate: warrantyDate ? new Date(warrantyDate) : null,
+        }),
+        ...(expirationDate !== undefined && {
+          expirationDate: expirationDate ? new Date(expirationDate) : null,
+        }),
+        ...(condition !== undefined && {
+          condition: typeof condition === 'string' && condition.trim() ? condition.trim() : null,
+        }),
+        ...(maintenanceNotes !== undefined && {
+          maintenanceNotes:
+            typeof maintenanceNotes === 'string' && maintenanceNotes.trim()
+              ? maintenanceNotes.trim()
+              : null,
+        }),
         ...(notes !== undefined && { notes }),
+        ...(responsiblePerson !== undefined && {
+          responsiblePerson:
+            typeof responsiblePerson === 'string' && responsiblePerson.trim()
+              ? responsiblePerson.trim()
+              : null,
+        }),
       },
     })
 

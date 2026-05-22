@@ -2,20 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/installerToken'
 
-// GET - Fetch all agreements for an installer (admin only)
+async function requireInstallerOrAdmin(request: NextRequest, installerId: string) {
+  const token = getInstallerTokenFromRequest(request)
+  if (token) {
+    try {
+      const payload = verifyInstallerToken(token)
+      if (!payload.installerId || payload.installerId !== installerId) {
+        return { ok: false as const, status: 403, error: 'Forbidden' }
+      }
+      return { ok: true as const, actor: 'installer' as const }
+    } catch {
+      return { ok: false as const, status: 401, error: 'Unauthorized' }
+    }
+  }
+
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email?.toLowerCase()
+  if (!email) return { ok: false as const, status: 401, error: 'Unauthorized' }
+
+  const admin = await prisma.admin.findUnique({ where: { email } })
+  if (!admin?.isActive) return { ok: false as const, status: 403, error: 'Admin access required' }
+
+  return { ok: true as const, actor: 'admin' as const }
+}
+
+// GET - Fetch agreements for an installer (installer or admin)
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    const email = session?.user?.email?.toLowerCase()
-    if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const admin = await prisma.admin.findUnique({ where: { email } })
-    if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
@@ -24,9 +42,24 @@ export async function GET(
       return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
     }
 
+    const access = await requireInstallerOrAdmin(request, installerId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+
+    const where =
+      access.actor === 'installer'
+        ? {
+            installerId,
+            OR: [
+              { signedAt: { not: null } },
+              { type: { startsWith: 'admin-uploaded-agreement:' } },
+              { type: 'independent-contractor-services-agreement' },
+            ],
+          }
+        : { installerId }
+
     // Fetch agreements from InstallerAgreement table
     const agreements = await prisma.installerAgreement.findMany({
-      where: { installerId },
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -99,11 +132,20 @@ export async function GET(
 
     // Format agreements with admin approval data from payload
     const formattedAgreements = agreements.map((agreement: any) => {
-      const adminApproval = agreement.payload?.adminApproval
+      const normalizedAgreement =
+        agreement.type === 'nda' && agreement.status === 'pending_admin' && agreement.signedAt
+          ? {
+              ...agreement,
+              status: 'approved',
+              approvedAt: agreement.approvedAt ?? agreement.signedAt,
+              approvedBy: agreement.approvedBy ?? 'installer_acceptance',
+            }
+          : agreement
+      const adminApproval = normalizedAgreement.payload?.adminApproval
       return {
-        ...agreement,
-        adminSignature: agreement.adminSignature ?? adminApproval?.signature ?? null,
-        adminSignedDate: agreement.adminSignedDate ?? adminApproval?.signedDate ?? null,
+        ...normalizedAgreement,
+        adminSignature: normalizedAgreement.adminSignature ?? adminApproval?.signature ?? null,
+        adminSignedDate: normalizedAgreement.adminSignedDate ?? adminApproval?.signedDate ?? null,
       }
     })
 

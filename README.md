@@ -68,6 +68,17 @@ DATABASE_URL_UNPOOLED="postgresql://USER:PASSWORD@HOST:5432/DB?sslmode=require"
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-nextauth-secret-here-generate-with-openssl
+
+# Adobe Sign — Independent Contractor web form (public eSign widget URL)
+ADOBE_SIGN_CONTRACT_ESIGN_WIDGET_URL="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhDs4AEhql4PJpxJSBr3jAUYbOPkCUDhFvx9stwDoWbP6-TE_Cn8JqgWp0ME6NGCegg*"
+NEXT_PUBLIC_ADOBE_SIGN_CONTRACT_ESIGN_WIDGET_URL="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhDs4AEhql4PJpxJSBr3jAUYbOPkCUDhFvx9stwDoWbP6-TE_Cn8JqgWp0ME6NGCegg*"
+
+# Optional but required for URL prefill unless your PDF field names match generic keys:
+# In Acrobat Sign, each text field needs “Default value may come from URL”. Map semantic keys → exact field names.
+# See src/lib/adobeIcWidgetFieldMap.ts and https://helpx.adobe.com/sign/adv-user/web-form/url-parameters.html
+# ADOBE_IC_WIDGET_FIELD_MAP={"contractorBusinessName":"IC_Business_Name","address":"IC_Address","cityStateZip":"IC_City_State_Zip","email":"IC_Email","contractorPrintedName":"IC_Printed_Name","effectiveDate":"IC_Effective_Date","floorPrintedName":"FIS_Printed_Name","floorTitle":"FIS_Title","contractorTitle":"IC_Title"}
+
+# After an installer finishes signing in Adobe, paste the completed agreement URL in Admin → Signatures → “Set signed PDF link” (stored as payload.adobe.signedDocumentUrl). The web form link alone always reopens the template, not the finished PDF.
 ```
 
 3. **Initialize the database:**

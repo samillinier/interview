@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { cookies } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 // Helper to get session in App Router
 async function getSession(request: NextRequest) {
   try {

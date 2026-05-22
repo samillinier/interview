@@ -4,6 +4,15 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isAdmin } from '@/lib/property-access'
 
+function normalizeVehicleCategory(input: unknown): string | null {
+  if (input === undefined || input === null) return null
+  const value = String(input).trim().toLowerCase()
+  if (!value) return null
+  if (value === 'cat') return 'car'
+  if (value === 'car' || value === 'forklift') return value
+  return null
+}
+
 // GET - Get a specific vehicle
 export async function GET(
   request: NextRequest,
@@ -104,6 +113,7 @@ export async function PATCH(
 
     const body = await request.json()
     const {
+      category,
       vehicleYear,
       vehicleMake,
       vehicleModel,
@@ -120,6 +130,7 @@ export async function PATCH(
     const updatedVehicle = await prisma.vehicle.update({
       where: { id: params.vehicleId },
       data: {
+        ...(category !== undefined && { category: normalizeVehicleCategory(category) }),
         ...(vehicleYear !== undefined && { vehicleYear: vehicleYear ? parseInt(vehicleYear) : null }),
         ...(vehicleMake !== undefined && { vehicleMake }),
         ...(vehicleModel !== undefined && { vehicleModel }),

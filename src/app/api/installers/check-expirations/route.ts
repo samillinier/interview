@@ -44,7 +44,8 @@ function getFieldName(field: string): string {
     workersCompExemExpiry: 'Workers Compensation Exem Certificate',
     generalLiabilityExpiry: 'General Liability',
     automobileLiabilityExpiry: 'Automobile Liability',
-    employersLiabilityExpiry: "Employer's Liability",
+    // In this system the "Workers' Compensation" expiry is stored in `employersLiabilityExpiry`.
+    employersLiabilityExpiry: "Workers' Compensation",
   }
   return fieldNames[field] || field
 }
@@ -177,35 +178,32 @@ export async function POST(request: NextRequest) {
         ? `Your ${expiryList} ${allItems.length === 1 ? 'has' : 'have'} ${expiredItems.length > 0 ? 'expired or are' : 'are'} expiring soon. Please update ${allItems.length === 1 ? 'it' : 'them'} immediately to maintain your active status.`
         : `Your ${expiryList} ${expiringOnlyItems.length === 1 ? 'is' : 'are'} expiring soon. Please update ${expiringOnlyItems.length === 1 ? 'it' : 'them'} to maintain your active status.`
 
-      // Check if we already sent a notification today for this installer to avoid duplicates
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-
-        const existingNotification = await prisma.notification.findFirst({
-          where: {
-            installerId: installer.id,
-            type: 'notification',
-            title: {
-              in: ['Certificate/Insurance Expiring Soon', 'Certificate/Insurance Expired or Expiring Soon'],
-            },
-            createdAt: {
-              gte: today,
-              lt: tomorrow,
-            },
+      // De-dupe: keep a single unread notification and update it instead of spamming duplicates.
+      const existingUnread = await prisma.notification.findFirst({
+        where: {
+          installerId: installer.id,
+          type: 'notification',
+          isRead: false,
+          title: {
+            in: ['Certificate/Insurance Expiring Soon', 'Certificate/Insurance Expired or Expiring Soon'],
           },
-        })
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, content: true, priority: true, title: true },
+      })
 
-        // Only send notification if we haven't sent one today
-        if (!existingNotification) {
-          // Send notification to installer
-          await prisma.notification.create({
+      if (existingUnread) {
+        // Only update when something actually changed to avoid pointless churn.
+        if (
+          existingUnread.title !== title ||
+          existingUnread.content !== content ||
+          existingUnread.priority !== (expiredItems.length > 0 ? 'urgent' : 'high')
+        ) {
+          await prisma.notification.update({
+            where: { id: existingUnread.id },
             data: {
-              installerId: installer.id,
-              type: 'notification',
-              title: title,
-              content: content,
+              title,
+              content,
               priority: expiredItems.length > 0 ? 'urgent' : 'high',
               link: '/installer/profile',
               senderId: 'system',
@@ -213,10 +211,24 @@ export async function POST(request: NextRequest) {
             },
           })
         }
+      } else {
+        await prisma.notification.create({
+          data: {
+            installerId: installer.id,
+            type: 'notification',
+            title,
+            content,
+            priority: expiredItems.length > 0 ? 'urgent' : 'high',
+            link: '/installer/profile',
+            senderId: 'system',
+            senderType: 'admin',
+          },
+        })
+      }
 
       return NextResponse.json({
         success: true,
-        message: existingNotification ? 'Notification already sent today' : 'Notifications sent',
+        message: existingUnread ? 'Notification updated' : 'Notification sent',
         expiredItems: expiredItems.map((item) => ({
           name: item.name,
           expiryDate: item.expiryDate,
@@ -248,12 +260,27 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check all installers for expiring items (for admin/cron job)
 export async function GET(request: NextRequest) {
   try {
+    type ComplianceStatusKey = 'active' | 'inactive' | 'missing' | 'expired' | 'na'
+
+    const mapVerificationStatus = (raw: unknown): ComplianceStatusKey | null => {
+      const v = String(raw || '').toLowerCase().trim()
+      if (!v) return null
+      if (v === 'active' || v === 'compliant') return 'active'
+      if (v === 'inactive' || v === 'not_compliant' || v === 'non_compliant' || v === 'not active') return 'inactive'
+      if (v === 'missing' || v === 'in_progress' || v === 'in progress') return 'missing'
+      if (v === 'expired') return 'expired'
+      if (v === 'na' || v === 'n/a') return 'na'
+      return null
+    }
+
     // Get all installers with expiry dates
     const installers = await prisma.installer.findMany({
+      where: { status: 'active' },
       select: {
         id: true,
         firstName: true,
         lastName: true,
+        photoUrl: true,
         email: true,
         licenseExpiry: true,
         llrpExpiry: true,
@@ -267,14 +294,58 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    const installerIds = installers.map((i) => i.id)
+    const sunbizDocs = installerIds.length
+      ? await prisma.document.findMany({
+          where: { installerId: { in: installerIds }, type: 'sunbiz' },
+          select: { installerId: true, createdAt: true, verificationLinkStatus: true },
+        })
+      : []
+
+    const sunbizByInstaller = new Map<
+      string,
+      { hasDoc: boolean; override: ComplianceStatusKey | null }
+    >()
+
+    for (const doc of sunbizDocs) {
+      const prev = sunbizByInstaller.get(doc.installerId)
+      const status = mapVerificationStatus(doc.verificationLinkStatus)
+      if (!prev) {
+        sunbizByInstaller.set(doc.installerId, { hasDoc: true, override: status })
+        continue
+      }
+
+      // keep latest status by createdAt (docs from DB are not guaranteed ordered)
+      // if either has an override status, prefer the latest document's status.
+      sunbizByInstaller.set(doc.installerId, {
+        hasDoc: true,
+        override: status ?? prev.override,
+      })
+    }
+
     const results: Array<{
       installerId: string
       installerName: string
+      photoUrl?: string | null
       expiringItems: Array<{ name: string; expiryDate: Date }>
     }> = []
 
     for (const installer of installers) {
       const expiringItems: Array<{ name: string; expiryDate: Date; status: 'expiring' | 'expired' }> = []
+
+      // Sunbiz: follow the same logic as the installer compliance UI.
+      // If an override status exists on the latest doc, use it; otherwise, doc presence means "Active".
+      const sunbizMeta = sunbizByInstaller.get(installer.id) || { hasDoc: false, override: null }
+      const sunbizStatus: ComplianceStatusKey =
+        sunbizMeta.override !== null ? sunbizMeta.override : sunbizMeta.hasDoc ? 'active' : 'missing'
+
+      if (sunbizStatus === 'missing') {
+        expiringItems.push({ name: 'Sunbiz (missing)', expiryDate: new Date(), status: 'expired' })
+      } else if (sunbizStatus === 'inactive') {
+        expiringItems.push({ name: 'Sunbiz (inactive)', expiryDate: new Date(), status: 'expired' })
+      } else if (sunbizStatus === 'expired') {
+        expiringItems.push({ name: 'Sunbiz (expired)', expiryDate: new Date(), status: 'expired' })
+      }
 
       const expiryFields: Array<{ key: string; value: Date | null | undefined; nameSuffix?: string }> = [
         { key: 'licenseExpiry', value: (installer as any).licenseExpiry },
@@ -321,52 +392,62 @@ export async function GET(request: NextRequest) {
         const expiringOnlyItems = expiringItems.filter(item => item.status === 'expiring')
         const allItems = [...expiredItems, ...expiringOnlyItems]
         
-        // Check if we already sent a notification today for this installer to avoid duplicates
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const tomorrow = new Date(today)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-
-        const existingNotification = await prisma.notification.findFirst({
+        // De-dupe: keep a single unread notification per installer and update it.
+        const existingUnread = await prisma.notification.findFirst({
           where: {
             installerId: installer.id,
             type: 'notification',
+            isRead: false,
             title: {
               in: ['Certificate/Insurance Expiring Soon', 'Certificate/Insurance Expired or Expiring Soon'],
             },
-            createdAt: {
-              gte: today,
-              lt: tomorrow,
-            },
           },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, content: true, priority: true, title: true },
         })
 
-        // Only send notification if we haven't sent one today
-        if (!existingNotification) {
-          // Send notification to installer
-          const expiryList = allItems
-            .map((item) => {
-              const dateStr = item.expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-              return item.status === 'expired' 
-                ? `${item.name} (expired ${dateStr})`
-                : `${item.name} (expires ${dateStr})`
-            })
-            .join(', ')
-          
-          const title = expiredItems.length > 0 
-            ? 'Certificate/Insurance Expired or Expiring Soon'
-            : 'Certificate/Insurance Expiring Soon'
-          
-          const content = expiredItems.length > 0
-            ? `Your ${expiryList} ${allItems.length === 1 ? 'has' : 'have'} ${expiredItems.length > 0 ? 'expired or are' : 'are'} expiring soon. Please update ${allItems.length === 1 ? 'it' : 'them'} immediately to maintain your active status.`
-            : `Your ${expiryList} ${expiringOnlyItems.length === 1 ? 'is' : 'are'} expiring soon. Please update ${expiringOnlyItems.length === 1 ? 'it' : 'them'} to maintain your active status.`
+        const expiryList = allItems
+          .map((item) => {
+            const dateStr = item.expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            return item.status === 'expired'
+              ? `${item.name} (expired ${dateStr})`
+              : `${item.name} (expires ${dateStr})`
+          })
+          .join(', ')
 
+        const title = expiredItems.length > 0
+          ? 'Certificate/Insurance Expired or Expiring Soon'
+          : 'Certificate/Insurance Expiring Soon'
+
+        const content = expiredItems.length > 0
+          ? `Your ${expiryList} ${allItems.length === 1 ? 'has' : 'have'} ${expiredItems.length > 0 ? 'expired or are' : 'are'} expiring soon. Please update ${allItems.length === 1 ? 'it' : 'them'} immediately to maintain your active status.`
+          : `Your ${expiryList} ${expiringOnlyItems.length === 1 ? 'is' : 'are'} expiring soon. Please update ${expiringOnlyItems.length === 1 ? 'it' : 'them'} to maintain your active status.`
+
+        if (existingUnread) {
+          if (
+            existingUnread.title !== title ||
+            existingUnread.content !== content ||
+            existingUnread.priority !== (expiredItems.length > 0 ? 'urgent' : 'high')
+          ) {
+            await prisma.notification.update({
+              where: { id: existingUnread.id },
+              data: {
+                title,
+                content,
+                priority: expiredItems.length > 0 ? 'urgent' : 'high',
+                link: '/installer/profile',
+                senderId: 'system',
+                senderType: 'admin',
+              },
+            })
+          }
+        } else {
           await prisma.notification.create({
             data: {
               installerId: installer.id,
               type: 'notification',
-              title: title,
-              content: content,
+              title,
+              content,
               priority: expiredItems.length > 0 ? 'urgent' : 'high',
               link: '/installer/profile',
               senderId: 'system',
@@ -378,6 +459,7 @@ export async function GET(request: NextRequest) {
         results.push({
           installerId: installer.id,
           installerName: `${installer.firstName} ${installer.lastName}`,
+          photoUrl: (installer as any).photoUrl || null,
           expiringItems,
         })
       }

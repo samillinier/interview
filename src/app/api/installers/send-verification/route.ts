@@ -7,8 +7,9 @@ import { ensureInstallerReferralCode, resolveReferrerInstallerId } from '@/lib/r
 export async function POST(request: NextRequest) {
   try {
     const { email, installerId, referralCode } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
-    if (!email && !installerId) {
+    if (!normalizedEmail && !installerId) {
       return NextResponse.json(
         { error: 'Email or installer ID is required' },
         { status: 400 }
@@ -21,9 +22,9 @@ export async function POST(request: NextRequest) {
       installer = await prisma.installer.findUnique({
         where: { id: installerId },
       })
-    } else if (email) {
-      installer = await prisma.installer.findUnique({
-        where: { email },
+    } else if (normalizedEmail) {
+      installer = await prisma.installer.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
       })
       
       // If installer doesn't exist, create a new one
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
         const referredByInstallerId = await resolveReferrerInstallerId(referralCode)
         installer = await prisma.installer.create({
           data: {
-            email,
+            email: normalizedEmail,
             firstName: '',
             lastName: '',
             status: 'pending',

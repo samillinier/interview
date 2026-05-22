@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 function CreateAccountContent() {
   const router = useRouter()
@@ -257,10 +258,7 @@ export default function CreateAccountPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-green" />
-          <p className="text-primary-500">Loading...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-500" />
       </div>
     }>
       <CreateAccountContent />

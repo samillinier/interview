@@ -13,8 +13,9 @@ export async function GET(request: NextRequest) {
       where: { email },
     })
     
-    // Only admins can access tracking
-    if (!admin?.isActive || admin.role !== 'ADMIN') {
+    // Admins, managers, and moderators can view tracking (read-only in UI for non-admins).
+    const role = String((admin as any)?.role || '').toUpperCase()
+    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -26,8 +27,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    const where: any = {}
-    
+    const where: any = {
+      // Onboarding-matrix-only rows; not shown in the tracking issue list
+      NOT: { type: 'matrix_manual' },
+    }
+
     if (status) {
       where.status = status
     }
@@ -51,12 +55,14 @@ export async function GET(request: NextRequest) {
             id: true,
             firstName: true,
             lastName: true,
+            workroom: true,
             phone: true,
             email: true,
             companyName: true,
             photoUrl: true,
             status: true,
             trackerStage: true,
+            flooringSkills: true,
           },
         },
       },
@@ -103,7 +109,8 @@ export async function POST(request: NextRequest) {
     })
     
     // Only admins can create tracking items
-    if (!admin?.isActive || admin.role !== 'ADMIN') {
+    const role = String((admin as any)?.role || '').toUpperCase()
+    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -147,6 +154,7 @@ export async function POST(request: NextRequest) {
             id: true,
             firstName: true,
             lastName: true,
+            workroom: true,
             phone: true,
             email: true,
             companyName: true,

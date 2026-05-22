@@ -13,7 +13,7 @@ import {
   HelpCircle,
   Building2,
   Car,
-  Package,
+  Armchair,
   DollarSign,
   MapPin,
   TrendingUp,
@@ -24,7 +24,8 @@ import {
   Layers,
   BarChart3,
   Settings,
-  Shield
+  Shield,
+  ClipboardCheck
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -32,6 +33,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface PropertyProfile {
   id: string
@@ -299,10 +302,7 @@ export default function PropertyDashboardPage() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading dashboard...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-600" />
       </div>
     )
   }
@@ -387,8 +387,17 @@ export default function PropertyDashboardPage() {
             href="/property/inventory"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Inventory</span>}
+            <Armchair className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Equipment</span>}
+          </Link>
+          <Link
+            href="/property/safety-walk"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Safety Walk</span>}
           </Link>
           <Link
             href="/property/help"
@@ -454,12 +463,11 @@ export default function PropertyDashboardPage() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         {/* Top Header */}
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="px-4 lg:px-6 py-4">
-          </div>
+          <div className={`pr-4 lg:px-6 py-4 ${propertyMobileSafeLeftPad}`} />
         </header>
 
         {/* Content Area */}
-        <main className="p-4 lg:p-6 pt-16 lg:pt-6">
+        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
           {/* Analytics Overview */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -553,7 +561,7 @@ export default function PropertyDashboardPage() {
                   </div>
                 </motion.div>
 
-                {/* Inventory Card */}
+                {/* Office equipment card */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -562,7 +570,7 @@ export default function PropertyDashboardPage() {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-                      <Package className="w-6 h-6 text-white" />
+                      <Armchair className="w-6 h-6 text-white" />
                     </div>
                     <Link
                       href="/property/inventory"
@@ -572,22 +580,22 @@ export default function PropertyDashboardPage() {
                     </Link>
                   </div>
                   <h3 className="text-3xl font-bold text-purple-900 mb-1">{analytics.inventory.total}</h3>
-                  <p className="text-sm text-purple-700 mb-4">Total Items</p>
+                  <p className="text-sm text-purple-700 mb-4">Equipment lines</p>
                   <div className="space-y-2 pt-4 border-t border-purple-200">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-purple-600">Total Value</span>
+                      <span className="text-xs text-purple-600">Est. book value</span>
                       <span className="text-sm font-semibold text-purple-900">
                         ${analytics.inventory.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-purple-600">Low Stock</span>
+                      <span className="text-xs text-purple-600">Needs reorder</span>
                       <span className={`text-sm font-semibold ${analytics.inventory.lowStock > 0 ? 'text-red-600' : 'text-purple-900'}`}>
                         {analytics.inventory.lowStock}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-purple-600">Active Items</span>
+                      <span className="text-xs text-purple-600">In active use</span>
                       <span className="text-sm font-semibold text-purple-900">{analytics.inventory.active}</span>
                     </div>
                   </div>
@@ -601,7 +609,7 @@ export default function PropertyDashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6"
           >
             <Link
               href="/property/facilities"
@@ -632,11 +640,23 @@ export default function PropertyDashboardPage() {
               className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-green/20"
             >
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Package className="w-6 h-6 text-purple-600" />
+                <Armchair className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <h3 className="font-bold text-primary-900 text-lg">Manage Inventory</h3>
-                <p className="text-sm text-primary-500">Track stock levels and items.</p>
+                <h3 className="font-bold text-primary-900 text-lg">Office equipment</h3>
+                <p className="text-sm text-primary-500">Furniture, IT, supplies, and asset tags.</p>
+              </div>
+            </Link>
+            <Link
+              href="/property/safety-walk"
+              className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-green/20"
+            >
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <ClipboardCheck className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-primary-900 text-lg">Safety Walk</h3>
+                <p className="text-sm text-primary-500">Complete a safety walk inspection form.</p>
               </div>
             </Link>
           </motion.div>
@@ -713,7 +733,7 @@ export default function PropertyDashboardPage() {
                   </div>
                 </motion.div>
 
-                {/* Inventory - Total Quantity */}
+                {/* Equipment — total units */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -725,11 +745,11 @@ export default function PropertyDashboardPage() {
                       <Layers className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Total Quantity</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide">Total units on hand</p>
                       <p className="text-xl font-bold text-slate-900">
                         {analytics.inventory.totalQuantity.toLocaleString()}
                       </p>
-                      <p className="text-xs text-slate-400">{analytics.inventory.categories} categories</p>
+                      <p className="text-xs text-slate-400">{analytics.inventory.categories} equipment types</p>
                     </div>
                   </div>
                 </motion.div>
@@ -774,7 +794,7 @@ export default function PropertyDashboardPage() {
                   </div>
                 </motion.div>
 
-                {/* Inventory - Low Stock Alert */}
+                {/* Equipment — reorder alert */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -786,7 +806,7 @@ export default function PropertyDashboardPage() {
                       <AlertTriangle className={`w-5 h-5 ${analytics.inventory.lowStock > 0 ? 'text-red-600' : 'text-slate-600'}`} />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Low Stock Items</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide">Lines needing reorder</p>
                       <p className={`text-xl font-bold ${analytics.inventory.lowStock > 0 ? 'text-red-600' : 'text-slate-900'}`}>
                         {analytics.inventory.lowStock}
                       </p>
@@ -797,7 +817,7 @@ export default function PropertyDashboardPage() {
                   </div>
                 </motion.div>
 
-                {/* Inventory - Average Value */}
+                {/* Equipment — average line cost */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -809,7 +829,7 @@ export default function PropertyDashboardPage() {
                       <DollarSign className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Avg Value/Item</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide">Avg cost per line</p>
                       <p className="text-xl font-bold text-slate-900">
                         ${analytics.inventory.total > 0 
                           ? (analytics.inventory.totalValue / analytics.inventory.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

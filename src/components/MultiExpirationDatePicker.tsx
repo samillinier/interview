@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { Calendar, Plus, Trash2 } from 'lucide-react'
+import { Calendar, Plus, Trash2, X } from 'lucide-react'
 
 function pad2(n: number) {
   return String(n).padStart(2, '0')
@@ -207,7 +209,23 @@ export function MultiExpirationDatePicker({
     <div className={`group relative p-4 rounded-xl border-2 ${borderBg} hover:shadow-sm transition-all duration-200`}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
-        {badge}
+        <div className="flex items-center gap-2">
+          {badge}
+          {normalize(inputValues).length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setLocalValues([''])
+                onChange([])
+              }}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-white/80 hover:text-slate-700"
+              title="Clear all dates"
+            >
+              <X className="w-3.5 h-3.5" />
+              Clear
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -256,6 +274,19 @@ export function MultiExpirationDatePicker({
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
+            {inputValues.length === 1 && v ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalValues([''])
+                  onChange([])
+                }}
+                className="p-2 text-slate-500 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
+                title="Clear date"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            ) : null}
           </div>
         ))}
 

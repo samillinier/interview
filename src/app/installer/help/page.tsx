@@ -8,6 +8,7 @@ import {
   Bell,
   ExternalLink,
   FileText,
+  ClipboardList,
   Menu,
   X,
   LogOut,
@@ -23,6 +24,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 export default function InstallerHelpPage() {
   const router = useRouter()
@@ -124,10 +126,7 @@ export default function InstallerHelpPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading help page...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -216,6 +215,15 @@ export default function InstallerHelpPage() {
           >
             <ExternalLink className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link
             href="/installer/notifications"

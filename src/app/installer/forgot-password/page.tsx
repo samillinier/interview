@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 function ForgotPasswordContent() {
   const router = useRouter()
@@ -78,7 +79,7 @@ function ForgotPasswordContent() {
               Forgot Password
             </h1>
             <p className="text-primary-500">
-              Enter your email address and we'll send you a link to reset your password
+              Enter your email address and we'll send you a link to reset or create your password
             </p>
           </div>
 
@@ -95,10 +96,10 @@ function ForgotPasswordContent() {
                   Check Your Email
                 </h2>
               <p className="text-primary-600 mb-6">
-                  We've sent a password reset link to <strong>{email}</strong>
+                  We've sent a password link to <strong>{email}</strong>
                 </p>
               <p className="text-sm text-primary-500 mb-6">
-                  Click the link in the email to reset your password. The link will expire in 1 hour.
+                  Click the link in the email to create or reset your password. The link will expire in 1 hour.
               </p>
               {resetUrl && (
                 <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
@@ -207,10 +208,7 @@ export default function ForgotPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-green" />
-          <p className="text-primary-500">Loading...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-500" />
       </div>
     }>
       <ForgotPasswordContent />

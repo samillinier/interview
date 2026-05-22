@@ -14,10 +14,8 @@ import {
   Loader2,
   CheckCircle2, 
   XCircle, 
-  TrendingUp,
   Calendar,
   Clock,
-  Briefcase,
   AlertCircle,
   ArrowRight,
   Paperclip,
@@ -25,13 +23,15 @@ import {
   Shield,
   FileCheck,
   AlertTriangle,
-  HelpCircle
+  HelpCircle,
+  ClipboardList
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface InstallerProfile {
   id: string
@@ -52,6 +52,29 @@ interface InstallerProfile {
   generalLiabilityExpiry?: string
   automobileLiabilityExpiry?: string
   employersLiabilityExpiry?: string
+}
+
+interface InstallerNotification {
+  id: string
+  type: 'notification' | 'message' | 'news'
+  title: string
+  content: string
+  isRead: boolean
+  createdAt: string
+  link: string | null
+  senderType?: 'admin' | 'installer'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  attachmentUrl?: string | null
+  attachmentName?: string | null
+}
+
+interface InstallerDocument {
+  id: string
+  createdAt: string
+  name: string
+  adminRejectionNote?: string | null
+  adminCorrectionUrl?: string | null
+  adminCorrectionName?: string | null
 }
 
 // Helper function to get expiration status
@@ -88,65 +111,6 @@ function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | '
   return 'valid'
 }
 
-// Animated Number Component
-function AnimatedNumber({ value, suffix = '' }: { value: number | string | null | undefined; suffix?: string }) {
-  const [displayValue, setDisplayValue] = useState(0)
-  const numValue = typeof value === 'number' ? value : 0
-
-  useEffect(() => {
-    if (value === null || value === undefined || value === 'N/A') {
-      return
-    }
-
-    let startTime: number | null = null
-    const duration = 1500 // 1.5 seconds
-    const startValue = 0
-    const endValue = numValue
-
-    const animate = (currentTime: number) => {
-      if (startTime === null) startTime = currentTime
-      const progress = Math.min((currentTime - startTime) / duration, 1)
-      
-      // Easing function for smooth animation
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4)
-      const currentValue = Math.round(startValue + (endValue - startValue) * easeOutQuart)
-      
-      setDisplayValue(currentValue)
-
-      if (progress < 1) {
-        requestAnimationFrame(animate)
-      }
-    }
-
-    requestAnimationFrame(animate)
-  }, [numValue, value])
-
-  if (value === null || value === undefined || value === 'N/A') {
-    return (
-      <motion.span
-        className="text-6xl font-bold text-brand-green"
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, type: 'spring' }}
-      >
-        N/A
-      </motion.span>
-    )
-  }
-
-  return (
-    <motion.span
-      className="text-6xl font-bold text-brand-green"
-      initial={{ opacity: 0, scale: 0.5 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, type: 'spring' }}
-    >
-      {displayValue}
-      {suffix}
-    </motion.span>
-  )
-}
-
 export default function InstallerDashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -160,7 +124,8 @@ export default function InstallerDashboardPage() {
     status: 'expired' | 'expiring'
   }>>([])
   const [notificationCount, setNotificationCount] = useState(0)
-  const [documents, setDocuments] = useState<any[]>([])
+  const [dashboardNotifications, setDashboardNotifications] = useState<InstallerNotification[]>([])
+  const [documents, setDocuments] = useState<InstallerDocument[]>([])
 
   useEffect(() => {
     checkAuthAndLoadProfile()
@@ -244,10 +209,10 @@ export default function InstallerDashboardPage() {
         const expiryFields = [
           { key: 'llrpExpiry', name: 'LLRP', value: profileData.installer.llrpExpiry },
           { key: 'btrExpiry', name: 'BTR', value: profileData.installer.btrExpiry },
-          { key: 'workersCompExemExpiry', name: 'Workers Compensation Exem Certificate', value: profileData.installer.workersCompExemExpiry },
+          { key: 'workersCompExemExpiry', name: "Workers' Comp Exemption Certificate or Report", value: profileData.installer.workersCompExemExpiry },
           { key: 'generalLiabilityExpiry', name: 'General Liability', value: profileData.installer.generalLiabilityExpiry },
           { key: 'automobileLiabilityExpiry', name: 'Automobile Liability', value: profileData.installer.automobileLiabilityExpiry },
-          { key: 'employersLiabilityExpiry', name: "Employer's Liability", value: profileData.installer.employersLiabilityExpiry },
+          { key: 'employersLiabilityExpiry', name: 'Additional Documents', value: profileData.installer.employersLiabilityExpiry },
         ]
         
         expiryFields.forEach(({ name, value }) => {
@@ -288,8 +253,18 @@ export default function InstallerDashboardPage() {
             const notificationData = await notificationResponse.json()
             setNotificationCount(notificationData.count || 0)
           }
+
+          const notificationsResponse = await fetch(`/api/installers/${installerId}/notifications`)
+          if (notificationsResponse.ok) {
+            const contentType = notificationsResponse.headers.get('content-type')
+            if (contentType && contentType.includes('application/json')) {
+              const notificationsData = await notificationsResponse.json()
+              const rows = Array.isArray(notificationsData.notifications) ? notificationsData.notifications : []
+              setDashboardNotifications(rows)
+            }
+          }
         } catch (error) {
-          console.error('Error fetching notification count:', error)
+          console.error('Error fetching notifications:', error)
         }
         
         // Show NDA modal if user hasn't agreed yet
@@ -314,13 +289,60 @@ export default function InstallerDashboardPage() {
     router.push('/installer/login')
   }
 
+  const notificationCorrections = dashboardNotifications
+    .filter((notification) => {
+      const text = `${notification.title || ''} ${notification.content || ''} ${notification.attachmentName || ''}`.toLowerCase()
+      const isCorrection =
+        text.includes('correction') ||
+        text.includes('corrected') ||
+        text.includes('document rejected') ||
+        text.includes('rejected document') ||
+        text.includes('was rejected') ||
+        text.includes('correction file') ||
+        text.includes('please correct')
+      return isCorrection && Boolean(notification.attachmentUrl)
+    })
+    .map((notification) => ({
+      id: notification.id,
+      title: notification.title || 'Correction file',
+      content: notification.content,
+      createdAt: notification.createdAt,
+      attachmentUrl: notification.attachmentUrl || '',
+      attachmentName: notification.attachmentName || 'Correction file',
+      link: notification.link || '/installer/attachments',
+      isRead: notification.isRead,
+    }))
+
+  const documentCorrections = documents
+    .filter((document) => Boolean(document.adminCorrectionUrl))
+    .map((document) => ({
+      id: `document-${document.id}`,
+      title: 'Correction file',
+      content: document.adminRejectionNote
+        ? `Admin sent a correction for ${document.name}. Note: ${document.adminRejectionNote}`
+        : `Admin sent a correction file for ${document.name}.`,
+      createdAt: document.createdAt,
+      attachmentUrl: document.adminCorrectionUrl || '',
+      attachmentName: document.adminCorrectionName || document.name,
+      link: '/installer/attachments',
+      isRead: true,
+    }))
+
+  const correctionItems = [...notificationCorrections, ...documentCorrections]
+    .filter((item, index, all) => item.attachmentUrl && all.findIndex((next) => next.attachmentUrl === item.attachmentUrl) === index)
+    .slice(0, 4)
+
+  const formatNotificationDate = (value: string) =>
+    new Date(value).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+
   if (isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading dashboard...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -418,6 +440,15 @@ export default function InstallerDashboardPage() {
           >
             <ExternalLink className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link
             href="/installer/notifications"
@@ -548,91 +579,90 @@ export default function InstallerDashboardPage() {
             </div>
           </motion.div>
 
-          {/* Stats Cards */}
-          <div className="grid md:grid-cols-3 gap-6 mb-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-brand-green/20 to-brand-green/10 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-green/10">
-                  <TrendingUp className="w-10 h-10 text-brand-green" strokeWidth={2.5} />
-                </div>
-                {installer.overallScore !== null && installer.overallScore !== undefined && (
-                  <AnimatedNumber value={installer.overallScore} />
-                )}
+          {/* Important Updates */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
+              <div>
+                <h2 className="text-xl font-bold text-primary-900">Corrections</h2>
+                <p className="text-sm text-primary-500">Corrected documents and admin correction notes will appear here.</p>
               </div>
-              <h3 className="text-lg font-semibold text-primary-900 mb-1">Overall Score</h3>
-              <p className="text-sm text-primary-500">
-                {installer.overallScore !== null && installer.overallScore !== undefined
-                  ? 'Based on your interview performance'
-                  : 'Score will be available after interview completion'
-                }
-              </p>
-            </motion.div>
+              <Link
+                href="/installer/notifications"
+                className="inline-flex items-center gap-2 rounded-xl border border-brand-green/20 bg-brand-green/10 px-4 py-2 text-sm font-semibold text-brand-green hover:bg-brand-green hover:text-white transition-colors"
+              >
+                View all
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-brand-green/20 to-brand-green/10 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-green/10">
-                  <Briefcase className="w-10 h-10 text-brand-green" strokeWidth={2.5} />
-                </div>
-                <AnimatedNumber value={installer.yearsOfExperience} />
-              </div>
-              <h3 className="text-lg font-semibold text-primary-900 mb-1">Years of Experience</h3>
-              <p className="text-sm text-primary-500">
-                {installer.yearsOfExperience 
-                  ? 'Professional experience in flooring'
-                  : 'Not specified'
-                }
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-brand-green/20 to-brand-green/10 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-green/10">
-                  {installer.status === 'passed' || installer.status === 'qualified' ? (
-                    <CheckCircle2 className="w-10 h-10 text-brand-green" strokeWidth={2.5} />
-                  ) : (
-                    <CheckCircle2 className="w-10 h-10 text-brand-green" strokeWidth={2.5} />
-                  )}
-                </div>
-                {installer.status === 'passed' || installer.status === 'qualified' ? (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, type: 'spring' }}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-green to-brand-green-dark text-white text-xl font-bold rounded-full shadow-lg shadow-brand-green/30"
+            {correctionItems.length > 0 ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {correctionItems.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`rounded-xl border p-4 ${
+                      notification.isRead ? 'border-slate-200 bg-slate-50' : 'border-brand-green/30 bg-brand-green/5'
+                    }`}
                   >
-                    <CheckCircle2 className="w-5 h-5" />
-                    Passed
-                  </motion.span>
-                ) : (
-                  <span className="text-lg font-bold text-primary-900 capitalize">{installer.status}</span>
-                )}
+                    <div className="flex h-full flex-col gap-3">
+                      <div className="flex gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                          {notification.attachmentUrl ? (
+                            <Paperclip className="w-5 h-5 text-brand-green" />
+                          ) : (
+                            <FileCheck className="w-5 h-5 text-brand-green" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold text-primary-900">{notification.title || 'Important update'}</h3>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm text-primary-600">{notification.content}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-primary-400">
+                            <span>{formatNotificationDate(notification.createdAt)}</span>
+                            {notification.attachmentName && <span>Attachment: {notification.attachmentName}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-auto flex flex-wrap gap-2">
+                        {notification.attachmentUrl ? (
+                          <a
+                            href={notification.attachmentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-white hover:bg-brand-green-dark"
+                          >
+                            View correction
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        ) : null}
+                        {notification.link ? (
+                          <Link
+                            href={notification.link}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-slate-50"
+                          >
+                            Go to attachment
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <h3 className="text-lg font-semibold text-primary-900 mb-1">Application Status</h3>
-              <p className="text-sm text-primary-500">
-                {installer.status === 'passed' || installer.status === 'qualified'
-                  ? 'Your application has been approved'
-                  : installer.status === 'pending'
-                  ? 'Under review'
-                  : 'Application status'
-                }
-              </p>
-            </motion.div>
-          </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                <FileCheck className="mx-auto mb-3 h-8 w-8 text-slate-400" />
+                <h3 className="font-semibold text-primary-900">No corrections right now</h3>
+                <p className="mt-1 text-sm text-primary-500">When admin sends a corrected document, it will show here.</p>
+              </div>
+            )}
+          </motion.div>
 
           {/* Quick Actions */}
           <motion.div

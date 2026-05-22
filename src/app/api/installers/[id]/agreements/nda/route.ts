@@ -66,7 +66,17 @@ export async function GET(
       return NextResponse.json({ error: 'NDA Agreement not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, agreement })
+    const normalizedAgreement =
+      agreement.status === 'pending_admin' && agreement.signedAt
+        ? {
+            ...agreement,
+            status: 'approved',
+            approvedAt: agreement.approvedAt ?? agreement.signedAt,
+            approvedBy: agreement.approvedBy ?? 'installer_acceptance',
+          }
+        : agreement
+
+    return NextResponse.json({ success: true, agreement: normalizedAgreement })
   } catch (error: any) {
     console.error('Error fetching NDA Agreement:', error)
     return NextResponse.json({ error: 'Failed to fetch NDA Agreement' }, { status: 500 })

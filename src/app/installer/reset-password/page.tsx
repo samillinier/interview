@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 function ResetPasswordContent() {
   const router = useRouter()
@@ -122,10 +123,7 @@ function ResetPasswordContent() {
   if (isValidToken === null) {
     return (
       <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center p-4">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-green" />
-          <p className="text-primary-500">Validating reset link...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-500" />
       </div>
     )
   }
@@ -303,10 +301,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-brand-green" />
-          <p className="text-primary-500">Loading...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-500" />
       </div>
     }>
       <ResetPasswordContent />

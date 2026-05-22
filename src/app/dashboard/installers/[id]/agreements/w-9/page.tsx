@@ -16,20 +16,25 @@ import {
   LogOut,
   User,
   ShieldAlert,
+  FileCheck,
   Users,
   BarChart3,
   Bell,
   MessageSquare,
+  ClipboardCheck,
   StickyNote,
   Settings,
   Building2,
   CheckCircle2,
   Clock,
   Activity,
+  Megaphone,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 type W9FormData = {
   nameLine1?: string
@@ -76,12 +81,15 @@ export default function AdminViewW9Page({
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [installerId, setInstallerId] = useState<string | null>(null)
   const [installer, setInstaller] = useState<InstallerData | null>(null)
   const [agreement, setAgreement] = useState<AgreementData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
+  const [updatesCount, setUpdatesCount] = useState(0)
 
   useEffect(() => {
     const loadData = async () => {
@@ -119,11 +127,35 @@ export default function AdminViewW9Page({
     }
 
     if (status === 'authenticated') {
+      fetchSignatureNotSignedCount()
+      fetchUpdatesCount()
       loadData()
     } else if (status === 'unauthenticated') {
       router.push('/login')
     }
   }, [status, router, params])
+
+  const fetchSignatureNotSignedCount = async () => {
+    try {
+      const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      setSignatureNotSignedCount(data?.count || 0)
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchUpdatesCount = async () => {
+    try {
+      const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      setUpdatesCount(Number(data?.count || 0))
+    } catch {
+      // ignore
+    }
+  }
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' })
@@ -136,10 +168,7 @@ export default function AdminViewW9Page({
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading agreement…</p>
-        </div>
+        <LogoHeartbeatLoader size={72} />
       </div>
     )
   }
@@ -171,153 +200,11 @@ export default function AdminViewW9Page({
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg print:hidden`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
-            </div>
-            {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/approvals"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-            >
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Approvals</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/tracking"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Activity className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Tracking</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/analytics"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-            >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Analytics</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/notifications"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-            >
-              <Bell className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Notifications</span>}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/messages"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/remarks"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-            >
-              <StickyNote className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Remarks</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/settings"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Settings</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/property/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
-            >
-              <Building2 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Property Portal</span>}
-            </Link>
-          )}
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          {session?.user && (
-            <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-              {session.user.image ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                  <Image
-                    src={session.user.image}
-                    alt={session.user?.name || session.user?.email || 'Admin'}
-                    width={40}
-                    height={40}
-                    className="w-10 h-10 rounded-full object-cover"
-                    unoptimized
-                  />
-                </div>
-              ) : (
-                <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-brand-green" />
-                </div>
-              )}
-              {sidebarOpen && (
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-primary-900 text-sm truncate">
-                    {session.user?.name || 'Admin'}
-                  </p>
-                  <p className="text-xs text-primary-500 truncate">{session.user?.email}</p>
-                </div>
-              )}
-            </div>
-          )}
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <AdminMobileMenu pathname={pathname} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <div className="print:hidden">
-          <AdminMobileMenu pathname={pathname} />
-
           <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
             <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
               <div className="flex items-start gap-4">
@@ -359,7 +246,6 @@ export default function AdminViewW9Page({
               </div>
             </div>
           </header>
-        </div>
 
         <main className="max-w-5xl mx-auto px-4 lg:px-6 py-8">
           {/* W-9 document */}

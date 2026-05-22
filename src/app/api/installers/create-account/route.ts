@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 export async function POST(request: NextRequest) {
   try {
     const { installerId, email, password } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!password) {
       return NextResponse.json(
@@ -48,9 +49,9 @@ export async function POST(request: NextRequest) {
       installer = await prisma.installer.findUnique({
         where: { id: installerId },
       })
-    } else if (email) {
-      installer = await prisma.installer.findUnique({
-        where: { email },
+    } else if (normalizedEmail) {
+      installer = await prisma.installer.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
       })
     }
 

@@ -4,6 +4,8 @@ import { ensureInstallerReferralCode } from '@/lib/referrals'
 import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/installerToken'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { extractLikelyPhone } from '@/lib/phone'
+import { writeAdminAuditLog } from '@/lib/audit'
 
 // Helper function to categorize fields by section
 function getSectionsFromFields(fields: string[]): string[] {
@@ -11,7 +13,7 @@ function getSectionsFromFields(fields: string[]): string[] {
   
   // Profile Information fields
   const profileFields = new Set([
-    'firstName', 'lastName', 'phone', 'digitalId', 'workroom', 'vehicleDescription',
+    'firstName', 'lastName', 'phone', 'digitalId', 'workroom', 'primaryFlooringSurface', 'vehicleDescription',
     'companyName', 'companyTitle', 'companyStreetAddress', 'companyCity', 'companyState',
     'companyZipCode', 'companyCounty', 'companyAddress', 'yearsOfExperience',
     'hasOwnCrew', 'crewSize', 'hasOwnTools', 'toolsDescription', 'hasVehicle',
@@ -70,6 +72,7 @@ const INSTALLER_ALLOWED_UPDATE_FIELDS = new Set<string>([
   'phone',
   'digitalId',
   'workroom',
+  'primaryFlooringSurface',
   'vehicleDescription',
   'companyName',
   'companyTitle',
@@ -172,6 +175,43 @@ const INSTALLER_ALLOWED_UPDATE_FIELDS = new Set<string>([
   'paymentAuthorizationDate',
 ])
 
+async function inferMissingInstallerPhone(prismaAny: any, installerId: string): Promise<string | null> {
+  const interviewPhoneResponses = await prismaAny.interviewResponse.findMany({
+    where: {
+      Interview: { installerId },
+      OR: [
+        { questionId: 'contact' },
+        { questionText: { contains: 'phone', mode: 'insensitive' } },
+        { questionText: { contains: 'contact', mode: 'insensitive' } },
+        { questionText: { contains: 'reach', mode: 'insensitive' } },
+        { questionText: { contains: 'teléfono', mode: 'insensitive' } },
+        { questionText: { contains: 'numero', mode: 'insensitive' } },
+        { questionText: { contains: 'número', mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: { answerText: true },
+  })
+
+  for (const response of interviewPhoneResponses) {
+    const inferredPhone = extractLikelyPhone(String(response?.answerText || ''))
+    if (inferredPhone) return inferredPhone
+  }
+
+  const latestHistoryPhone = await prismaAny.installerHistory.findFirst({
+    where: {
+      installerId,
+      phone: { not: null },
+    },
+    orderBy: { updatedAt: 'desc' },
+    select: { phone: true },
+  })
+
+  const historyPhone = String(latestHistoryPhone?.phone || '').trim()
+  return historyPhone || null
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -208,7 +248,7 @@ export async function GET(
     console.log('Fetching installer with ID:', installerId)
     
     try {
-      const installer = await prisma.installer.findUnique({
+      let installer = await prisma.installer.findUnique({
         where: { id: installerId },
     })
 
@@ -220,6 +260,21 @@ export async function GET(
         )
     }
 
+      // Backfill phone for older/incomplete interviews if missing on installer.
+      if (!installer.phone) {
+        try {
+          const inferredPhone = await inferMissingInstallerPhone(prismaAny, installerId)
+          if (inferredPhone) {
+            installer = await prismaAny.installer.update({
+              where: { id: installerId },
+              data: { phone: inferredPhone },
+            })
+          }
+        } catch (err) {
+          console.error('Failed to backfill installer phone:', err)
+        }
+      }
+
       /**
        * Access control:
        * - If an installer token is present and valid, allow the installer to fetch their own record.
@@ -228,6 +283,7 @@ export async function GET(
        *   (status in ["qualified", "passed", "pending", "failed"]).
        */
       const token = getInstallerTokenFromRequest(request)
+      let requesterRole = ''
       if (token) {
         try {
           const payload = verifyInstallerToken(token)
@@ -246,15 +302,16 @@ export async function GET(
           where: { email },
         })) as any
         if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+        requesterRole = String(admin.role || '').toUpperCase()
 
-        const st = String(installer.status || '').toLowerCase()
-        if (admin.role === 'MODERATOR' && !['qualified', 'passed', 'pending', 'failed'].includes(st)) {
+        const st = String(installer?.status || '').toLowerCase()
+        if (requesterRole === 'MODERATOR' && !['qualified', 'passed', 'pending', 'failed'].includes(st)) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
       }
 
       // Ensure referral code exists (backfill for older installers)
-      let referralCode = (installer as any).referralCode || null
+      let referralCode = (installer as any)?.referralCode || null
       try {
         referralCode = await ensureInstallerReferralCode(installerId)
       } catch (err) {
@@ -275,19 +332,36 @@ export async function GET(
       let pendingChangeRequestsCount = 0
       try {
         pendingChangeRequestsCount = await prismaAny.installerChangeRequest.count({
-          where: { installerId, status: 'pending' },
+          where: {
+            installerId,
+            status: 'pending',
+            NOT: {
+              source: {
+                startsWith: 'agreement:nda:',
+              },
+            },
+          },
         })
       } catch (err) {
         console.error('Failed to compute pendingChangeRequestsCount:', err)
       }
 
-      console.log('Installer found:', installer.email)
+      console.log('Installer found:', installer?.email)
+      const responseInstaller = {
+        ...installer,
+        referralCode,
+        referralsCount,
+        pendingChangeRequestsCount,
+      } as any
+      if (requesterRole === 'MANAGER') {
+        responseInstaller.remarks = null
+      }
+
       return NextResponse.json({
-        installer: {
-          ...installer,
-          referralCode,
-          referralsCount,
-          pendingChangeRequestsCount,
+        installer: responseInstaller,
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
         },
       })
     } catch (dbError: any) {
@@ -447,7 +521,7 @@ export async function PATCH(
     let data: any
     let cleanedData: any = {}
     let approvalSource: string | null = null
-    let notificationMethod: 'email' | 'notification' | 'both' | undefined = undefined
+    let notificationMethod: 'none' | 'email' | 'notification' | 'both' | undefined = undefined
     
     try {
       data = await request.json()
@@ -459,7 +533,7 @@ export async function PATCH(
       }
 
       // Extract notificationMethod (not persisted to DB)
-      notificationMethod = data?.notificationMethod as 'email' | 'notification' | 'both' | undefined
+      notificationMethod = data?.notificationMethod as 'none' | 'email' | 'notification' | 'both' | undefined
       delete data.notificationMethod
 
       // Normalize workroom
@@ -590,17 +664,18 @@ export async function PATCH(
       }
       
       // Handle remarks field (JSON string)
-      if (data.remarks !== undefined) {
-        if (data.remarks === null || data.remarks === '') {
-          data.remarks = null
-        } else if (typeof data.remarks === 'string') {
+      for (const remarkField of ['remarks', 'managerRemarks']) {
+        if (data[remarkField] === undefined) continue
+        if (data[remarkField] === null || data[remarkField] === '') {
+          data[remarkField] = null
+        } else if (typeof data[remarkField] === 'string') {
           // Validate it's valid JSON
           try {
-            JSON.parse(data.remarks)
+            JSON.parse(data[remarkField])
             // Keep as is if valid JSON
           } catch {
             // If not valid JSON, try to wrap it
-            data.remarks = JSON.stringify([{ note: data.remarks, createdAt: new Date().toISOString() }])
+            data[remarkField] = JSON.stringify([{ note: data[remarkField], createdAt: new Date().toISOString() }])
           }
         }
       }
@@ -631,7 +706,9 @@ export async function PATCH(
             continue
           }
 
-          cleanedData[key] = v
+          cleanedData[key] = key === 'email' && typeof v === 'string'
+            ? v.trim().toLowerCase()
+            : v
         }
       }
       
@@ -760,20 +837,14 @@ export async function PATCH(
             new Set([...(prevSections as string[]), ...getSectionsFromFields(Object.keys(mergedDiff))])
           ).filter(Boolean)
 
-          const [, updatedRequest] = await prismaAny.$transaction([
-            prismaAny.installer.updateMany({
-              where: { id: installerId, status: 'active' },
-              data: { status: 'pending' },
-            }),
-            prismaAny.installerChangeRequest.update({
-              where: { id: existingPending.id },
-              data: {
-                payload: mergedDiff as any,
-                sections: mergedSections.length > 0 ? (mergedSections as any) : null,
-                updatedAt: new Date(),
-              },
-            }),
-          ])
+          const updatedRequest = await prismaAny.installerChangeRequest.update({
+            where: { id: existingPending.id },
+            data: {
+              payload: mergedDiff as any,
+              sections: mergedSections.length > 0 ? (mergedSections as any) : null,
+              updatedAt: new Date(),
+            },
+          })
 
           return NextResponse.json({
             success: true,
@@ -783,23 +854,16 @@ export async function PATCH(
           })
         }
 
-        const [, changeRequest] = await prismaAny.$transaction([
-          // Flip installer status to pending only if currently active (do not overwrite other statuses).
-          prismaAny.installer.updateMany({
-            where: { id: installerId, status: 'active' },
-            data: { status: 'pending' },
-          }),
-          prismaAny.installerChangeRequest.create({
-            data: {
-              installerId,
-              status: 'pending',
-              source,
-              sections: changedSections.length > 0 ? changedSections : null,
-              payload: diffOnly,
-              submittedBy: (payload.email || payload.username || null) as string | null,
-            } as any,
-          }),
-        ])
+        const changeRequest = await prismaAny.installerChangeRequest.create({
+          data: {
+            installerId,
+            status: 'pending',
+            source,
+            sections: changedSections.length > 0 ? changedSections : null,
+            payload: diffOnly,
+            submittedBy: (payload.email || payload.username || null) as string | null,
+          } as any,
+        })
 
         return NextResponse.json({
           success: true,
@@ -822,11 +886,32 @@ export async function PATCH(
         // ignore session errors
       }
 
+      let adminRole = ''
+      if (adminEmail) {
+        try {
+          const admin = await prismaAny.admin.findUnique({ where: { email: adminEmail } })
+          adminRole = String(admin?.role || '').toUpperCase()
+        } catch {
+          adminRole = ''
+        }
+      }
+
       if (!adminEmail) {
         return NextResponse.json(
           { error: 'Unauthorized', details: 'Missing installer token' },
           { status: 401 }
         )
+      }
+
+      if (adminRole === 'MANAGER') {
+        const requestedKeys = Object.keys(cleanedData)
+        const managerAllowed = requestedKeys.length > 0 && requestedKeys.every((key) => key === 'managerRemarks')
+        if (!managerAllowed) {
+          return NextResponse.json(
+            { error: 'Forbidden', details: 'Managers can only update manager remarks' },
+            { status: 403 }
+          )
+        }
       }
 
       // If admin is deactivating the installer, append a system remark reminding to disable external access.
@@ -908,6 +993,25 @@ export async function PATCH(
         where: { id: installerId },
         data: cleanedData,
       })
+
+      if (statusChanged && currentInstaller) {
+        try {
+          const admin = await prismaAny.admin.findUnique({ where: { email: adminEmail } })
+          const targetLabel = `${String(currentInstaller.firstName || '')} ${String(currentInstaller.lastName || '')}`.trim()
+          await writeAdminAuditLog({
+            adminEmail,
+            adminId: admin?.id ?? null,
+            action: 'installer.status_change',
+            targetType: 'installer',
+            targetId: installerId,
+            targetLabel: targetLabel || currentInstaller.email || null,
+            before: { status: currentInstaller.status },
+            after: { status: cleanedData.status },
+          })
+        } catch (e) {
+          console.error('Failed to write audit log (status_change):', e)
+        }
+      }
       
       // Log changes for debugging
       if (statusChanged || trackerStageChanged) {
@@ -1199,7 +1303,10 @@ Floor Interior Service Team
       // Check for field validation errors
       if (dbError?.message?.includes('Unknown argument') || dbError?.message?.includes('Unknown field')) {
         errorMessage = 'Database schema mismatch'
-        errorDetails = 'The database schema may need to be updated. Please run: npx prisma migrate dev'
+        errorDetails =
+          'The Prisma Client and database schema are out of sync. ' +
+          'If you are running locally, run: npx prisma db push && npx prisma generate. ' +
+          'If this is production, deploy the latest migrations and run: npx prisma migrate deploy.'
       }
       
       return NextResponse.json(
@@ -1241,7 +1348,10 @@ Floor Interior Service Team
     // Check for field validation errors
     if (error?.message?.includes('Unknown argument') || error?.message?.includes('Unknown field')) {
       errorMessage = 'Database schema mismatch'
-      errorDetails = 'The database schema may need to be updated. Please run: npx prisma migrate dev'
+      errorDetails =
+        'The Prisma Client and database schema are out of sync. ' +
+        'If you are running locally, run: npx prisma db push && npx prisma generate. ' +
+        'If this is production, deploy the latest migrations and run: npx prisma migrate deploy.'
     }
     
     return NextResponse.json(
@@ -1260,13 +1370,43 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
+    const prismaAny = prisma as any
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
-    
-    await prisma.installer.delete({
+
+    const session = await getServerSession(authOptions)
+    const email = session?.user?.email?.toLowerCase()
+    if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const admin = await prismaAny.admin.findUnique({ where: { email } })
+    if (!admin?.isActive) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (admin.role === 'MODERATOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const existing = await prismaAny.installer.findUnique({
       where: { id: installerId },
+      select: { id: true, email: true, firstName: true, lastName: true, status: true } as any,
     })
+
+    await prismaAny.installer.delete({ where: { id: installerId } })
+
+    try {
+      const targetLabel = `${String(existing?.firstName || '')} ${String(existing?.lastName || '')}`.trim()
+      await writeAdminAuditLog({
+        adminEmail: email,
+        adminId: admin.id,
+        action: 'installer.delete',
+        targetType: 'installer',
+        targetId: installerId,
+        targetLabel: targetLabel || existing?.email || null,
+        before: existing
+          ? { status: existing.status, email: existing.email, firstName: existing.firstName, lastName: existing.lastName }
+          : null,
+        after: null,
+      })
+    } catch (e) {
+      console.error('Failed to write audit log (installer.delete):', e)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

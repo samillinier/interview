@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 type DiffItem = {
   field: string
   from: any
@@ -148,6 +150,9 @@ export async function GET(request: NextRequest) {
 
     const admin = await prisma.admin.findUnique({ where: { email } })
     if (!admin?.isActive) return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if ((admin as any)?.role === 'MANAGER') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'pending'
@@ -155,13 +160,22 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 200)
     const skip = (page - 1) * limit
 
+    const pendingFilter = {
+      status,
+      NOT: {
+        source: {
+          startsWith: 'agreement:nda:',
+        },
+      },
+    } as const
+
     // Get total count for pagination
     const total = await prisma.installerChangeRequest.count({
-      where: { status },
+      where: pendingFilter,
     })
 
     const requests = await prisma.installerChangeRequest.findMany({
-      where: { status },
+      where: pendingFilter,
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
@@ -173,6 +187,8 @@ export async function GET(request: NextRequest) {
             lastName: true,
             email: true,
             companyName: true,
+            photoUrl: true,
+            status: true,
           },
         },
       },
@@ -215,6 +231,20 @@ export async function GET(request: NextRequest) {
         if (staffAction === 'approve_agreement') {
           const title = (payload as any).title || (payload as any).agreementType || 'Agreement'
           diffs.push({ field: `agreement.${String((payload as any).agreementType || 'document')}`, from: 'Not submitted', to: `Pending admin approval: ${title}` })
+          return {
+            ...r,
+            diffs,
+          }
+        }
+
+        if (staffAction === 'verify_document') {
+          const docName = String((payload as any).documentName || 'Attachment')
+          const docType = String((payload as any).documentType || '')
+          diffs.push({
+            field: 'attachment.pending_review',
+            from: '—',
+            to: docType ? `${docName} (${docType})` : docName,
+          })
           return {
             ...r,
             diffs,

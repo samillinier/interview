@@ -27,9 +27,12 @@ import {
   CreditCard,
   Gauge,
   Package,
+  Armchair,
   Image as ImageIcon,
   Upload,
-  Settings
+  Settings,
+  ClipboardCheck,
+  ArrowLeft
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -37,7 +40,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { FleetBarcode } from '@/components/FleetBarcode'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface PropertyProfile {
   id: string
@@ -48,6 +53,7 @@ interface PropertyProfile {
 
 interface Vehicle {
   id: string
+  category?: string
   vehicleYear?: number
   vehicleMake?: string
   vehicleModel?: string
@@ -62,6 +68,22 @@ interface Vehicle {
   photoUrl?: string
   createdAt: string
   updatedAt: string
+}
+
+type VehicleDocumentCategory = 'vehicle' | 'misc'
+interface VehicleDocument {
+  id: string
+  category: VehicleDocumentCategory
+  name: string
+  url: string
+  createdAt: string
+}
+
+const normalizeVehicleCategory = (value?: string | null): '' | 'car' | 'forklift' => {
+  const v = String(value || '').trim().toLowerCase()
+  if (v === 'cat') return 'car'
+  if (v === 'car' || v === 'forklift') return v
+  return ''
 }
 
 export default function FleetPage() {
@@ -80,7 +102,15 @@ export default function FleetPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null)
+  const [vehicleDocs, setVehicleDocs] = useState<VehicleDocument[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsError, setDocsError] = useState('')
+  const [uploadingDocs, setUploadingDocs] = useState(false)
+  const [vehicleDocFiles, setVehicleDocFiles] = useState<File[]>([])
+  const [miscDocFiles, setMiscDocFiles] = useState<File[]>([])
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'car' | 'forklift'>('car')
   const [formData, setFormData] = useState({
+    category: '',
     vehicleYear: '',
     vehicleMake: '',
     vehicleModel: '',
@@ -141,7 +171,13 @@ export default function FleetPage() {
         const vehiclesResponse = await fetch(`/api/properties/${propertyData.id}/vehicles`)
         if (vehiclesResponse.ok) {
           const vehiclesData = await vehiclesResponse.json()
-          setVehicles(vehiclesData.vehicles || [])
+          const normalizedVehicles = Array.isArray(vehiclesData.vehicles)
+            ? vehiclesData.vehicles.map((vehicle: Vehicle) => ({
+                ...vehicle,
+                category: normalizeVehicleCategory(vehicle.category) || undefined,
+              }))
+            : []
+          setVehicles(normalizedVehicles)
         }
       }
     } catch (err: any) {
@@ -201,7 +237,14 @@ export default function FleetPage() {
     setEditingVehicle(vehicle)
     setPhotoPreview(vehicle.photoUrl || null)
     setSelectedPhotoFile(null)
+    setDocsError('')
+    setVehicleDocFiles([])
+    setMiscDocFiles([])
+    if (property?.id && vehicle?.id) {
+      void loadVehicleDocuments(property.id, vehicle.id)
+    }
     setFormData({
+      category: normalizeVehicleCategory(vehicle.category),
       vehicleYear: vehicle.vehicleYear?.toString() || '',
       vehicleMake: vehicle.vehicleMake || '',
       vehicleModel: vehicle.vehicleModel || '',
@@ -215,6 +258,65 @@ export default function FleetPage() {
       mileageAsOfAugust2025: vehicle.mileageAsOfAugust2025?.toString() || '',
     })
     setShowAddModal(true)
+  }
+
+  const loadVehicleDocuments = async (propertyId: string, vehicleId: string) => {
+    try {
+      setDocsLoading(true)
+      setDocsError('')
+      const res = await fetch(`/api/properties/${propertyId}/vehicles/${vehicleId}/documents`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to load documents')
+      setVehicleDocs(Array.isArray(data.documents) ? data.documents : [])
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to load documents')
+      setVehicleDocs([])
+    } finally {
+      setDocsLoading(false)
+    }
+  }
+
+  const uploadVehicleDocuments = async (
+    category: VehicleDocumentCategory,
+    files: File[],
+    propertyId: string,
+    vehicleId: string,
+  ) => {
+    if (!files.length) return
+    try {
+      setUploadingDocs(true)
+      setDocsError('')
+      const fd = new FormData()
+      for (const file of files) fd.append('files', file)
+      fd.append('category', category)
+      const res = await fetch(`/api/properties/${propertyId}/vehicles/${vehicleId}/documents`, {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to upload documents')
+      await loadVehicleDocuments(propertyId, vehicleId)
+      if (category === 'vehicle') setVehicleDocFiles([])
+      if (category === 'misc') setMiscDocFiles([])
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to upload documents')
+    } finally {
+      setUploadingDocs(false)
+    }
+  }
+
+  const deleteVehicleDocument = async (docId: string, propertyId: string, vehicleId: string) => {
+    try {
+      setDocsError('')
+      const res = await fetch(`/api/properties/${propertyId}/vehicles/${vehicleId}/documents/${docId}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete document')
+      await loadVehicleDocuments(propertyId, vehicleId)
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to delete document')
+    }
   }
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,6 +402,7 @@ export default function FleetPage() {
 
   const resetForm = () => {
     setFormData({
+      category: '',
       vehicleYear: '',
       vehicleMake: '',
       vehicleModel: '',
@@ -316,6 +419,11 @@ export default function FleetPage() {
     setSelectedPhotoFile(null)
   }
 
+  const filteredVehicles = vehicles.filter((vehicle) => {
+    if (categoryFilter === 'all') return true
+    return normalizeVehicleCategory(vehicle.category) === categoryFilter
+  })
+
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/property/login' })
   }
@@ -323,10 +431,7 @@ export default function FleetPage() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading fleet...</p>
-        </div>
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -398,8 +503,17 @@ export default function FleetPage() {
             href="/property/inventory"
             className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Inventory</span>}
+            <Armchair className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Equipment</span>}
+          </Link>
+          <Link
+            href="/property/safety-walk"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Safety Walk</span>}
           </Link>
           <Link
             href="/property/help"
@@ -462,25 +576,39 @@ export default function FleetPage() {
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="px-4 lg:px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary-900">Fleet Management</h1>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                resetForm()
-                setEditingVehicle(null)
-                setShowAddModal(true)
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              Add Vehicle
-            </motion.button>
+          <div className={`pr-4 lg:px-6 py-4 flex flex-wrap items-center justify-between gap-3 ${propertyMobileSafeLeftPad}`}>
+            <h1 className="text-xl sm:text-2xl font-bold text-primary-900 min-w-0 break-words">Fleet Management</h1>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2">
+                <label className="text-sm font-semibold text-slate-700">Category</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value as 'all' | 'car' | 'forklift')}
+                  className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none"
+                >
+                  <option value="all">All</option>
+                  <option value="car">Car</option>
+                  <option value="forklift">Forklift</option>
+                </select>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  resetForm()
+                  setEditingVehicle(null)
+                  setShowAddModal(true)
+                }}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
+              >
+                <Plus className="w-5 h-5" />
+                Add Vehicle
+              </motion.button>
+            </div>
           </div>
         </header>
 
-        <main className="p-4 lg:p-6 pt-16 lg:pt-6">
+        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -526,6 +654,15 @@ export default function FleetPage() {
                 Add Your First Vehicle
               </motion.button>
             </motion.div>
+          ) : filteredVehicles.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-3xl shadow-lg border border-slate-200 p-12 text-center"
+            >
+              <h3 className="text-xl font-bold text-primary-900 mb-2">No vehicles in this category</h3>
+              <p className="text-primary-500">Try switching the category filter to All.</p>
+            </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -537,6 +674,7 @@ export default function FleetPage() {
                   <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Vehicle</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Category</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Assigned Driver</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">VIN</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Plate</th>
@@ -546,7 +684,7 @@ export default function FleetPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {vehicles.map((vehicle, index) => (
+                    {filteredVehicles.map((vehicle, index) => (
                       <motion.tr
                         key={vehicle.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -579,6 +717,13 @@ export default function FleetPage() {
                               </p>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-primary-700">
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                            {vehicle.category
+                              ? normalizeVehicleCategory(vehicle.category) || vehicle.category
+                              : 'N/A'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-primary-600">
                           <div className="flex items-center gap-2">
@@ -648,25 +793,40 @@ export default function FleetPage() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
+        <>
+          {/* Backdrop - doesn't cover sidebar */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed top-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
+            onClick={() => {
               setShowAddModal(false)
               setEditingVehicle(null)
               resetForm()
-            }
-          }}
-        >
+            }}
+          />
+          {/* Modal Content */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed top-0 right-0 bottom-0 z-40 flex items-center justify-center p-0 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowAddModal(false)
+                setEditingVehicle(null)
+                resetForm()
+              }
+            }}
           >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="sticky top-0 bg-gradient-to-r from-brand-green to-brand-green-dark px-8 py-6 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -682,6 +842,19 @@ export default function FleetPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setEditingVehicle(null)
+                    resetForm()
+                  }}
+                  className="hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white/95 hover:bg-white/15 transition-colors"
+                  title="Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
                 {editingVehicle?.id ? (
                   <div className="hidden sm:block">
                     <FleetBarcode vehicleId={editingVehicle.id} />
@@ -709,14 +882,67 @@ export default function FleetPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1">
+            <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 relative">
+              {/* Desktop photo panel (top-right, out of flow to avoid spacing gaps) */}
+              <div className="hidden lg:block absolute top-8 right-8 w-[340px]">
+                <div className="flex items-center justify-end gap-3">
+                  {(photoPreview || editingVehicle?.photoUrl) ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoPreview(null)
+                        setSelectedPhotoFile(null)
+                      }}
+                      className="text-xs font-semibold text-danger-600 hover:text-danger-700"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-2 w-full h-[160px] overflow-hidden rounded-2xl bg-slate-50 border border-slate-200">
+                  {photoPreview || editingVehicle?.photoUrl ? (
+                    <img
+                      src={photoPreview || editingVehicle?.photoUrl || ''}
+                      alt="Vehicle photo"
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                        <p className="text-xs text-slate-500">No photo</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <Upload className="w-4 h-4 text-brand-green" />
+                    Upload Photo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
+                  />
+                  <div className="mt-3 text-xs text-slate-500">
+                    {editingVehicle
+                      ? 'Choose a photo to update this vehicle.'
+                      : 'You can choose a photo now. It will upload right after the vehicle is created.'}
+                  </div>
+                </div>
+              </div>
+
               {/* Vehicle Information Section */}
-              <div className="mb-8">
+              <div className="mb-8 lg:pr-[420px]">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
                   <Car className="w-5 h-5 text-brand-green" />
                   <h3 className="text-lg font-semibold text-primary-900">Vehicle Information</h3>
                 </div>
-                <div className="grid md:grid-cols-3 gap-6">
+
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -759,6 +985,25 @@ export default function FleetPage() {
                     transition={{ delay: 0.2 }}
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Package className="w-4 h-4 text-brand-green" />
+                      Category
+                    </label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    >
+                      <option value="">Select category</option>
+                      <option value="car">Car</option>
+                      <option value="forklift">Forklift</option>
+                    </select>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <Car className="w-4 h-4 text-brand-green" />
                       Vehicle Model
                     </label>
@@ -771,50 +1016,46 @@ export default function FleetPage() {
                     />
                   </motion.div>
                 </div>
-              </div>
 
-              {/* Driver & Identification Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Users className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Driver & Identification</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Users className="w-4 h-4 text-brand-green" />
-                      Assigned Driver
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.assignedDriver}
-                      onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
-                      placeholder="Driver name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
-                    />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Hash className="w-4 h-4 text-brand-green" />
-                      VIN #
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.vin}
-                      onChange={(e) => setFormData({ ...formData, vin: e.target.value.toUpperCase() })}
-                      placeholder="1HGBH41JXMN109186"
-                      maxLength={17}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
-                    />
-                  </motion.div>
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 }}
+                      className="md:col-span-2"
+                    >
+                      <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                        <Users className="w-4 h-4 text-brand-green" />
+                        Assigned Driver
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.assignedDriver}
+                        onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
+                        placeholder="Driver name"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      />
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="md:col-span-1"
+                    >
+                      <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                        <Hash className="w-4 h-4 text-brand-green" />
+                        VIN #
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.vin}
+                        onChange={(e) => setFormData({ ...formData, vin: e.target.value.toUpperCase() })}
+                        placeholder="1HGBH41JXMN109186"
+                        maxLength={17}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
+                      />
+                    </motion.div>
+                  </div>
                 </div>
               </div>
 
@@ -941,8 +1182,175 @@ export default function FleetPage() {
                 </div>
               </div>
 
-              {/* Photo Section */}
+              {/* Documents Section */}
               <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                  <Package className="w-5 h-5 text-brand-green" />
+                  <h3 className="text-lg font-semibold text-primary-900">Documents</h3>
+                </div>
+
+                {!editingVehicle?.id || !property?.id ? (
+                  <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+                    <p className="text-sm text-slate-600">Save this vehicle first, then you can upload documents.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {docsError ? (
+                      <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm">
+                        {docsError}
+                      </div>
+                    ) : null}
+
+                    {/* Vehicle documents */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Package className="w-4 h-4 text-brand-green" />
+                          Vehicle documents
+                        </h4>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 items-start">
+                        <div>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={(e) => setVehicleDocFiles(Array.from(e.target.files || []))}
+                            className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                          />
+                          <p className="text-xs text-slate-500 mt-2">Allowed: PDF, DOC, DOCX, JPG, PNG. Up to 15MB each.</p>
+                        </div>
+                        <div className="flex md:justify-end">
+                          <button
+                            type="button"
+                            disabled={uploadingDocs || vehicleDocFiles.length === 0}
+                            onClick={() => uploadVehicleDocuments('vehicle', vehicleDocFiles, property.id, editingVehicle.id)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white font-semibold hover:bg-brand-green-dark disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {uploadingDocs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                            Upload
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        {docsLoading ? (
+                          <div className="text-sm text-slate-600 flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Loading documents...
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {vehicleDocs.filter((d) => d.category === 'vehicle').length === 0 ? (
+                              <p className="text-sm text-slate-500">No vehicle documents uploaded yet.</p>
+                            ) : (
+                              vehicleDocs
+                                .filter((d) => d.category === 'vehicle')
+                                .map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200"
+                                  >
+                                    <a
+                                      href={doc.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-medium text-brand-green hover:underline truncate"
+                                      title={doc.name}
+                                    >
+                                      {doc.name}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteVehicleDocument(doc.id, property.id, editingVehicle.id)}
+                                      className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Misc documents */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Package className="w-4 h-4 text-brand-green" />
+                          Miscellaneous documents
+                        </h4>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 items-start">
+                        <div>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={(e) => setMiscDocFiles(Array.from(e.target.files || []))}
+                            className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                          />
+                          <p className="text-xs text-slate-500 mt-2">Allowed: PDF, DOC, DOCX, JPG, PNG. Up to 15MB each.</p>
+                        </div>
+                        <div className="flex md:justify-end">
+                          <button
+                            type="button"
+                            disabled={uploadingDocs || miscDocFiles.length === 0}
+                            onClick={() => uploadVehicleDocuments('misc', miscDocFiles, property.id, editingVehicle.id)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white font-semibold hover:bg-brand-green-dark disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {uploadingDocs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                            Upload
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        {docsLoading ? null : (
+                          <div className="space-y-2">
+                            {vehicleDocs.filter((d) => d.category === 'misc').length === 0 ? (
+                              <p className="text-sm text-slate-500">No miscellaneous documents uploaded yet.</p>
+                            ) : (
+                              vehicleDocs
+                                .filter((d) => d.category === 'misc')
+                                .map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200"
+                                  >
+                                    <a
+                                      href={doc.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-medium text-brand-green hover:underline truncate"
+                                      title={doc.name}
+                                    >
+                                      {doc.name}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteVehicleDocument(doc.id, property.id, editingVehicle.id)}
+                                      className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Photo Section */}
+              <div className="mb-8 lg:hidden">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
                   <ImageIcon className="w-5 h-5 text-brand-green" />
                   <h3 className="text-lg font-semibold text-primary-900">Photo</h3>
@@ -981,18 +1389,24 @@ export default function FleetPage() {
                     )}
                   </motion.div>
 
+                  {/* Mobile/tablet preview */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.2 }}
+                    className="lg:hidden"
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <ImageIcon className="w-4 h-4 text-brand-green" />
                       Preview
                     </label>
-                    {photoPreview ? (
+                    {(photoPreview || editingVehicle?.photoUrl) ? (
                       <div className="relative w-full h-48 rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50">
-                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        <img
+                          src={photoPreview || editingVehicle?.photoUrl || ''}
+                          alt="Preview"
+                          className="w-full h-full object-contain"
+                        />
                         <button
                           type="button"
                           onClick={() => {
@@ -1052,7 +1466,8 @@ export default function FleetPage() {
               </div>
             </form>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </>
       )}
     </div>
   )

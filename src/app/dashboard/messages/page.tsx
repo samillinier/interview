@@ -21,18 +21,26 @@ import {
   Search,
   Bell,
   Clock,
+  Mail,
   Paperclip,
   Image as ImageIcon,
   BarChart3,
   StickyNote,
+  FileCheck,
   Building2,
-  Activity
+  Activity,
+  ClipboardList,
+  ClipboardCheck,
+  FileText,
+  Megaphone
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface Installer {
   id: string
@@ -76,12 +84,15 @@ export default function MessagesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [installers, setInstallers] = useState<Installer[]>([])
   const [selectedInstaller, setSelectedInstaller] = useState<Installer | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
+  const [updatesCount, setUpdatesCount] = useState(0)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [isSending, setIsSending] = useState(false)
@@ -90,6 +101,14 @@ export default function MessagesPage() {
   const [filePreview, setFilePreview] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [messageContent, setMessageContent] = useState('')
+  const [showComposer, setShowComposer] = useState(false)
+  const [composerMode, setComposerMode] = useState<'installer' | 'email'>('installer')
+  const [composerSearchQuery, setComposerSearchQuery] = useState('')
+  const [composerInstaller, setComposerInstaller] = useState<Installer | null>(null)
+  const [composerEmail, setComposerEmail] = useState('')
+  const [composerSubject, setComposerSubject] = useState('Message from Floor Interior Services')
+  const [composerContent, setComposerContent] = useState('')
+  const [isComposerSending, setIsComposerSending] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -103,10 +122,14 @@ export default function MessagesPage() {
       fetchInstallers()
       fetchNotificationCount()
       fetchPendingApprovalsCount()
+      fetchSignatureNotSignedCount()
+      fetchUpdatesCount()
       // Refresh count every 30 seconds
       const interval = setInterval(() => {
         fetchNotificationCount()
         fetchPendingApprovalsCount()
+        fetchSignatureNotSignedCount()
+        fetchUpdatesCount()
       }, 30000)
       return () => clearInterval(interval)
     }
@@ -135,6 +158,33 @@ export default function MessagesPage() {
         const data = await res.json()
         setPendingApprovalsCount(data.count || 0)
       }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchSignatureNotSignedCount = async () => {
+    try {
+      const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+      if (res.status === 401) {
+        setSignatureNotSignedCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setSignatureNotSignedCount(data?.count || 0)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchUpdatesCount = async () => {
+    try {
+      const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json().catch(() => ({}))
+      setUpdatesCount(Number(data?.count || 0))
     } catch {
       // ignore
     }
@@ -409,6 +459,89 @@ export default function MessagesPage() {
     }
   }
 
+  const resetComposer = () => {
+    setShowComposer(false)
+    setComposerMode('installer')
+    setComposerSearchQuery('')
+    setComposerInstaller(null)
+    setComposerEmail('')
+    setComposerSubject('Message from Floor Interior Services')
+    setComposerContent('')
+  }
+
+  const handleSendComposerMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!composerContent.trim()) {
+      setError('Please write a message.')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
+    if (composerMode === 'installer' && !composerInstaller) {
+      setError('Please choose an installer.')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
+    if (composerMode === 'email' && (!composerEmail.trim() || !composerSubject.trim())) {
+      setError('Please add an email address and subject.')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    setIsComposerSending(true)
+
+    try {
+      const response = await fetch(composerMode === 'installer' ? '/api/notifications' : '/api/admin/messages/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(
+          composerMode === 'installer'
+            ? {
+                installerIds: [composerInstaller!.id],
+                type: 'message',
+                title: 'Message',
+                content: composerContent.trim(),
+                priority: 'normal',
+                senderId: 'admin',
+                senderType: 'admin',
+              }
+            : {
+                email: composerEmail.trim(),
+                subject: composerSubject.trim(),
+                content: composerContent.trim(),
+              }
+        ),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message.')
+      }
+
+      const sentInstaller = composerInstaller
+      resetComposer()
+      if (composerMode === 'installer' && sentInstaller) {
+        setSelectedInstaller(sentInstaller)
+        await fetchMessagesForInstaller(sentInstaller.id)
+        await fetchAllMessages()
+      }
+      setSuccess(composerMode === 'installer' ? 'Message and email sent!' : 'Email sent!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error sending composer message:', err)
+      setError(err.message || 'Failed to send message.')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setIsComposerSending(false)
+    }
+  }
+
   const handleLogout = () => {
     signOut({ callbackUrl: '/login' })
   }
@@ -439,10 +572,20 @@ export default function MessagesPage() {
     return name.includes(query) || email.includes(query)
   })
 
+  const filteredComposerInstallers = installers
+    .filter((installer) => {
+      const query = composerSearchQuery.trim().toLowerCase()
+      if (!query) return true
+      const name = `${installer.firstName} ${installer.lastName}`.toLowerCase()
+      const email = (installer.email || '').toLowerCase()
+      return name.includes(query) || email.includes(query)
+    })
+    .slice(0, 25)
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loader2 className="h-12 w-12 text-brand-green animate-spin" />
+        <LogoHeartbeatLoader />
       </div>
     )
   }
@@ -454,181 +597,225 @@ export default function MessagesPage() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Desktop Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname.startsWith('/dashboard/installers') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/approvals"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Approvals</span>
-                  {pendingApprovalsCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/analytics"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Analytics</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/notifications"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/notifications' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Bell className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && (
-                <div className="flex items-center gap-2">
-                  <span>Notifications</span>
-                </div>
-              )}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Messages</span>
-                {unreadMessagesCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {unreadMessagesCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/remarks"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <StickyNote className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Remarks</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MODERATOR' && (session?.user as any)?.role !== 'MANAGER' && (
-            <Link
-              href="/dashboard/settings"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Settings</span>}
-            </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/property/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
-            >
-              <Building2 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Property Portal</span>}
-            </Link>
-          )}
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            {session?.user?.image ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                <Image
-                  src={session.user.image}
-                  alt={session.user?.name || session.user?.email || 'Admin'}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-brand-green" />
-              </div>
-            )}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {session?.user?.name || 'Admin User'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{session?.user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
       <AdminMobileMenu pathname={pathname} />
+
+      <AnimatePresence>
+        {showComposer && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.form
+              onSubmit={handleSendComposerMessage}
+              className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+            >
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Compose Message</h2>
+                  <p className="text-sm text-slate-500">
+                    Send to an installer or directly to an outside email address.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetComposer}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                  aria-label="Close composer"
+                >
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setComposerMode('installer')}
+                    className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                      composerMode === 'installer'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    Installer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComposerMode('email')
+                      setComposerInstaller(null)
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                      composerMode === 'email'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Mail className="w-4 h-4" />
+                    Email Address
+                  </button>
+                </div>
+
+                {composerMode === 'installer' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      To
+                    </label>
+                    {composerInstaller ? (
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-brand-green/30 bg-brand-green/5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-brand-green text-white flex items-center justify-center font-semibold flex-shrink-0">
+                            {getInitials(composerInstaller.firstName, composerInstaller.lastName)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">
+                              {composerInstaller.firstName} {composerInstaller.lastName}
+                            </p>
+                            <p className="text-sm text-slate-500 truncate">{composerInstaller.email}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setComposerInstaller(null)}
+                          className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input
+                            type="text"
+                            value={composerSearchQuery}
+                            onChange={(e) => setComposerSearchQuery(e.target.value)}
+                            placeholder="Search installer by name or email..."
+                            className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-200 divide-y divide-slate-100">
+                          {filteredComposerInstallers.length === 0 ? (
+                            <p className="p-4 text-sm text-slate-500 text-center">No installers found</p>
+                          ) : (
+                            filteredComposerInstallers.map((installer) => (
+                              <button
+                                key={installer.id}
+                                type="button"
+                                onClick={() => setComposerInstaller(installer)}
+                                className="w-full p-3 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+                              >
+                                <div className="w-10 h-10 rounded-full bg-brand-green text-white flex items-center justify-center font-semibold flex-shrink-0">
+                                  {getInitials(installer.firstName, installer.lastName)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-slate-900 truncate">
+                                    {installer.firstName} {installer.lastName}
+                                  </p>
+                                  <p className="text-sm text-slate-500 truncate">{installer.email}</p>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={composerEmail}
+                        onChange={(e) => setComposerEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Subject
+                      </label>
+                      <input
+                        type="text"
+                        value={composerSubject}
+                        onChange={(e) => setComposerSubject(e.target.value)}
+                        placeholder="Subject"
+                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    value={composerContent}
+                    onChange={(e) => setComposerContent(e.target.value)}
+                    placeholder="Write your message..."
+                    rows={6}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={resetComposer}
+                  className="px-4 py-2 rounded-xl font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    isComposerSending ||
+                    !composerContent.trim() ||
+                    (composerMode === 'installer' && !composerInstaller) ||
+                    (composerMode === 'email' && (!composerEmail.trim() || !composerSubject.trim()))
+                  }
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isComposerSending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Send Message</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full flex h-screen overflow-hidden`}>
@@ -637,15 +824,31 @@ export default function MessagesPage() {
           {/* Header */}
           <div className="border-b border-slate-200 flex-shrink-0 pr-4 pl-16 pt-16 pb-4 lg:p-4">
             <h1 className="text-2xl font-bold text-slate-900 mb-4">Messages</h1>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search installers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
-              />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search installers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setComposerInstaller(selectedInstaller)
+                  setShowComposer(true)
+                  setError('')
+                  setSuccess('')
+                }}
+                className="inline-flex items-center justify-center w-12 h-12 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors shadow-sm flex-shrink-0"
+                title="Compose email"
+                aria-label="Compose email"
+              >
+                <Mail className="w-5 h-5" />
+              </button>
             </div>
           </div>
 

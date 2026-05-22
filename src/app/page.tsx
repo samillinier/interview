@@ -58,13 +58,6 @@ export default function HomePage() {
                   Dashboard
                 </Link>
               )}
-              <Link
-                href="/interview"
-                className="px-3 sm:px-4 py-2 min-h-[44px] flex items-center justify-center bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors text-sm sm:text-base"
-              >
-                <span className="hidden sm:inline">Start Interview</span>
-                <span className="sm:hidden">Interview</span>
-              </Link>
               {session && (
                 <div className="relative group">
                   <Link

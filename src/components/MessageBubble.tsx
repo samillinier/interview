@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { User } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import interviewerImage from '@/images/27f1f909-0d63-4757-88e4-0e76f939f363.jpeg'
+import interviewerImage from '@/avatar.png'
 
 interface MessageBubbleProps {
   role: 'user' | 'assistant'

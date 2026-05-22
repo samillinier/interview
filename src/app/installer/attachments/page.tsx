@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   FileText,
   Bell,
+  ClipboardList,
   Menu,
   X,
   LogOut,
@@ -33,6 +34,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 // All document types now support multiple uploads
 const MULTI_DOCUMENT_TYPES = new Set() // Empty set - all types are multi now
@@ -49,6 +51,11 @@ interface Document {
   fileSize?: number
   verificationLink?: string | null
   verificationLinkStatus?: string | null
+  adminRejectionNote?: string | null
+  adminCorrectionUrl?: string | null
+  adminCorrectionName?: string | null
+  expiryDate?: string | null
+  verified?: boolean
 }
 
 const DOCUMENT_TYPES = [
@@ -143,6 +150,148 @@ export default function AttachmentsPage() {
   })
   const [isDeleting, setIsDeleting] = useState(false)
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
+  const btrAutofillAttemptedRef = useRef<Set<string>>(new Set())
+  const [btrAutofillBusyIds, setBtrAutofillBusyIds] = useState<Record<string, boolean>>({})
+  const [btrAutofillErrorByDocId, setBtrAutofillErrorByDocId] = useState<Record<string, string>>({})
+  const [btrManualExpiryByDocId, setBtrManualExpiryByDocId] = useState<Record<string, string>>({})
+  const [btrManualSavingByDocId, setBtrManualSavingByDocId] = useState<Record<string, boolean>>({})
+
+  const mapApiDocumentToUi = (doc: any): Document => ({
+    id: doc.id,
+    type: doc.type,
+    name: doc.name || 'Document',
+    fileName: doc.name || 'Document',
+    fileUrl: doc.url,
+    url: doc.url,
+    uploadedAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
+    createdAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
+    fileSize: doc.fileSize || doc.size,
+    verificationLink: doc.verificationLink || null,
+    verificationLinkStatus: doc.verificationLinkStatus || null,
+    adminRejectionNote: doc.adminRejectionNote || null,
+    adminCorrectionUrl: doc.adminCorrectionUrl || null,
+    adminCorrectionName: doc.adminCorrectionName || null,
+    expiryDate: doc.expiryDate || null,
+    verified: Boolean(doc.verified),
+  })
+
+  const refreshDocuments = async (installerId: string): Promise<Document[]> => {
+    const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
+    if (!docsResponse.ok) return []
+    const docsContentType = docsResponse.headers.get('content-type')
+    if (!docsContentType || !docsContentType.includes('application/json')) return []
+    const docsData = await docsResponse.json()
+    const mappedDocuments = (docsData.documents || []).map(mapApiDocumentToUi)
+    setDocuments(mappedDocuments)
+    return mappedDocuments
+  }
+
+  const saveBtrExpiryForDoc = async (installerId: string, docId: string, dateStr: string) => {
+    setBtrManualSavingByDocId((prev) => ({ ...prev, [docId]: true }))
+    try {
+      const r = await fetch(`/api/installers/${installerId}/documents/${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expiryDate: dateStr || null }),
+      })
+      if (!r.ok) throw new Error('Failed to save expiry date')
+      await refreshDocuments(installerId)
+      setSuccess('BTR expiry date saved!')
+      setTimeout(() => setSuccess(''), 2500)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save expiry date')
+    } finally {
+      setBtrManualSavingByDocId((prev) => ({ ...prev, [docId]: false }))
+    }
+  }
+
+  const tryAutofillBtrExpiry = async (installerId: string, docs: Document[]) => {
+    const targets = docs.filter((d) => {
+      if (d.type !== 'business_registration') return false
+      if (d.expiryDate) return false
+      const name = String(d.name || d.fileName || '').toLowerCase()
+      const isSupportedForAutoParse =
+        name.endsWith('.pdf') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg')
+      if (!isSupportedForAutoParse) return false
+      if (btrAutofillAttemptedRef.current.has(d.id)) return false
+      return true
+    })
+    if (targets.length === 0) return
+
+    for (const d of targets) {
+      btrAutofillAttemptedRef.current.add(d.id)
+      setBtrAutofillBusyIds((prev) => ({ ...prev, [d.id]: true }))
+      setBtrAutofillErrorByDocId((prev) => {
+        const copy = { ...prev }
+        delete copy[d.id]
+        return copy
+      })
+      try {
+        const controller = new AbortController()
+        const timeoutId = window.setTimeout(() => controller.abort(), 22000)
+        const r = await fetch(`/api/installers/${installerId}/documents/${d.id}`, {
+          method: 'POST',
+          signal: controller.signal,
+        })
+        window.clearTimeout(timeoutId)
+        if (!r.ok) {
+          setBtrAutofillErrorByDocId((prev) => ({ ...prev, [d.id]: `Parse failed (HTTP ${r.status})` }))
+          continue
+        }
+        const data = await r.json().catch(() => ({}))
+        // refresh to get the updated expiryDate
+        const latest = await refreshDocuments(installerId)
+        const parsedDoc = latest.find((doc) => doc.id === d.id)
+        if (!parsedDoc?.expiryDate) {
+          setBtrAutofillErrorByDocId((prev) => ({
+            ...prev,
+            [d.id]: data?.message || 'No expiry date found',
+          }))
+        }
+      } catch (e: any) {
+        const message = e?.name === 'AbortError' ? 'Parse timed out' : 'Parse failed'
+        setBtrAutofillErrorByDocId((prev) => ({ ...prev, [d.id]: message }))
+      } finally {
+        setBtrAutofillBusyIds((prev) => ({ ...prev, [d.id]: false }))
+      }
+    }
+  }
+
+  const runBtrParseNow = async (installerId: string, docId: string) => {
+    setBtrAutofillBusyIds((prev) => ({ ...prev, [docId]: true }))
+    setBtrAutofillErrorByDocId((prev) => {
+      const copy = { ...prev }
+      delete copy[docId]
+      return copy
+    })
+    try {
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000)
+      const r = await fetch(`/api/installers/${installerId}/documents/${docId}`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
+      window.clearTimeout(timeoutId)
+      if (!r.ok) {
+        setBtrAutofillErrorByDocId((prev) => ({ ...prev, [docId]: `Parse failed (HTTP ${r.status})` }))
+        return
+      }
+      const data = await r.json().catch(() => ({}))
+      const latest = await refreshDocuments(installerId)
+      const parsedDoc = latest.find((doc) => doc.id === docId)
+      if (!parsedDoc?.expiryDate) {
+        setBtrAutofillErrorByDocId((prev) => ({
+          ...prev,
+          [docId]: data?.message || 'No expiry date found',
+        }))
+      }
+    } catch (e: any) {
+      const message = e?.name === 'AbortError' ? 'Parse timed out' : 'Parse failed'
+      setBtrAutofillErrorByDocId((prev) => ({ ...prev, [docId]: message }))
+    } finally {
+      setBtrAutofillBusyIds((prev) => ({ ...prev, [docId]: false }))
+    }
+  }
 
   useEffect(() => {
     checkAuthAndLoadData()
@@ -219,26 +368,15 @@ export default function AttachmentsPage() {
       }
       
       // Load documents
+      // Load documents (then try to auto-fill missing BTR expiry dates)
       const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
       if (docsResponse.ok) {
         const docsContentType = docsResponse.headers.get('content-type')
         if (docsContentType && docsContentType.includes('application/json')) {
           const docsData = await docsResponse.json()
-          // Map API response fields to frontend expected fields
-          const mappedDocuments = (docsData.documents || []).map((doc: any) => ({
-            id: doc.id,
-            type: doc.type,
-            name: doc.name || 'Document',
-            fileName: doc.name || 'Document',
-            fileUrl: doc.url,
-            url: doc.url,
-            uploadedAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
-            createdAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
-            fileSize: doc.fileSize || doc.size,
-            verificationLink: doc.verificationLink || null,
-            verificationLinkStatus: doc.verificationLinkStatus || null,
-          }))
+          const mappedDocuments = (docsData.documents || []).map(mapApiDocumentToUi)
           setDocuments(mappedDocuments)
+          await tryAutofillBtrExpiry(installerId, mappedDocuments)
         }
       }
     } catch (err: any) {
@@ -306,21 +444,10 @@ export default function AttachmentsPage() {
       }
 
       if (data.document) {
-        // Map API response fields to frontend expected fields
-        const mappedDocument = {
-          id: data.document.id,
-          type: data.document.type,
-          fileName: data.document.name || file.name,
-          fileUrl: data.document.url || blob.url,
-          uploadedAt: data.document.createdAt || data.document.uploadedAt || new Date().toISOString(),
-          fileSize: data.document.fileSize || file.size,
-        }
-        if (MULTI_DOCUMENT_TYPES.has(type)) {
-          // Append new document for multi-document types
-          setDocuments([mappedDocument, ...documents])
-        } else {
-          // Replace existing for single-document types
-          setDocuments([...documents.filter(d => d.type !== type), mappedDocument])
+        // Refresh first, then (for BTR) trigger extraction in a separate call to avoid upload timeouts.
+        const latest = await refreshDocuments(installer.id)
+        if (type === 'business_registration') {
+          await tryAutofillBtrExpiry(installer.id, latest)
         }
         setSuccess(`${DOCUMENT_TYPES.find(dt => dt.id === type)?.name} uploaded successfully!`)
         setTimeout(() => setSuccess(''), 3000)
@@ -338,6 +465,7 @@ export default function AttachmentsPage() {
       setUploading({ ...uploading, [type]: false })
     }
   }
+
 
   const handleDeleteClick = (documentId: string, documentName: string, documentType: string) => {
     const docType = DOCUMENT_TYPES.find(dt => dt.id === documentType)
@@ -388,10 +516,7 @@ export default function AttachmentsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading attachments...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-600" />
       </div>
     )
   }
@@ -479,6 +604,15 @@ export default function AttachmentsPage() {
           >
             <ExternalLink className="w-5 h-5 flex-shrink-0" />
             {sidebarOpen && <span>Referrals</span>}
+          </Link>
+          <Link
+            href="/installer/survey"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Survey</span>}
           </Link>
           <Link
             href="/installer/notifications"
@@ -627,7 +761,22 @@ export default function AttachmentsPage() {
                             </span>
                           </div>
                         )}
-                        {/* Verification Link is admin-only; hidden in installer portal */}
+                        {docType.id === 'business_registration' && (existingDoc?.expiryDate || installer?.btrExpiry) ? (
+                          <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
+                            <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                              Valid until{' '}
+                              {(() => {
+                                const raw = (existingDoc?.expiryDate || installer?.btrExpiry) as any
+                                try {
+                                  const d = new Date(raw)
+                                  return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString()
+                                } catch {
+                                  return String(raw)
+                                }
+                              })()}
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     {isMulti && (
@@ -686,8 +835,88 @@ export default function AttachmentsPage() {
                                     })()}
                                   </p>
                                 )}
+                                {doc.verified ? (
+                                  <span className="text-[11px] font-semibold text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-full">
+                                    Verified
+                                  </span>
+                                ) : null}
+                                {btrAutofillBusyIds[doc.id] ? (
+                                  <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                                    Parsing…
+                                  </span>
+                                ) : null}
+                                {btrAutofillErrorByDocId[doc.id] ? (
+                                  <span className="text-[11px] font-semibold text-danger-700 bg-danger-50 border border-danger-200 px-2 py-0.5 rounded-full">
+                                    {btrAutofillErrorByDocId[doc.id]}
+                                  </span>
+                                ) : null}
+                                {doc.expiryDate ? (
+                                  <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                                    Valid until{' '}
+                                    {(() => {
+                                      try {
+                                        const d = new Date(doc.expiryDate as string)
+                                        return isNaN(d.getTime()) ? String(doc.expiryDate) : d.toLocaleDateString()
+                                      } catch {
+                                        return String(doc.expiryDate)
+                                      }
+                                    })()}
+                                  </span>
+                                ) : null}
                                   {/* Verification Link is admin-only; hidden in installer portal */}
                                 </div>
+                                {doc.type === 'business_registration' && !doc.expiryDate ? (
+                                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <label className="text-xs font-semibold text-slate-600">Expiry date</label>
+                                    <input
+                                      type="date"
+                                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30"
+                                      value={btrManualExpiryByDocId[doc.id] ?? ''}
+                                      onChange={(e) =>
+                                        setBtrManualExpiryByDocId((prev) => ({ ...prev, [doc.id]: e.target.value }))
+                                      }
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => runBtrParseNow(installer.id, doc.id)}
+                                      disabled={Boolean(btrAutofillBusyIds[doc.id])}
+                                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+                                      title="Try to auto-detect expiry from the file"
+                                    >
+                                      Parse expiry
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => saveBtrExpiryForDoc(installer.id, doc.id, btrManualExpiryByDocId[doc.id] ?? '')}
+                                      disabled={Boolean(btrManualSavingByDocId[doc.id])}
+                                      className="h-9 rounded-xl bg-brand-green px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-green-dark disabled:opacity-60"
+                                    >
+                                      {btrManualSavingByDocId[doc.id] ? 'Saving…' : 'Save'}
+                                    </button>
+                                  </div>
+                                ) : null}
+                                {doc.adminRejectionNote ? (
+                                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 leading-relaxed">
+                                    <span className="font-semibold text-amber-900">Admin note — please fix and re-upload:</span>{' '}
+                                    {doc.adminRejectionNote}
+                                    {doc.adminCorrectionUrl ? (
+                                      <div className="mt-2">
+                                        <a
+                                          href={doc.adminCorrectionUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-semibold text-amber-900 hover:bg-amber-100"
+                                        >
+                                          View correction file
+                                          <ExternalLink className="w-3.5 h-3.5" />
+                                        </a>
+                                        {doc.adminCorrectionName ? (
+                                          <span className="ml-2 text-amber-800">{doc.adminCorrectionName}</span>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-slate-200/80">

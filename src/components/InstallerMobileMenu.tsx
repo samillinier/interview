@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   Bell,
+  ClipboardList,
   ExternalLink,
   FileText,
   LayoutDashboard,
@@ -26,9 +27,30 @@ type Props = {
 
 export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout }: Props) {
   const [open, setOpen] = useState(false)
+  const [surveyCount, setSurveyCount] = useState(0)
 
   useEffect(() => {
     setOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const installerId = typeof window !== 'undefined' ? localStorage.getItem('installerId') : null
+    if (!installerId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/notifications/survey-count?installerId=${encodeURIComponent(installerId)}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const c = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(c)) setSurveyCount(c)
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [pathname])
 
   const items = useMemo(
@@ -38,10 +60,11 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       { href: '/installer/agreements', label: 'Form', icon: FileText },
       { href: '/installer/attachments', label: 'Attachments', icon: Paperclip },
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
+      { href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount },
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
       { href: '/installer/help', label: 'Help', icon: HelpCircle },
     ],
-    [notificationCount]
+    [notificationCount, surveyCount]
   )
 
   const isActive = (href: string, match?: (p: string) => boolean) => {
@@ -117,7 +140,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="flex-1">{it.label}</span>
-                  {it.label === 'Notifications' && (it.badge || 0) > 0 && (
+                  {(it.label === 'Notifications' || it.label === 'Survey') && (it.badge || 0) > 0 && (
                     <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-white text-brand-green text-xs font-bold">
                       {(it.badge ?? 0) > 9 ? '9+' : (it.badge ?? 0)}
                     </span>

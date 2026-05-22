@@ -18,6 +18,7 @@ import {
   User,
   Shield,
   ShieldAlert,
+  FileCheck,
   ArrowLeft,
   LayoutDashboard,
   Menu,
@@ -28,28 +29,47 @@ import {
   BarChart3,
   StickyNote,
   Building2,
-  Activity
+  Activity,
+  ClipboardList,
+  ClipboardCheck,
+  FileText,
+  Megaphone,
+  KeyRound,
+  Search
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface Admin {
   id: string
   email: string
   name: string | null
   isActive: boolean
-  role: 'ADMIN' | 'MODERATOR' | 'MANAGER'
+  role: 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
   createdAt: string
   createdBy: string | null
+}
+
+interface InstallerCredentialResult {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  username: string | null
+  companyName: string | null
+  hasPassword: boolean
 }
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [admins, setAdmins] = useState<Admin[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -66,9 +86,35 @@ export default function SettingsPage() {
   const [newAdmin, setNewAdmin] = useState({
     email: '',
     name: '',
-    role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER',
+    role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN',
   })
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [auditQuery, setAuditQuery] = useState('')
+  const [auditAction, setAuditAction] = useState<
+    | 'all'
+    | 'installer.status_change'
+    | 'installer.delete'
+    | 'installer.contract_generated'
+    | 'installer.credentials_update'
+    | 'admin.role_change'
+    | 'admin.create'
+  >('all')
+  const [auditRange, setAuditRange] = useState<'day' | 'week' | 'month' | 'year'>('week')
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditError, setAuditError] = useState('')
+  const [credentialSearch, setCredentialSearch] = useState('')
+  const [credentialResults, setCredentialResults] = useState<InstallerCredentialResult[]>([])
+  const [credentialSearchLoading, setCredentialSearchLoading] = useState(false)
+  const [selectedCredentialInstaller, setSelectedCredentialInstaller] = useState<InstallerCredentialResult | null>(null)
+  const [credentialForm, setCredentialForm] = useState({
+    email: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+  })
+  const [credentialSaving, setCredentialSaving] = useState(false)
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' })
@@ -78,17 +124,51 @@ export default function SettingsPage() {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
-      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | undefined
+      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | undefined
       if (role === 'MODERATOR') {
         router.push('/auth/access-denied')
         return
       }
       fetchAdmins()
       fetchPendingApprovalsCount()
-      const interval = setInterval(fetchPendingApprovalsCount, 30000)
+      fetchSignatureNotSignedCount()
+      fetchAuditLogs()
+      const interval = setInterval(() => {
+        fetchPendingApprovalsCount()
+        fetchSignatureNotSignedCount()
+      }, 30000)
       return () => clearInterval(interval)
     }
   }, [status, router])
+
+  const fetchAuditLogs = async (opts?: { q?: string; action?: string; range?: 'day' | 'week' | 'month' | 'year' }) => {
+    try {
+      setAuditLoading(true)
+      setAuditError('')
+      const params = new URLSearchParams()
+      const q = (opts?.q ?? auditQuery).trim()
+      const action = (opts?.action ?? (auditAction === 'all' ? '' : auditAction)).trim()
+      const range = opts?.range ?? auditRange
+      if (q) params.set('q', q)
+      if (action) params.set('action', action)
+      params.set('range', range)
+      params.set('take', '120')
+      const res = await fetch(`/api/admin/audit?${params.toString()}`, { cache: 'no-store' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setAuditLogs([])
+        setAuditError(data?.error || `Failed to load audit log (HTTP ${res.status})`)
+        return
+      }
+      const data = await res.json()
+      setAuditLogs(Array.isArray(data?.logs) ? data.logs : [])
+    } catch {
+      setAuditLogs([])
+      setAuditError('Failed to load audit log')
+    } finally {
+      setAuditLoading(false)
+    }
+  }
 
   const fetchPendingApprovalsCount = async () => {
     try {
@@ -100,6 +180,22 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setPendingApprovalsCount(data.count || 0)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const fetchSignatureNotSignedCount = async () => {
+    try {
+      const res = await fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' })
+      if (res.status === 401) {
+        setSignatureNotSignedCount(0)
+        return
+      }
+      if (res.ok) {
+        const data = await res.json()
+        setSignatureNotSignedCount(data?.count || 0)
       }
     } catch {
       // ignore
@@ -156,6 +252,89 @@ export default function SettingsPage() {
     }
   }
 
+  const handleCredentialSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    const q = credentialSearch.trim()
+    if (q.length < 2) {
+      setCredentialResults([])
+      setError('Type at least 2 characters to search installers')
+      return
+    }
+
+    setCredentialSearchLoading(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/admin/installers/credentials?q=${encodeURIComponent(q)}`, { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to search installers')
+      setCredentialResults(Array.isArray(data?.installers) ? data.installers : [])
+    } catch (err: any) {
+      setCredentialResults([])
+      setError(err?.message || 'Failed to search installers')
+    } finally {
+      setCredentialSearchLoading(false)
+    }
+  }
+
+  const handleSelectCredentialInstaller = (installer: InstallerCredentialResult) => {
+    setSelectedCredentialInstaller(installer)
+    setCredentialForm({
+      email: installer.email || '',
+      username: installer.username || '',
+      password: '',
+      confirmPassword: '',
+    })
+    setError('')
+    setSuccess('')
+  }
+
+  const handleCredentialSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedCredentialInstaller) {
+      setError('Select an installer first')
+      return
+    }
+    if (credentialForm.password && credentialForm.password !== credentialForm.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setCredentialSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch('/api/admin/installers/credentials', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          installerId: selectedCredentialInstaller.id,
+          email: credentialForm.email,
+          username: credentialForm.username,
+          password: credentialForm.password,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to update installer credentials')
+
+      const updated = data.installer as InstallerCredentialResult
+      setSelectedCredentialInstaller(updated)
+      setCredentialResults((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      setCredentialForm({
+        email: updated.email || '',
+        username: updated.username || '',
+        password: '',
+        confirmPassword: '',
+      })
+      setSuccess('Installer login credentials updated successfully')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update installer credentials')
+    } finally {
+      setCredentialSaving(false)
+    }
+  }
+
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -199,7 +378,7 @@ export default function SettingsPage() {
       }
 
       setSuccess('Admin added successfully!')
-      setNewAdmin({ email: '', name: '', role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER' })
+      setNewAdmin({ email: '', name: '', role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' })
       setShowAddModal(false)
       await fetchAdmins()
       setTimeout(() => setSuccess(''), 3000)
@@ -269,10 +448,7 @@ export default function SettingsPage() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-brand-green animate-spin mx-auto mb-4" />
-          <p className="text-primary-600">Loading settings...</p>
-        </div>
+        <LogoHeartbeatLoader messageClassName="text-primary-600" />
       </div>
     )
   }
@@ -281,174 +457,16 @@ export default function SettingsPage() {
     return null
   }
 
-  const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | undefined
+  const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | undefined
   if (currentRole === 'MODERATOR') {
     return null
   }
+  const canManageInstallerCredentials = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        {/* Logo */}
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
-                <p className="text-xs text-primary-500 truncate">Admin Dashboard</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Installers</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MODERATOR' && (
-          <Link
-            href="/dashboard/approvals"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/approvals' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Approvals</span>
-                {pendingApprovalsCount > 0 && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                    {pendingApprovalsCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          )}
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/dashboard/tracking"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                pathname === '/dashboard/tracking' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <Activity className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Tracking</span>}
-            </Link>
-          )}
-          <Link
-            href="/dashboard/analytics"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/analytics' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Analytics</span>}
-          </Link>
-          <Link
-            href="/dashboard/notifications"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Notifications</span>}
-          </Link>
-          <Link
-            href="/dashboard/messages"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/messages' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Messages</span>}
-          </Link>
-          <Link
-            href="/dashboard/remarks"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/remarks' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <StickyNote className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Remarks</span>}
-          </Link>
-          <Link
-            href="/dashboard/settings"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/dashboard/settings' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <Settings className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Settings</span>}
-          </Link>
-          {(session?.user as any)?.role !== 'MANAGER' && (session?.user as any)?.role !== 'MODERATOR' && (
-            <Link
-              href="/property/dashboard"
-              className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2"
-            >
-              <Building2 className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Property Portal</span>}
-            </Link>
-          )}
-        </nav>
-
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            {session?.user?.image ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-brand-green/30">
-                <Image
-                  src={session.user.image}
-                  alt={session.user?.name || session.user?.email || 'Admin'}
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="w-5 h-5 text-brand-green" />
-              </div>
-            )}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {session?.user?.name || 'Admin'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{session?.user?.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
 
       <AdminMobileMenu pathname={pathname} />
 
@@ -492,6 +510,144 @@ export default function SettingsPage() {
           </motion.div>
         )}
 
+        {canManageInstallerCredentials && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8 mb-6"
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                  <KeyRound className="w-6 h-6 text-brand-green" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Installer Login Access</h2>
+                  <p className="text-sm text-slate-500">Search an installer and update their login email, username, or password</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleCredentialSearch} className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={credentialSearch}
+                  onChange={(e) => setCredentialSearch(e.target.value)}
+                  placeholder="Search by installer name, email, username, or company..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={credentialSearchLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+              >
+                {credentialSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Search
+              </button>
+            </form>
+
+            {credentialResults.length > 0 && (
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {credentialResults.map((installer) => {
+                  const isSelected = selectedCredentialInstaller?.id === installer.id
+                  return (
+                    <button
+                      key={installer.id}
+                      type="button"
+                      onClick={() => handleSelectCredentialInstaller(installer)}
+                      className={`rounded-xl border p-4 text-left transition-colors ${
+                        isSelected
+                          ? 'border-brand-green bg-brand-green/10'
+                          : 'border-slate-200 bg-slate-50 hover:border-brand-green/50 hover:bg-white'
+                      }`}
+                    >
+                      <div className="font-bold text-slate-900">
+                        {installer.firstName} {installer.lastName}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">{installer.email}</div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                        <span className="rounded-full bg-white px-2 py-1 text-slate-600">
+                          Username: {installer.username || 'not set'}
+                        </span>
+                        <span className={`rounded-full px-2 py-1 ${installer.hasPassword ? 'bg-success-100 text-success-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {installer.hasPassword ? 'Password set' : 'No password'}
+                        </span>
+                        {installer.companyName ? (
+                          <span className="rounded-full bg-white px-2 py-1 text-slate-600">{installer.companyName}</span>
+                        ) : null}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {selectedCredentialInstaller && (
+              <form onSubmit={handleCredentialSave} className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
+                <div className="mb-4">
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Update login for {selectedCredentialInstaller.firstName} {selectedCredentialInstaller.lastName}
+                  </h3>
+                  <p className="text-sm text-slate-500">Leave password fields blank to keep the current password.</p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Login email</label>
+                    <input
+                      type="email"
+                      value={credentialForm.email}
+                      onChange={(e) => setCredentialForm((current) => ({ ...current, email: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Username</label>
+                    <input
+                      value={credentialForm.username}
+                      onChange={(e) => setCredentialForm((current) => ({ ...current, username: e.target.value }))}
+                      placeholder="Optional username"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">New password</label>
+                    <input
+                      type="password"
+                      value={credentialForm.password}
+                      onChange={(e) => setCredentialForm((current) => ({ ...current, password: e.target.value }))}
+                      placeholder="At least 8 chars, upper/lower/number"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">Confirm password</label>
+                    <input
+                      type="password"
+                      value={credentialForm.confirmPassword}
+                      onChange={(e) => setCredentialForm((current) => ({ ...current, confirmPassword: e.target.value }))}
+                      placeholder="Repeat new password"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                    />
+                  </div>
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={credentialSaving}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-5 py-3 font-semibold text-white shadow-lg shadow-brand-green/20 transition-colors hover:bg-brand-green-dark disabled:opacity-50"
+                  >
+                    {credentialSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    Save installer login
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        )}
+
         {/* Administrators Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -516,6 +672,36 @@ export default function SettingsPage() {
               <span>Add Admin</span>
             </button>
           </div>
+
+          {/* Super Admins */}
+          {admins.some((a) => a.role === 'SUPER_ADMIN') && (
+            <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl border border-purple-200 bg-purple-50 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-purple-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Super Admins</h3>
+                    <p className="text-sm text-slate-500">Only Super Admins can access Claims.</p>
+                  </div>
+                </div>
+                <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-extrabold text-purple-700">
+                  {admins.filter((a) => a.role === 'SUPER_ADMIN').length}
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {admins
+                  .filter((a) => a.role === 'SUPER_ADMIN')
+                  .map((a) => (
+                    <div key={a.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="font-bold text-slate-900 truncate">{a.name || a.email}</div>
+                      <div className="text-sm text-slate-500 truncate">{a.email}</div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Admins List */}
           {admins.length === 0 ? (
@@ -544,12 +730,24 @@ export default function SettingsPage() {
                         <p className="font-semibold text-slate-900">
                           {admin.name || admin.email.split('@')[0]}
                         </p>
-                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          admin.role === 'ADMIN' ? 'bg-brand-green/10 text-brand-green' : 
-                          admin.role === 'MANAGER' ? 'bg-blue-100 text-blue-700' : 
-                          'bg-slate-200 text-slate-700'
-                        }`}>
-                          {admin.role === 'ADMIN' ? 'Admin' : admin.role === 'MANAGER' ? 'Manager' : 'Moderator'}
+                        <span
+                          className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            admin.role === 'SUPER_ADMIN'
+                              ? 'bg-purple-100 text-purple-700'
+                              : (String((admin as any).role || '').toUpperCase() === 'ADMIN' || String((admin as any).role || '').toUpperCase() === 'SUPER_ADMIN')
+                                ? 'bg-brand-green/10 text-brand-green'
+                                : admin.role === 'MANAGER'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {admin.role === 'SUPER_ADMIN'
+                            ? 'Super Admin'
+                            : (String((admin as any).role || '').toUpperCase() === 'ADMIN' || String((admin as any).role || '').toUpperCase() === 'SUPER_ADMIN')
+                              ? 'Admin'
+                              : admin.role === 'MANAGER'
+                                ? 'Manager'
+                                : 'Moderator'}
                         </span>
                         {admin.isActive ? (
                           <span className="px-2 py-0.5 bg-success-100 text-success-700 text-xs font-semibold rounded-full">
@@ -583,7 +781,7 @@ export default function SettingsPage() {
                     <select
                       value={admin.role}
                       onChange={async (e) => {
-                        const role = e.target.value as 'ADMIN' | 'MODERATOR' | 'MANAGER'
+                        const role = e.target.value as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
                         try {
                           const res = await fetch(`/api/admins/${admin.id}`, {
                             method: 'PATCH',
@@ -602,6 +800,7 @@ export default function SettingsPage() {
                       className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white hover:bg-slate-50"
                       aria-label="Role"
                     >
+                      {currentRole === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super Admin</option>}
                       <option value="ADMIN">Admin</option>
                       <option value="MODERATOR">Moderator</option>
                       <option value="MANAGER">Manager</option>
@@ -624,6 +823,168 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+        </motion.div>
+
+        {/* Audit Log Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8"
+        >
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <ClipboardList className="w-6 h-6 text-brand-green" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Audit log</h2>
+                <p className="text-sm text-slate-500">Tracks admin activity by period. Default view is this week.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchAuditLogs()}
+              className="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-3 mb-4">
+            <div className="flex-1">
+              <input
+                value={auditQuery}
+                onChange={(e) => setAuditQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') fetchAuditLogs({ q: (e.target as HTMLInputElement).value })
+                }}
+                placeholder="Search: installer name/email/id or admin email…"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+              />
+            </div>
+            <select
+              value={auditAction}
+              onChange={(e) => {
+                const v = e.target.value as any
+                setAuditAction(v)
+                fetchAuditLogs({ action: v === 'all' ? '' : v })
+              }}
+              className="px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50"
+              aria-label="Audit action"
+            >
+              <option value="all">All actions</option>
+              <option value="installer.status_change">Installer status changed</option>
+              <option value="installer.delete">Installer deleted</option>
+              <option value="installer.contract_generated">Contract generated</option>
+              <option value="installer.credentials_update">Installer login updated</option>
+              <option value="admin.role_change">Admin role changed</option>
+              <option value="admin.create">Admin created</option>
+            </select>
+            <select
+              value={auditRange}
+              onChange={(e) => {
+                const v = e.target.value as 'day' | 'week' | 'month' | 'year'
+                setAuditRange(v)
+                fetchAuditLogs({ range: v })
+              }}
+              className="px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50"
+              aria-label="Audit period"
+            >
+              <option value="day">Today</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="year">This year</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => fetchAuditLogs()}
+              className="px-4 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors shadow-lg shadow-brand-green/20"
+            >
+              Search
+            </button>
+          </div>
+
+          {auditError && (
+            <div className="mb-4 p-3 rounded-xl border border-danger-200 bg-danger-50 text-danger-700 text-sm font-medium">
+              {auditError}
+            </div>
+          )}
+
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="min-w-[900px] w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr className="text-left text-slate-600">
+                  <th className="py-3 px-4 font-semibold">When</th>
+                  <th className="py-3 px-4 font-semibold">Admin</th>
+                  <th className="py-3 px-4 font-semibold">Action</th>
+                  <th className="py-3 px-4 font-semibold">Installer</th>
+                  <th className="py-3 px-4 font-semibold">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {auditLoading ? (
+                  <tr>
+                    <td className="py-5 px-4 text-slate-500" colSpan={5}>
+                      Loading…
+                    </td>
+                  </tr>
+                ) : auditLogs.length === 0 ? (
+                  <tr>
+                    <td className="py-5 px-4 text-slate-500" colSpan={5}>
+                      No audit events yet.
+                    </td>
+                  </tr>
+                ) : (
+                  auditLogs.map((log) => {
+                    const actionLabel =
+                      log.action === 'installer.delete'
+                        ? 'Installer deleted'
+                        : log.action === 'installer.status_change'
+                        ? 'Installer status changed'
+                        : log.action === 'installer.contract_generated'
+                          ? 'Contract generated'
+                        : log.action === 'installer.credentials_update'
+                          ? 'Installer login updated'
+                          : log.action === 'admin.role_change'
+                            ? 'Admin role changed'
+                            : log.action === 'admin.create'
+                              ? 'Admin created'
+                              : String(log.action || '')
+                    const details =
+                      log.action === 'installer.status_change' && log.before?.status !== undefined
+                        ? `${String(log.before.status)} → ${String(log.after?.status)}`
+                        : log.action === 'installer.credentials_update'
+                          ? `Email: ${String(log.before?.email || '')} → ${String(log.after?.email || '')}${
+                              log.after?.passwordChanged ? ' · Password changed' : ''
+                            }`
+                        : log.action === 'admin.role_change' && log.before?.role !== undefined
+                          ? `${String(log.before.role)} → ${String(log.after?.role)}`
+                          : log.action === 'admin.create' && log.after?.role
+                            ? `Role: ${String(log.after.role)}`
+                            : ''
+                    return (
+                      <tr key={log.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-4 text-slate-700 whitespace-nowrap">
+                          {log.createdAt ? new Date(log.createdAt).toLocaleString() : ''}
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">{log.adminEmail}</td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-green/10 text-brand-green">
+                            {actionLabel}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">
+                          <div className="font-medium text-slate-900">{log.targetLabel || log.targetId}</div>
+                          <div className="text-xs text-slate-500">{log.targetId}</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">{details}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
         </main>
       </div>
@@ -697,6 +1058,7 @@ export default function SettingsPage() {
                   onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value as any })}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white"
                 >
+                  {currentRole === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super Admin (claims-only)</option>}
                   <option value="ADMIN">Admin (full access)</option>
                   <option value="MODERATOR">Moderator (qualified-only)</option>
                   <option value="MANAGER">Manager (restricted access)</option>
