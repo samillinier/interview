@@ -9,6 +9,10 @@ import prisma from './db'
 
 export const SUPER_ADMIN_EMAIL = 'sbiru@fiscorponline.com'
 
+function normalizeAdminRole(role: unknown): string {
+  return String(role || '').trim().toUpperCase()
+}
+
 /**
  * Check if the user is the super admin (Sam) - kept for backwards compatibility
  */
@@ -27,9 +31,10 @@ export async function isAdmin(userEmail: string | null | undefined): Promise<boo
     const admin = await prisma.admin.findUnique({
       where: { email: userEmail.toLowerCase().trim() },
     })
+    const role = normalizeAdminRole(admin?.role)
     
     // Only ADMIN role (not MODERATOR or MANAGER) can see all data
-    return admin?.isActive === true && (admin?.role === 'ADMIN' || admin?.role === 'SUPER_ADMIN')
+    return admin?.isActive === true && (role === 'ADMIN' || role === 'SUPER_ADMIN')
   } catch (error) {
     console.error('Error checking admin status:', error)
     return false
@@ -46,8 +51,9 @@ export async function isManager(userEmail: string | null | undefined): Promise<b
     const admin = await prisma.admin.findUnique({
       where: { email: userEmail.toLowerCase().trim() },
     })
+    const role = normalizeAdminRole(admin?.role)
     
-    return admin?.isActive === true && admin?.role === 'MANAGER'
+    return admin?.isActive === true && role === 'MANAGER'
   } catch (error) {
     console.error('Error checking manager status:', error)
     return false
@@ -64,8 +70,9 @@ export async function isAdminOrManager(userEmail: string | null | undefined): Pr
     const admin = await prisma.admin.findUnique({
       where: { email: userEmail.toLowerCase().trim() },
     })
+    const role = normalizeAdminRole(admin?.role)
     
-    return admin?.isActive === true && ((admin?.role === 'ADMIN' || admin?.role === 'SUPER_ADMIN') || admin?.role === 'MANAGER')
+    return admin?.isActive === true && (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER')
   } catch (error) {
     console.error('Error checking admin/manager status:', error)
     return false
@@ -94,7 +101,14 @@ export async function findLocationForPropertyRequest(
     })
   }
 
-  if (!propertyId) return null
+  if (!propertyId || !userEmail) return null
+
+  const property = await prisma.property.findUnique({
+    where: { email: userEmail.toLowerCase().trim() },
+    select: { id: true },
+  })
+
+  if (!property || property.id !== propertyId) return null
 
   return prisma.location.findFirst({
     where: { id: locationId, propertyId },
@@ -102,7 +116,7 @@ export async function findLocationForPropertyRequest(
   })
 }
 
-export async function getAdminRole(userEmail: string | null | undefined): Promise<'ADMIN' | 'MODERATOR' | 'MANAGER' | null> {
+export async function getAdminRole(userEmail: string | null | undefined): Promise<'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | null> {
   if (!userEmail) return null
   
   try {
@@ -111,7 +125,7 @@ export async function getAdminRole(userEmail: string | null | undefined): Promis
     })
     
     if (!admin?.isActive) return null
-    return admin.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | null
+    return normalizeAdminRole(admin.role) as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
   } catch (error) {
     console.error('Error getting admin role:', error)
     return null

@@ -581,7 +581,9 @@ export default function FacilitiesPage() {
         credentials: 'include',
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Failed to upload documents')
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to upload documents (${res.status})`)
+      }
       await loadLocationDocuments(propertyId, locationId)
       if (category === 'lease') setLeaseDocFiles([])
       if (category === 'misc') setMiscDocFiles([])

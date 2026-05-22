@@ -21,15 +21,26 @@ function normalizeCategory(input: unknown): 'lease' | 'misc' | null {
 function filesFromFormData(formData: FormData): File[] {
   const files: File[] = []
   for (const entry of formData.getAll('files')) {
-    if (entry instanceof Blob && 'name' in entry) {
+    if (isUploadFile(entry)) {
       files.push(entry as File)
     }
   }
   const single = formData.get('file')
-  if (single instanceof Blob && 'name' in single) {
+  if (isUploadFile(single)) {
     files.push(single as File)
   }
   return files
+}
+
+function isUploadFile(value: FormDataEntryValue | null): value is File {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    'size' in value &&
+    'arrayBuffer' in value &&
+    typeof (value as File).arrayBuffer === 'function'
+  )
 }
 
 export async function GET(
@@ -95,7 +106,17 @@ export async function POST(
     const category = normalizeCategory(formData.get('category'))
     const files = filesFromFormData(formData)
 
-    if (!files.length) return NextResponse.json({ error: 'At least 1 file is required' }, { status: 400 })
+    if (!files.length) {
+      console.error('Location document upload received no files', {
+        locationId,
+        propertyId,
+        userEmail,
+        keys: Array.from(formData.keys()),
+        filesCount: formData.getAll('files').length,
+        hasSingleFile: formData.has('file'),
+      })
+      return NextResponse.json({ error: 'At least 1 file is required' }, { status: 400 })
+    }
     if (!category) return NextResponse.json({ error: 'category must be lease or misc' }, { status: 400 })
 
     const created = []
