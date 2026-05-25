@@ -303,6 +303,11 @@ model Claim {
   installerName    String?
   category         String?
   claimNumber      String?
+  lowesClaimNumber String?
+  insuranceCompany String?
+  adjusterName     String?
+  adjusterPhone    String?
+  adjusterEmail    String?
   status           String    @default("open")
   dateOfLoss       DateTime?
   damage           String?
@@ -312,13 +317,28 @@ model Claim {
   createdBy        String?
   updatedBy        String?
 
-  Installer Installer? @relation(fields: [installerId], references: [id], onDelete: SetNull)
+  Installer     Installer?      @relation(fields: [installerId], references: [id], onDelete: SetNull)
+  ClaimDocument ClaimDocument[]
 
   @@index([installerId])
   @@index([status])
   @@index([claimNumber])
+  @@index([lowesClaimNumber])
   @@index([jobNumber])
   @@index([workroom])
+}
+
+model ClaimDocument {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  claimId   String
+  name      String
+  url       String
+
+  Claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
 }
 
 model Licence {

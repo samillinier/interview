@@ -31,6 +31,8 @@ import {
   Save,
   Plus,
   Trash2,
+  Upload,
+  Loader2,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -51,6 +53,11 @@ type ClaimRow = {
   installer: string
   category: string
   claimNumber: string
+  lowesClaimNumber: string
+  insuranceCompany: string
+  adjusterName: string
+  adjusterPhone: string
+  adjusterEmail: string
   status: ClaimStatus
   dateOfLoss: string
   damage: string
@@ -59,6 +66,13 @@ type ClaimRow = {
   updateNotes: string
   createdAt?: string
   updatedAt?: string
+}
+
+type ClaimDocument = {
+  id: string
+  name: string
+  url: string
+  createdAt: string
 }
 
 const STATUS_OPTIONS: Array<{ id: ClaimStatus; label: string }> = [
@@ -146,6 +160,11 @@ export default function ClaimsPage() {
   const [installerSearchLoading, setInstallerSearchLoading] = useState(false)
   const [installerSearchError, setInstallerSearchError] = useState('')
   const [showInstallerDropdown, setShowInstallerDropdown] = useState(false)
+  const [claimDocs, setClaimDocs] = useState<ClaimDocument[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsError, setDocsError] = useState('')
+  const [uploadingDocs, setUploadingDocs] = useState(false)
+  const [docFiles, setDocFiles] = useState<File[]>([])
 
   const [rows, setRows] = useState<ClaimRow[]>([])
 
@@ -306,6 +325,11 @@ export default function ClaimsPage() {
       hit(r.installer) ||
       hit(r.category) ||
       hit(r.claimNumber) ||
+      hit(r.lowesClaimNumber) ||
+      hit(r.insuranceCompany) ||
+      hit(r.adjusterName) ||
+      hit(r.adjusterPhone) ||
+      hit(r.adjusterEmail) ||
       hit(r.status) ||
       hit(r.damage) ||
       hit(r.dropdown),
@@ -322,6 +346,13 @@ export default function ClaimsPage() {
     setInstallerSearchResults([])
     setInstallerSearchError('')
     setShowInstallerDropdown(false)
+    setDocFiles([])
+    setDocsError('')
+    if (selectedClaim?.id && !selectedClaim.id.startsWith('draft-')) {
+      void loadClaimDocuments(selectedClaim.id)
+    } else {
+      setClaimDocs([])
+    }
   }, [selectedClaim?.id])
 
   const overview = useMemo(() => {
@@ -394,6 +425,56 @@ export default function ClaimsPage() {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }
 
+  const loadClaimDocuments = async (claimId: string) => {
+    try {
+      setDocsLoading(true)
+      setDocsError('')
+      const res = await fetch(`/api/admin/claims/${claimId}/documents`, { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to load documents')
+      setClaimDocs(Array.isArray(data.documents) ? data.documents : [])
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to load documents')
+      setClaimDocs([])
+    } finally {
+      setDocsLoading(false)
+    }
+  }
+
+  const uploadClaimDocuments = async (claimId: string, files: File[]) => {
+    if (!files.length) return
+    try {
+      setUploadingDocs(true)
+      setDocsError('')
+      const fd = new FormData()
+      for (const file of files) fd.append('files', file)
+      const res = await fetch(`/api/admin/claims/${claimId}/documents`, {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to upload documents')
+      await loadClaimDocuments(claimId)
+      setDocFiles([])
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to upload documents')
+    } finally {
+      setUploadingDocs(false)
+    }
+  }
+
+  const deleteClaimDocument = async (claimId: string, docId: string) => {
+    try {
+      setDocsError('')
+      const res = await fetch(`/api/admin/claims/${claimId}/documents/${docId}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete document')
+      await loadClaimDocuments(claimId)
+    } catch (e: any) {
+      setDocsError(e?.message || 'Failed to delete document')
+    }
+  }
+
   const fetchClaims = async () => {
     try {
       setLoading(true)
@@ -424,6 +505,11 @@ export default function ClaimsPage() {
     installer: '',
     category: FLOORING_SURFACE_OPTIONS[0] || '',
     claimNumber: '',
+    lowesClaimNumber: '',
+    insuranceCompany: '',
+    adjusterName: '',
+    adjusterPhone: '',
+    adjusterEmail: '',
     status: 'open',
     dateOfLoss: '',
     damage: '',
@@ -464,6 +550,11 @@ export default function ClaimsPage() {
                 installer: selectedClaim.installer,
                 category: selectedClaim.category,
                 claimNumber: selectedClaim.claimNumber,
+                lowesClaimNumber: selectedClaim.lowesClaimNumber,
+                insuranceCompany: selectedClaim.insuranceCompany,
+                adjusterName: selectedClaim.adjusterName,
+                adjusterPhone: selectedClaim.adjusterPhone,
+                adjusterEmail: selectedClaim.adjusterEmail,
                 status: selectedClaim.status,
                 dateOfLoss: selectedClaim.dateOfLoss,
                 damage: selectedClaim.damage,
@@ -965,6 +1056,48 @@ export default function ClaimsPage() {
                         />
                       </label>
                       <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Lowe&apos;s Claim Number</span>
+                        <input
+                          value={selectedClaim.lowesClaimNumber}
+                          onChange={(e) => updateRow(selectedClaim.id, { lowesClaimNumber: e.target.value })}
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Insurance Company</span>
+                        <input
+                          value={selectedClaim.insuranceCompany}
+                          onChange={(e) => updateRow(selectedClaim.id, { insuranceCompany: e.target.value })}
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Adjuster Name</span>
+                        <input
+                          value={selectedClaim.adjusterName}
+                          onChange={(e) => updateRow(selectedClaim.id, { adjusterName: e.target.value })}
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Phone Number</span>
+                        <input
+                          type="tel"
+                          value={selectedClaim.adjusterPhone}
+                          onChange={(e) => updateRow(selectedClaim.id, { adjusterPhone: e.target.value })}
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Email</span>
+                        <input
+                          type="email"
+                          value={selectedClaim.adjusterEmail}
+                          onChange={(e) => updateRow(selectedClaim.id, { adjusterEmail: e.target.value })}
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
+                      </label>
+                      <label className="block">
                         <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</span>
                         <select
                           value={selectedClaim.status}
@@ -1023,6 +1156,86 @@ export default function ClaimsPage() {
                           className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                         />
                       </label>
+                    </div>
+
+                    <div className="mt-8 border-t border-slate-200 pt-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <FileText className="w-4 h-4 text-brand-green" />
+                        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">Documents</h3>
+                      </div>
+
+                      {selectedClaim.id.startsWith('draft-') ? (
+                        <p className="text-sm text-slate-500">Save this claim first, then you can upload documents.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {docsError ? (
+                            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                              {docsError}
+                            </div>
+                          ) : null}
+
+                          <div className="grid md:grid-cols-2 gap-4 items-start">
+                            <div>
+                              <input
+                                type="file"
+                                multiple
+                                onChange={(e) => setDocFiles(Array.from(e.target.files || []))}
+                                className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                              />
+                              <p className="text-xs text-slate-500 mt-2">Allowed: PDF, DOC, DOCX, JPG, PNG. Up to 15MB each.</p>
+                            </div>
+                            <div className="flex md:justify-end">
+                              <button
+                                type="button"
+                                disabled={uploadingDocs || docFiles.length === 0}
+                                onClick={() => uploadClaimDocuments(selectedClaim.id, docFiles)}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white font-semibold hover:bg-brand-green-dark disabled:opacity-60 disabled:cursor-not-allowed"
+                              >
+                                {uploadingDocs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                Upload
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            {docsLoading ? (
+                              <div className="text-sm text-slate-600 flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Loading documents...
+                              </div>
+                            ) : claimDocs.length === 0 ? (
+                              <p className="text-sm text-slate-500">No documents uploaded yet.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {claimDocs.map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200"
+                                  >
+                                    <a
+                                      href={doc.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-medium text-brand-green hover:underline truncate"
+                                      title={doc.name}
+                                    >
+                                      {doc.name}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteClaimDocument(selectedClaim.id, doc.id)}
+                                      className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
