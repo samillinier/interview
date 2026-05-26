@@ -984,46 +984,21 @@ export default function ClaimsPage() {
                           className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                         />
                       </label>
-                      <label className="block relative md:col-span-2">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Installer Name</span>
-                          {selectedClaim.installer.trim() && !selectedClaim.installerId ? (
-                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
-                              Manual entry
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-0 rounded-xl border border-slate-200 bg-white focus-within:border-brand-green focus-within:ring-2 focus-within:ring-brand-green/20">
-                          <input
-                            value={selectedClaim.installer}
-                            onChange={(e) => {
-                              updateRow(selectedClaim.id, {
-                                installer: e.target.value,
-                                installerId: undefined,
-                              })
-                              setShowInstallerDropdown(true)
-                            }}
-                            onFocus={() => setShowInstallerDropdown(true)}
-                            placeholder="Search database or type installer name manually"
-                            className="w-full rounded-xl border-0 bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none"
-                          />
-                          <div className="border-t border-slate-100 px-3 py-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                              Company Name
-                            </span>
-                            <input
-                              value={selectedClaim.installerCompanyName}
-                              onChange={(e) =>
-                                updateRow(selectedClaim.id, { installerCompanyName: e.target.value })
-                              }
-                              placeholder="Type company name manually if needed"
-                              className="mt-1 w-full border-0 bg-transparent p-0 text-sm font-medium text-brand-green placeholder:text-slate-400 outline-none"
-                            />
-                          </div>
-                        </div>
-                        <p className="mt-2 text-xs text-slate-500">
-                          Installer not in the system? Type the name and company above, then save the claim.
-                        </p>
+                      <label className="block relative">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Installer Name</span>
+                        <input
+                          value={selectedClaim.installer}
+                          onChange={(e) => {
+                            updateRow(selectedClaim.id, {
+                              installer: e.target.value,
+                              installerId: undefined,
+                            })
+                            setShowInstallerDropdown(true)
+                          }}
+                          onFocus={() => setShowInstallerDropdown(true)}
+                          placeholder="Search or type installer name"
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
                         {showInstallerDropdown && (
                           <>
                             <button
@@ -1076,13 +1051,22 @@ export default function ClaimsPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <div className="px-4 py-3 text-sm text-slate-500">
-                                  Type a name to search, or enter a manual installer below.
-                                </div>
+                                <div className="px-4 py-3 text-sm text-slate-500">Type to search installers</div>
                               )}
                             </div>
                           </>
                         )}
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Company Name</span>
+                        <input
+                          value={selectedClaim.installerCompanyName}
+                          onChange={(e) =>
+                            updateRow(selectedClaim.id, { installerCompanyName: e.target.value })
+                          }
+                          placeholder="Installer company name"
+                          className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+                        />
                       </label>
                       <label className="block">
                         <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Category</span>
