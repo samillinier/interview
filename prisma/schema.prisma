@@ -299,9 +299,10 @@ model Claim {
   jobNumber        String?
   workroom         String?
   installationDate DateTime?
-  installerId      String?
-  installerName    String?
-  category         String?
+  installerId           String?
+  installerName         String?
+  installerCompanyName  String?
+  category              String?
   claimNumber      String?
   lowesClaimNumber String?
   insuranceCompany String?

@@ -37,30 +37,33 @@ export function DigitalIdDisplay({ value, size = 'lg', className }: DigitalIdDis
   const label = getDigitalIdLabel(trimmed)
   const isLarge = size === 'lg'
 
-  return (
-    <div className={cn('flex items-center gap-2 flex-wrap min-w-0', className)}>
-      <p
+  if (isUrl) {
+    return (
+      <a
+        href={trimmed}
+        target="_blank"
+        rel="noopener noreferrer"
         className={cn(
-          'font-semibold text-slate-900 min-w-0',
-          isLarge ? 'text-lg' : 'text-sm truncate'
+          'inline-flex items-center gap-1.5 font-semibold text-brand-green hover:text-brand-green-dark transition-colors shrink-0',
+          isLarge ? 'text-sm' : 'text-xs',
+          className,
         )}
       >
-        {label}
-      </p>
-      {isUrl && (
-        <a
-          href={trimmed}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            'inline-flex items-center gap-1 font-medium text-slate-600 hover:text-brand-green shrink-0',
-            isLarge ? 'text-sm' : 'text-xs'
-          )}
-        >
-          Open
-          <ExternalLink className={isLarge ? 'w-3.5 h-3.5' : 'w-3 h-3'} />
-        </a>
+        Open
+        <ExternalLink className={isLarge ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+      </a>
+    )
+  }
+
+  return (
+    <p
+      className={cn(
+        'font-semibold text-slate-900 min-w-0',
+        isLarge ? 'text-lg' : 'text-sm truncate',
+        className,
       )}
-    </div>
+    >
+      {label}
+    </p>
   )
 }

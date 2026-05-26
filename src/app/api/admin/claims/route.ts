@@ -35,6 +35,8 @@ function serializeClaim(claim: any) {
     installationDate: claim.installationDate ? claim.installationDate.toISOString().slice(0, 10) : '',
     installerId: claim.installerId || undefined,
     installer: claim.installerName || '',
+    installerCompanyName:
+      claim.installerCompanyName || claim.Installer?.companyName || '',
     category: claim.category || '',
     claimNumber: claim.claimNumber || '',
     lowesClaimNumber: claim.lowesClaimNumber || '',
@@ -64,6 +66,8 @@ function buildClaimData(body: any, email: string, isCreate: boolean) {
     installationDate: parseOptionalDate(body.installationDate),
     installerId: typeof body.installerId === 'string' && body.installerId.trim() ? body.installerId.trim() : null,
     installerName: typeof body.installer === 'string' ? body.installer.trim() || null : null,
+    installerCompanyName:
+      typeof body.installerCompanyName === 'string' ? body.installerCompanyName.trim() || null : null,
     category: typeof body.category === 'string' ? body.category.trim() || null : null,
     claimNumber: typeof body.claimNumber === 'string' ? body.claimNumber.trim() || null : null,
     lowesClaimNumber: typeof body.lowesClaimNumber === 'string' ? body.lowesClaimNumber.trim() || null : null,
@@ -90,6 +94,9 @@ export async function GET() {
     const claims = await prisma.claim.findMany({
       orderBy: { updatedAt: 'desc' },
       take: 200,
+      include: {
+        Installer: { select: { companyName: true } },
+      },
     })
 
     return NextResponse.json({ claims: claims.map(serializeClaim) })
@@ -107,6 +114,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const claim = await prisma.claim.create({
       data: buildClaimData(body, access.email, true),
+      include: { Installer: { select: { companyName: true } } },
     })
 
     return NextResponse.json({ claim: serializeClaim(claim) }, { status: 201 })
@@ -128,6 +136,7 @@ export async function PATCH(request: NextRequest) {
     const claim = await prisma.claim.update({
       where: { id },
       data: buildClaimData(body, access.email, false),
+      include: { Installer: { select: { companyName: true } } },
     })
 
     return NextResponse.json({ claim: serializeClaim(claim) })
