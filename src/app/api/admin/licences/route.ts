@@ -35,8 +35,10 @@ function parseOptionalDecimal(value: unknown) {
 function serializeLicence(row: any) {
   return {
     id: row.id,
+    category: row.category || '',
     county: row.county || '',
     city: row.city || '',
+    state: row.state || '',
     isActive: Boolean(row.isActive),
     areas: row.areas || '',
     licenceType: row.licenceType || '',
@@ -58,8 +60,10 @@ function serializeLicence(row: any) {
 
 function buildLicenceData(body: any, email: string, isCreate: boolean) {
   return {
+    category: typeof body.category === 'string' ? body.category.trim() || null : null,
     county: typeof body.county === 'string' ? body.county.trim() || null : null,
     city: typeof body.city === 'string' ? body.city.trim() || null : null,
+    state: typeof body.state === 'string' ? body.state.trim() || null : null,
     isActive: typeof body.isActive === 'boolean' ? body.isActive : true,
     areas: typeof body.areas === 'string' ? body.areas.trim() || null : null,
     licenceType: typeof body.licenceType === 'string' ? body.licenceType.trim() || null : null,

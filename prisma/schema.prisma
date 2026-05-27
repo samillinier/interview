@@ -347,8 +347,12 @@ model Licence {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Used by the Corporate → Documents page to separate records by document section (e.g. BTR, LRRP).
+  category    String?
+
   county      String?
   city        String?
+  state       String?
   isActive    Boolean  @default(true)
   areas       String?
   licenceType String?
@@ -370,11 +374,27 @@ model Licence {
   createdBy String?
   updatedBy String?
 
+  LicenceDocument LicenceDocument[]
+
   @@index([isActive])
   @@index([licenceNumber])
   @@index([county])
   @@index([city])
   @@index([licenceType])
+  @@index([category])
+}
+
+model LicenceDocument {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  licenceId String
+  name      String
+  url       String
+
+  Licence Licence @relation(fields: [licenceId], references: [id], onDelete: Cascade)
+
+  @@index([licenceId])
 }
 
 model InstallerHistory {
