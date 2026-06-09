@@ -815,10 +815,10 @@ export default function JobsPage() {
                             <DetailItem icon={DollarSign} label="PO Amount" value={formatCurrency(job.poAmount)} />
                             <DetailItem icon={Receipt} label="Invoice" value={job.invoiceNumber} />
                             {job.salesOrderNumber && (
-                              <DetailItem icon={Receipt} label="Sales Order" value={job.salesOrderNumber} />
+                              <DetailItem icon={Receipt} label="Sales Order" value={job.salesOrderNumber ?? ''} />
                             )}
                             {job.purchaserPO && (
-                              <DetailItem icon={FileText} label="Purchaser PO" value={job.purchaserPO} />
+                              <DetailItem icon={FileText} label="Purchaser PO" value={job.purchaserPO ?? ''} />
                             )}
                             <DetailItem icon={Calendar} label="Status Date" value={formatDate(job.currentOrderStatusDate)} />
                             <DetailItem icon={MapPin} label="Workroom" value={getWorkroomByStoreNumber(job.storeNumber) ?? undefined} />
@@ -833,16 +833,16 @@ export default function JobsPage() {
                               <DetailItem icon={Ruler} label="Distance" value={`${(job.siteDetailsDistanceToSeller ?? 0).toFixed(1)} mi`} />
                             )}
                             {job.sitePreBuiltInfo && (
-                              <DetailItem icon={Building2} label="Pre-Built" value={job.sitePreBuiltInfo} />
+                              <DetailItem icon={Building2} label="Pre-Built" value={job.sitePreBuiltInfo ?? ''} />
                             )}
                             {job.estTimeToComplete && (
-                              <DetailItem icon={Clock} label="Est. Time" value={`${job.estTimeToComplete} min`} />
+                              <DetailItem icon={Clock} label="Est. Time" value={`${job.estTimeToComplete ?? '--'} min`} />
                             )}
                             {job.permitNumber && (
-                              <DetailItem icon={FileWarning} label="Permit #" value={job.permitNumber} />
+                              <DetailItem icon={FileWarning} label="Permit #" value={job.permitNumber ?? ''} />
                             )}
                             {job.yearBuilt && (
-                              <DetailItem icon={Building2} label="Year Built" value={job.yearBuilt} />
+                              <DetailItem icon={Building2} label="Year Built" value={job.yearBuilt ?? ''} />
                             )}
                           </div>
                         </div>
