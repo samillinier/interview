@@ -590,6 +590,23 @@ export default function JobsPage() {
     }
   }
 
+  const stripHtml = (html: string): string => {
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<a\s[^>]*>(.*?)<\/a>/gi, '$1')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
+
   const formatCurrency = (amount: number | null) => {
     if (amount == null) return '$0.00'
     return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
@@ -732,7 +749,7 @@ export default function JobsPage() {
                             {job.customerFirstName} {job.customerLastName}
                           </h3>
                           <p className="text-sm text-slate-500 mt-1 line-clamp-1">
-                            {job.scopeOfWorkNotes || 'No scope notes'}
+                            {stripHtml(job.scopeOfWorkNotes || 'No scope notes')}
                           </p>
                         </div>
                         <div className="text-right flex-shrink-0">
@@ -986,7 +1003,7 @@ export default function JobsPage() {
                                     </div>
                                     <span className="text-sm font-semibold text-slate-700">Scope of Work</span>
                                   </div>
-                                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{job.scopeOfWorkNotes}</p>
+                                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{stripHtml(job.scopeOfWorkNotes)}</p>
                                 </div>
                               ) : null}
                               {job.deliveryInfoSchedulingNotes && job.deliveryInfoSchedulingNotes.trim() ? (
@@ -997,7 +1014,7 @@ export default function JobsPage() {
                                     </div>
                                     <span className="text-sm font-semibold text-slate-700">Scheduling Notes</span>
                                   </div>
-                                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{job.deliveryInfoSchedulingNotes}</p>
+                                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{stripHtml(job.deliveryInfoSchedulingNotes)}</p>
                                 </div>
                               ) : null}
                             </div>
@@ -1019,11 +1036,11 @@ export default function JobsPage() {
               className="fixed inset-0 z-50 overflow-y-auto"
             >
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDetailModal} />
-              <div className="relative min-h-screen flex items-start justify-center p-4">
+              <div className="relative min-h-screen flex items-start justify-center p-4 pointer-events-none">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden my-4"
+                  className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden my-4 pointer-events-auto"
                 >
                   {loadingFullDetail ? (
                     <div className="flex flex-col items-center py-24">
@@ -1168,7 +1185,9 @@ export default function JobsPage() {
                                 <Field label="Customer #" value={fullJobDetail.customerInformation.customerNumber} />
                   </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <Field label="Email" value={fullJobDetail.customerInformation.customerEmail} icon={Mail} />
+                                <div className="col-span-2">
+                                  <Field label="Email" value={fullJobDetail.customerInformation.customerEmail} icon={Mail} noTruncate />
+                                </div>
                                 <Field label="Phone" value={fullJobDetail.customerInformation.customerPhone} icon={Phone} />
                                 <Field label="Alt Contact" value={fullJobDetail.customerInformation.customerAltContact} />
                                 <Field label="Portal Link" value={fullJobDetail.customerInformation.customerPortalLink} />
@@ -1197,9 +1216,9 @@ export default function JobsPage() {
                               <Field label="ETA Date" value={formatDate(fullJobDetail.dateInformation.etaDate)} />
                               <Field label="Invoice Date" value={formatDate(fullJobDetail.dateInformation.invoiceDate)} />
                               <Field label="Desired Install" value={formatDate(fullJobDetail.dateInformation.desiredInstallDate)} />
-                              <Field label="Scheduled Install" value={(fullJobDetail.dateInformation as any).scheduledInstallDate} />
-                              <Field label="Measure Date" value={(fullJobDetail.dateInformation as any).measureDate} />
-                              <Field label="Booking Date" value={(fullJobDetail.dateInformation as any).bookingDate} />
+                              <Field label="Scheduled Install" value={formatDate((fullJobDetail.dateInformation as any).scheduledInstallDate)} />
+                              <Field label="Measure Date" value={formatDate((fullJobDetail.dateInformation as any).measureDate)} />
+                              <Field label="Booking Date" value={formatDate((fullJobDetail.dateInformation as any).bookingDate)} />
                               <Field label="Current Promise" value={formatDate(fullJobDetail.dateInformation.currentPromiseDate)} />
                               <Field label="Original Promise" value={formatDate(fullJobDetail.dateInformation.originalPromiseDate)} />
                               <Field label="Lead Creation" value={formatDate(fullJobDetail.dateInformation.leadCreationDate)} />
@@ -1257,7 +1276,9 @@ export default function JobsPage() {
                             {/* Sales Associate */}
                             <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                               <Field label="Sales Associate" value={fullJobDetail.generalInformation.salesAssociate} />
-                              <Field label="SA Email" value={fullJobDetail.generalInformation.salesAssociateEmail} />
+                              <div className="col-span-2">
+                                <Field label="SA Email" value={fullJobDetail.generalInformation.salesAssociateEmail} noTruncate />
+                              </div>
                               <Field label="SA Phone" value={fullJobDetail.generalInformation.salesAssociatePhone} />
                               <Field label="Invoice Comment" value={fullJobDetail.generalInformation.invoiceComment} />
                               <Field label="Reason Changed" value={fullJobDetail.generalInformation.reasonChanged} />
@@ -1273,7 +1294,7 @@ export default function JobsPage() {
                                       <Eye className="w-3.5 h-3.5 text-brand-green" />
                                       Scope of Work
                                     </p>
-                                    <p className="text-sm text-slate-700 leading-relaxed">{fullJobDetail.generalInformation.scopeOfWorkNotes}</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{stripHtml(fullJobDetail.generalInformation.scopeOfWorkNotes)}</p>
                                   </div>
                                 )}
                                 {fullJobDetail.generalInformation.deliveryInfoSchedulingNotes && (
@@ -1282,7 +1303,7 @@ export default function JobsPage() {
                                       <Navigation className="w-3.5 h-3.5 text-brand-green" />
                                       Scheduling Notes
                                     </p>
-                                    <p className="text-sm text-slate-700 leading-relaxed">{fullJobDetail.generalInformation.deliveryInfoSchedulingNotes}</p>
+                                    <p className="text-sm text-slate-700 leading-relaxed">{stripHtml(fullJobDetail.generalInformation.deliveryInfoSchedulingNotes)}</p>
                                   </div>
                                 )}
                               </div>
@@ -1313,8 +1334,8 @@ export default function JobsPage() {
                                     <p className="text-xs font-bold text-brand-green mb-2">Task #{n}</p>
                                     <div className="space-y-1.5">
                                       {resource && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Resource:</span> {resource}</p>}
-                                      {start && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Start:</span> {start}</p>}
-                                      {end && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">End:</span> {end}</p>}
+                                      {start && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Start:</span> {formatDate(start)}</p>}
+                                      {end && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">End:</span> {formatDate(end)}</p>}
             </div>
           </div>
                                 )
@@ -1328,7 +1349,9 @@ export default function JobsPage() {
                                   <Field label="Name" value={[fullJobDetail.schedulingInformation.scheduledResource.firstName, fullJobDetail.schedulingInformation.scheduledResource.lastName].filter(Boolean).join(' ')} />
                                   <Field label="Title" value={fullJobDetail.schedulingInformation.scheduledResource.jobTitle} />
                                   <Field label="Department" value={fullJobDetail.schedulingInformation.scheduledResource.department} />
-                                  <Field label="Email" value={fullJobDetail.schedulingInformation.scheduledResource.email} />
+                                  <div className="col-span-2">
+                                    <Field label="Email" value={fullJobDetail.schedulingInformation.scheduledResource.email} noTruncate />
+                                  </div>
                                   <Field label="Phone" value={fullJobDetail.schedulingInformation.scheduledResource.phone} />
                                 </div>
                               </div>
@@ -1354,7 +1377,9 @@ export default function JobsPage() {
                               <Field label="Name" value={[fullJobDetail.responsibleUserInformation.firstName, fullJobDetail.responsibleUserInformation.lastName].filter(Boolean).join(' ')} />
                               <Field label="Title" value={fullJobDetail.responsibleUserInformation.jobTitle} />
                               <Field label="Department" value={fullJobDetail.responsibleUserInformation.department} />
-                              <Field label="Email" value={fullJobDetail.responsibleUserInformation.email} />
+                              <div className="col-span-2">
+                                <Field label="Email" value={fullJobDetail.responsibleUserInformation.email} noTruncate />
+                              </div>
                               <Field label="Phone" value={fullJobDetail.responsibleUserInformation.phone} />
                             </div>
                           </SectionCard>
@@ -1364,10 +1389,14 @@ export default function JobsPage() {
                         {fullJobDetail.storeInformation && (fullJobDetail.storeInformation.storeName || fullJobDetail.storeInformation.storeNumber) && (
                           <SectionCard icon={Building2} title="Store" color="green">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <Field label="Store Name" value={fullJobDetail.storeInformation.storeName} />
+                              <div className="col-span-2">
+                                <Field label="Store Name" value={fullJobDetail.storeInformation.storeName} noTruncate />
+                              </div>
                               <Field label="Store #" value={fullJobDetail.storeInformation.storeNumber} />
                               <Field label="Region" value={fullJobDetail.storeInformation.region} />
-                              <Field label="Email" value={fullJobDetail.storeInformation.email} />
+                              <div className="col-span-2">
+                                <Field label="Email" value={fullJobDetail.storeInformation.email} noTruncate />
+                              </div>
                               <Field label="Phone" value={fullJobDetail.storeInformation.phone} />
                               <Field label="Fax" value={fullJobDetail.storeInformation.fax} />
                             </div>
@@ -1375,24 +1404,6 @@ export default function JobsPage() {
                               <div className="mt-3 flex items-start gap-2.5 bg-brand-green/5 rounded-xl p-3 border border-brand-green/20">
                                 <MapPin className="w-4 h-4 text-brand-green mt-0.5 flex-shrink-0" />
                                 <p className="text-sm font-medium text-slate-700">{fullJobDetail.storeInformation.address.fullAddress}</p>
-                              </div>
-                            )}
-                          </SectionCard>
-                        )}
-
-                        {/* Company */}
-                        {fullJobDetail.companyInformation && fullJobDetail.companyInformation.name && (
-                          <SectionCard icon={Briefcase} title="Company" color="green">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <Field label="Name" value={fullJobDetail.companyInformation.name} />
-                              <Field label="Email" value={fullJobDetail.companyInformation.email} />
-                              <Field label="Phone" value={fullJobDetail.companyInformation.phone} />
-                              <Field label="Fax" value={fullJobDetail.companyInformation.fax} />
-                            </div>
-                            {fullJobDetail.companyInformation.address?.fullAddress && (
-                              <div className="mt-3 flex items-start gap-2.5 bg-cyan-50/50 rounded-xl p-3 border border-cyan-100">
-                                <MapPin className="w-4 h-4 text-cyan-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm font-medium text-slate-700">{fullJobDetail.companyInformation.address.fullAddress}</p>
                               </div>
                             )}
                           </SectionCard>
@@ -1415,7 +1426,7 @@ export default function JobsPage() {
                                       <span className="text-xs text-slate-400 border-l border-slate-200 pl-2">{note.orderNoteTypeDescription}</span>
                                     )}
                       </div>
-                                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{note.note}</p>
+                                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{stripHtml(note.note)}</p>
                         </div>
                               ))}
                         </div>
@@ -1451,11 +1462,11 @@ export default function JobsPage() {
               className="fixed inset-0 z-50 overflow-y-auto"
             >
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={closeEditModal} />
-              <div className="relative min-h-screen flex items-start justify-center p-4">
+              <div className="relative min-h-screen flex items-start justify-center p-4 pointer-events-none">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden my-4"
+                  className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden my-4 pointer-events-auto"
                 >
                   {/* Header */}
                   <div className="bg-gradient-to-br from-amber-500 to-amber-700 px-8 py-6 relative overflow-hidden">
@@ -1673,7 +1684,7 @@ function DetailItem({ icon: Icon, label, value, small }: { icon: typeof Briefcas
       </div>
       <div className="min-w-0">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
-        <p className={`text-slate-900 font-medium ${small ? 'text-xs leading-tight' : 'text-sm truncate'}`}>{value}</p>
+        <p className={`text-slate-900 font-medium ${small ? 'text-xs leading-tight' : 'text-sm break-all'}`}>{value}</p>
                                 </div>
                               </div>
                             )
@@ -1712,7 +1723,7 @@ function SectionCard({ icon: Icon, title, color, children }: { icon: typeof Cale
   )
 }
 
-function Field({ label, value, icon: Icon, highlight }: { label: string; value: string | null | undefined; icon?: typeof Calendar; highlight?: boolean }) {
+function Field({ label, value, icon: Icon, highlight, noTruncate }: { label: string; value: string | null | undefined; icon?: typeof Calendar; highlight?: boolean; noTruncate?: boolean }) {
   if (!value) return null
   return (
     <div className="group">
@@ -1721,7 +1732,7 @@ function Field({ label, value, icon: Icon, highlight }: { label: string; value: 
           {Icon && <Icon className="w-3 h-3" />}
           {label}
         </p>
-        <p className={`text-sm font-semibold truncate ${highlight ? 'text-brand-green' : 'text-slate-800'}`}>{value}</p>
+        <p className={`text-sm font-semibold ${noTruncate ? 'break-all' : 'truncate'} ${highlight ? 'text-brand-green' : 'text-slate-800'}`}>{value}</p>
       </div>
     </div>
   )
