@@ -6,6 +6,9 @@ import { uploadFile, deleteFile } from '@/lib/storage'
 export const maxDuration = 30
 export const runtime = 'nodejs'
 
+const STATUS_ONLY_URL_PREFIX = 'status-only:'
+const STATUS_ONLY_NULL_NAME = 'Not needed (NULL)'
+
 // All document types now support multiple uploads
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024 // 10MB
 const ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'])
@@ -48,11 +51,55 @@ export async function POST(
     // Handle JSON body (for client-side blob uploads)
     if (contentType.includes('application/json')) {
       const body = await request.json()
-      const { url, name, type } = body
+      const { url, name, type, verificationLinkStatus } = body
+      const statusNorm = String(verificationLinkStatus || '').trim().toLowerCase()
 
-      if (!url || !type) {
+      if (!type) {
+        return NextResponse.json({ error: 'Document type is required' }, { status: 400 })
+      }
+
+      // Status-only marker: not needed (NULL) — no file upload required
+      if (statusNorm === 'null' && !url) {
+        const existingStub = await prisma.document.findFirst({
+          where: {
+            installerId,
+            type,
+            OR: [
+              { verificationLinkStatus: 'null' },
+              { url: { startsWith: STATUS_ONLY_URL_PREFIX } },
+            ],
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        if (existingStub) {
+          const document = await prisma.document.update({
+            where: { id: existingStub.id },
+            data: {
+              verificationLinkStatus: 'null',
+              name: STATUS_ONLY_NULL_NAME,
+              url: `${STATUS_ONLY_URL_PREFIX}null`,
+            },
+          })
+          return NextResponse.json({ document })
+        }
+
+        const document = await prisma.document.create({
+          data: {
+            installerId,
+            type,
+            name: STATUS_ONLY_NULL_NAME,
+            url: `${STATUS_ONLY_URL_PREFIX}null`,
+            verificationLinkStatus: 'null',
+            verified: false,
+          },
+        })
+        return NextResponse.json({ document })
+      }
+
+      if (!url) {
         return NextResponse.json(
-          { error: 'URL and type are required' },
+          { error: 'URL is required unless marking as NULL (not needed)' },
           { status: 400 }
         )
       }

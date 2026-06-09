@@ -18,7 +18,6 @@ import {
   Users,
   X,
   LogOut,
-  User,
   FileCheck,
   ClipboardList,
   ClipboardCheck,
@@ -27,6 +26,7 @@ import {
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { SessionUserAvatar } from '@/components/SessionUserAvatar'
 
 type Props = {
   pathname: string
@@ -284,23 +284,20 @@ export function AdminMobileMenu({ pathname }: Props) {
 
           <div className="pt-4 mt-4 border-t border-slate-200 pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-                {session?.user?.image ? (
-                  <Image
-                    src={session.user.image}
-                    alt={session.user?.name || session.user?.email || 'Admin'}
-                    width={40}
-                    height={40}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <User className="w-5 h-5 text-brand-green" />
-                )}
-              </div>
+              <SessionUserAvatar
+                src={session?.user?.image}
+                name={session?.user?.name}
+                email={session?.user?.email}
+                size={40}
+                fallbackClassName="bg-brand-green/10 text-brand-green"
+              />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-primary-900 text-sm truncate">
                   {session?.user?.name || session?.user?.email || 'Admin'}
                 </div>
+                {((session?.user as any)?.jobTitle) && (
+                  <div className="text-[11px] text-primary-400 font-medium truncate">{(session?.user as any).jobTitle}</div>
+                )}
                 <div className="text-xs text-primary-500 truncate">{session?.user?.email || 'Admin User'}</div>
               </div>
             </div>

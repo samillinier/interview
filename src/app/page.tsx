@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, LogOut, ChevronDown, Play } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { SessionUserAvatar } from '@/components/SessionUserAvatar'
 
 const rotatingWords = [
   { text: 'Automate', color: 'text-brand-green' },
@@ -64,19 +65,13 @@ export default function HomePage() {
                     href="/dashboard"
                     className="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-100 transition-colors"
                   >
-                    {session.user?.image ? (
-                      <Image
-                        src={session.user.image}
-                        alt={session.user.name || 'User'}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-full ring-2 ring-brand-green/20"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center text-white font-medium ring-2 ring-brand-green/20">
-                        {session.user?.name?.charAt(0) || session.user?.email?.charAt(0)}
-                      </div>
-                    )}
+                    <SessionUserAvatar
+                      src={session.user?.image}
+                      name={session.user?.name}
+                      email={session.user?.email}
+                      size={40}
+                      className="ring-2 ring-brand-green/20"
+                    />
                     <ChevronDown className="w-4 h-4 text-slate-500 hidden sm:block" />
                   </Link>
                   

@@ -3,12 +3,100 @@
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, Suspense } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, Shield, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowRight, AlertCircle } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+
+type LoginSlide = {
+  src: string
+  alt: string
+  /** cover = fills entire panel; contain = padded product shot */
+  fit: 'cover' | 'contain'
+  objectPosition?: string
+}
+
+const LOGIN_SLIDES: LoginSlide[] = [
+  {
+    src: 'https://floorinteriorservices.com/wp-content/uploads/2026/04/Psd-scaled.png',
+    alt: 'Floor Interior Services — job portal branding',
+    fit: 'contain',
+  },
+  {
+    src: 'https://floorinteriorservices.com/wp-content/uploads/2026/06/Signage-Mockup-scaled.jpg',
+    alt: 'Floor Interior Services signage mockup',
+    fit: 'contain',
+  },
+  {
+    src: 'https://floorinteriorservices.com/wp-content/uploads/2026/06/3220.png',
+    alt: 'Floor Interior Services office branding',
+    fit: 'cover',
+    objectPosition: 'center center',
+  },
+]
+
+const SLIDE_INTERVAL_MS = 10000
+
+function LoginBrandSlider() {
+  const [index, setIndex] = useState(0)
+  const slideCount = LOGIN_SLIDES.length
+
+  useEffect(() => {
+    LOGIN_SLIDES.forEach((s) => {
+      const img = new window.Image()
+      img.src = s.src
+    })
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setIndex((i) => (i + 1) % slideCount)
+    }, SLIDE_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [slideCount])
+
+  const slide = LOGIN_SLIDES[index]
+  const isFullBleed = slide.fit === 'cover'
+
+  return (
+    <div className="absolute inset-0 h-full w-full">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={slide.src}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.45, ease: 'easeInOut' }}
+          className="absolute inset-0 h-full w-full"
+        >
+          {isFullBleed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={slide.src}
+              alt={slide.alt}
+              className="h-full w-full object-cover"
+              style={{ objectPosition: slide.objectPosition ?? 'center center' }}
+              draggable={false}
+            />
+          ) : (
+            <div className="absolute inset-[-8%]">
+              <Image
+                src={slide.src}
+                alt={slide.alt}
+                fill
+                className="object-contain object-center drop-shadow-2xl"
+                priority={index === 0}
+                sizes="(min-width: 1024px) 70vw, 0px"
+              />
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  )
+}
 
 function LoginForm() {
   const router = useRouter()
@@ -21,17 +109,14 @@ function LoginForm() {
     // Check for error in URL parameters
     const errorParam = searchParams?.get('error')
     if (errorParam) {
-      // Get the current origin (works for both localhost and production)
-      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : ''
-      const callbackUrl = `${currentOrigin}/api/auth/callback/azure-ad`
+      // Any OAuth error means stale state — clear and redirect to clean login
+      if (errorParam === 'OAuthCallback' || errorParam === 'OAuthSignin') {
+        // Navigate to clean login with no query params
+        window.location.href = '/login'
+        return
+      }
       
       switch (errorParam) {
-        case 'OAuthSignin':
-          setError('Sign-in failed. Please check your Microsoft account credentials and try again.')
-          break
-        case 'OAuthCallback':
-          setError(`Authentication callback failed. This usually means the redirect URI in Azure AD doesn't match. Please check that ${callbackUrl} is configured in Azure Portal.`)
-          break
         case 'OAuthCreateAccount':
           setError('Unable to create account. Please contact support.')
           break
@@ -42,7 +127,7 @@ function LoginForm() {
           setError('An error occurred during sign-in. Please try again.')
       }
     }
-  }, [searchParams])
+  }, [searchParams, router])
 
   const handleMicrosoftLogin = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -62,32 +147,37 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
-      {/* Background decorative elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-brand-green/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 -left-40 w-80 h-80 bg-brand-yellow/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-orange/5 rounded-full blur-3xl" />
+    <div className="min-h-screen flex">
+      {/* Left Panel — Brand image */}
+      <div className="hidden lg:flex lg:flex-1 relative min-h-screen overflow-hidden bg-brand-green">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.15 }}
+          className="absolute inset-0 h-full w-full"
+        >
+          <LoginBrandSlider />
+        </motion.div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative w-full max-w-md z-10"
-      >
-        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 md:p-10 border border-slate-100">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Link href="/">
-              <Image
-                src={logo}
-                alt="Floor Interior Service"
-                width={72}
-                height={72}
-                className="w-18 h-18 object-contain hover:opacity-80 transition-opacity"
-              />
-            </Link>
+      {/* Right Panel — Login Form */}
+      <div className="w-full lg:w-[420px] flex flex-col min-h-screen p-4 sm:p-8 bg-white">
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="flex flex-1 flex-col w-full max-w-sm lg:max-w-none lg:w-full mx-auto lg:mx-0"
+        >
+          <div className="flex-1 flex flex-col justify-center">
+          {/* Mobile logo — visible only on small screens */}
+          <div className="flex justify-center mb-6 lg:hidden">
+            <Image
+              src={logo}
+              alt="Floor Interior Service"
+              width={56}
+              height={56}
+              className="w-14 h-14 object-contain"
+            />
           </div>
 
           {/* Header */}
@@ -95,7 +185,7 @@ function LoginForm() {
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
               Welcome Back
             </h1>
-            <p className="text-slate-600">
+            <p className="text-slate-500">
               Sign in with your Microsoft account to continue
             </p>
           </div>
@@ -143,35 +233,6 @@ function LoginForm() {
             )}
           </button>
 
-          {/* Security Info */}
-          <div className="mt-8 pt-6 border-t border-slate-200">
-            <div className="flex items-start gap-3 text-sm text-slate-600">
-              <Shield className="w-5 h-5 text-brand-green flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-slate-700 mb-1">Secure Authentication</p>
-                <p className="text-slate-500">
-                  Your credentials are securely handled by Microsoft. We never see your password.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Features */}
-          <div className="mt-6 space-y-2">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0" />
-              <span>Single sign-on with your Microsoft account</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0" />
-              <span>Access to all your dashboard features</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <CheckCircle2 className="w-4 h-4 text-brand-green flex-shrink-0" />
-              <span>Secure and encrypted connection</span>
-            </div>
-          </div>
-
           {/* Back to Home */}
           <div className="mt-8 text-center">
             <Link
@@ -182,13 +243,13 @@ function LoginForm() {
               Back to Home
             </Link>
           </div>
-        </div>
+          </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Floor Interior Service © {new Date().getFullYear()}
-        </p>
-      </motion.div>
+          <p className="shrink-0 pt-8 pb-2 text-center text-xs text-slate-400">
+            Floor Interior Service &copy; {new Date().getFullYear()}
+          </p>
+        </motion.div>
+      </div>
     </div>
   )
 }
@@ -196,7 +257,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white grid-pattern">
         <LogoHeartbeatLoader />
       </div>
     }>

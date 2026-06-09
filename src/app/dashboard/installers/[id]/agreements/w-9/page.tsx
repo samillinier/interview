@@ -34,6 +34,7 @@ import { signOut } from 'next-auth/react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 type W9FormData = {
@@ -82,7 +83,7 @@ export default function AdminViewW9Page({
   const router = useRouter()
   const pathname = usePathname()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { sidebarOpen } = useSidebarOpen()
   const [installerId, setInstallerId] = useState<string | null>(null)
   const [installer, setInstaller] = useState<InstallerData | null>(null)
   const [agreement, setAgreement] = useState<AgreementData | null>(null)
@@ -200,7 +201,7 @@ export default function AdminViewW9Page({
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
+      <AdminSidebar pathname={pathname} />
 
       <AdminMobileMenu pathname={pathname} />
 

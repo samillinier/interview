@@ -112,7 +112,6 @@ export async function POST(request: NextRequest) {
       { key: 'licenseExpiry', value: (installer as any).licenseExpiry },
       { key: 'llrpExpiry', value: installer.llrpExpiry },
       { key: 'btrExpiry', value: installer.btrExpiry },
-      { key: 'workersCompExemExpiry', value: installer.workersCompExemExpiry },
       { key: 'generalLiabilityExpiry', value: installer.generalLiabilityExpiry },
       { key: 'employersLiabilityExpiry', value: installer.employersLiabilityExpiry },
     ]
@@ -124,8 +123,7 @@ export async function POST(request: NextRequest) {
         expiryFields.push({ key: 'workersCompExemExpiry', value: d, nameSuffix: ` (Cert ${idx + 1})` })
       })
     } else {
-      // keep existing single field behavior
-      // (already included via workersCompExemExpiry above)
+      expiryFields.push({ key: 'workersCompExemExpiry', value: installer.workersCompExemExpiry })
     }
 
     // Automobile Liability can have multiple policies
@@ -295,12 +293,16 @@ export async function GET(request: NextRequest) {
     })
 
     const installerIds = installers.map((i) => i.id)
-    const sunbizDocs = installerIds.length
+
+    // Fetch all documents for active installers
+    const allDocs = installerIds.length
       ? await prisma.document.findMany({
-          where: { installerId: { in: installerIds }, type: 'sunbiz' },
-          select: { installerId: true, createdAt: true, verificationLinkStatus: true },
+          where: { installerId: { in: installerIds } },
+          select: { installerId: true, type: true, createdAt: true, verificationLinkStatus: true },
         })
       : []
+
+    const sunbizDocs = allDocs.filter((d) => d.type === 'sunbiz')
 
     const sunbizByInstaller = new Map<
       string,
@@ -327,7 +329,7 @@ export async function GET(request: NextRequest) {
       installerId: string
       installerName: string
       photoUrl?: string | null
-      expiringItems: Array<{ name: string; expiryDate: Date }>
+      expiringItems: Array<{ name: string; expiryDate: Date; status: 'expiring' | 'expired' }>
     }> = []
 
     for (const installer of installers) {
@@ -351,7 +353,6 @@ export async function GET(request: NextRequest) {
         { key: 'licenseExpiry', value: (installer as any).licenseExpiry },
         { key: 'llrpExpiry', value: installer.llrpExpiry },
         { key: 'btrExpiry', value: installer.btrExpiry },
-        { key: 'workersCompExemExpiry', value: installer.workersCompExemExpiry },
         { key: 'generalLiabilityExpiry', value: installer.generalLiabilityExpiry },
         { key: 'employersLiabilityExpiry', value: installer.employersLiabilityExpiry },
       ]
@@ -361,6 +362,8 @@ export async function GET(request: NextRequest) {
         workersCompDates.forEach((d, idx) => {
           expiryFields.push({ key: 'workersCompExemExpiry', value: d, nameSuffix: ` (Cert ${idx + 1})` })
         })
+      } else {
+        expiryFields.push({ key: 'workersCompExemExpiry', value: installer.workersCompExemExpiry })
       }
 
       const autoDates = parseDateJsonArray((installer as any).automobileLiabilityExpiryDates)

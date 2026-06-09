@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Calendar, Plus, Trash2, X } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Calendar, CheckCircle2, Plus, Trash2, X } from 'lucide-react'
+import { NULL_ATTACHMENT_HATCH_STYLE } from '@/lib/nullAttachmentStyle'
 
 function pad2(n: number) {
   return String(n).padStart(2, '0')
@@ -31,7 +32,6 @@ function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | '
   const d = parseDateOnlyToUTC(expiryDate)
   if (!d) return 'none'
 
-  // Compare at midnight UTC to avoid timezone day-shifts (the root cause of +/- 1 day bugs)
   const expiry = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
   const now = new Date()
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
@@ -51,7 +51,6 @@ function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | '
 function formatDisplayDate(dateString: string) {
   const d = parseDateOnlyToUTC(dateString)
   if (!d) return 'N/A'
-  // Force UTC so YYYY-MM-DD never renders as the "previous/next day" in local timezones.
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
@@ -60,7 +59,6 @@ function normalize(values: string[]) {
     .map((v) => (v || '').trim())
     .filter(Boolean)
     .map((v) => {
-      // If already in YYYY-MM-DD format, validate and return
       if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
         const d = parseDateOnlyToUTC(v)
         if (d && d.getUTCFullYear() >= 1000 && d.getUTCFullYear() <= 2099) {
@@ -68,15 +66,11 @@ function normalize(values: string[]) {
         }
       }
       
-      // Try parsing as date
       const d = new Date(v)
       if (Number.isNaN(d.getTime())) return null
       
-      // Check if year is reasonable (not year 20 AD)
       const year = d.getFullYear()
       if (year < 1000 || year > 2099) {
-        // If year is too small, it might be a malformed date
-        // Try to fix common issues like "12/12/0020" -> "2020-12-12"
         const match = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/)
         if (match) {
           const [, month, day, yearStr] = match
@@ -93,13 +87,10 @@ function normalize(values: string[]) {
         return null
       }
       
-      // Convert using UTC components to avoid timezone-related +/- 1 day shifts
       return toYMDUTC(d)
     })
     .filter(Boolean) as string[]
 
-  // IMPORTANT: Do NOT de-dupe. Users can have multiple policies/certificates expiring on the same day.
-  // Keep duplicates, just sort for consistent display.
   cleaned.sort((a, b) => {
     const da = parseDateOnlyToUTC(a)
     const db = parseDateOnlyToUTC(b)
@@ -114,67 +105,142 @@ export function MultiExpirationDatePicker({
   onChange,
   isEditing,
   addLabel = 'Add date',
+  onNullToggle,
+  initialNullActive = false,
 }: {
   label: string
   values: string[]
   onChange: (next: string[]) => void
   isEditing: boolean
   addLabel?: string
+  onNullToggle?: (active: boolean) => void
+  initialNullActive?: boolean
 }) {
-  // Use local state to track raw input values while typing
   const [localValues, setLocalValues] = useState<string[]>(() => {
-    const normalized = normalize(values || [])
-    return normalized.length === 0 ? [''] : normalized
+    const n = normalize(values || [])
+    return n.length === 0 ? [''] : n
   })
+  const [nullActive, setNullActive] = useState(initialNullActive)
+  const prevValuesRef = useRef<string[]>([])
 
-  // Sync local state with prop values when they change externally (but not while user is typing)
+  const setNullActiveAndNotify = useCallback((v: boolean) => {
+    setNullActive(v)
+    onNullToggle?.(v)
+  }, [onNullToggle])
+
+  // Sync local state with prop values (does NOT depend on localValues to avoid infinite loop)
   useEffect(() => {
     if (!isEditing) {
-      const normalized = normalize(values || [])
-      setLocalValues(normalized.length === 0 ? [''] : normalized)
-    } else {
-      // When entering edit mode, ensure we have at least one input field if values are empty
-      const normalized = normalize(values || [])
-      const currentNormalized = normalize(localValues)
-      if (normalized.length === 0 && currentNormalized.length === 0) {
-        setLocalValues([''])
-      } else if (normalized.length > 0) {
-        // Sync with prop values when entering edit mode if they exist
-        setLocalValues(normalized)
-      }
+      const n = normalize(values || [])
+      setLocalValues(n.length === 0 ? [''] : n)
+    }
+    // In edit mode, only sync when values prop becomes non-empty and local has no valid dates
+  }, [values, isEditing])
+
+  // Reset nullActive when values become non-empty
+  useEffect(() => {
+    if (!isEditing && normalize(values || []).length > 0) {
+      setNullActive(false)
+      prevValuesRef.current = []
     }
   }, [values, isEditing])
 
+  // Sync initialNullActive from parent
+  useEffect(() => {
+    setNullActive(initialNullActive)
+  }, [initialNullActive])
+
   const normalized = normalize(localValues)
   const statuses = normalized.map((v) => getExpirationStatus(v))
-  const overallStatus =
-    statuses.includes('expired') ? 'expired' : statuses.includes('expiring') ? 'expiring' : statuses.includes('valid') ? 'valid' : 'none'
+  let overallStatus: 'expired' | 'expiring' | 'valid' | 'none' = 'none'
+  if (statuses.includes('expired')) {
+    overallStatus = 'expired'
+  } else if (statuses.includes('expiring')) {
+    overallStatus = 'expiring'
+  } else if (statuses.includes('valid')) {
+    overallStatus = 'valid'
+  }
 
-  const borderBg =
-    overallStatus === 'expired'
-      ? 'border-red-500 bg-red-50'
-      : overallStatus === 'expiring'
-        ? 'border-yellow-500 bg-yellow-50'
-        : overallStatus === 'valid'
-          ? 'border-green-500 bg-green-50'
-          : 'border-slate-200 bg-slate-50/50'
+  let borderBg = 'border-slate-200 bg-slate-50/50'
+  if (overallStatus === 'expired') {
+    borderBg = 'border-red-500 bg-red-50'
+  } else if (overallStatus === 'expiring') {
+    borderBg = 'border-yellow-500 bg-yellow-50'
+  } else if (overallStatus === 'valid') {
+    borderBg = 'border-green-500 bg-green-50'
+  }
 
-  const badge =
-    overallStatus === 'expired' ? (
-      <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-1 rounded-full">Expired</span>
-    ) : overallStatus === 'expiring' ? (
-      <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Expiring Soon</span>
-    ) : overallStatus === 'valid' ? (
-      <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Valid</span>
-    ) : null
+  let badge: React.ReactNode = null
+  if (overallStatus === 'expired') {
+    badge = <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-1 rounded-full">Expired</span>
+  } else if (overallStatus === 'expiring') {
+    badge = <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Expiring Soon</span>
+  } else if (overallStatus === 'valid') {
+    badge = <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Valid</span>
+  }
+
+  const handleDeactivateNull = useCallback(() => {
+    if (prevValuesRef.current.length > 0) {
+      onChange(prevValuesRef.current)
+      prevValuesRef.current = []
+    }
+    setNullActiveAndNotify(false)
+  }, [onChange, setNullActiveAndNotify])
+
+  const handleActivateNull = useCallback(() => {
+    setNullActiveAndNotify(true)
+  }, [setNullActiveAndNotify])
+
+  const handleSetNull = useCallback(() => {
+    prevValuesRef.current = [...normalized]
+    onChange([])
+    setNullActiveAndNotify(true)
+  }, [normalized, onChange, setNullActiveAndNotify])
+
+  const handleEditSetNull = useCallback((currentVals: string[]) => {
+    prevValuesRef.current = [...normalize(currentVals)]
+    setLocalValues([''])
+    onChange([])
+    setNullActiveAndNotify(true)
+  }, [onChange, setNullActiveAndNotify])
 
   if (!isEditing) {
+    if (nullActive) {
+      return (
+        <div className="group relative p-4 rounded-xl border-2 border-emerald-300 bg-emerald-50 hover:shadow-sm transition-all duration-200">
+          <span className="absolute inset-0 rounded-xl pointer-events-none opacity-90" style={NULL_ATTACHMENT_HATCH_STYLE} aria-hidden />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
+              <div className="flex items-center gap-2">
+                {badge}
+                <button type="button" onClick={handleDeactivateNull} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0 border-slate-400 bg-slate-200 text-slate-800" title="Deactivate NULL">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-700" />
+                  NULL
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <p className="font-semibold text-slate-900">N/A</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     if (normalized.length === 0) {
       return (
         <div className={`group relative p-4 rounded-xl border-2 ${borderBg} hover:shadow-sm transition-all duration-200`}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
-            {badge}
+            <div className="flex items-center gap-2">
+              {badge}
+              <button type="button" onClick={handleActivateNull} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0 border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Set to NULL">
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                NULL
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-slate-400" />
@@ -188,7 +254,13 @@ export function MultiExpirationDatePicker({
       <div className={`group relative p-4 rounded-xl border-2 ${borderBg} hover:shadow-sm transition-all duration-200`}>
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
-          {badge}
+          <div className="flex items-center gap-2">
+            {badge}
+            <button type="button" onClick={handleSetNull} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0 border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Set to NULL">
+              <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+              NULL
+            </button>
+          </div>
         </div>
         <div className="space-y-1">
           {normalized.map((v, idx) => (
@@ -202,25 +274,27 @@ export function MultiExpirationDatePicker({
     )
   }
 
-  // Ensure at least one empty string for input
   const inputValues = localValues.length === 0 ? [''] : localValues
 
   return (
-    <div className={`group relative p-4 rounded-xl border-2 ${borderBg} hover:shadow-sm transition-all duration-200`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`group relative p-4 rounded-xl border-2 ${nullActive ? 'border-emerald-300 bg-emerald-50' : borderBg} hover:shadow-sm transition-all duration-200`}>
+      {nullActive && <span className="absolute inset-0 rounded-xl pointer-events-none opacity-90" style={NULL_ATTACHMENT_HATCH_STYLE} aria-hidden />}
+      <div className="flex items-center justify-between mb-3 relative z-10">
         <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
         <div className="flex items-center gap-2">
           {badge}
-          {normalize(inputValues).length > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setLocalValues([''])
-                onChange([])
-              }}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-white/80 hover:text-slate-700"
-              title="Clear all dates"
-            >
+          <button type="button" onClick={() => {
+            if (nullActive) {
+              handleDeactivateNull()
+            } else {
+              handleEditSetNull(inputValues)
+            }
+          }} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0 ${nullActive ? 'border-slate-400 bg-slate-200 text-slate-800' : normalize(inputValues).length === 0 ? 'border-slate-400 bg-slate-200 text-slate-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`} title={nullActive ? 'Deactivate NULL' : normalize(inputValues).length === 0 ? 'NULL (cleared)' : 'Set to NULL'}>
+            <CheckCircle2 className={`w-3.5 h-3.5 ${nullActive || normalize(inputValues).length === 0 ? 'text-slate-700' : 'text-slate-400'}`} />
+            NULL
+          </button>
+          {!nullActive && normalize(inputValues).length > 0 ? (
+            <button type="button" onClick={() => handleEditSetNull(inputValues)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-white/80 hover:text-slate-700" title="Clear all dates">
               <X className="w-3.5 h-3.5" />
               Clear
             </button>
@@ -228,82 +302,52 @@ export function MultiExpirationDatePicker({
         </div>
       </div>
 
-      <div className="space-y-2">
+      {nullActive ? (
+        <div className="relative z-10 flex items-center gap-2 p-2">
+          <Calendar className="w-4 h-4 text-slate-400" />
+          <p className="font-semibold text-slate-900">N/A (NULL)</p>
+        </div>
+      ) : (
+        <div className="space-y-2 relative z-10">
         {inputValues.map((v, idx) => (
           <div key={`${idx}-${v || ''}`} className="flex items-center gap-2">
-            <input
-              type="date"
-              value={v || ''}
-              max="2099-12-31"
-              onChange={(e) => {
-                // Update local state immediately for responsive typing
-                const next = [...inputValues]
-                next[idx] = e.target.value
-                setLocalValues(next)
-                // Also update parent immediately so save button captures the current value
-                // Normalize but keep empty strings for now (will be filtered on save)
-                const normalized = normalize(next)
-                onChange(normalized)
-              }}
-              onBlur={(e) => {
-                // Normalize and sync with parent when user finishes editing
-                // Use the current input value directly to ensure we capture what the user entered
-                const currentValue = e.target.value
-                const next = [...localValues]
-                next[idx] = currentValue
-                const normalized = normalize(next)
-                // Always ensure at least one field when editing, even if empty
-                const finalValues = normalized.length === 0 && isEditing ? [''] : normalized
-                setLocalValues(finalValues)
-                onChange(normalized) // Send normalized (non-empty) values to parent
-              }}
-              className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-            />
+            <input type="date" value={v || ''} max="2099-12-31" onChange={(e) => {
+              const next = [...inputValues]
+              next[idx] = e.target.value
+              setLocalValues(next)
+              onChange(normalize(next))
+            }} onBlur={(e) => {
+              const currentValue = e.target.value
+              const next = [...localValues]
+              next[idx] = currentValue
+              const n = normalize(next)
+              const finalValues = n.length === 0 && isEditing ? [''] : n
+              setLocalValues(finalValues)
+              onChange(n)
+            }} className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900" />
             {inputValues.length > 1 && (
-              <button
-                type="button"
-                onClick={() => {
-                  const next = inputValues.filter((_, i) => i !== idx)
-                  const normalized = normalize(next)
-                  setLocalValues(normalized.length === 0 ? [''] : normalized)
-                  onChange(normalized)
-                }}
-                className="p-2 text-slate-500 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
-                title="Remove"
-              >
+              <button type="button" onClick={() => {
+                const next = inputValues.filter((_, i) => i !== idx)
+                const n = normalize(next)
+                setLocalValues(n.length === 0 ? [''] : n)
+                onChange(n)
+              }} className="p-2 text-slate-500 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors" title="Remove">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
             {inputValues.length === 1 && v ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setLocalValues([''])
-                  onChange([])
-                }}
-                className="p-2 text-slate-500 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
-                title="Clear date"
-              >
+              <button type="button" onClick={() => { setLocalValues(['']); onChange([]) }} className="p-2 text-slate-500 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors" title="Clear date">
                 <X className="w-4 h-4" />
               </button>
             ) : null}
           </div>
         ))}
-
-        <button
-          type="button"
-          onClick={() => {
-            // Add a new empty input so users can pick any date (avoids de-duping when "today"
-            // is already in the list and supports adding many dates easily).
-            setLocalValues([...inputValues, ''])
-          }}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-brand-green hover:text-brand-green-dark"
-        >
+        <button type="button" onClick={() => setLocalValues([...inputValues, ''])} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-green hover:text-brand-green-dark">
           <Plus className="w-4 h-4" />
           {addLabel}
         </button>
       </div>
+      )}
     </div>
   )
 }
-

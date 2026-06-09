@@ -58,6 +58,7 @@ import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 
@@ -320,7 +321,7 @@ function DashboardPageContent() {
   const [certificateRiskFilter, setCertificateRiskFilter] = useState(urlCertificateRisk)
   const [workroomFilter, setWorkroomFilter] = useState(urlWorkroom)
   const [countyFilter, setCountyFilter] = useState(urlCounty)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { sidebarOpen } = useSidebarOpen()
   const [currentPage, setCurrentPage] = useState(urlPage)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
@@ -401,7 +402,10 @@ function DashboardPageContent() {
     const keep = (itemName: string) => Boolean(expiryTypeFilter[getExpiryAbbrevForItemName(itemName)])
     const q = expiryInstallerSearch.trim().toLowerCase()
     const statusEnabled = expiryStatusFilter
-    const keepStatus = (s: 'expired' | 'expiring') => (s === 'expired' ? statusEnabled.expired : statusEnabled.expiring)
+    const keepStatus = (s: 'expired' | 'expiring') => {
+      if (s === 'expired') return statusEnabled.expired
+      return statusEnabled.expiring
+    }
 
     const rows = expiringItems
       .map((row) => {
@@ -421,7 +425,7 @@ function DashboardPageContent() {
     for (const row of filteredExpiryItems) {
       for (const i of row.items) {
         if (i.status === 'expired') expired++
-        else expiring++
+        else if (i.status === 'expiring') expiring++
       }
     }
     return { expired, expiring, total: expired + expiring }
@@ -1614,7 +1618,7 @@ function DashboardPageContent() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
+      <AdminSidebar pathname={pathname} />
 
       <AdminMobileMenu pathname={pathname} />
 
@@ -1886,7 +1890,7 @@ function DashboardPageContent() {
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 pt-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pt-4">
                   <motion.div
                     whileHover={{ y: -2, transition: { duration: 0.2 } }}
                     className="bg-red-50 border-2 border-red-200 rounded-xl p-5"
@@ -1931,7 +1935,7 @@ function DashboardPageContent() {
                   </div>
                 ) : filteredExpiryItems.length > 0 ? (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Installers with Expiring/Expired Items</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Installers with Expiring or Expired Items</h3>
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {filteredExpiryItems.map(
                         (
@@ -1967,7 +1971,12 @@ function DashboardPageContent() {
                                 <p className="font-semibold text-slate-900">{item.installerName}</p>
                                 <p className="text-xs text-slate-500">
                                   {item.items.length} item{item.items.length !== 1 ? 's' : ''}{' '}
-                                  {item.items.some((i: { status: 'expired' | 'expiring' }) => i.status === 'expired') ? 'expired' : 'expiring'}
+                                  {(() => {
+                                    const s = item.items as Array<{ status: string }>
+                                    const hasExpired = s.some((i) => i.status === 'expired')
+                                    if (hasExpired) return 'expired'
+                                    return 'expiring'
+                                  })()}
                                 </p>
                               </div>
                             </div>
@@ -1978,16 +1987,18 @@ function DashboardPageContent() {
                               (
                                 expItem: { name: string; expiryDate: string; status: 'expired' | 'expiring' },
                                 expIdx: number
-                              ) => (
+                              ) => {
+                                const isExpired = expItem.status === 'expired'
+                                return (
                               <span
                                 key={expIdx}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                  expItem.status === 'expired'
+                                  isExpired
                                     ? 'bg-red-100 text-red-700 border border-red-200'
                                     : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                                 }`}
                               >
-                                {expItem.status === 'expired' ? (
+                                {isExpired ? (
                                   <XCircle className="w-3.5 h-3.5" />
                                 ) : (
                                   <AlertTriangle className="w-3.5 h-3.5" />
@@ -1995,7 +2006,7 @@ function DashboardPageContent() {
                                 <span className="font-semibold">{expItem.name}</span>
                                 <span className="text-xs opacity-75">• {expItem.expiryDate}</span>
                               </span>
-                            ))}
+                            )})}
                           </div>
                         </motion.div>
                       ))}
@@ -2005,7 +2016,7 @@ function DashboardPageContent() {
                   <div className="text-center py-12">
                     <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
                     <p className="text-slate-600 font-medium">All certificates and insurance are up to date!</p>
-                    <p className="text-sm text-slate-400 mt-1">No expiring or expired items found</p>
+                    <p className="text-sm text-slate-400 mt-1">No expiring, expired, or document-required items found</p>
                   </div>
                 )}
               </motion.div>
@@ -2489,15 +2500,8 @@ function DashboardPageContent() {
                 </button>
                 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(20, totalPages) }, (_, i) => {
-                    const visiblePageCount = Math.min(20, totalPages)
-                    const halfWindow = Math.floor(visiblePageCount / 2)
-                    const startPage =
-                      totalPages <= visiblePageCount
-                        ? 1
-                        : Math.max(1, Math.min(currentPage - halfWindow, totalPages - visiblePageCount + 1))
-                    let pageNum: number
-                    pageNum = startPage + i
+                  {Array.from({ length: totalPages }, (_, i) => {
+                    const pageNum = i + 1
                     
                     return (
                       <button

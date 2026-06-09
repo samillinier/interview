@@ -45,14 +45,19 @@ import {
   ClipboardList,
   ClipboardCheck,
   Megaphone,
+  SlidersHorizontal,
+  Check,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { NullAttachmentShade } from '@/components/NullAttachmentShade'
 import { MATRIX_ROW_DEFS, type MatrixCellState, type MatrixRowId } from '@/lib/onboardingMatrix'
+import { isAttachmentNullMarked, NULL_MATRIX_CELL_SHADE_STYLE } from '@/lib/nullAttachmentStyle'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
+import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 
 type OnboardingMatrixInstaller = {
   id: string
@@ -62,16 +67,18 @@ type OnboardingMatrixInstaller = {
   createdAt: string
   updatedAt: string
   workroom: string | null
-  cells: Record<MatrixRowId | 'onboard', { state: string; detail?: string; items?: MatrixCellState[] }>
+  cells: Record<MatrixRowId | 'onboard', { state: string; detail?: string; items?: MatrixCellState[]; dateHint?: string | string[] | null }>
   hasRequiredGap: boolean
   missingRequiredCount: number
   isManual?: boolean
+  isVirtual?: boolean
   trackingId: string
   matrixOverriddenColumnIds?: MatrixRowId[]
   photoUrl?: string | null
   status?: string | null
   rowLabelColor?: MatrixRowLabelColor | null
   rowNote?: string | null
+  complianceSummary?: Record<string, 'active' | 'expired' | 'required' | 'na' | 'inactive'>
 }
 
 type OnboardingMatrixPayload = {
@@ -99,6 +106,69 @@ const MATRIX_ROW_LABEL_OPTIONS: Array<{
   { id: 'blue', label: 'Blue', dotClass: 'bg-blue-400', rowClass: 'bg-blue-100/65 group-hover:bg-blue-100/85' },
   { id: 'purple', label: 'Purple', dotClass: 'bg-purple-400', rowClass: 'bg-purple-100/65 group-hover:bg-purple-100/85' },
 ]
+
+/** Matrix table warn styling (virtual cells + expiring-soon workers comp). */
+const MATRIX_TABLE_WARN = {
+  icon: 'text-amber-600',
+  text: 'text-amber-700',
+} as const
+
+/** Max exemption/cert chips per row in WC / WCE matrix cells. */
+const MATRIX_CERTS_PER_ROW = 3
+
+const SURFACE_MATRIX_COLUMN = {
+  id: 'surface' as const,
+  label: 'Surface',
+  subtitle: 'Primary strength',
+  required: false,
+}
+
+/** Column toggles in the tracker matrix filter dropdown (always includes Surface). */
+function buildMatrixColumnFilters(
+  apiRows?: OnboardingMatrixPayload['rows']
+): Array<{ id: MatrixRowId; label: string; subtitle: string; required: boolean }> {
+  const base = apiRows?.length
+    ? apiRows.map((r) => ({
+        id: r.id as MatrixRowId,
+        label: r.label,
+        subtitle: r.subtitle ?? '',
+        required: r.required,
+      }))
+    : MATRIX_ROW_DEFS.map((r) => ({
+        id: r.id,
+        label: r.label,
+        subtitle: r.subtitle,
+        required: r.required,
+      }))
+
+  const known = new Set<MatrixRowId>()
+  const merged: Array<{ id: MatrixRowId; label: string; subtitle: string; required: boolean }> = []
+
+  if (!base.some((r) => r.id === 'surface')) {
+    merged.push(SURFACE_MATRIX_COLUMN)
+    known.add('surface')
+  }
+
+  for (const row of base) {
+    if (!MATRIX_ROW_DEFS.some((def) => def.id === row.id)) continue
+    if (known.has(row.id)) continue
+    merged.push(row)
+    known.add(row.id)
+  }
+
+  for (const def of MATRIX_ROW_DEFS) {
+    if (known.has(def.id)) continue
+    merged.push({
+      id: def.id,
+      label: def.label,
+      subtitle: def.subtitle,
+      required: def.required,
+    })
+    known.add(def.id)
+  }
+
+  return merged
+}
 
 type TrackingItem = {
   id: string
@@ -174,7 +244,7 @@ export default function TrackingPage() {
     setIsClientMounted(true)
   }, [])
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { sidebarOpen } = useSidebarOpen()
 
   const [trackingItems, setTrackingItems] = useState<TrackingItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -241,6 +311,92 @@ export default function TrackingPage() {
   const [matrixDropTargetId, setMatrixDropTargetId] = useState<string | null>(null)
   const [showLegacyTracking, setShowLegacyTracking] = useState(false)
   const [legacyListPrefHydrated, setLegacyListPrefHydrated] = useState(false)
+  const [matrixStatusFilter, setMatrixStatusFilter] = useState<'active' | 'tracked'>(() => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('tracking-matrix-status-filter') : null
+      if (stored === 'active' || stored === 'tracked') return stored
+    } catch { /* ignore */ }
+    return 'tracked'
+  })
+  const matrixColumnFilters = useMemo(
+    () => buildMatrixColumnFilters(onboardingMatrix?.rows),
+    [onboardingMatrix?.rows]
+  )
+
+  const [visibleColumns, setVisibleColumns] = useState<Set<MatrixRowId>>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('tracking-visible-columns') : null
+      if (raw) {
+        const ids = JSON.parse(raw)
+        if (Array.isArray(ids) && ids.length > 0) {
+          const validIds = ids.filter((id: unknown): id is MatrixRowId =>
+            typeof id === 'string' && MATRIX_ROW_DEFS.some((def) => def.id === id)
+          )
+          if (validIds.length > 0) return new Set(validIds)
+        }
+      }
+    } catch { /* ignore */ }
+    return new Set(buildMatrixColumnFilters().map((d) => d.id))
+  })
+  const [columnsDropdownOpen, setColumnsDropdownOpen] = useState(false)
+  const [columnsDropdownAnchor, setColumnsDropdownAnchor] = useState<{ left: number; top: number } | null>(
+    null
+  )
+  const columnsDropdownButtonRef = useRef<HTMLButtonElement>(null)
+  const [workroomDropdownOpen, setWorkroomDropdownOpen] = useState(false)
+  const [workroomFilter, setWorkroomFilter] = useState<Set<string>>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('tracking-workroom-filter')
+        if (stored) {
+          const arr = JSON.parse(stored)
+          if (Array.isArray(arr)) return new Set(arr.filter((v: unknown): v is string => typeof v === 'string'))
+        }
+      }
+    } catch { /* ignore */ }
+    return new Set()
+  })
+
+  const toggleWorkroomFilter = (wr: string) => {
+    setWorkroomFilter(prev => {
+      const next = new Set(prev)
+      if (next.has(wr)) { next.delete(wr) } else { next.add(wr) }
+      return next
+    })
+  }
+
+  const toggleColumn = (id: MatrixRowId) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  const closeColumnsDropdown = () => {
+    setColumnsDropdownOpen(false)
+    setColumnsDropdownAnchor(null)
+  }
+
+  const openColumnsDropdown = () => {
+    if (columnsDropdownOpen) {
+      closeColumnsDropdown()
+      return
+    }
+    const btn = columnsDropdownButtonRef.current
+    if (!btn) {
+      setColumnsDropdownOpen(true)
+      return
+    }
+    const r = btn.getBoundingClientRect()
+    const menuWidth = 240
+    const approxMenuH = Math.min(420, matrixColumnFilters.length * 34 + 48)
+    let top = r.top - approxMenuH - 8
+    if (top < 8) top = r.bottom + 8
+    const left = Math.max(8, Math.min(r.right - menuWidth, window.innerWidth - menuWidth - 8))
+    setColumnsDropdownAnchor({ left, top })
+    setColumnsDropdownOpen(true)
+  }
 
   useEffect(() => {
     try {
@@ -261,7 +417,49 @@ export default function TrackingPage() {
       /* ignore */
     }
   }, [showLegacyTracking, legacyListPrefHydrated])
+
+  // Persist visible column choices to localStorage
+  useEffect(() => {
+    try {
+      const ids = Array.from(visibleColumns)
+      localStorage.setItem('tracking-visible-columns', JSON.stringify(ids))
+    } catch {
+      /* ignore */
+    }
+  }, [visibleColumns])
+
+  // Persist workroom filter to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('tracking-workroom-filter', JSON.stringify(Array.from(workroomFilter)))
+    } catch {
+      /* ignore */
+    }
+  }, [workroomFilter])
+
+  // Persist matrix status filter to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('tracking-matrix-status-filter', matrixStatusFilter)
+    } catch {
+      /* ignore */
+    }
+  }, [matrixStatusFilter])
+
   const matrixDragActiveRef = useRef<string | null>(null)
+  const workroomDropdownRef = useRef<HTMLDivElement | null>(null)
+
+  // Close workroom dropdown on outside click
+  useEffect(() => {
+    if (!workroomDropdownOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (workroomDropdownRef.current && !workroomDropdownRef.current.contains(e.target as Node)) {
+        setWorkroomDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [workroomDropdownOpen])
   const [matrixCellPicker, setMatrixCellPicker] = useState<{
     trackingId: string
     columnId: MatrixColumnId
@@ -298,11 +496,15 @@ export default function TrackingPage() {
     busy: boolean
   } | null>(null)
 
-  const loadOnboardingMatrix = useCallback(async () => {
+  const loadOnboardingMatrix = useCallback(async (status?: string) => {
     setMatrixLoading(true)
     setMatrixLoadError(null)
     try {
-      const res = await fetch('/api/admin/onboarding-matrix', { cache: 'no-store' })
+      const filterStatus = status ?? matrixStatusFilter
+      const url = filterStatus === 'active'
+        ? `/api/admin/onboarding-matrix?status=active`
+        : '/api/admin/onboarding-matrix'
+      const res = await fetch(url, { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.success) {
         setOnboardingMatrix({
@@ -325,7 +527,37 @@ export default function TrackingPage() {
     } finally {
       setMatrixLoading(false)
     }
-  }, [])
+  }, [matrixStatusFilter])
+
+  const filteredMatrixInstallers = useMemo(() => {
+    if (!onboardingMatrix) return []
+    let result = onboardingMatrix.installers
+    if (workroomFilter.size > 0) {
+      result = result.filter(inst => {
+        const wr = (inst.workroom || '').trim()
+        if (workroomFilter.has('__none__') && !wr) return true
+        if (!wr) return false
+        return workroomFilter.has(wr)
+      })
+    }
+    return result
+  }, [onboardingMatrix, workroomFilter])
+
+  const visibleDefs = useMemo(() => MATRIX_ROW_DEFS.filter(d => visibleColumns.has(d.id)), [visibleColumns])
+
+  // Keep installer column only as wide as avatar + text + row actions (not stretched across the table).
+  const installerColClass = 'w-[1%] align-middle'
+  const matrixTableClass = visibleDefs.length === 0 ? 'w-max max-w-full' : 'w-full'
+
+  const workroomOptions = useMemo(() => {
+    if (!onboardingMatrix) return []
+    const set = new Set<string>()
+    for (const inst of onboardingMatrix.installers) {
+      const wr = (inst.workroom || '').trim()
+      if (wr) set.add(wr)
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [onboardingMatrix])
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') {
@@ -358,7 +590,7 @@ export default function TrackingPage() {
     const role = String((session?.user as any)?.role || '').toUpperCase()
     if (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN') return
     loadOnboardingMatrix()
-  }, [sessionStatus, session, loadOnboardingMatrix])
+  }, [sessionStatus, session, loadOnboardingMatrix, matrixStatusFilter])
 
   const handleAddMatrixManualRow = async () => {
     if (!matrixSelectedInstallerId && !matrixManualName.trim()) {
@@ -450,7 +682,7 @@ export default function TrackingPage() {
     setMatrixDropTargetId(null)
     if (!draggedId || draggedId === targetTrackingId || !onboardingMatrix || matrixOrderSaving) return
 
-    const ids = onboardingMatrix.installers.map((i) => i.trackingId)
+    const ids = filteredMatrixInstallers.map((i) => i.trackingId)
     const fromIndex = ids.indexOf(draggedId)
     const toIndex = ids.indexOf(targetTrackingId)
     if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return
@@ -542,6 +774,36 @@ export default function TrackingPage() {
     return value === 'ok' || value === 'warn' || value === 'missing' || value === 'na'
   }
 
+  /** Virtual / expiring-soon matrix cells — matches Tailwind amber-400 @ 35% (same as other warn cells). */
+  const MATRIX_CELL_BG = {
+    ok: 'rgba(52, 211, 153, 0.35)',
+    warn: 'rgba(251, 191, 36, 0.35)',
+    missing: 'rgba(248, 113, 113, 0.35)',
+  } as const
+
+  /** Active tab only — Admin Added rows use plain white cells (no status tint / NULL hatch fill). */
+  const showMatrixCellShade = matrixStatusFilter !== 'tracked'
+
+  const matrixCellBgStyle = (cell?: { state: string; detail?: string } | null): React.CSSProperties => {
+    if (!showMatrixCellShade || !cell) return {}
+    if (cell.state === 'na' && isAttachmentNullMarked(cell.detail)) return NULL_MATRIX_CELL_SHADE_STYLE
+    if (cell.state === 'ok') return { backgroundColor: MATRIX_CELL_BG.ok }
+    if (cell.state === 'warn') return { backgroundColor: MATRIX_CELL_BG.warn }
+    if (cell.state === 'missing') return { backgroundColor: MATRIX_CELL_BG.missing }
+    return {}
+  }
+
+  const renderMatrixNullLabel = (size: 'sm' | 'md') => (
+    <span
+      className={`font-semibold text-emerald-700 ${
+        size === 'sm' ? 'text-[8px] tracking-wide leading-none' : 'text-[10px] tracking-wide'
+      }`}
+      title="Not required (NULL)"
+    >
+      NULL
+    </span>
+  )
+
   const openMatrixCellPicker = (
     e: React.MouseEvent<HTMLElement>,
     trackingId: string,
@@ -552,6 +814,7 @@ export default function TrackingPage() {
   ) => {
     const role = String((session?.user as any)?.role || '').toUpperCase()
     if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') return
+    if (columnId === 'compliance') return
     e.stopPropagation()
     const r = e.currentTarget.getBoundingClientRect()
     const menuWidth = 224
@@ -735,7 +998,7 @@ export default function TrackingPage() {
   }
 
   const renderMatrixCell = (
-    cell: { state: string; detail?: string; items?: MatrixCellState[] } | undefined,
+    cell: { state: string; detail?: string; items?: MatrixCellState[]; dateHint?: string | string[] | null } | undefined,
     opts?: { trackingId: string; columnId: MatrixColumnId; columnLabel: string }
   ) => {
     if (!cell) return <span className="text-slate-300">—</span>
@@ -753,34 +1016,77 @@ export default function TrackingPage() {
       }
       return <span className="text-slate-400 text-[10px]">—</span>
     }
-    const itemStates = Array.isArray(cell.items) ? cell.items : []
-    const renderItemIcon = (state: MatrixCellState, i: number, clickable = false) => {
-      const iconClassName = 'w-3.5 h-3.5 shrink-0'
-      const icon =
-        state === 'warn' ? (
-          <AlertCircle className={`${iconClassName} text-amber-500`} />
-        ) : state === 'missing' ? (
-          <XCircle className={`${iconClassName} text-red-600`} />
-        ) : state === 'na' ? (
-          <span className="text-[8px] font-semibold text-slate-400 leading-none">N/A</span>
-        ) : (
-          <CheckCircle2 className={`${iconClassName} text-emerald-600`} />
-        )
-      if (!clickable || !opts) {
+    if (opts?.columnId === 'compliance') {
+      const label = (cell.detail || '').trim() || 'Not set'
+      const title = `Insurance & Registration: ${label}`
+      if (cell.state === 'ok') {
         return (
-          <span key={`item-${i}`} className="inline-flex h-4 w-4 items-center justify-center">
-            {icon}
+          <span className="inline-flex items-center justify-center" title={title}>
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" aria-hidden />
+            <span className="sr-only">{label}</span>
           </span>
         )
       }
       return (
+        <span className="inline-flex items-center justify-center" title={title}>
+          <XCircle
+            className={`w-4 h-4 shrink-0 ${
+              cell.state === 'warn' ? 'text-amber-600' : 'text-red-600'
+            }`}
+            aria-hidden
+          />
+          <span className="sr-only">{label}</span>
+        </span>
+      )
+    }
+    const itemStates = Array.isArray(cell.items) ? cell.items : []
+    const dateHintsArr: string[] = (() => {
+      const raw = Array.isArray(cell.dateHint)
+        ? cell.dateHint.filter((d): d is string => typeof d === 'string' && Boolean(d.trim()))
+        : typeof cell.dateHint === 'string' && cell.dateHint.trim()
+          ? [cell.dateHint.trim()]
+          : []
+      const seen = new Set<string>()
+      return raw.filter((d) => {
+        if (seen.has(d)) return false
+        seen.add(d)
+        return true
+      })
+    })()
+    const defaultItemState: MatrixCellState = isMatrixCellState(cell.state) ? cell.state : 'ok'
+
+    const isWorkersCompColumn = opts?.columnId === 'wc' || opts?.columnId === 'wce'
+    const isPhotoColumn = opts?.columnId === 'photo'
+    const workersCompExpiringSoon = isWorkersCompColumn && cell.state === 'warn'
+    const isProfileNullCell = cell.state === 'na' && isAttachmentNullMarked(cell.detail)
+
+    const renderItemIcon = (state: MatrixCellState, i: number, clickable = false) => {
+      const iconClassName = 'w-3.5 h-3.5 shrink-0'
+      const icon =
+        state === 'warn' || (workersCompExpiringSoon && state === 'ok') ? (
+          <CheckCircle2 className={`${iconClassName} ${MATRIX_TABLE_WARN.icon}`} />
+        ) : state === 'missing' ? (
+          <XCircle className={`${iconClassName} text-red-600`} />
+        ) : state === 'na' ? (
+          isProfileNullCell || cell.detail === 'NULL' ? (
+            showMatrixCellShade ? <NullAttachmentShade size="sm" /> : renderMatrixNullLabel('sm')
+          ) : (
+            <span className="text-[8px] font-semibold text-slate-400 leading-none">N/A</span>
+          )
+        ) : (
+          <CheckCircle2 className={`${iconClassName} text-emerald-600`} />
+        )
+      const iconWrapClass = 'inline-flex h-4 w-4 shrink-0 items-center justify-center'
+      if (!clickable || !opts) {
+        return <span className={iconWrapClass}>{icon}</span>
+      }
+      return (
         <button
-          key={`item-${i}`}
           type="button"
           disabled={matrixOrderSaving || matrixCellSaving}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => openMatrixCellPicker(e, opts.trackingId, opts.columnId, opts.columnLabel, cell, i)}
-          className="inline-flex h-4 w-4 items-center justify-center rounded hover:bg-slate-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-green/50 disabled:opacity-50"
+          className={`${iconWrapClass} rounded hover:bg-slate-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-green/50 disabled:opacity-50`}
           title={`Edit item ${i + 1}`}
         >
           {icon}
@@ -788,57 +1094,153 @@ export default function TrackingPage() {
       )
     }
     const itemsTitle = itemStates.length > 0 ? `${itemStates.length} separate statuses` : ''
-    const renderItemStatusIcons = (clickable = false) => (
-      <span className="inline-flex max-w-[52px] flex-wrap items-center justify-center gap-px">
-        {itemStates.map((state, i) => renderItemIcon(state, i, clickable))}
+
+    const dateHintTextClass = (state: MatrixCellState) =>
+      state === 'warn'
+        ? `${MATRIX_TABLE_WARN.text} font-semibold`
+        : 'text-slate-400'
+
+    const certColumns = (() => {
+      if (dateHintsArr.length === 0 && itemStates.length === 0) return []
+      const count = Math.max(dateHintsArr.length, itemStates.length)
+      const cellIsWarn = defaultItemState === 'warn'
+      return Array.from({ length: count }, (_, i) => ({
+        state: cellIsWarn ? 'warn' : (itemStates[i] ?? defaultItemState),
+        date: dateHintsArr[i] ?? null,
+      }))
+    })()
+
+    const renderCertColumn = (
+      state: MatrixCellState,
+      date: string | null,
+      index: number,
+      clickable: boolean
+    ) => (
+      <span key={`cert-${index}`} className="flex w-[2.85rem] flex-col items-center gap-0.5">
+        {renderItemIcon(state, index, clickable)}
+        <span
+          className={`min-h-[10px] w-full text-center text-[7px] font-medium leading-tight whitespace-nowrap ${dateHintTextClass(state)}`}
+        >
+          {date ?? ''}
+        </span>
       </span>
     )
-    if (cell.state === 'ok')
+
+    // Up to 3 per row; photo column is compact (no dates under icons)
+    const renderItemStatusIcons = (clickable = false) => {
+      if (certColumns.length === 0) {
+        return (
+          <span className="inline-flex items-center justify-center gap-px">
+            {itemStates.map((state, i) => renderItemIcon(state, i, clickable))}
+          </span>
+        )
+      }
+      const rows: Array<typeof certColumns> = []
+      for (let i = 0; i < certColumns.length; i += MATRIX_CERTS_PER_ROW) {
+        rows.push(certColumns.slice(i, i + MATRIX_CERTS_PER_ROW))
+      }
+      if (isPhotoColumn) {
+        return (
+          <span className="flex flex-col items-center gap-0.5">
+            {rows.map((row, rowIndex) => (
+              <span
+                key={`photo-row-${rowIndex}`}
+                className="inline-flex items-center justify-center gap-0.5"
+              >
+                {row.map(({ state }, i) =>
+                  renderItemIcon(state, rowIndex * MATRIX_CERTS_PER_ROW + i, clickable)
+                )}
+              </span>
+            ))}
+          </span>
+        )
+      }
       return (
-        <span
-          className="inline-flex justify-center items-center gap-0.5"
-          title={itemStates.length > 0 ? itemsTitle : 'Complete'}
-        >
-          {itemStates.length > 0 ? renderItemStatusIcons(true) : <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+        <span className="flex flex-col items-center gap-1">
+          {rows.map((row, rowIndex) => (
+            <span
+              key={`cert-row-${rowIndex}`}
+              className="inline-flex items-start justify-center gap-1.5"
+            >
+              {row.map(({ state, date }, i) =>
+                renderCertColumn(state, date, rowIndex * MATRIX_CERTS_PER_ROW + i, clickable)
+              )}
+            </span>
+          ))}
         </span>
       )
-    if (cell.state === 'na')
+    }
+
+    if (cell.state === 'ok')
+      return (
+        <div
+          className="flex flex-col items-center gap-0.5"
+          title={itemStates.length > 0 ? itemsTitle : 'Complete'}
+        >
+          {itemStates.length > 0 || dateHintsArr.length > 0 ? (
+            renderItemStatusIcons(true)
+          ) : (
+            <span className="inline-flex flex-col items-center gap-0.5">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            </span>
+          )}
+        </div>
+      )
+    if (cell.state === 'na') {
+      if (isProfileNullCell) {
+        return showMatrixCellShade ? <NullAttachmentShade size="md" /> : renderMatrixNullLabel('md')
+      }
       return (
         <span className="text-[10px] text-slate-400 font-medium" title="Not applicable">
           N/A
         </span>
       )
-    if (cell.state === 'warn')
+    }
+    if (cell.state === 'warn') {
+      const expiringTitle = dateHintsArr[0] ? `Expiring soon — ${dateHintsArr[0]}` : 'Expiring soon'
       return (
         <div
           className="flex flex-col items-center gap-0.5"
-          title={itemStates.length > 0 ? itemsTitle : cell.detail ? `Needs attention: ${cell.detail}` : 'Needs attention'}
+          title={
+            itemStates.length > 0
+              ? itemsTitle
+              : expiringTitle
+          }
         >
-          {itemStates.length > 0 ? renderItemStatusIcons(true) : <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />}
-          {cell.detail && itemStates.length === 0 ? (
-            <span className="text-[9px] text-amber-700 font-semibold leading-none">{cell.detail}</span>
+          {itemStates.length > 0 || dateHintsArr.length > 0 ? (
+            renderItemStatusIcons(true)
+          ) : (
+            <CheckCircle2 className={`w-4 h-4 shrink-0 ${MATRIX_TABLE_WARN.icon}`} />
+          )}
+          {cell.detail && itemStates.length === 0 && dateHintsArr.length === 0 ? (
+            <span className={`text-[8px] font-semibold leading-none ${MATRIX_TABLE_WARN.text}`}>{cell.detail === 'warn' ? 'Soon' : cell.detail}</span>
           ) : null}
         </div>
       )
+    }
     if (cell.state === 'missing' && cell.detail === 'exp')
       return (
-        <span className="text-[10px] text-red-600 font-semibold leading-none" title="Expired">
-          Exp
-        </span>
+        <div className="flex flex-col items-center gap-0.5" title="Expired">
+          {itemStates.length > 0 || dateHintsArr.length > 0 ? (
+            renderItemStatusIcons(true)
+          ) : (
+            <span className="text-[10px] text-red-600 font-semibold leading-none">Exp</span>
+          )}
+        </div>
       )
     return (
       <div
         className="flex flex-col items-center gap-0.5"
         title={itemStates.length > 0 ? itemsTitle : 'Missing'}
       >
-        {itemStates.length > 0 ? (
+        {itemStates.length > 0 || dateHintsArr.length > 0 ? (
           renderItemStatusIcons(true)
         ) : (
           <span className="inline-flex items-center justify-center gap-0.5">
             <XCircle className="w-4 h-4 text-red-600 shrink-0" />
           </span>
         )}
-        {cell.detail && itemStates.length === 0 ? (
+        {cell.detail && itemStates.length === 0 && dateHintsArr.length === 0 ? (
           <span className="text-[9px] text-red-600 font-medium leading-none">{cell.detail}</span>
         ) : null}
       </div>
@@ -956,7 +1358,7 @@ export default function TrackingPage() {
     return installerSearchResults.slice(0, 10)
   }, [installers, installerSearchQuery, installerSearchResults])
 
-  const filteredMatrixInstallers = useMemo(() => {
+  const filteredMatrixSearchInstallers = useMemo(() => {
     if (!matrixInstallerSearchQuery.trim()) return installers.slice(0, 10)
     return matrixInstallerSearchResults.slice(0, 10)
   }, [installers, matrixInstallerSearchQuery, matrixInstallerSearchResults])
@@ -1352,7 +1754,7 @@ export default function TrackingPage() {
   return (
     <div className="h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
+      <AdminSidebar pathname={pathname} />
 
       <AdminMobileMenu pathname={pathname} />
 
@@ -1416,6 +1818,119 @@ export default function TrackingPage() {
               </div>
               <div />
             </div>
+            {onboardingMatrix && (
+              <div className="relative z-30 flex items-center justify-between px-5 py-2.5 bg-slate-50/50 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Show</span>
+                  <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setMatrixStatusFilter('active')}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                        matrixStatusFilter === 'active'
+                          ? 'bg-brand-green text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      Active
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMatrixStatusFilter('tracked')}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                        matrixStatusFilter === 'tracked'
+                          ? 'bg-brand-green text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      Admin Added
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                {workroomOptions.length > 0 && (
+                    <div className="relative" ref={workroomDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setWorkroomDropdownOpen(prev => !prev)}
+                        className={`text-xs font-medium rounded-lg border shadow-sm px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green/60 transition-all ${
+                          workroomFilter.size > 0
+                            ? 'bg-brand-green/10 border-brand-green/30 text-brand-green'
+                            : 'border-slate-200 bg-white text-slate-600'
+                        }`}
+                      >
+                        {workroomFilter.size === 0
+                          ? 'All workrooms'
+                          : `${workroomFilter.size} selected`}
+                        <ChevronDown className={`inline-block w-3 h-3 ml-1 transition-transform ${workroomDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {workroomDropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 max-h-64 overflow-y-auto">
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+                            onClick={() => { setWorkroomFilter(new Set()); setWorkroomDropdownOpen(false) }}
+                          >
+                            Clear selection (show all)
+                          </button>
+                          <div className="border-t border-slate-100 my-1" />
+                          {workroomOptions.map(wr => (
+                            <button
+                              key={wr}
+                              type="button"
+                              className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 text-xs text-slate-700 transition-colors"
+                              onClick={() => toggleWorkroomFilter(wr)}
+                            >
+                              <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                workroomFilter.has(wr)
+                                  ? 'bg-brand-green border-brand-green text-white'
+                                  : 'border-slate-300'
+                              }`}>
+                                {workroomFilter.has(wr) && <Check className="w-3 h-3" />}
+                              </span>
+                              <span className="truncate">{wr}</span>
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 text-xs text-slate-500 transition-colors"
+                            onClick={() => toggleWorkroomFilter('__none__')}
+                          >
+                            <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                              workroomFilter.has('__none__')
+                                ? 'bg-brand-green border-brand-green text-white'
+                                : 'border-slate-300'
+                            }`}>
+                              {workroomFilter.has('__none__') && <Check className="w-3 h-3" />}
+                            </span>
+                            <span className="truncate">No workroom</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                <div className="relative">
+                  <button
+                    ref={columnsDropdownButtonRef}
+                    type="button"
+                    onClick={openColumnsDropdown}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm"
+                    title="Show or hide matrix columns"
+                    aria-expanded={columnsDropdownOpen}
+                    aria-haspopup="menu"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    Columns {visibleColumns.size}/{matrixColumnFilters.length}
+                    <ChevronDown className={`w-3 h-3 transition-transform ${columnsDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+                <span className="text-xs text-slate-400 tabular-nums">
+                  {filteredMatrixInstallers.length} installer
+                  {filteredMatrixInstallers.length !== 1 ? 's' : ''}
+                </span>
+                </div>
+              </div>
+            )}
             <div className="relative">
               {matrixLoadError ? (
                 <div className="mx-5 my-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
@@ -1436,22 +1951,29 @@ export default function TrackingPage() {
                 <div className="flex flex-col items-center justify-center py-16 text-slate-500 gap-4">
                   <LogoHeartbeatLoader size={64} />
                 </div>
-              ) : !matrixLoadError && onboardingMatrix && onboardingMatrix.installers.length === 0 ? (
+              ) : !matrixLoadError && onboardingMatrix && filteredMatrixInstallers.length === 0 ? (
                 <div className="py-12 text-center text-slate-500 text-sm px-4 max-w-lg mx-auto space-y-2">
                   <p>
-                    No one is on this matrix yet. Use{' '}
-                    <strong className="text-slate-700">Add row</strong> above to pin installers or names here.
+                    {matrixStatusFilter === 'active'
+                      ? 'No active installers on this matrix yet.'
+                      : 'No one has been added to this matrix yet.'}
                   </p>
                   <p className="text-slate-400 text-xs leading-relaxed">
-                    The issue list farther down is separate: <strong className="text-slate-500">Add Tracking Item</strong>{' '}
-                    does not add rows to this document grid.
+                    {matrixStatusFilter === 'active' ? (
+                      'Switch to "Admin Added" to manually pin specific installers or names here.'
+                    ) : (
+                      <>
+                        Use{' '}
+                        <strong className="text-slate-700">Add row</strong> above to pin installers or names here.
+                      </>
+                    )}
                   </p>
                 </div>
-              ) : onboardingMatrix && onboardingMatrix.installers.length > 0 ? (
-                <table className="min-w-max w-full text-sm border-separate border-spacing-0">
+              ) : onboardingMatrix && filteredMatrixInstallers.length > 0 ? (
+                <table className={`${matrixTableClass} text-sm border-separate border-spacing-y-px`}>
                   <thead className="sticky top-[-1.5rem] z-20 bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-200">
                     <tr>
-                      <th className="sticky top-[-1.5rem] left-0 z-30 bg-slate-50 px-5 py-3 text-left align-bottom border-r border-slate-200 min-w-[268px] max-w-[320px] shadow-[4px_0_12px_-6px_rgba(0,0,0,0.08)]">
+                      <th className={`sticky top-[-1.5rem] left-0 z-30 bg-slate-50 px-3 py-3 text-left align-bottom border-r border-slate-200 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.08)] ${installerColClass}`}>
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Installer</span>
                           <span className="text-[10px] font-medium text-slate-500 normal-case tracking-normal leading-snug">
@@ -1459,11 +1981,13 @@ export default function TrackingPage() {
                           </span>
                         </div>
                       </th>
-                      {MATRIX_ROW_DEFS.map((def) => (
+                      {visibleDefs.map((def) => (
                         <th
                           key={def.id}
                           className={`sticky top-[-1.5rem] z-20 bg-slate-50 px-1.5 py-2 text-center border-l border-slate-200 align-bottom ${
-                            def.id === 'surface' ? 'min-w-[5.5rem] max-w-[7.5rem]' : 'min-w-[58px] max-w-[80px]'
+                            def.id === 'surface' || def.id === 'compliance'
+                              ? 'min-w-[5.75rem]'
+                              : 'min-w-[52px]'
                           }`}
                           title={`${def.label}${def.required ? ' (required)' : ''}`}
                         >
@@ -1472,33 +1996,31 @@ export default function TrackingPage() {
                               {def.label}
                               {def.required ? <span className="text-slate-500">*</span> : null}
                             </span>
-                            <span className="text-[8px] font-medium text-slate-500 leading-snug text-center normal-case tracking-normal max-w-[4.85rem]">
-                              {def.subtitle}
-                            </span>
+                            {def.subtitle ? (
+                              <span className="text-[8px] font-medium text-slate-500 leading-snug text-center normal-case tracking-normal max-w-[4.85rem]">
+                                {def.subtitle}
+                              </span>
+                            ) : null}
                           </div>
                         </th>
                       ))}
-                      <th className="sticky top-[-1.5rem] z-20 bg-slate-50 px-1.5 py-2 text-center border-l border-slate-200 min-w-[64px] align-bottom">
-                        <div className="flex flex-col items-center justify-end gap-0.5">
-                          <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight">Onboard</span>
-                          <span className="text-[8px] font-medium text-slate-500 normal-case tracking-normal leading-snug text-center max-w-[3.5rem]">
-                            All required
-                          </span>
-                        </div>
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
-                    {onboardingMatrix.installers.map((inst) => {
+                    {filteredMatrixInstallers.map((inst) => {
                       const isDraggingRow = matrixDragId === inst.trackingId
                       const isDropTarget =
                         matrixDropTargetId === inst.trackingId &&
                         matrixDragId &&
                         matrixDragId !== inst.trackingId
                       const rowLabelOption = MATRIX_ROW_LABEL_OPTIONS.find((opt) => opt.id === inst.rowLabelColor)
+                      const isVirtualRow = !!inst.isVirtual
+                      const canEditRow = canEdit && !isVirtualRow
                       const matrixRowBgClass = isDropTarget
                         ? 'bg-emerald-50/60 group-hover:bg-emerald-50/70'
-                        : rowLabelOption?.rowClass ?? 'bg-white group-hover:bg-slate-50/80'
+                        : isVirtualRow
+                          ? 'bg-white'
+                          : rowLabelOption?.rowClass ?? 'bg-white group-hover:bg-slate-50/80'
                       const updated = new Date(inst.updatedAt || inst.createdAt)
                       const dateShort = updated.toLocaleDateString('en-US', {
                         month: 'numeric',
@@ -1518,7 +2040,7 @@ export default function TrackingPage() {
                         ? getInstallerStatusCircle(inst.status ?? undefined)
                         : null
                       const InstallerStatusIcon = installerStatusCircle?.icon
-                      const matrixRowDndHandlers = canEdit
+                      const matrixRowDndHandlers = canEditRow
                         ? {
                             onDragEnter: (e: React.DragEvent) => {
                               if (matrixDragActiveRef.current) e.preventDefault()
@@ -1529,17 +2051,17 @@ export default function TrackingPage() {
                         : {}
                       return (
                         <tr
-                          key={inst.trackingId}
-                          className={`group border-b border-slate-100 hover:bg-slate-50/80 transition-colors ${
+                          key={isVirtualRow ? `virtual-${inst.id}` : inst.trackingId}
+                          className={`group border-b-2 border-slate-300 transition-colors ${isVirtualRow ? '' : 'hover:bg-slate-50/80'} ${
                             isDraggingRow ? 'opacity-50' : ''
                           } ${isDropTarget ? 'ring-1 ring-inset ring-brand-green/35' : ''}`}
                         >
                           <td
                             {...matrixRowDndHandlers}
-                            className={`sticky left-0 z-10 px-5 py-4 align-middle ${matrixRowBgClass} border-r border-slate-200 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.06)] min-w-[268px] max-w-[320px]`}
+                            className={`sticky left-0 z-10 px-3 py-4 ${matrixRowBgClass} border-r border-slate-200 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.06)] ${installerColClass}`}
                           >
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-start gap-4 min-w-0 flex-1">
+                            <div className="flex w-[22rem] max-w-full items-center gap-2">
+                              <div className="flex min-w-0 flex-1 items-start gap-3">
                                 <div className="relative flex-shrink-0">
                                   <div
                                     className={`relative w-[52px] h-[52px] rounded-full overflow-hidden shadow-sm bg-slate-200 flex items-center justify-center ${
@@ -1570,10 +2092,10 @@ export default function TrackingPage() {
                                     </div>
                                   ) : null}
                                 </div>
-                                <div className="min-w-0 flex-1 pt-0.5 flex flex-col gap-1">
+                                <div className="min-w-0 pt-0.5 flex flex-col gap-1">
                                   {inst.isManual ? (
                                     <>
-                                      <p className="max-w-full truncate font-bold text-slate-900 text-base leading-snug tracking-tight">
+                                      <p className="max-w-full truncate font-bold text-slate-900 text-lg leading-snug tracking-tight">
                                         {installerName}
                                       </p>
                                       <p className="text-[11px] sm:text-xs text-slate-500 leading-snug whitespace-nowrap">
@@ -1585,14 +2107,14 @@ export default function TrackingPage() {
                                       <button
                                         type="button"
                                         onClick={() => router.push(`/dashboard/installers/${inst.id}`)}
-                                        className="text-left w-full min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 flex flex-col gap-1 items-start"
+                                        className="text-left min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 flex flex-col gap-1 items-start"
                                         title="Open installer profile"
                                       >
-                                        <span className="block max-w-full truncate font-bold text-slate-900 group-hover:text-brand-green transition-colors text-base leading-snug tracking-tight">
+                                        <span className="block max-w-full truncate font-bold text-slate-900 group-hover:text-brand-green transition-colors text-lg leading-snug tracking-tight">
                                           {installerName}
                                         </span>
                                         {installerCompany ? (
-                                          <span className="line-clamp-2 text-xs text-slate-600 leading-snug group-hover:text-slate-800 transition-colors">
+                                          <span className="line-clamp-2 text-sm font-semibold text-slate-600 uppercase tracking-wide leading-snug group-hover:text-slate-800 transition-colors">
                                             {installerCompany}
                                           </span>
                                         ) : null}
@@ -1610,34 +2132,34 @@ export default function TrackingPage() {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0 self-center">
-                                <div className="flex flex-col items-center gap-1">
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                <div className="flex w-8 flex-col items-center gap-1">
                                   <button
                                     type="button"
-                                    draggable={canEdit && !matrixOrderSaving}
-                                    onDragStart={canEdit ? (e) => handleMatrixDragStart(e, inst.trackingId) : undefined}
-                                    onDragEnd={canEdit ? handleMatrixDragEnd : undefined}
-                                    disabled={!canEdit || matrixOrderSaving}
-                                    className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-grab active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 touch-none"
+                                    draggable={canEditRow && !matrixOrderSaving}
+                                    onDragStart={canEditRow ? (e) => handleMatrixDragStart(e, inst.trackingId) : undefined}
+                                    onDragEnd={canEditRow ? handleMatrixDragEnd : undefined}
+                                    disabled={!canEditRow || matrixOrderSaving}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-grab active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40 touch-none"
                                     aria-label="Drag to reorder row"
-                                    title="Drag to reorder"
+                                    title={canEditRow ? 'Drag to reorder' : 'Cannot reorder auto-populated rows'}
                                   >
                                     <GripVertical className="w-4 h-4" aria-hidden />
                                   </button>
                                   <button
                                     type="button"
-                                    disabled={!canEdit || matrixRowLabelSaving}
+                                    disabled={!canEditRow || matrixRowLabelSaving}
                                     onClick={
-                                      canEdit
+                                      canEditRow
                                         ? (e) => openMatrixRowLabelPicker(e, inst.trackingId, inst.rowLabelColor)
                                         : undefined
                                     }
-                                    className="inline-flex h-6 w-6 items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-30"
-                                    title="Label row color"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-30"
+                                    title={canEditRow ? 'Label row color' : 'Cannot edit auto-populated rows'}
                                     aria-label="Label row color"
                                   >
                                     <span
-                                      className={`h-3.5 w-3.5 rounded-full ring-1 ring-slate-300 ${
+                                      className={`h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-slate-300 ${
                                         rowLabelOption ? rowLabelOption.dotClass : 'bg-white'
                                       }`}
                                       aria-hidden
@@ -1645,56 +2167,83 @@ export default function TrackingPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    disabled={matrixRowNoteSaving || (!canEdit && !inst.rowNote)}
+                                    disabled={matrixRowNoteSaving || (!canEditRow && !inst.rowNote)}
                                     onClick={
-                                      canEdit || inst.rowNote
+                                      canEditRow || inst.rowNote
                                         ? (e) => openMatrixRowNotePicker(e, inst.trackingId, inst.rowNote)
                                         : undefined
                                     }
-                                    className="relative inline-flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
-                                    title={canEdit ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note'}
-                                    aria-label={canEdit ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note'}
+                                    className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
+                                    title={canEditRow ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note'}
+                                    aria-label={canEditRow ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note'}
                                   >
                                     {inst.rowNote ? (
                                       <span
-                                        className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500 ring-2 ring-white"
+                                        className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-2 ring-white"
                                         aria-hidden
                                       />
                                     ) : null}
-                                    <StickyNote className="h-3.5 w-3.5" aria-hidden />
+                                    <StickyNote className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                   </button>
                                 </div>
                                 <button
                                   type="button"
-                                  disabled={!canEdit || matrixOrderSaving}
-                                  onClick={canEdit ? () => handleRemoveMatrixManualRow(inst.trackingId, matrixRowLabel) : undefined}
-                                  className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30"
-                                  title="Remove from matrix"
+                                  disabled={!canEditRow || matrixOrderSaving}
+                                  onClick={canEditRow ? () => handleRemoveMatrixManualRow(inst.trackingId, matrixRowLabel) : undefined}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30"
+                                  title={canEditRow ? 'Remove from matrix' : 'Cannot remove auto-populated rows'}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </div>
                           </td>
-                          {MATRIX_ROW_DEFS.map((def) => (
+                          {visibleDefs.map((def) => (
                             <td
                               key={`${inst.trackingId}-${def.id}`}
                               {...matrixRowDndHandlers}
-                              className={`border-l border-slate-100 text-center align-middle py-3 px-1 min-h-[3.25rem] ${matrixRowBgClass} ${
-                                def.id === 'surface' ? 'min-w-[5.5rem]' : ''
-                              }`}
+                              className={`border-l border-slate-100 text-center align-middle px-1 ${matrixRowBgClass} ${
+                                def.id === 'photo' ? 'min-h-0 py-1.5' : 'min-h-[3.25rem] py-3'
+                              } ${def.id === 'surface' || def.id === 'compliance' ? 'min-w-[5.75rem]' : ''} ${
+                                def.id === 'wce' || def.id === 'wc' ? 'min-w-[9.25rem]' : ''
+                              } ${def.id === 'photo' ? 'min-w-[4.5rem]' : ''}`}
+                              style={
+                                showMatrixCellShade &&
+                                (isVirtualRow ||
+                                  inst.cells[def.id]?.state === 'ok' ||
+                                  inst.cells[def.id]?.state === 'warn' ||
+                                  inst.cells[def.id]?.state === 'missing' ||
+                                  (inst.cells[def.id]?.state === 'na' &&
+                                    isAttachmentNullMarked(inst.cells[def.id]?.detail)))
+                                  ? matrixCellBgStyle(inst.cells[def.id])
+                                  : undefined
+                              }
                             >
-                              <div className="flex min-h-[2.75rem] items-center justify-center">
-                                {def.id === 'surface' ? (
+                              <div
+                                className={`flex items-center justify-center ${
+                                  def.id === 'photo' ? 'min-h-0 py-0.5' : 'min-h-[2.75rem]'
+                                }`}
+                              >
+                                {isVirtualRow ? (
+                                  <span
+                                    className={`inline-flex items-center justify-center ${
+                                      def.id === 'photo' ? 'min-h-0' : 'min-h-[2.75rem]'
+                                    }`}
+                                  >
+                                    {renderMatrixCell(inst.cells[def.id], { trackingId: inst.trackingId, columnId: def.id, columnLabel: def.label })}
+                                  </span>
+                                ) : def.id === 'surface' ? (
                                   <button
                                     type="button"
-                                    disabled={matrixOrderSaving || matrixCellSaving}
+                                    disabled={!canEditRow || matrixOrderSaving || matrixCellSaving}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) =>
-                                      openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
+                                      canEditRow
+                                        ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
+                                        : undefined
                                     }
                                     className="relative rounded-lg px-2 py-1.5 -mx-1 -my-0.5 min-w-[4.5rem] min-h-[2.5rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
-                                    title="Choose flooring surface"
+                                    title={canEditRow ? 'Choose flooring surface' : 'Auto-populated row'}
                                     aria-label="Choose flooring surface"
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
@@ -1709,15 +2258,29 @@ export default function TrackingPage() {
                                       />
                                     ) : null}
                                   </button>
-                                ) : Array.isArray(inst.cells[def.id].items) && inst.cells[def.id].items!.length > 0 ? (
+                                ) : def.id === 'compliance' ? (
+                                  <span
+                                    className="inline-flex min-w-[5rem] min-h-[2.5rem] items-center justify-center px-2 py-1.5 text-center"
+                                    title="Set on installer profile → Insurance & Registration"
+                                  >
+                                    {renderMatrixCell(inst.cells[def.id], {
+                                      trackingId: inst.trackingId,
+                                      columnId: def.id,
+                                      columnLabel: def.label,
+                                    })}
+                                  </span>
+                                ) : inst.cells[def.id] && Array.isArray(inst.cells[def.id].items) && inst.cells[def.id].items!.length > 0 ? (
                                   <div
-                                    role="button"
-                                    tabIndex={matrixOrderSaving || matrixCellSaving ? -1 : 0}
+                                    role={canEditRow ? 'button' : undefined}
+                                    tabIndex={canEditRow && !matrixOrderSaving && !matrixCellSaving ? 0 : -1}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) =>
-                                      openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
+                                      canEditRow
+                                        ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
+                                        : undefined
                                     }
                                     onKeyDown={(e) => {
+                                      if (!canEditRow) return
                                       if (e.key === 'Enter' || e.key === ' ') {
                                         e.preventDefault()
                                         // Use currentTarget so we can anchor the menu to the cell container.
@@ -1749,10 +2312,12 @@ export default function TrackingPage() {
                                 ) : (
                                   <button
                                     type="button"
-                                    disabled={matrixOrderSaving || matrixCellSaving}
+                                    disabled={!canEditRow || matrixOrderSaving || matrixCellSaving}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) =>
-                                      openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
+                                      canEditRow
+                                        ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
+                                        : undefined
                                     }
                                     className="relative rounded-lg px-2 py-1.5 -mx-1 -my-0.5 min-w-[2.5rem] min-h-[2.5rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
                                     title="Set column status"
@@ -1769,27 +2334,6 @@ export default function TrackingPage() {
                               </div>
                             </td>
                           ))}
-                          <td
-                            key={`${inst.trackingId}-onboard`}
-                            {...matrixRowDndHandlers}
-                            className={`border-l border-slate-100 text-center align-middle py-3 px-1 min-h-[3.25rem] ${matrixRowBgClass}`}
-                          >
-                            <div className="flex min-h-[2.75rem] items-center justify-center">
-                              <button
-                                type="button"
-                                disabled={matrixOrderSaving || matrixCellSaving}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onClick={(e) =>
-                                  openMatrixCellPicker(e, inst.trackingId, 'onboard', 'Onboard', inst.cells.onboard)
-                                }
-                                className="relative rounded-lg px-2 py-1.5 -mx-1 -my-0.5 min-w-[2.5rem] min-h-[2.5rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
-                                title="Set onboard status"
-                                aria-label="Set onboard status"
-                              >
-                                {renderMatrixCell(inst.cells.onboard)}
-                              </button>
-                            </div>
-                          </td>
                         </tr>
                       )
                     })}
@@ -2163,6 +2707,49 @@ export default function TrackingPage() {
             </>
           ) : null}
         </div>
+
+      {columnsDropdownOpen && columnsDropdownAnchor && typeof document !== 'undefined'
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-[120] cursor-default bg-slate-900/10"
+                aria-label="Close columns menu"
+                onClick={closeColumnsDropdown}
+              />
+              <div
+                role="menu"
+                aria-label="Show or hide matrix columns"
+                className="fixed z-[121] w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-200/50 max-h-[min(420px,calc(100vh-1rem))] overflow-y-auto"
+                style={{ left: columnsDropdownAnchor.left, top: columnsDropdownAnchor.top }}
+              >
+                <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Show / hide columns
+                </p>
+                {matrixColumnFilters.map((def) => (
+                  <label
+                    key={def.id}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns.has(def.id)}
+                      onChange={() => toggleColumn(def.id)}
+                      className="w-3.5 h-3.5 rounded border-slate-300 text-brand-green focus:ring-brand-green/40"
+                    />
+                    <span className="text-xs font-medium text-slate-700">{def.label}</span>
+                    {def.subtitle ? (
+                      <span className="text-[10px] text-slate-400 ml-auto shrink-0 max-w-[7rem] truncate text-right">
+                        {def.subtitle}
+                      </span>
+                    ) : null}
+                  </label>
+                ))}
+              </div>
+            </>,
+            document.body
+          )
+        : null}
 
       {matrixRowNotePicker ? (
         <>
@@ -2562,9 +3149,9 @@ export default function TrackingPage() {
                       <div className="px-4 py-3 text-sm text-slate-500">Searching…</div>
                             ) : matrixInstallerSearchError ? (
                               <div className="px-4 py-3 text-sm text-red-600">{matrixInstallerSearchError}</div>
-                    ) : filteredMatrixInstallers.length > 0 ? (
+                    ) : filteredMatrixSearchInstallers.length > 0 ? (
                       <>
-                        {filteredMatrixInstallers.map((installer) => (
+                        {filteredMatrixSearchInstallers.map((installer) => (
                           <button
                             key={installer.id}
                             type="button"

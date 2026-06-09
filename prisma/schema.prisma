@@ -18,6 +18,8 @@ model Admin {
   isActive  Boolean   @default(true)
   role      AdminRole @default(ADMIN)
   createdBy String?
+  photoUrl  String?   // Cached Microsoft 365 profile photo (base64 data URI)
+  reportColumnVisibility String?   // JSON array of visible matrix column IDs for report page
 
   @@index([email])
   @@index([isActive])
@@ -243,6 +245,8 @@ model Installer {
   workersCompExemExpiry                DateTime?
   automobileLiabilityExpiryDates       String?
   workersCompExemExpiryDates           String?
+  dateNullFields                       String?
+  cilioEnterpriseGroupNumber           Int?
   digitalId                            String?
   workroom                             String?
   referralCode                         String?                  @unique
@@ -350,9 +354,9 @@ model Licence {
   // Used by the Corporate → Documents page to separate records by document section (e.g. BTR, LRRP).
   category    String?
 
+  country     String?
   county      String?
   city        String?
-  state       String?
   isActive    Boolean  @default(true)
   areas       String?
   licenceType String?
@@ -620,6 +624,8 @@ model InstallerTracking {
   matrixSortOrder     Int       @default(0)
   /// Admin overrides for document matrix cells: { "btr": { "state": "ok" }, "wc": { "state": "missing", "detail": "exp" }, … }
   matrixCellOverrides Json?
+  /// Column visibility for report_rows — set by the admin who added the row
+  reportColumnVisibility String?
 
   Installer Installer? @relation(fields: [installerId], references: [id], onDelete: Cascade)
 

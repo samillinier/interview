@@ -16,7 +16,7 @@ const isAzureADConfigured =
   process.env.AZURE_AD_CLIENT_SECRET
 
 export const authOptions: NextAuthOptions = {
-  debug: true,
+  debug: false,
   secret: process.env.NEXTAUTH_SECRET,
   providers: isAzureADConfigured
     ? [
@@ -189,68 +189,110 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async jwt({ token, account, profile }) {
-      if (account) {
-        token.accessToken = account.access_token
-      }
-      if (profile) {
-        token.picture = (profile as any).picture
-      }
-
-      // Attach RBAC role (ADMIN | MODERATOR) from DB to the token so APIs/UI can enforce permissions
-      // Also check if user is a Property user
-      // IMPORTANT: Check property first if callbackUrl contains /property
       try {
-        const email = token.email?.toLowerCase()
-        if (email) {
-          // Check if user is a Property user first (for property portal logins)
-          let property = await prisma.property.findUnique({
-            where: { email },
-          })
-          
-          // If property doesn't exist but user authenticated, try to create it
-          if (!property) {
-            try {
-              const nameParts = (token.name || 'Property User').toString().split(' ')
-              const firstName = nameParts[0] || 'Property'
-              const lastName = nameParts.slice(1).join(' ') || 'User'
-              
-              property = await prisma.property.create({
-                data: {
-                  email,
-                  firstName,
-                  lastName,
-                  status: 'active',
-                },
-              })
-              console.log('✅ Auto-created property in JWT callback:', email)
-            } catch (createError) {
-              console.error('⚠️ Could not auto-create property in JWT:', createError)
+        if (account) {
+          token.accessToken = account.access_token
+        }
+        if (profile) {
+          token.picture = (profile as any).picture
+        }
+
+        // Fetch profile photo from Microsoft Graph once and persist to DB only.
+        // Never store the image in the JWT — large cookies break browser login.
+        if (account && token.accessToken && !(token as any).hasProfilePhoto) {
+          try {
+            const response = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
+              headers: { Authorization: `Bearer ${token.accessToken}` },
+            })
+            if (response.ok) {
+              const arrayBuffer = await response.arrayBuffer()
+              const base64 = Buffer.from(arrayBuffer).toString('base64')
+              const photoDataUrl = `data:image/jpeg;base64,${base64}`
+              const email = token.email?.toLowerCase()
+              if (email) {
+                try {
+                  await prisma.admin.updateMany({
+                    where: { email },
+                    data: { photoUrl: photoDataUrl },
+                  })
+                  ;(token as any).hasProfilePhoto = true
+                  console.log('✅ Microsoft profile photo saved to Admin DB for', email)
+                } catch { /* DB save is best-effort */ }
+              }
             }
-          }
-          
-          if (property && property.status === 'active') {
-            ;(token as any).userType = 'property'
-            ;(token as any).isProperty = true
-          }
-          
-          // Check if user is also an Admin (only ADMIN role, not MODERATOR)
-          const admin = (await prisma.admin.findUnique({
-            where: { email },
-          })) as any
-          const normalizedRole = String(admin?.role || '').toUpperCase()
-          if (admin?.isActive && (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR')) {
-            ;(token as any).role = normalizedRole
-            ;(token as any).isAdmin = normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
-            // Only set userType to admin if they're NOT a property user
-            // This ensures property users go to property dashboard
-            if (!(token as any).isProperty) {
-              ;(token as any).userType = 'admin'
-            }
+          } catch {
+            // ignore — photo is optional
           }
         }
-      } catch (e) {
-        // Don't block auth if role lookup fails; default handling happens in API guards
-        console.error('Error in JWT callback:', e)
+
+        if (!(token as any).hasProfilePhoto) {
+          try {
+            const email = token.email?.toLowerCase()
+            if (email) {
+              const admin = await prisma.admin.findUnique({ where: { email }, select: { photoUrl: true } })
+              if (admin?.photoUrl) {
+                ;(token as any).hasProfilePhoto = true
+              }
+            }
+          } catch { /* ignore — photo is optional */ }
+        }
+
+        // Fetch user profile from Microsoft Graph to get jobTitle
+        if (account && token.accessToken && !(token as any).jobTitle) {
+          try {
+            const response = await fetch('https://graph.microsoft.com/v1.0/me?$select=jobTitle,department,officeLocation', {
+              headers: { Authorization: `Bearer ${token.accessToken}` },
+            })
+            if (response.ok) {
+              const data = await response.json()
+              ;(token as any).jobTitle = data.jobTitle || data.job_title || null
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        // Attach RBAC role from DB to the token
+        try {
+          const email = token.email?.toLowerCase()
+          if (email) {
+            let property = await prisma.property.findUnique({
+              where: { email },
+            })
+            
+            if (!property) {
+              try {
+                const nameParts = (token.name || 'Property User').toString().split(' ')
+                const firstName = nameParts[0] || 'Property'
+                const lastName = nameParts.slice(1).join(' ') || 'User'
+                property = await prisma.property.create({
+                  data: { email, firstName, lastName, status: 'active' },
+                })
+              } catch { /* ignore */ }
+            }
+            
+            if (property && property.status === 'active') {
+              ;(token as any).userType = 'property'
+              ;(token as any).isProperty = true
+            }
+            
+            const admin = (await prisma.admin.findUnique({
+              where: { email },
+            })) as any
+            const normalizedRole = String(admin?.role || '').toUpperCase()
+            if (admin?.isActive && (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR')) {
+              ;(token as any).role = normalizedRole
+              ;(token as any).isAdmin = normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
+              if (!(token as any).isProperty) {
+                ;(token as any).userType = 'admin'
+              }
+            }
+          }
+        } catch {
+          // Don't block auth if role lookup fails
+        }
+      } catch {
+        // Catastrophic error — still return token to avoid blocking sign-in
       }
 
       return token
@@ -260,40 +302,13 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.sub
         ;(session.user as any).role = (token as any).role
         ;(session.user as any).userType = (token as any).userType // 'admin' or 'property'
-        
-        // Always try to fetch Microsoft profile photo if we have an access token
-        // This ensures the photo is available on every session refresh
-        if (token.accessToken) {
-          try {
-            const response = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
-              headers: {
-                Authorization: `Bearer ${token.accessToken}`,
-              },
-              // Add cache control to ensure fresh photo
-              cache: 'no-store',
-            })
-            if (response.ok) {
-              const arrayBuffer = await response.arrayBuffer()
-              const base64 = Buffer.from(arrayBuffer).toString('base64')
-              session.user.image = `data:image/jpeg;base64,${base64}`
-              console.log('✅ Microsoft profile photo fetched successfully')
-            } else {
-              console.log('⚠️ Could not fetch profile picture:', response.status, response.statusText)
-              // Try to use profile picture from token if available
-              if ((token as any).picture && !session.user.image) {
-                session.user.image = (token as any).picture
-              }
-            }
-          } catch (error) {
-            console.log('⚠️ Error fetching profile picture:', error)
-            // Fallback to token picture if available
-            if ((token as any).picture && !session.user.image) {
-              session.user.image = (token as any).picture
-            }
-          }
-        } else if ((token as any).picture) {
-          // Fallback: use picture from token if no access token
-          session.user.image = (token as any).picture
+        ;(session.user as any).jobTitle = (token as any).jobTitle || null
+
+        const picture = typeof token.picture === 'string' ? token.picture.trim() : ''
+        if (picture.startsWith('http://') || picture.startsWith('https://')) {
+          session.user.image = picture
+        } else if ((token as any).hasProfilePhoto) {
+          session.user.image = '/api/auth/profile-photo'
         }
       }
       return session

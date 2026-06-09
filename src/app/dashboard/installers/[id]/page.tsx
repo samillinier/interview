@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { upload } from '@vercel/blob/client'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
+import { ExpirationDatePicker } from '@/components/ExpirationDatePicker'
 import { 
   User, 
   Mail, 
@@ -69,9 +70,12 @@ import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { InstallerBarcode } from '@/components/InstallerBarcode'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
+import { NullAttachmentShade } from '@/components/NullAttachmentShade'
+
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -141,11 +145,49 @@ const DOCUMENT_TYPES: Array<{
   },
 ]
 
+const STATUS_ONLY_URL_PREFIX = 'status-only:'
+
+function isStatusOnlyDocument(doc: { url?: string | null; name?: string | null } | null | undefined): boolean {
+  if (!doc) return false
+  const url = String(doc.url || '').trim()
+  const name = String(doc.name || '').trim()
+  return url.startsWith(STATUS_ONLY_URL_PREFIX) || name === 'Not needed (NULL)'
+}
+
+function latestDocForType(docs: any[], type: string): any | null {
+  const matching = (docs || []).filter((d) => d?.type === type)
+  if (!matching.length) return null
+  return [...matching].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || a?.uploadedAt || 0).getTime()
+    const bTime = new Date(b?.createdAt || b?.uploadedAt || 0).getTime()
+    return bTime - aTime
+  })[0]
+}
+
+function docTypeHasNullStatus(docs: any[], type: string): boolean {
+  const latest = latestDocForType(docs, type)
+  return String(latest?.verificationLinkStatus || '').trim().toLowerCase() === 'null'
+}
+
+// Safely parse a date string — date-only strings (YYYY-MM-DD) are treated as local time
+// to avoid timezone offset shifting the date by a day
+function safeDateParse(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null
+  const s = dateStr.trim()
+  if (!s) return null
+  // Date-only pattern: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return new Date(s + 'T00:00:00')
+  }
+  return new Date(s)
+}
+
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
   if (!expiryDate) return 'none'
   
-  const expiry = new Date(expiryDate)
+  const expiry = safeDateParse(expiryDate)
+  if (!expiry) return 'none'
   const today = new Date()
   
   // Set both dates to start of day for accurate comparison
@@ -173,90 +215,6 @@ function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | '
   
   // If expiry is more than 3 months away, it's valid
   return 'valid'
-}
-
-// Date Picker Component with Expiration Status
-function ExpirationDatePicker({ 
-  label, 
-  value, 
-  onChange, 
-  isEditing 
-}: { 
-  label: string
-  value: string
-  onChange: (value: string) => void
-  isEditing: boolean
-}) {
-  const status = getExpirationStatus(value)
-  
-  const getStatusColor = () => {
-    switch (status) {
-      case 'expired':
-        return 'border-red-500 bg-red-50'
-      case 'expiring':
-        return 'border-yellow-500 bg-yellow-50'
-      case 'valid':
-        return 'border-green-500 bg-green-50'
-      default:
-        return 'border-slate-200 bg-slate-50/50'
-    }
-  }
-  
-  const getStatusBadge = () => {
-    switch (status) {
-      case 'expired':
-        return <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-1 rounded-full">Expired</span>
-      case 'expiring':
-        return <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">Expiring Soon</span>
-      case 'valid':
-        return <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Valid</span>
-      default:
-        return null
-    }
-  }
-  
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    if (Number.isNaN(date.getTime())) return 'N/A'
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  }
-  
-  return (
-    <div className={`group relative p-4 rounded-xl border-2 ${getStatusColor()} hover:shadow-sm transition-all duration-200`}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
-        {getStatusBadge()}
-      </div>
-      {isEditing ? (
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            max="2099-12-31"
-            value={value ? new Date(value).toISOString().split('T')[0] : ''}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-          />
-          {value ? (
-            <button
-              type="button"
-              onClick={() => onChange('')}
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 hover:bg-white hover:text-slate-700"
-              title="Clear date"
-            >
-              <X className="w-4 h-4" />
-              Clear
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          <p className="font-semibold text-slate-900">{formatDate(value)}</p>
-        </div>
-      )}
-    </div>
-  )
 }
 
 interface InstallerProfile {
@@ -296,6 +254,8 @@ interface InstallerProfile {
   automobileLiabilityExpiry?: string
   automobileLiabilityExpiryDates?: string
   employersLiabilityExpiry?: string
+  dateNullFields?: string
+  cilioEnterpriseGroupNumber?: number | null
   canPassBackgroundCheck?: boolean
   backgroundCheckDetails?: string
   insuranceType?: string
@@ -421,7 +381,7 @@ export default function InstallerProfileViewPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { sidebarOpen } = useSidebarOpen()
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
   const [updatesCount, setUpdatesCount] = useState(0)
@@ -430,6 +390,7 @@ export default function InstallerProfileViewPage() {
   const [showShareDropdown, setShowShareDropdown] = useState(false)
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
   const [isGeneratingContract, setIsGeneratingContract] = useState(false)
+  const [isTogglingIcsSign, setIsTogglingIcsSign] = useState<string | null>(null) // agreement id being toggled
   
   // Editable fields
   const [status, setStatus] = useState<string>('pending')
@@ -475,6 +436,10 @@ export default function InstallerProfileViewPage() {
   const [automobileLiabilityExpiry, setAutomobileLiabilityExpiry] = useState('')
   const [automobileLiabilityExpiryDates, setAutomobileLiabilityExpiryDates] = useState<string[]>([])
   const [employersLiabilityExpiry, setEmployersLiabilityExpiry] = useState('')
+  const [nullDateFields, setNullDateFields] = useState<Set<string>>(new Set())
+  const [cilioEnterpriseGroupNumber, setCilioEnterpriseGroupNumber] = useState<number | null>(null)
+  const [chargebackData, setChargebackData] = useState<any>(null)
+  const [isLoadingChargeback, setIsLoadingChargeback] = useState(false)
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [willingToTravel, setWillingToTravel] = useState<boolean | undefined>(undefined)
   const [maxTravelDistance, setMaxTravelDistance] = useState<number | undefined>(undefined)
@@ -850,6 +815,34 @@ export default function InstallerProfileViewPage() {
     }
   }
 
+  const handleToggleIcsSign = async (agreement: any) => {
+    if (!installerId) return
+    const toggleKey = agreement?.id || 'new'
+    setIsTogglingIcsSign(toggleKey)
+    try {
+      const currentlySigned = Boolean(agreement?.signedAt)
+      const res = await fetch(
+        `/api/admin/installers/${installerId}/agreements/independent-contractor-services/sign`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signed: !currentlySigned }),
+        }
+      )
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Failed to update signature status')
+      }
+      await refreshAgreements()
+      await fetchInstallerProfile()
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update signature status')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setIsTogglingIcsSign(null)
+    }
+  }
+
   // Initialize state when installer data is loaded
   useEffect(() => {
     if (installer && !isEditing) {
@@ -920,6 +913,9 @@ export default function InstallerProfileViewPage() {
       setEmployersLiabilityExpiry(
         installer.employersLiabilityExpiry ? new Date(installer.employersLiabilityExpiry).toISOString().split('T')[0] : ''
       )
+      // dateNullFields loaded via dedicated effect below
+
+      setCilioEnterpriseGroupNumber(installer.cilioEnterpriseGroupNumber ?? null)
       setWillingToTravel(installer.willingToTravel)
       setMaxTravelDistance(installer.maxTravelDistance)
       setCanStartImmediately(installer.canStartImmediately)
@@ -997,6 +993,44 @@ export default function InstallerProfileViewPage() {
       }
     }
   }, [installer, isEditing])
+
+  // Dedicated effect: load dateNullFields whenever installer data changes
+  useEffect(() => {
+    if (!installer?.dateNullFields) {
+      setNullDateFields(new Set())
+      return
+    }
+    try {
+      const parsed = JSON.parse(installer.dateNullFields)
+      if (Array.isArray(parsed)) {
+        setNullDateFields(new Set(parsed))
+      } else {
+        setNullDateFields(new Set())
+      }
+    } catch {
+      setNullDateFields(new Set())
+    }
+  }, [installer?.dateNullFields])
+
+  // Fetch chargeback data when enterprise group number changes
+  useEffect(() => {
+    if (!cilioEnterpriseGroupNumber) {
+      setChargebackData(null)
+      return
+    }
+    setIsLoadingChargeback(true)
+    fetch(`/api/cilio/enterprise/${cilioEnterpriseGroupNumber}`)
+      .then(r => r.json())
+      .then(data => setChargebackData(data.group || null))
+      .catch(() => setChargebackData(null))
+      .finally(() => setIsLoadingChargeback(false))
+  }, [cilioEnterpriseGroupNumber])
+
+  const getCreditColor = (creditHold: boolean | null, pastDueInvoices: boolean | null, pastDueBalance: number | null) => {
+    if (creditHold) return { border: 'border-red-300', bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-100 text-red-700' }
+    if (pastDueInvoices || (pastDueBalance && pastDueBalance > 0)) return { border: 'border-amber-300', bg: 'bg-amber-50', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700' }
+    return { border: 'border-emerald-300', bg: 'bg-emerald-50', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700' }
+  }
 
   const fetchInstallerProfile = async () => {
     try {
@@ -1230,7 +1264,7 @@ export default function InstallerProfileViewPage() {
     }
   }
 
-    type ComplianceStatusKey = 'active' | 'inactive' | 'missing' | 'expired' | 'na'
+    type ComplianceStatusKey = 'active' | 'inactive' | 'missing' | 'expired' | 'na' | 'null'
 
     const getLatestDocExpiryForType = (type: string): string => {
       const docs = (documents || []).filter((d: any) => d?.type === type)
@@ -1249,7 +1283,8 @@ export default function InstallerProfileViewPage() {
       }
     }
 
-    const hasDoc = (type: string) => (documents || []).some((d: any) => d?.type === type)
+    const hasDoc = (type: string) =>
+      (documents || []).some((d: any) => d?.type === type && !isStatusOnlyDocument(d))
 
     const getLatestDocStatusForType = (type: string): ComplianceStatusKey | null => {
       const docs = (documents || []).filter((d: any) => d?.type === type)
@@ -1267,10 +1302,13 @@ export default function InstallerProfileViewPage() {
       if (raw === 'missing' || raw === 'in_progress' || raw === 'in progress') return 'missing'
       if (raw === 'expired') return 'expired'
       if (raw === 'na' || raw === 'n/a') return 'na'
+      if (raw === 'null') return 'null'
+      if (raw === 'required' || raw === 'document_required') return 'missing'
       return null
     }
 
     const statusTextFromKey = (k: ComplianceStatusKey): string => {
+      if (k === 'null') return 'NULL'
       if (k === 'na') return 'N/A'
       if (k === 'expired') return 'Expired'
       if (k === 'inactive') return 'Not active'
@@ -1281,8 +1319,8 @@ export default function InstallerProfileViewPage() {
     const formatExpiryDate = (dateStr: string | undefined | null): string | null => {
       if (!dateStr || dateStr === 'N/A' || dateStr.trim() === '') return null
       try {
-        const date = new Date(dateStr)
-        if (isNaN(date.getTime())) return null
+        const date = safeDateParse(dateStr)
+        if (!date || isNaN(date.getTime())) return null
         return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
       } catch {
         return null
@@ -1329,11 +1367,12 @@ export default function InstallerProfileViewPage() {
                   ? 'NOT_COMPLIANT'
                   : 'IN_PROGRESS'
 
-      // Helper to get status: use manual override if set, otherwise check if document exists
-      const getStatus = (override: ComplianceStatusKey | null, hasDocument: boolean): ComplianceStatusKey => {
-        if (override !== null) return override
-        return hasDocument ? 'active' : 'missing'
-      }
+      // Helper to get status: use explicit admin override (active/inactive/expired/na),
+      // but treat 'missing' as "no doc" — if there's no file attached, show Missing
+        const getStatus = (override: ComplianceStatusKey | null, hasDocument: boolean): ComplianceStatusKey => {
+          if (override === 'active' || override === 'inactive' || override === 'expired' || override === 'na' || override === 'null') return override
+          return hasDocument ? 'active' : 'missing'
+        }
 
       return [
         {
@@ -1370,11 +1409,11 @@ export default function InstallerProfileViewPage() {
         },
         {
           key: 'workers_comp',
-          name: "Workers' Compensation",
-          statusKey: hasWorkersCompExemption === false 
+          name: "Workers Comp Exemption",
+          statusKey: hasWorkersComp === false && hasWorkersCompExemption === false 
             ? ('na' as const)
             : getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp')),
-          statusText: hasWorkersCompExemption === false
+          statusText: hasWorkersComp === false && hasWorkersCompExemption === false
             ? 'N/A'
             : statusTextFromKey(getStatus(workersCompOverride, hasDoc('workers_comp_certificate') || hasDoc('workers_comp'))),
           date: (workersCompExemExpiryDates || []).filter(Boolean).slice().sort()[0] || '',
@@ -1402,14 +1441,14 @@ export default function InstallerProfileViewPage() {
         },
         {
           key: 'employers_liability',
-          name: "Employer's Liability Insurance",
-          statusKey: employerLiabilityPolicyNumber
-            ? statusFromExpiry(employersLiabilityExpiry || '')
-            : ('na' as const),
-          statusText: employerLiabilityPolicyNumber
-            ? statusTextFromKey(statusFromExpiry(employersLiabilityExpiry || ''))
-            : 'N/A',
-          date: employerLiabilityPolicyNumber ? (employersLiabilityExpiry || '') : 'N/A',
+          name: "Workers Comp",
+          statusKey: employersLiabilityExpiry
+            ? statusFromExpiry(employersLiabilityExpiry)
+            : (employerLiabilityPolicyNumber ? ('missing' as const) : ('na' as const)),
+          statusText: employersLiabilityExpiry
+            ? statusTextFromKey(statusFromExpiry(employersLiabilityExpiry))
+            : (employerLiabilityPolicyNumber ? 'Missing' : 'N/A'),
+          date: employersLiabilityExpiry || 'N/A',
           dates: [] as string[],
         },
         {
@@ -1513,11 +1552,12 @@ export default function InstallerProfileViewPage() {
     ])
 
     const complianceCounts = useMemo(() => {
-  const base = { active: 0, inactive: 0, missing: 0, expired: 0, na: 0 }
+      const base = { active: 0, inactive: 0, missing: 0, expired: 0, na: 0, null: 0 }
       for (const r of complianceRows) {
         // Rows with custom labels (Compliant/Not compliant/In progress) shouldn't affect the doc summary pills.
         if ((r as any)?.key === 'background_check') continue
-        base[r.statusKey]++
+        const key = r.statusKey === 'null' ? 'null' : r.statusKey
+        if (key in base) base[key as keyof typeof base]++
       }
       return base
     }, [complianceRows])
@@ -1644,6 +1684,51 @@ export default function InstallerProfileViewPage() {
     } catch (e: any) {
       console.error('Update status error:', e)
       setError(e?.message || 'Failed to update status')
+    }
+  }
+
+  const handleToggleDocTypeNull = async (docTypeId: string) => {
+    if (!installerId) return
+    const isNull = docTypeHasNullStatus(documents, docTypeId)
+    const latest = latestDocForType(documents, docTypeId)
+    const realDocs = (documents || []).filter(
+      (d: any) => d?.type === docTypeId && !isStatusOnlyDocument(d)
+    )
+
+    try {
+      if (isNull) {
+        if (latest?.id && isStatusOnlyDocument(latest)) {
+          const res = await fetch(`/api/installers/${installerId}/documents/${latest.id}`, {
+            method: 'DELETE',
+          })
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            throw new Error(err?.error || 'Failed to clear NULL status')
+          }
+        } else if (latest?.id) {
+          await handleUpdateDocumentStatus(latest.id, '')
+          return
+        }
+      } else if (realDocs.length > 0 && latest?.id) {
+        await handleUpdateDocumentStatus(latest.id, 'null')
+        return
+      } else {
+        const res = await fetch(`/api/installers/${installerId}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: docTypeId, verificationLinkStatus: 'null' }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err?.error || 'Failed to mark as NULL')
+        }
+      }
+      await refreshDocuments()
+      setSuccess(isNull ? 'NULL cleared' : 'Marked as not needed (NULL)')
+      setTimeout(() => setSuccess(''), 2000)
+    } catch (e: any) {
+      console.error('Toggle NULL error:', e)
+      setError(e?.message || 'Failed to update NULL status')
     }
   }
 
@@ -2024,6 +2109,8 @@ export default function InstallerProfileViewPage() {
               ? new Date(automobileLiabilityExpiry).toISOString()
               : null,
         employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : null,
+        dateNullFields: JSON.stringify(Array.from(nullDateFields)),
+        cilioEnterpriseGroupNumber,
         willingToTravel,
         maxTravelDistance,
         canStartImmediately,
@@ -2123,6 +2210,23 @@ export default function InstallerProfileViewPage() {
       setIsSaving(false)
     }
   }
+
+  // Auto-save dateNullFields when NULL toggled (no need to click Save)
+  const saveDateNullFields = useCallback(async (fieldName: string, active: boolean) => {
+    setNullDateFields((prev) => {
+      const next = new Set(prev)
+      active ? next.add(fieldName) : next.delete(fieldName)
+      // Save immediately to API
+      fetch(`/api/installers/${installerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateNullFields: JSON.stringify(Array.from(next)) }),
+      }).then(r => r.json()).then(data => {
+        if (data.installer) setInstaller(data.installer)
+      }).catch(() => {})
+      return next
+    })
+  }, [installerId])
 
   // Quick status update (just status field)
   const handleQuickStatusUpdate = async (newStatus: string) => {
@@ -2330,6 +2434,15 @@ export default function InstallerProfileViewPage() {
       setEmployersLiabilityExpiry(
         installer.employersLiabilityExpiry ? new Date(installer.employersLiabilityExpiry).toISOString().split('T')[0] : ''
       )
+      // HCE: restore nullDateFields from installer on cancel
+      try {
+        const parsed = installer.dateNullFields ? JSON.parse(installer.dateNullFields) : []
+        setNullDateFields(new Set(Array.isArray(parsed) ? parsed : []))
+      } catch {
+        setNullDateFields(new Set())
+      }
+
+      setCilioEnterpriseGroupNumber(installer.cilioEnterpriseGroupNumber ?? null)
       setWillingToTravel(installer.willingToTravel)
       setMaxTravelDistance(installer.maxTravelDistance)
       setCanStartImmediately(installer.canStartImmediately)
@@ -2750,7 +2863,7 @@ export default function InstallerProfileViewPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <AdminSidebar pathname={pathname} sidebarOpen={sidebarOpen} />
+      <AdminSidebar pathname={pathname} />
 
       <AdminMobileMenu pathname={pathname} />
 
@@ -3487,9 +3600,9 @@ export default function InstallerProfileViewPage() {
                                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                                         : row.statusKey === 'expired'
                                           ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                          : row.statusKey === 'na'
-                                            ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                            : 'bg-slate-50 text-slate-700 border-slate-200'
+                                          : row.statusKey === 'na' || row.statusKey === 'null'
+                                          ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                          : 'bg-slate-50 text-slate-700 border-slate-200'
 
                                 const formattedDate = formatExpiryDate(row.date)
                                 const dateStatus = row.date ? getExpirationStatus(row.date) : 'none'
@@ -4298,14 +4411,17 @@ export default function InstallerProfileViewPage() {
                 {DOCUMENT_TYPES.map((docType) => {
                   const isMulti = true // All document types now support multiple uploads
                   const matchingDocs = documents.filter((d: any) => d?.type === docType.id)
-                  const existing = matchingDocs[0] // For display purposes, show first doc
+                  const realDocs = matchingDocs.filter((d: any) => !isStatusOnlyDocument(d))
+                  const latestForType = latestDocForType(documents, docType.id)
+                  const isNullNotNeeded = docTypeHasNullStatus(documents, docType.id)
+                  const existing = realDocs[0] // For display purposes, show first real upload
                   const isUploading = uploadingDocumentType === docType.id
                   const isDocumentDeleting = isDeleting && deleteConfirm.documentId === existing?.id
-                  const hasAnyForType = isMulti ? matchingDocs.length > 0 : Boolean(existing)
+                  const hasRealUploads = realDocs.length > 0
 
                   const existingName = existing?.name || existing?.fileName || existing?.file_name
                   const existingUrl = existing?.url || existing?.fileUrl || existing?.file_url
-                  const docStatus = existing?.verificationLinkStatus || ''
+                  const docStatus = latestForType?.verificationLinkStatus || ''
 
                   // Only show verification link feature for specific document types
                   const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance' || docType.id === 'employers_liability'
@@ -4319,8 +4435,10 @@ export default function InstallerProfileViewPage() {
                     <div
                       key={docType.id}
                       className={`p-4 rounded-xl border transition-colors ${
-                        hasActiveVerificationLink 
-                          ? 'border-brand-green/50 bg-brand-green/5 hover:bg-brand-green/10' 
+                        hasActiveVerificationLink
+                          ? 'border-brand-green/50 bg-brand-green/5 hover:bg-brand-green/10'
+                          : isNullNotNeeded
+                            ? 'border-emerald-200/80 bg-emerald-50/60 hover:bg-emerald-50/80'
                           : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
                       }`}
                     >
@@ -4336,7 +4454,11 @@ export default function InstallerProfileViewPage() {
                                 Required
                               </span>
                             )}
-                            {hasAnyForType ? (
+                            {isNullNotNeeded ? (
+                              <span className="text-xs font-semibold tracking-wide text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                NULL
+                              </span>
+                            ) : hasRealUploads ? (
                               <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
                                 Uploaded
                               </span>
@@ -4345,7 +4467,7 @@ export default function InstallerProfileViewPage() {
                                 Missing
                               </span>
                             )}
-                            {existing?.id && docStatus && (
+                            {docStatus && !isNullNotNeeded && (
                               <span className={`text-xs px-2 py-0.5 rounded-full capitalize font-semibold ${
                                 docStatus === 'active'
                                   ? 'bg-green-100 text-green-700' 
@@ -4367,6 +4489,16 @@ export default function InstallerProfileViewPage() {
                           </div>
                           {/* Always show description and file name */}
                           <p className="text-xs text-slate-500 mt-1">{docType.description}</p>
+
+                          {isNullNotNeeded && (
+                            <div className="mt-3">
+                              <NullAttachmentShade
+                                size="lg"
+                                showCaption
+                                title={`${docType.name} — not required (NULL)`}
+                              />
+                            </div>
+                          )}
                           {existingName && (
                             <p className="text-xs text-slate-600 mt-2 truncate">
                               <span className="font-semibold text-slate-700">{isMulti ? 'Latest:' : 'Current:'}</span> {existingName}
@@ -4374,9 +4506,9 @@ export default function InstallerProfileViewPage() {
                           )}
 
                           {/* Multi-upload list (all document types now support multiple uploads) */}
-                          {matchingDocs.length > 0 && (
+                          {realDocs.length > 0 && (
                             <div className="mt-3 space-y-2">
-                              {matchingDocs.map((doc: any) => {
+                              {realDocs.map((doc: any) => {
                                 const docName = doc?.name || doc?.fileName || doc?.file_name || 'Document'
                                 const docUrl = doc?.url || doc?.fileUrl || doc?.file_url
                                 const deletingThis = isDeleting && deleteConfirm.documentId === doc?.id
@@ -4417,21 +4549,48 @@ export default function InstallerProfileViewPage() {
                                         </button>
                                       )}
                                       {doc?.id && (
-                                        <div className="relative">
-                                          <select
-                                            value={doc?.verificationLinkStatus || ''}
-                                            onChange={(e) => handleUpdateDocumentStatus(doc.id, e.target.value)}
-                                            className="appearance-none pl-2.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                                            title="Set status"
+                                        <>
+                                          <div className="relative">
+                                            <select
+                                              value={doc?.verificationLinkStatus || ''}
+                                              onChange={(e) => handleUpdateDocumentStatus(doc.id, e.target.value)}
+                                              className="appearance-none pl-2.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                                              title="Set status"
+                                            >
+                                              <option value="">Status</option>
+                                              <option value="active">Active</option>
+                                              <option value="inactive">Inactive</option>
+                                              <option value="missing">Missing</option>
+                                              <option value="na">N/A</option>
+                                              <option value="null">NULL</option>
+                                            </select>
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              void handleUpdateDocumentStatus(
+                                                doc.id,
+                                                String(doc?.verificationLinkStatus || '').toLowerCase() === 'null' ? '' : 'null'
+                                              )
+                                            }
+                                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                                              String(doc?.verificationLinkStatus || '').toLowerCase() === 'null'
+                                                ? 'border-slate-400 bg-slate-200 text-slate-800'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                            title="Not needed"
                                           >
-                                            <option value="">Status</option>
-                                            <option value="active">Active</option>
-                                            <option value="inactive">Inactive</option>
-                                            <option value="missing">Missing</option>
-                                            <option value="na">N/A</option>
-                                          </select>
-                                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                        </div>
+                                            <CheckCircle2
+                                              className={`w-3.5 h-3.5 ${
+                                                String(doc?.verificationLinkStatus || '').toLowerCase() === 'null'
+                                                  ? 'text-slate-700'
+                                                  : 'text-slate-400'
+                                              }`}
+                                            />
+                                            NULL
+                                          </button>
+                                        </>
                                       )}
                                       {docUrl && (
                                         <a
@@ -4505,6 +4664,7 @@ export default function InstallerProfileViewPage() {
                                       <option value="inactive">Inactive</option>
                                       <option value="missing">Missing</option>
                                       <option value="na">N/A</option>
+                                      <option value="null">NULL</option>
                                       <option value="expired">Expired</option>
                                       <option value="pending">Pending</option>
                                     </select>
@@ -4562,6 +4722,21 @@ export default function InstallerProfileViewPage() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleToggleDocTypeNull(docType.id)}
+                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                            isNullNotNeeded
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
+                          title="Mark as not needed — no file required"
+                        >
+                          <CheckCircle2
+                            className={`w-4 h-4 ${isNullNotNeeded ? 'text-emerald-600' : 'text-slate-400'}`}
+                          />
+                          NULL
+                        </button>
                         <label
                           className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
                             isUploading
@@ -4700,6 +4875,89 @@ export default function InstallerProfileViewPage() {
             </div>
 
             {(() => {
+              // Find the ICS agreement for the toggle
+              const icsAgreement = agreements.find((a: any) => a.type === 'independent-contractor-services-agreement')
+              const adobeRedirectUrl = icsAgreement?.payload?.adobe?.redirectUrl || null
+              const adobeSignedDocumentUrl = icsAgreement?.payload?.adobe?.signedDocumentUrl || null
+              const hasAdobeLinks = !!(adobeRedirectUrl || adobeSignedDocumentUrl)
+
+              return (
+                <>
+                  {/* Independent Contractor Services Agreement — Signed toggle */}
+                  <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                          <FileCheck className="w-5 h-5 text-brand-green" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">Independent Contractor Services Agreement</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Did the installer sign this agreement?</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleIcsSign(icsAgreement)}
+                          disabled={isTogglingIcsSign === (icsAgreement?.id || 'new')}
+                          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:ring-offset-1 disabled:opacity-50 ${
+                            icsAgreement?.signedAt ? 'bg-brand-green' : 'bg-slate-300'
+                          }`}
+                          title={icsAgreement?.signedAt ? 'Mark as not signed' : 'Mark as signed'}
+                        >
+                          <span
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                              icsAgreement?.signedAt ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                        <span className={`text-sm font-semibold whitespace-nowrap ${
+                          icsAgreement?.signedAt ? 'text-brand-green' : 'text-slate-400'
+                        }`}>
+                          {isTogglingIcsSign === (icsAgreement?.id || 'new') ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : icsAgreement?.signedAt ? (
+                            'Yes — Signed'
+                          ) : (
+                            'No — Not signed'
+                          )}
+                        </span>
+                        {icsAgreement && hasAdobeLinks && (
+                          <div className="flex items-center gap-2 ml-2">
+                            {adobeSignedDocumentUrl && (
+                              <a
+                                href={adobeSignedDocumentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-white transition-colors font-medium text-xs whitespace-nowrap"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                View
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleSendIndependentContractorServicesAgreementEmail(icsAgreement)}
+                              disabled={isSendingAgreementEmail}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors font-medium text-xs whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isSendingAgreementEmail ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Mail className="w-3.5 h-3.5" />
+                              )}
+                              Send
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+
+            {(() => {
               // Filter to only show signed agreements (must have signedAt date)
               const signedAgreements = agreements.filter((agreement: any) => {
                 // Only show agreements that have been signed by the installer
@@ -4707,19 +4965,17 @@ export default function InstallerProfileViewPage() {
                 const isLegacyToHide =
                   agreement.type === 'background-authorization-release' ||
                   agreement.type === 'background-authorization' ||
-                  agreement.type === 'service-agreement'
+                  agreement.type === 'service-agreement' ||
+                  agreement.type === 'independent-contractor-services-agreement'
 
                 if (isLegacyToHide) return false
 
                 const isAdminUpload =
                   typeof agreement.type === 'string' && agreement.type.startsWith('admin-uploaded-agreement:')
 
-                // For Independent Contractor Services Agreement, we want admins to be able
-                // to see the generated prefilled Adobe Sign link even before installer signs.
                 return (
                   isAdminUpload ||
-                  agreement.signedAt != null ||
-                  agreement.type === 'independent-contractor-services-agreement'
+                  agreement.signedAt != null
                 )
               })
 
@@ -5341,12 +5597,16 @@ export default function InstallerProfileViewPage() {
                     value={llrpExpiry}
                     onChange={setLlrpExpiry}
                     isEditing={isEditing}
+                    onNullToggle={(active) => saveDateNullFields('llrpExpiry', active)}
+                    initialNullActive={nullDateFields.has('llrpExpiry')}
                   />
                   <ExpirationDatePicker
                     label="BTR"
                     value={btrExpiry}
                     onChange={setBtrExpiry}
                     isEditing={isEditing}
+                    onNullToggle={(active) => saveDateNullFields('btrExpiry', active)}
+                    initialNullActive={nullDateFields.has('btrExpiry')}
                   />
                   <MultiExpirationDatePicker
                     label="Workers Comp Exemption"
@@ -5357,6 +5617,8 @@ export default function InstallerProfileViewPage() {
                     }}
                     isEditing={isEditing}
                     addLabel="Add certificate date"
+                    onNullToggle={(active) => saveDateNullFields('workersCompExemExpiry', active)}
+                    initialNullActive={nullDateFields.has('workersCompExemExpiry')}
                   />
                 </div>
               </div>
@@ -5373,6 +5635,8 @@ export default function InstallerProfileViewPage() {
                     value={generalLiabilityExpiry}
                     onChange={setGeneralLiabilityExpiry}
                     isEditing={isEditing}
+                    onNullToggle={(active) => saveDateNullFields('generalLiabilityExpiry', active)}
+                    initialNullActive={nullDateFields.has('generalLiabilityExpiry')}
                   />
                   <MultiExpirationDatePicker
                     label="Auto Insurance"
@@ -5383,16 +5647,188 @@ export default function InstallerProfileViewPage() {
                     }}
                     isEditing={isEditing}
                     addLabel="Add policy date"
+                    onNullToggle={(active) => saveDateNullFields('automobileLiabilityExpiry', active)}
+                    initialNullActive={nullDateFields.has('automobileLiabilityExpiry')}
                   />
                   <ExpirationDatePicker
-                    label="Workers' Compensation"
+                    label="Workers Comp"
                     value={employersLiabilityExpiry}
                     onChange={setEmployersLiabilityExpiry}
                     isEditing={isEditing}
+                    onNullToggle={(active) => saveDateNullFields('employersLiabilityExpiry', active)}
+                    initialNullActive={nullDateFields.has('employersLiabilityExpiry')}
                   />
                 </div>
               </div>
             </div>
+          </motion.div>
+          )}
+
+          {/* Enterprise Account / Chargeback Status - temporarily hidden */}
+          {false && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Enterprise Account / Chargeback</h2>
+                <p className="text-sm text-slate-500">Credit status and enterprise group information from Cilio</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+
+            {/* Enterprise Group Number Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Cilio Enterprise Group Number
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={cilioEnterpriseGroupNumber ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value ? parseInt(e.target.value, 10) : null
+                    setCilioEnterpriseGroupNumber(isNaN(val as number) ? null : val)
+                  }}
+                  placeholder="e.g. 12345"
+                  className="w-48 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                />
+                {cilioEnterpriseGroupNumber && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCilioEnterpriseGroupNumber(null)
+                      setChargebackData(null)
+                    }}
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                    title="Clear group number"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Chargeback Data Display */}
+            {cilioEnterpriseGroupNumber ? (
+              isLoadingChargeback ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+                  <span className="ml-2 text-sm text-slate-500">Loading enterprise data...</span>
+                </div>
+              ) : chargebackData ? (
+                (() => {
+                  const colors = getCreditColor(chargebackData.creditHold, chargebackData.pastDueInvoices, chargebackData.pastDueBalance)
+                  return (
+                    <div className={`rounded-xl border ${colors.border} ${colors.bg} p-6`}>
+                      {chargebackData.company && (
+                        <div className="mb-4">
+                          <h3 className="text-lg font-bold text-slate-900">{chargebackData.company}</h3>
+                          {chargebackData.groupAddress?.fullAddress && (
+                            <p className="text-sm text-slate-500 mt-1">{chargebackData.groupAddress.fullAddress}</p>
+                          )}
+                          <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-600">
+                            {chargebackData.phone && <span>📞 {chargebackData.phone}</span>}
+                            {chargebackData.email && <span>✉️ {chargebackData.email}</span>}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Open Balance</p>
+                          <p className="text-xl font-bold text-slate-900">
+                            {chargebackData.openBalance != null
+                              ? `$${Number(chargebackData.openBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : '—'}
+                          </p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Past Due Balance</p>
+                          <p className={`text-xl font-bold ${chargebackData.pastDueBalance && chargebackData.pastDueBalance > 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                            {chargebackData.pastDueBalance != null
+                              ? `$${Number(chargebackData.pastDueBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                              : '—'}
+                          </p>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Credit Hold</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {chargebackData.creditHold ? (
+                              <>
+                                <AlertCircle className="w-5 h-5 text-red-500" />
+                                <span className="text-sm font-bold text-red-600">Yes</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                <span className="text-sm font-bold text-emerald-600">No</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Past Due Invoices</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {chargebackData.pastDueInvoices ? (
+                              <>
+                                <AlertCircle className="w-5 h-5 text-red-500" />
+                                <span className="text-sm font-bold text-red-600">Yes</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                <span className="text-sm font-bold text-emerald-600">No</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {(chargebackData.creditLimit != null || chargebackData.paymentTerm || chargebackData.currencyCode) && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                          {chargebackData.creditLimit != null && (
+                            <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Credit Limit</p>
+                              <p className="text-lg font-bold text-slate-900">
+                                ${Number(chargebackData.creditLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          )}
+                          {chargebackData.paymentTerm && (
+                            <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Payment Terms</p>
+                              <p className="text-lg font-bold text-slate-900">{chargebackData.paymentTerm}</p>
+                            </div>
+                          )}
+                          {chargebackData.currencyCode && (
+                            <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
+                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Currency</p>
+                              <p className="text-lg font-bold text-slate-900">{chargebackData.currencyCode}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()
+              ) : (
+                <div className="flex items-center justify-center py-8 text-slate-400">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  <span>No enterprise group found with this number.</span>
+                </div>
+              )
+            ) : (
+              <div className="flex items-center justify-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <Building2 className="w-5 h-5 mr-2" />
+                <span>Enter an Enterprise Group Number to view chargeback status.</span>
+              </div>
+            )}
           </motion.div>
           )}
 
