@@ -821,7 +821,7 @@ export default function JobsPage() {
                               <DetailItem icon={FileText} label="Purchaser PO" value={job.purchaserPO} />
                             )}
                             <DetailItem icon={Calendar} label="Status Date" value={formatDate(job.currentOrderStatusDate)} />
-                            <DetailItem icon={MapPin} label="Workroom" value={getWorkroomByStoreNumber(job.storeNumber)} />
+                            <DetailItem icon={MapPin} label="Workroom" value={getWorkroomByStoreNumber(job.storeNumber) ?? undefined} />
                             <DetailItem icon={Building2} label="Store" value={job.storeName} small />
                             <DetailItem icon={MapPin} label="Store #" value={job.storeNumber.trim()} />
                             {job.laborCategoryDescription && (() => {
