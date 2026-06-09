@@ -575,8 +575,8 @@ export default function JobsPage() {
   }
 
   // Extract unique values from unfiltered jobs so dropdowns don't shrink
-  const statuses = Array.from(new Set(allJobs.map(j => j.orderStatusDescription))).sort()
-  const laborCategories = Array.from(new Set(allJobs.map(j => j.laborCategoryDescription))).filter(Boolean).sort()
+  const statuses = (Array.from(new Set(allJobs.map(j => j.orderStatusDescription))).filter(Boolean).sort() as string[])
+  const laborCategories = (Array.from(new Set(allJobs.map(j => j.laborCategoryDescription))).filter(Boolean).sort() as string[])
   const workrooms = allWorkrooms()
 
   const formatDate = (dateStr: string | null | undefined) => {
