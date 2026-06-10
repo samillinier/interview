@@ -1373,7 +1373,9 @@ export default function JobsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                               <Field label="Schedule Date" value={formatDate(fullJobDetail.schedulingInformation.scheduleDate)} />
                               <Field label="Avg Time to Seller" value={fullJobDetail.schedulingInformation.siteDetailsAvgTimeToSeller} />
-                              <Field label="Firm Name" value={fullJobDetail.schedulingInformation.scheduledUserFirmName} />
+                              <div className="col-span-2">
+                                <Field label="Firm Name" value={fullJobDetail.schedulingInformation.scheduledUserFirmName} noTruncate />
+                              </div>
                               <Field label="Firm Cert#" value={fullJobDetail.schedulingInformation.scheduledUserFirmCertificationNumber} />
                               <Field label="Renovator" value={fullJobDetail.schedulingInformation.scheduledUserRenovatorName} />
                               <Field label="Lead Cert#" value={fullJobDetail.schedulingInformation.scheduledUserLeadCertificationNumber} />
