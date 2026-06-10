@@ -305,7 +305,7 @@ export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [laborCategoryFilter, setLaborCategoryFilter] = useState('')
   const [workroomFilter, setWorkroomFilter] = useState('')
-  const [installers, setInstallers] = useState<{ id: string; firstName: string; lastName: string; companyName: string | null }[]>([])
+  const [installers, setInstallers] = useState<{ id: string; firstName: string; lastName: string; email: string; companyName: string | null }[]>([])
   const [expandedJob, setExpandedJob] = useState<number | null>(null)
   const [jobAttachments, setJobAttachments] = useState<Record<number, JobAttachments[]>>({})
   const [jobLineItems, setJobLineItems] = useState<Record<number, JobLineItem[]>>({})
@@ -445,7 +445,7 @@ export default function JobsPage() {
             detail.schedulingInformation?.taskOneResource ||
             detail.schedulingInformation?.taskTwoResource ||
             detail.schedulingInformation?.taskThreeResource
-          const match = matchInstaller(res)
+          const match = matchInstaller(res, detail.schedulingInformation?.scheduledResource?.email)
           if (match) {
             syncJobToDb(detail, match)
           }
@@ -616,8 +616,13 @@ export default function JobsPage() {
     }
   }, [sessionStatus])
 
-  // Match a Cilio scheduledResources name against our installer database
-  const matchInstaller = (resourceName?: string | null) => {
+  // Match a Cilio resource against our installer database (prefer email, fallback to name)
+  const matchInstaller = (resourceName?: string | null, resourceEmail?: string | null) => {
+    if (resourceEmail) {
+      const lowerEmail = resourceEmail.toLowerCase().trim()
+      const byEmail = installers.find(i => i.email.toLowerCase().trim() === lowerEmail)
+      if (byEmail) return { id: byEmail.id, firstName: byEmail.firstName, lastName: byEmail.lastName }
+    }
     if (!resourceName) return null
     const lower = resourceName.toLowerCase().trim()
     return installers.find(i => {
@@ -1193,7 +1198,7 @@ export default function JobsPage() {
                                 fullJobDetail.schedulingInformation?.taskOneResource ||
                                 fullJobDetail.schedulingInformation?.taskTwoResource ||
                                 fullJobDetail.schedulingInformation?.taskThreeResource
-                              const match = matchInstaller(res)
+                              const match = matchInstaller(res, fullJobDetail.schedulingInformation?.scheduledResource?.email)
                               return match ? (
                                 <Link
                                   href={`/dashboard/installers/${match.id}`}

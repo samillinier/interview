@@ -101,12 +101,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For jobs not yet in our DB, fetch full detail in small batch to match installer names
+    // For jobs not yet in our DB, fetch full detail and match by email
     const unsynced = filtered.filter((j: any) => !installerMap[j.orderNumber]).slice(0, 5)
     if (unsynced.length > 0) {
       const allInstallers = await prisma.installer.findMany({
         where: { status: 'active' },
-        select: { id: true, firstName: true, lastName: true, companyName: true },
+        select: { id: true, firstName: true, lastName: true, email: true },
       })
       const details = await Promise.all(
         unsynced.map(async (j: any) => {
@@ -118,14 +118,10 @@ export async function GET(request: NextRequest) {
         const job = unsynced[i]
         const detail = details[i]
         if (!detail) continue
-        const res = (detail as any).schedulingInformation?.scheduledResources
-        if (!res) continue
-        const lower = String(res).toLowerCase().trim()
-        const match = allInstallers.find(inst => {
-          const full = `${inst.firstName} ${inst.lastName}`.toLowerCase()
-          const reversed = `${inst.lastName} ${inst.firstName}`.toLowerCase()
-          return full === lower || reversed === lower || full.includes(lower) || lower.includes(full)
-        })
+        const sr = (detail as any).schedulingInformation?.scheduledResource
+        const email = (sr?.email || '').toLowerCase().trim()
+        if (!email) continue
+        const match = allInstallers.find(inst => inst.email.toLowerCase().trim() === email)
         if (match) {
           const name = `${match.firstName} ${match.lastName}`
           installerMap[job.orderNumber] = { id: match.id, name }
