@@ -3705,115 +3705,6 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
-
-          {/* Assigned Jobs */}
-          {scheduledJobs.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Assigned Jobs</h2>
-                <p className="text-sm text-slate-500">Scheduled Cilio jobs assigned to this installer</p>
-              </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <Briefcase className="w-6 h-6 text-emerald-600" />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="pb-3 pr-4">Order #</th>
-                    <th className="pb-3 pr-4">Store</th>
-                    <th className="pb-3 pr-4">Workroom</th>
-                    <th className="pb-3 pr-4">Category</th>
-                    <th className="pb-3 pr-4">Install Date</th>
-                    <th className="pb-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {scheduledJobs.map((job: any) => (
-                    <tr key={job.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 pr-4 font-mono font-semibold text-slate-900">{job.orderNumber}</td>
-                      <td className="py-3 pr-4 text-slate-700 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
-                      <td className="py-3 pr-4 text-slate-700">{job.workroom || '--'}</td>
-                      <td className="py-3 pr-4 text-slate-700">{job.laborCategoryDescription || '--'}</td>
-                      <td className="py-3 pr-4 text-slate-700">
-                        {job.scheduledInstallDate
-                          ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : '--'}
-                      </td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {job.orderStatusDescription || 'Scheduled'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-          )}
-
-          {/* Chargebacks */}
-          {chargebackJobs.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.09 }}
-            className="bg-white rounded-2xl shadow-lg border border-red-200/60 p-8 mb-6 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between mb-6 pb-6 border-b border-red-200">
-              <div>
-                <h2 className="text-2xl font-bold text-red-800 mb-1">Chargebacks</h2>
-                <p className="text-sm text-red-600">Chargeback jobs assigned to this installer</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-red-200 text-left text-xs font-semibold text-red-600 uppercase tracking-wider">
-                    <th className="pb-3 pr-4">Order #</th>
-                    <th className="pb-3 pr-4">Store</th>
-                    <th className="pb-3 pr-4">Workroom</th>
-                    <th className="pb-3 pr-4">Category</th>
-                    <th className="pb-3 pr-4">Install Date</th>
-                    <th className="pb-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-red-100">
-                  {chargebackJobs.map((job: any) => (
-                    <tr key={job.id} className="hover:bg-red-50/50 transition-colors">
-                      <td className="py-3 pr-4 font-mono font-semibold text-red-900">{job.orderNumber}</td>
-                      <td className="py-3 pr-4 text-red-800 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
-                      <td className="py-3 pr-4 text-red-800">{job.workroom || '--'}</td>
-                      <td className="py-3 pr-4 text-red-800">{job.laborCategoryDescription || '--'}</td>
-                      <td className="py-3 pr-4 text-red-800">
-                        {job.scheduledInstallDate
-                          ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : '--'}
-                      </td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
-                          Chargeback
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-          )}
-
           {/* Profile Information */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -4509,6 +4400,114 @@ export default function InstallerProfileViewPage() {
               </div>
             )}
           </motion.div>
+
+          {/* Assigned Jobs */}
+          {scheduledJobs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.29 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Assigned Jobs</h2>
+                <p className="text-sm text-slate-500">Scheduled Cilio jobs assigned to this installer</p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Briefcase className="w-6 h-6 text-emerald-600" />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="pb-3 pr-4">Order #</th>
+                    <th className="pb-3 pr-4">Store</th>
+                    <th className="pb-3 pr-4">Workroom</th>
+                    <th className="pb-3 pr-4">Category</th>
+                    <th className="pb-3 pr-4">Install Date</th>
+                    <th className="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {scheduledJobs.map((job: any) => (
+                    <tr key={job.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 pr-4 font-mono font-semibold text-slate-900">{job.orderNumber}</td>
+                      <td className="py-3 pr-4 text-slate-700 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
+                      <td className="py-3 pr-4 text-slate-700">{job.workroom || '--'}</td>
+                      <td className="py-3 pr-4 text-slate-700">{job.laborCategoryDescription || '--'}</td>
+                      <td className="py-3 pr-4 text-slate-700">
+                        {job.scheduledInstallDate
+                          ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : '--'}
+                      </td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {job.orderStatusDescription || 'Scheduled'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+          )}
+
+          {/* Chargebacks */}
+          {chargebackJobs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.30 }}
+            className="bg-white rounded-2xl shadow-lg border border-red-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-red-200">
+              <div>
+                <h2 className="text-2xl font-bold text-red-800 mb-1">Chargebacks</h2>
+                <p className="text-sm text-red-600">Chargeback jobs assigned to this installer</p>
+              </div>
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-red-200 text-left text-xs font-semibold text-red-600 uppercase tracking-wider">
+                    <th className="pb-3 pr-4">Order #</th>
+                    <th className="pb-3 pr-4">Store</th>
+                    <th className="pb-3 pr-4">Workroom</th>
+                    <th className="pb-3 pr-4">Category</th>
+                    <th className="pb-3 pr-4">Install Date</th>
+                    <th className="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-red-100">
+                  {chargebackJobs.map((job: any) => (
+                    <tr key={job.id} className="hover:bg-red-50/50 transition-colors">
+                      <td className="py-3 pr-4 font-mono font-semibold text-red-900">{job.orderNumber}</td>
+                      <td className="py-3 pr-4 text-red-800 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
+                      <td className="py-3 pr-4 text-red-800">{job.workroom || '--'}</td>
+                      <td className="py-3 pr-4 text-red-800">{job.laborCategoryDescription || '--'}</td>
+                      <td className="py-3 pr-4 text-red-800">
+                        {job.scheduledInstallDate
+                          ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : '--'}
+                      </td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                          Chargeback
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+          )}
 
           {/* Attachments */}
           {!isManager && (
