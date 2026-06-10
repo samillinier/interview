@@ -120,7 +120,10 @@ export async function GET(request: NextRequest) {
         const job = unsynced[i]
         const detail = details[i]
         if (!detail) continue
-        const sr = (detail as any).schedulingInformation?.scheduledResource
+        const si = (detail as any).schedulingInformation
+        const sr = si?.scheduledResource
+        console.log(`[Cilio Sync] Job #${job.orderNumber} scheduledResource:`, JSON.stringify(sr))
+        console.log(`[Cilio Sync] Job #${job.orderNumber} task resources:`, si?.taskOneResource, si?.taskTwoResource, si?.taskThreeResource)
         const firstName = (sr?.firstName || '').toLowerCase().trim()
         const lastName = (sr?.lastName || '').toLowerCase().trim()
         const fullName = `${firstName} ${lastName}`.trim()
