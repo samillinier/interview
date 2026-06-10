@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // For jobs not yet in our DB, fetch full detail and match by email
+    // For jobs not yet in our DB, fetch full detail and match by name
     const unsynced = filtered.filter((j: any) => !installerMap[j.orderNumber]).slice(0, 5)
     console.log(`[Cilio Sync] ${unsynced.length} unsynced jobs to process`)
     if (unsynced.length > 0) {
@@ -121,13 +121,20 @@ export async function GET(request: NextRequest) {
         const detail = details[i]
         if (!detail) continue
         const sr = (detail as any).schedulingInformation?.scheduledResource
-        const email = (sr?.email || '').toLowerCase().trim()
-        console.log(`[Cilio Sync] Job #${job.orderNumber} scheduledResource email: "${email}"`)
-        if (!email) continue
-        const match = allInstallers.find(inst => inst.email.toLowerCase().trim() === email)
+        const firstName = (sr?.firstName || '').toLowerCase().trim()
+        const lastName = (sr?.lastName || '').toLowerCase().trim()
+        const fullName = `${firstName} ${lastName}`.trim()
+        console.log(`[Cilio Sync] Job #${job.orderNumber} scheduledResource name: "${fullName}"`)
+        if (!fullName) continue
+        // Match by name (email is often null in Cilio)
+        const match = allInstallers.find(inst => {
+          const iFull = `${inst.firstName} ${inst.lastName}`.toLowerCase()
+          const iRev = `${inst.lastName} ${inst.firstName}`.toLowerCase()
+          return iFull === fullName || iRev === fullName || iFull.includes(fullName) || fullName.includes(iFull)
+        })
         if (match) {
           const name = `${match.firstName} ${match.lastName}`
-          console.log(`[Cilio Sync] ✅ Matched job #${job.orderNumber} to installer ${name} by email ${email}`)
+          console.log(`[Cilio Sync] ✅ Matched job #${job.orderNumber} to installer ${name} by name "${fullName}"`)
           installerMap[job.orderNumber] = { id: match.id, name }
           // Also sync to DB so it persists
           try {
@@ -148,6 +155,8 @@ export async function GET(request: NextRequest) {
               },
             })
           } catch {}
+        } else {
+          console.log(`[Cilio Sync] ❌ No match for "${fullName}" — check installer names`)
         }
       }
     }
