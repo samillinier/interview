@@ -3707,6 +3707,7 @@ export default function InstallerProfileViewPage() {
           </motion.div>
 
           {/* Assigned Jobs */}
+          {scheduledJobs.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3722,47 +3723,45 @@ export default function InstallerProfileViewPage() {
                 <Briefcase className="w-6 h-6 text-emerald-600" />
               </div>
             </div>
-            {scheduledJobs.length === 0 ? (
-              <p className="text-sm text-slate-400 italic py-4">{jobsLoading ? 'Loading...' : 'No scheduled jobs yet. Jobs will appear here when this installer is assigned in Cilio.'}</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      <th className="pb-3 pr-4">Order #</th>
-                      <th className="pb-3 pr-4">Store</th>
-                      <th className="pb-3 pr-4">Workroom</th>
-                      <th className="pb-3 pr-4">Category</th>
-                      <th className="pb-3 pr-4">Install Date</th>
-                      <th className="pb-3">Status</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="pb-3 pr-4">Order #</th>
+                    <th className="pb-3 pr-4">Store</th>
+                    <th className="pb-3 pr-4">Workroom</th>
+                    <th className="pb-3 pr-4">Category</th>
+                    <th className="pb-3 pr-4">Install Date</th>
+                    <th className="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {scheduledJobs.map((job: any) => (
+                    <tr key={job.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 pr-4 font-mono font-semibold text-slate-900">{job.orderNumber}</td>
+                      <td className="py-3 pr-4 text-slate-700 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
+                      <td className="py-3 pr-4 text-slate-700">{job.workroom || '--'}</td>
+                      <td className="py-3 pr-4 text-slate-700">{job.laborCategoryDescription || '--'}</td>
+                      <td className="py-3 pr-4 text-slate-700">
+                        {job.scheduledInstallDate
+                          ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : '--'}
+                      </td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {job.orderStatusDescription || 'Scheduled'}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {scheduledJobs.map((job: any) => (
-                      <tr key={job.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-3 pr-4 font-mono font-semibold text-slate-900">{job.orderNumber}</td>
-                        <td className="py-3 pr-4 text-slate-700 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
-                        <td className="py-3 pr-4 text-slate-700">{job.workroom || '--'}</td>
-                        <td className="py-3 pr-4 text-slate-700">{job.laborCategoryDescription || '--'}</td>
-                        <td className="py-3 pr-4 text-slate-700">
-                          {job.scheduledInstallDate
-                            ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            : '--'}
-                        </td>
-                        <td className="py-3">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            {job.orderStatusDescription || 'Scheduled'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </motion.div>
+          )}
 
           {/* Chargebacks */}
+          {chargebackJobs.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3778,45 +3777,42 @@ export default function InstallerProfileViewPage() {
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
             </div>
-            {chargebackJobs.length === 0 ? (
-              <p className="text-sm text-red-400 italic py-4">{jobsLoading ? 'Loading...' : 'No chargeback jobs yet.'}</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-red-200 text-left text-xs font-semibold text-red-600 uppercase tracking-wider">
-                      <th className="pb-3 pr-4">Order #</th>
-                      <th className="pb-3 pr-4">Store</th>
-                      <th className="pb-3 pr-4">Workroom</th>
-                      <th className="pb-3 pr-4">Category</th>
-                      <th className="pb-3 pr-4">Install Date</th>
-                      <th className="pb-3">Status</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-red-200 text-left text-xs font-semibold text-red-600 uppercase tracking-wider">
+                    <th className="pb-3 pr-4">Order #</th>
+                    <th className="pb-3 pr-4">Store</th>
+                    <th className="pb-3 pr-4">Workroom</th>
+                    <th className="pb-3 pr-4">Category</th>
+                    <th className="pb-3 pr-4">Install Date</th>
+                    <th className="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-red-100">
+                  {chargebackJobs.map((job: any) => (
+                    <tr key={job.id} className="hover:bg-red-50/50 transition-colors">
+                      <td className="py-3 pr-4 font-mono font-semibold text-red-900">{job.orderNumber}</td>
+                      <td className="py-3 pr-4 text-red-800 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
+                      <td className="py-3 pr-4 text-red-800">{job.workroom || '--'}</td>
+                      <td className="py-3 pr-4 text-red-800">{job.laborCategoryDescription || '--'}</td>
+                      <td className="py-3 pr-4 text-red-800">
+                        {job.scheduledInstallDate
+                          ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : '--'}
+                      </td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                          Chargeback
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-red-100">
-                    {chargebackJobs.map((job: any) => (
-                      <tr key={job.id} className="hover:bg-red-50/50 transition-colors">
-                        <td className="py-3 pr-4 font-mono font-semibold text-red-900">{job.orderNumber}</td>
-                        <td className="py-3 pr-4 text-red-800 max-w-[200px] truncate" title={job.storeName}>{job.storeName || '--'}</td>
-                        <td className="py-3 pr-4 text-red-800">{job.workroom || '--'}</td>
-                        <td className="py-3 pr-4 text-red-800">{job.laborCategoryDescription || '--'}</td>
-                        <td className="py-3 pr-4 text-red-800">
-                          {job.scheduledInstallDate
-                            ? new Date(job.scheduledInstallDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            : '--'}
-                        </td>
-                        <td className="py-3">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
-                            Chargeback
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </motion.div>
+          )}
 
           {/* Profile Information */}
           <motion.div
