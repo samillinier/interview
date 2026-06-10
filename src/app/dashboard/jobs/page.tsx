@@ -761,9 +761,11 @@ export default function JobsPage() {
               <Briefcase className="w-12 h-12 text-brand-green/30 mb-4" />
               <p className="text-slate-600 font-medium">No jobs found</p>
               <p className="text-sm text-slate-400 mt-1">
-                {searchQuery || statusFilter || laborCategoryFilter || workroomFilter
-                  ? 'Try adjusting your search or filters'
-                  : 'Jobs will appear here as they are scheduled in Cilio'}
+                {searchQuery
+                  ? <>No results for <span className="font-medium text-slate-600">&ldquo;{searchQuery}&rdquo;</span></>
+                  : statusFilter || laborCategoryFilter || workroomFilter
+                    ? 'Try adjusting your filters'
+                    : 'Jobs will appear here as they are scheduled in Cilio'}
               </p>
             </motion.div>
           ) : (
