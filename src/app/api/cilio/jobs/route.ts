@@ -121,7 +121,12 @@ export async function GET(request: NextRequest) {
       const syncPromises = unsyncedOrderNumbers.map(async (orderNumber: number) => {
         try {
           const detail: any = await cilio.getJobDetail(orderNumber)
-          const res = detail?.schedulingInformation?.scheduledResources
+          const resp = detail?.responsibleUserInformation
+          const respName = resp?.firstName && resp?.lastName
+            ? `${resp.firstName} ${resp.lastName}`
+            : null
+          const res = respName ||
+            detail?.schedulingInformation?.scheduledResources
             || detail?.schedulingInformation?.taskOneResource
             || detail?.schedulingInformation?.taskTwoResource
             || detail?.schedulingInformation?.taskThreeResource

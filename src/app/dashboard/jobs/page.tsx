@@ -441,7 +441,12 @@ export default function JobsPage() {
         setFullJobDetail(detail)
         // Sync to local DB if installer is matched
         if (detail) {
-          const res = detail.schedulingInformation?.scheduledResources ||
+          const resp = detail.responsibleUserInformation
+          const resName = resp?.firstName && resp?.lastName
+            ? `${resp.firstName} ${resp.lastName}`
+            : null
+          const res = resName ||
+            detail.schedulingInformation?.scheduledResources ||
             detail.schedulingInformation?.taskOneResource ||
             detail.schedulingInformation?.taskTwoResource ||
             detail.schedulingInformation?.taskThreeResource
@@ -1152,11 +1157,16 @@ export default function JobsPage() {
                                   : 'Job Details'}
                               </h1>
                               {(() => {
-                                const res = fullJobDetail.schedulingInformation?.scheduledResources ||
+                                const resp = fullJobDetail.responsibleUserInformation
+                                const resName = resp?.firstName && resp?.lastName
+                                  ? `${resp.firstName} ${resp.lastName}`
+                                  : null
+                                const fallback = fullJobDetail.schedulingInformation?.scheduledResources ||
                                   fullJobDetail.schedulingInformation?.taskOneResource ||
                                   fullJobDetail.schedulingInformation?.taskTwoResource ||
                                   fullJobDetail.schedulingInformation?.taskThreeResource
-                                const match = matchInstaller(res)
+                                const name = resName || fallback || null
+                                const match = matchInstaller(name)
                                 return match ? (
                                   <Link
                                     href={`/dashboard/installers/${match.id}`}
@@ -1171,10 +1181,10 @@ export default function JobsPage() {
                                       <span className="text-white/50 text-xs">{match.companyName}</span>
                                     )}
                                   </Link>
-                                ) : res ? (
+                                ) : name ? (
                                   <p className="text-white/60 text-sm flex items-center gap-2">
                                     <User className="w-3.5 h-3.5" />
-                                    {res}
+                                    {name}
                                   </p>
                                 ) : null
                               })()}
