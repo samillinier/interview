@@ -704,7 +704,7 @@ export default function JobsPage() {
                   placeholder="Search by customer name, store, project number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') fetchJobs(searchQuery, statusFilter, laborCategoryFilter, workroomFilter) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') fetchJobs(e.currentTarget.value, statusFilter, laborCategoryFilter, workroomFilter) }}
                   className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
                 />
                 {isLoading && (
