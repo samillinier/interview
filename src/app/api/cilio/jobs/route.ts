@@ -131,6 +131,8 @@ export async function GET(request: NextRequest) {
           installerMap[job.orderNumber] = { id: match.id, name }
           // Also sync to DB so it persists
           try {
+            const gi = (detail as any).generalInformation
+            const statusDesc = gi?.orderStatusEnum || null
             await prisma.cilioJobRecord.upsert({
               where: { orderNumber: job.orderNumber },
               update: { installerId: match.id, installerName: name },
@@ -139,9 +141,9 @@ export async function GET(request: NextRequest) {
                 jobType: 'scheduled',
                 installerId: match.id,
                 installerName: name,
-                orderStatusDescription: detail.generalInformation?.orderStatusDescription || null,
-                storeNumber: detail.storeInformation?.storeNumber || null,
-                storeName: detail.storeInformation?.storeName || null,
+                orderStatusDescription: statusDesc,
+                storeNumber: (detail as any).storeInformation?.storeNumber || null,
+                storeName: (detail as any).storeInformation?.storeName || null,
                 cilioPayload: detail,
               },
             })
