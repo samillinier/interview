@@ -3571,16 +3571,6 @@ export default function InstallerProfileViewPage() {
                     ) : (
                       <>
                       {/* Managers should not see tracker-stage pills */}
-                      {/* Compliance Status Section */}
-                      <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
-                        <div>
-                          <h2 className="text-2xl font-bold text-slate-900 mb-1">Compliance Status</h2>
-                          <p className="text-sm text-slate-500">Document compliance and expiry tracking</p>
-                        </div>
-                        <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                          <CheckCircle2 className="w-6 h-6 text-brand-green" />
-                        </div>
-                      </div>
                       <div className="mt-4">
                         <div className="flex flex-wrap items-center gap-3">
                           <button
