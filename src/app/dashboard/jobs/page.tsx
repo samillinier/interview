@@ -294,6 +294,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function JobsPage() {
   const pathname = usePathname()
   const { data: session, status: sessionStatus } = useSession()
+  const isManager = (session?.user as any)?.role === 'MANAGER'
   const { sidebarOpen } = useSidebarOpen()
   const [jobs, setJobs] = useState<CilioJob[]>([])
   const [allJobs, setAllJobs] = useState<CilioJob[]>([]) // unfiltered — used for filter dropdowns
@@ -1044,7 +1045,7 @@ export default function JobsPage() {
                         </div>
 
                         {/* Notes Section */}
-                        {(job.scopeOfWorkNotes?.trim() || job.deliveryInfoSchedulingNotes?.trim()) ? (
+                        {!isManager && (job.scopeOfWorkNotes?.trim() || job.deliveryInfoSchedulingNotes?.trim()) ? (
                           <div className="border-t border-slate-200 p-5 space-y-3">
                             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-2">
                               <StickyNote className="w-4 h-4 text-brand-green" />
@@ -1342,7 +1343,7 @@ export default function JobsPage() {
                             </div>
 
                             {/* Notes */}
-                            {(fullJobDetail.generalInformation.scopeOfWorkNotes || fullJobDetail.generalInformation.deliveryInfoSchedulingNotes) && (
+                            {!isManager && (fullJobDetail.generalInformation.scopeOfWorkNotes || fullJobDetail.generalInformation.deliveryInfoSchedulingNotes) && (
                               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {fullJobDetail.generalInformation.scopeOfWorkNotes && (
                                   <div className="bg-slate-100/60 rounded-xl p-3">
@@ -1468,7 +1469,7 @@ export default function JobsPage() {
                         )}
 
                         {/* Cilio Admin Notes */}
-                        {detailNotes.length > 0 && (
+                        {!isManager && detailNotes.length > 0 && (
                           <SectionCard icon={StickyNote} title="Notes" color="green">
                             <div className="space-y-3">
                               {detailNotes.map((note) => (
@@ -1667,6 +1668,7 @@ export default function JobsPage() {
                     </div>
 
                     {/* Scheduling Notes */}
+                    {!isManager && (
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Scheduling Notes</label>
                       <textarea value={editFields.deliveryInfoSchedulingNotes}
@@ -1674,8 +1676,10 @@ export default function JobsPage() {
                         className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green text-sm"
                         rows={3} placeholder="Delivery / scheduling notes..." />
                     </div>
+                    )}
 
                     {/* Scope of Work Notes */}
+                    {!isManager && (
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Scope of Work Notes</label>
                       <textarea value={editFields.scopeOfWorkNotes}
@@ -1683,6 +1687,7 @@ export default function JobsPage() {
                         className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green text-sm"
                         rows={4} placeholder="Scope of work notes..." />
                     </div>
+                    )}
                   </div>
 
                   {/* Footer */}
