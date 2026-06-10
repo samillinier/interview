@@ -28,15 +28,12 @@ export async function GET(request: NextRequest) {
 
     const userTerm = searchTerm.trim()
 
-    // Search for status/resource terms that return install-focused jobs,
-    // not just the 50 most recent (which are mostly Measure).
-    let searches: string[]
-    if (userTerm) {
-      searches = [userTerm]
-    } else {
-      // Search by common status terms that match install jobs
-      searches = ["Scheduled", "Tentative", "Confirmed", "Completed", "Chargeback"]
-    }
+    // Always use broad searches to maximize results, then filter client-side.
+    // User searches are applied as client-side filters because Cilio's search
+    // API often returns unrelated results for specific name queries.
+    const searches = userTerm
+      ? [userTerm, "Scheduled", "Tentative", "Confirmed"]
+      : ["Scheduled", "Tentative", "Confirmed", "Completed", "Chargeback"]
 
     console.log(`[Cilio API] Running ${searches.length} parallel searches:`, searches)
 
@@ -72,6 +69,22 @@ export async function GET(request: NextRequest) {
     }
     if (workroomFilter) {
       filtered = filtered.filter((j: any) => getWorkroomByStoreNumber(j.storeNumber) === workroomFilter)
+    }
+
+    // Client-side search filter — search across multiple job fields
+    if (userTerm) {
+      const lower = userTerm.toLowerCase()
+      filtered = filtered.filter((j: any) => {
+        const searchable = [
+          j.customerFirstName, j.customerLastName,
+          j.storeName, j.storeNumber,
+          j.projectNumber, j.jobNumber, j.orderNumber?.toString(),
+          j.scopeOfWorkNotes, j.deliveryInfoSchedulingNotes,
+          j.salesAssociate, j.orderStatusDescription,
+          j.laborCategoryDescription,
+        ].filter(Boolean).join(' ').toLowerCase()
+        return searchable.includes(lower)
+      })
     }
 
     return NextResponse.json({
