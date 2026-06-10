@@ -1388,11 +1388,25 @@ export default function JobsPage() {
                                 const start = (fullJobDetail.schedulingInformation as any)[`task${n === 1 ? 'One' : n === 2 ? 'Two' : 'Three'}StartDate`]
                                 const end = (fullJobDetail.schedulingInformation as any)[`task${n === 1 ? 'One' : n === 2 ? 'Two' : 'Three'}EndDate`]
                                 if (!resource && !start && !end) return null
+                                const matched = matchInstaller(resource)
                                 return (
                                   <div key={n} className="bg-brand-green/5 rounded-xl p-3 border border-brand-green/20">
                                     <p className="text-xs font-bold text-brand-green mb-2">Task #{n}</p>
                                     <div className="space-y-1.5">
-                                      {resource && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Resource:</span> {resource}</p>}
+                                      {resource && (
+                                        matched ? (
+                                          <Link
+                                            href={`/dashboard/installers/${matched.id}`}
+                                            target="_blank"
+                                            className="flex items-center gap-1.5 text-xs text-brand-green hover:text-brand-green/80 font-semibold underline underline-offset-2 transition-colors"
+                                          >
+                                            <User className="w-3 h-3" />
+                                            {matched.firstName} {matched.lastName}
+                                          </Link>
+                                        ) : (
+                                          <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Resource:</span> {resource}</p>
+                                        )
+                                      )}
                                       {start && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Start:</span> {formatDate(start)}</p>}
                                       {end && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">End:</span> {formatDate(end)}</p>}
             </div>
