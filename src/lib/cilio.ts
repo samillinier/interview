@@ -25,31 +25,39 @@ async function cilioFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${CILIO_BASE_URL}${path}`
   const headers = getHeaders()
 
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...(options?.headers || {}),
-    },
-  })
-
-  const text = await res.text()
-
-  if (!res.ok) {
-    let errorDetail = text
-    try {
-      const parsed = JSON.parse(text)
-      errorDetail = parsed.message || parsed.title || text
-    } catch {
-      // use raw text
-    }
-    throw new Error(`Cilio API error ${res.status}: ${errorDetail}`)
-  }
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
 
   try {
-    return JSON.parse(text) as T
-  } catch {
-    return text as unknown as T
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...headers,
+        ...(options?.headers || {}),
+      },
+    })
+
+    const text = await res.text()
+
+    if (!res.ok) {
+      let errorDetail = text
+      try {
+        const parsed = JSON.parse(text)
+        errorDetail = parsed.message || parsed.title || text
+      } catch {
+        // use raw text
+      }
+      throw new Error(`Cilio API error ${res.status}: ${errorDetail}`)
+    }
+
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      return text as unknown as T
+    }
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
