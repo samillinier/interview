@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
-import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -88,94 +87,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Look up installer names from our synced CilioJobRecord table
-    const orderNumbers = filtered.map((j: any) => j.orderNumber)
-    let installerMap: Record<number, { id: string; name: string } | null> = {}
-    if (orderNumbers.length > 0) {
-      const records = await prisma.cilioJobRecord.findMany({
-        where: { orderNumber: { in: orderNumbers } },
-        select: { orderNumber: true, installerId: true, installerName: true },
-      })
-      console.log(`[Cilio Sync] Found ${records.length} jobs in local DB out of ${orderNumbers.length}`)
-      for (const r of records) {
-        installerMap[r.orderNumber] = { id: r.installerId, name: r.installerName || '' }
-      }
-    }
-
-    // For jobs not yet in our DB, fetch full detail and match by name
-    const unsynced = filtered.filter((j: any) => !installerMap[j.orderNumber]).slice(0, 5)
-    console.log(`[Cilio Sync] ${unsynced.length} unsynced jobs to process`)
-    if (unsynced.length > 0) {
-      const allInstallers = await prisma.installer.findMany({
-        where: { status: 'active' },
-        select: { id: true, firstName: true, lastName: true, email: true },
-      })
-      const details = await Promise.all(
-        unsynced.map(async (j: any) => {
-          try { return await cilio.getJobDetail(j.orderNumber) as any }
-          catch { return null }
-        })
-      )
-      for (let i = 0; i < unsynced.length; i++) {
-        const job = unsynced[i]
-        const detail = details[i]
-        if (!detail) continue
-        const si = (detail as any).schedulingInformation
-        const sr = si?.scheduledResource
-        console.log(`[Cilio Sync] Job #${job.orderNumber} scheduledResource:`, JSON.stringify(sr))
-        console.log(`[Cilio Sync] Job #${job.orderNumber} task resources:`, si?.taskOneResource, si?.taskTwoResource, si?.taskThreeResource)
-        const firstName = (sr?.firstName || '').toLowerCase().trim()
-        const lastName = (sr?.lastName || '').toLowerCase().trim()
-        const fullName = `${firstName} ${lastName}`.trim()
-        console.log(`[Cilio Sync] Job #${job.orderNumber} scheduledResource name: "${fullName}"`)
-        if (!fullName) continue
-        // Match by name (email is often null in Cilio)
-        const match = allInstallers.find(inst => {
-          const iFull = `${inst.firstName} ${inst.lastName}`.toLowerCase()
-          const iRev = `${inst.lastName} ${inst.firstName}`.toLowerCase()
-          return iFull === fullName || iRev === fullName || iFull.includes(fullName) || fullName.includes(iFull)
-        })
-        if (match) {
-          const name = `${match.firstName} ${match.lastName}`
-          console.log(`[Cilio Sync] ✅ Matched job #${job.orderNumber} to installer ${name} by name "${fullName}"`)
-          installerMap[job.orderNumber] = { id: match.id, name }
-          // Also sync to DB so it persists
-          try {
-            const gi = (detail as any).generalInformation
-            const statusDesc = gi?.orderStatusEnum || null
-            await prisma.cilioJobRecord.upsert({
-              where: { orderNumber: job.orderNumber },
-              update: { installerId: match.id, installerName: name },
-              create: {
-                orderNumber: job.orderNumber,
-                jobType: 'scheduled',
-                installerId: match.id,
-                installerName: name,
-                orderStatusDescription: statusDesc,
-                storeNumber: (detail as any).storeInformation?.storeNumber || null,
-                storeName: (detail as any).storeInformation?.storeName || null,
-                cilioPayload: detail,
-              },
-            })
-          } catch {}
-        } else {
-          console.log(`[Cilio Sync] ❌ No match for "${fullName}" — check installer names`)
-        }
-      }
-    }
-
-    // Enrich filtered jobs with installer info
-    const enrichedJobs = filtered.map((j: any) => ({
-      ...j,
-      _installer: installerMap[j.orderNumber] || null,
-    }))
-
     return NextResponse.json({
-      allJobs: allJobs.map((j: any) => ({
-        ...j,
-        _installer: installerMap[j.orderNumber] || null,
-      })),
-      jobs: enrichedJobs,
+      allJobs,
+      jobs: filtered,
       count: filtered.length,
       totalFetched: allJobs.length,
       searchesRan: searches.length,

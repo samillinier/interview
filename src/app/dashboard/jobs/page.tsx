@@ -92,7 +92,6 @@ interface CilioJob {
   purchaserPO: string | null
   yearBuilt: string | null
   scheduledUserLeadCertificationNumber: string | null
-  _installer?: { id: string; name: string } | null
 }
 
 interface JobAttachments {
@@ -305,7 +304,7 @@ export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [laborCategoryFilter, setLaborCategoryFilter] = useState('')
   const [workroomFilter, setWorkroomFilter] = useState('')
-  const [installers, setInstallers] = useState<{ id: string; firstName: string; lastName: string; email: string; companyName: string | null }[]>([])
+  const [installers, setInstallers] = useState<{ id: string; firstName: string; lastName: string; companyName: string | null }[]>([])
   const [expandedJob, setExpandedJob] = useState<number | null>(null)
   const [jobAttachments, setJobAttachments] = useState<Record<number, JobAttachments[]>>({})
   const [jobLineItems, setJobLineItems] = useState<Record<number, JobLineItem[]>>({})
@@ -445,7 +444,7 @@ export default function JobsPage() {
             detail.schedulingInformation?.taskOneResource ||
             detail.schedulingInformation?.taskTwoResource ||
             detail.schedulingInformation?.taskThreeResource
-          const match = matchInstaller(res, detail.schedulingInformation?.scheduledResource?.email)
+          const match = matchInstaller(res)
           if (match) {
             syncJobToDb(detail, match)
           }
@@ -616,13 +615,8 @@ export default function JobsPage() {
     }
   }, [sessionStatus])
 
-  // Match a Cilio resource against our installer database (prefer email, fallback to name)
-  const matchInstaller = (resourceName?: string | null, resourceEmail?: string | null) => {
-    if (resourceEmail) {
-      const lowerEmail = resourceEmail.toLowerCase().trim()
-      const byEmail = installers.find(i => i.email.toLowerCase().trim() === lowerEmail)
-      if (byEmail) return { id: byEmail.id, firstName: byEmail.firstName, lastName: byEmail.lastName }
-    }
+  // Match a Cilio scheduledResources name against our installer database
+  const matchInstaller = (resourceName?: string | null) => {
     if (!resourceName) return null
     const lower = resourceName.toLowerCase().trim()
     return installers.find(i => {
@@ -832,16 +826,6 @@ export default function JobsPage() {
                         </div>
                         {job.laborCategoryDescription && (
                           <LaborCategoryBadge category={job.laborCategoryDescription} />
-                        )}
-                        {job._installer && (
-                          <Link
-                            href={`/dashboard/installers/${job._installer.id}`}
-                            target="_blank"
-                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-brand-green bg-brand-green/10 rounded-full hover:bg-brand-green/20 transition-colors"
-                          >
-                            <User className="w-3 h-3" />
-                            {job._installer.name}
-                          </Link>
                         )}
                         <div className="flex items-center gap-1.5 text-xs text-slate-600">
                           <FileText className="w-3.5 h-3.5 text-brand-green" />
@@ -1198,7 +1182,7 @@ export default function JobsPage() {
                                 fullJobDetail.schedulingInformation?.taskOneResource ||
                                 fullJobDetail.schedulingInformation?.taskTwoResource ||
                                 fullJobDetail.schedulingInformation?.taskThreeResource
-                              const match = matchInstaller(res, fullJobDetail.schedulingInformation?.scheduledResource?.email)
+                              const match = matchInstaller(res)
                               return match ? (
                                 <Link
                                   href={`/dashboard/installers/${match.id}`}
@@ -1404,25 +1388,11 @@ export default function JobsPage() {
                                 const start = (fullJobDetail.schedulingInformation as any)[`task${n === 1 ? 'One' : n === 2 ? 'Two' : 'Three'}StartDate`]
                                 const end = (fullJobDetail.schedulingInformation as any)[`task${n === 1 ? 'One' : n === 2 ? 'Two' : 'Three'}EndDate`]
                                 if (!resource && !start && !end) return null
-                                const matched = matchInstaller(resource)
                                 return (
                                   <div key={n} className="bg-brand-green/5 rounded-xl p-3 border border-brand-green/20">
                                     <p className="text-xs font-bold text-brand-green mb-2">Task #{n}</p>
                                     <div className="space-y-1.5">
-                                      {resource && (
-                                        matched ? (
-                                          <Link
-                                            href={`/dashboard/installers/${matched.id}`}
-                                            target="_blank"
-                                            className="flex items-center gap-1.5 text-xs text-brand-green hover:text-brand-green/80 font-semibold underline underline-offset-2 transition-colors"
-                                          >
-                                            <User className="w-3 h-3" />
-                                            {matched.firstName} {matched.lastName}
-                                          </Link>
-                                        ) : (
-                                          <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Resource:</span> {resource}</p>
-                                        )
-                                      )}
+                                      {resource && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Resource:</span> {resource}</p>}
                                       {start && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Start:</span> {formatDate(start)}</p>}
                                       {end && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">End:</span> {formatDate(end)}</p>}
             </div>
