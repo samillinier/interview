@@ -806,16 +806,6 @@ export default function JobsPage() {
                           <h3 className="text-lg font-semibold text-slate-900">
                             {job.customerFirstName} {job.customerLastName}
                           </h3>
-                          {job._installer && (
-                            <Link
-                              href={`/dashboard/installers/${job._installer.id}`}
-                              target="_blank"
-                              className="inline-flex items-center gap-1.5 mt-1 text-sm text-brand-green hover:text-brand-green/80 font-medium underline underline-offset-2 transition-colors"
-                            >
-                              <User className="w-3.5 h-3.5" />
-                              {job._installer.name}
-                            </Link>
-                          )}
                           <p className="text-sm text-slate-500 mt-1 line-clamp-1">
                             {stripHtml(job.scopeOfWorkNotes || 'No scope notes')}
                           </p>
@@ -837,6 +827,16 @@ export default function JobsPage() {
                         </div>
                         {job.laborCategoryDescription && (
                           <LaborCategoryBadge category={job.laborCategoryDescription} />
+                        )}
+                        {job._installer && (
+                          <Link
+                            href={`/dashboard/installers/${job._installer.id}`}
+                            target="_blank"
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-brand-green bg-brand-green/10 rounded-full hover:bg-brand-green/20 transition-colors"
+                          >
+                            <User className="w-3 h-3" />
+                            {job._installer.name}
+                          </Link>
                         )}
                         <div className="flex items-center gap-1.5 text-xs text-slate-600">
                           <FileText className="w-3.5 h-3.5 text-brand-green" />
