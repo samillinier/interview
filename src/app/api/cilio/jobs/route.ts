@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
         where: { orderNumber: { in: orderNumbers } },
         select: { orderNumber: true, installerId: true, installerName: true },
       })
+      console.log(`[Cilio Sync] Found ${records.length} jobs in local DB out of ${orderNumbers.length}`)
       for (const r of records) {
         installerMap[r.orderNumber] = { id: r.installerId, name: r.installerName || '' }
       }
@@ -103,6 +104,7 @@ export async function GET(request: NextRequest) {
 
     // For jobs not yet in our DB, fetch full detail and match by email
     const unsynced = filtered.filter((j: any) => !installerMap[j.orderNumber]).slice(0, 5)
+    console.log(`[Cilio Sync] ${unsynced.length} unsynced jobs to process`)
     if (unsynced.length > 0) {
       const allInstallers = await prisma.installer.findMany({
         where: { status: 'active' },
@@ -120,10 +122,12 @@ export async function GET(request: NextRequest) {
         if (!detail) continue
         const sr = (detail as any).schedulingInformation?.scheduledResource
         const email = (sr?.email || '').toLowerCase().trim()
+        console.log(`[Cilio Sync] Job #${job.orderNumber} scheduledResource email: "${email}"`)
         if (!email) continue
         const match = allInstallers.find(inst => inst.email.toLowerCase().trim() === email)
         if (match) {
           const name = `${match.firstName} ${match.lastName}`
+          console.log(`[Cilio Sync] ✅ Matched job #${job.orderNumber} to installer ${name} by email ${email}`)
           installerMap[job.orderNumber] = { id: match.id, name }
           // Also sync to DB so it persists
           try {
