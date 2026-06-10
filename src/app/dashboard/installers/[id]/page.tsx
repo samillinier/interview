@@ -4414,8 +4414,8 @@ export default function InstallerProfileViewPage() {
                 <h2 className="text-2xl font-bold text-slate-900 mb-1">Assigned Jobs</h2>
                 <p className="text-sm text-slate-500">Scheduled Cilio jobs assigned to this installer</p>
               </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <Briefcase className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Briefcase className="w-6 h-6 text-brand-green" />
               </div>
             </div>
             <div className="overflow-x-auto">
