@@ -1151,6 +1151,33 @@ export default function JobsPage() {
                                   ? (fullJobDetail.customerInformation.customerFirstLast || (fullJobDetail.customerInformation.customerFirstName || '') + ' ' + (fullJobDetail.customerInformation.customerLastName || '')).trim()
                                   : 'Job Details'}
                               </h1>
+                              {(() => {
+                                const res = fullJobDetail.schedulingInformation?.scheduledResources ||
+                                  fullJobDetail.schedulingInformation?.taskOneResource ||
+                                  fullJobDetail.schedulingInformation?.taskTwoResource ||
+                                  fullJobDetail.schedulingInformation?.taskThreeResource
+                                const match = matchInstaller(res)
+                                return match ? (
+                                  <Link
+                                    href={`/dashboard/installers/${match.id}`}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20 hover:bg-white/30 transition-colors"
+                                  >
+                                    <User className="w-4 h-4 text-white/70" />
+                                    <span className="text-white font-semibold text-sm underline underline-offset-2 decoration-white/30">
+                                      {match.firstName} {match.lastName}
+                                    </span>
+                                    {match.companyName && (
+                                      <span className="text-white/50 text-xs">{match.companyName}</span>
+                                    )}
+                                  </Link>
+                                ) : res ? (
+                                  <p className="text-white/60 text-sm flex items-center gap-2">
+                                    <User className="w-3.5 h-3.5" />
+                                    {res}
+                                  </p>
+                                ) : null
+                              })()}
                               {fullJobDetail.customerInformation?.customerAddress?.fullAddress && (
                                 <p className="text-white/70 text-sm flex items-center gap-2">
                                   <MapPin className="w-3.5 h-3.5" />
@@ -1195,35 +1222,6 @@ export default function JobsPage() {
                 </div>
                   </div>
                             )}
-                            {(() => {
-                              const res = fullJobDetail.schedulingInformation?.scheduledResources ||
-                                fullJobDetail.schedulingInformation?.taskOneResource ||
-                                fullJobDetail.schedulingInformation?.taskTwoResource ||
-                                fullJobDetail.schedulingInformation?.taskThreeResource
-                              const match = matchInstaller(res)
-                              return match ? (
-                                <Link
-                                  href={`/dashboard/installers/${match.id}`}
-                                  target="_blank"
-                                  className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2.5 border border-white/20 hover:bg-white/30 transition-colors cursor-pointer"
-                                >
-                                  <User className="w-4 h-4 text-white/70" />
-                                  <div>
-                                    <p className="text-white/50 text-xs">Installer</p>
-                                    <p className="text-white font-bold text-sm underline underline-offset-2 decoration-white/30">{match.firstName} {match.lastName}</p>
-                                    {match.companyName && <p className="text-white/50 text-xs">{match.companyName}</p>}
-                                  </div>
-                                </Link>
-                              ) : res ? (
-                                <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5">
-                                  <User className="w-4 h-4 text-white/50" />
-                                  <div>
-                                    <p className="text-white/40 text-xs">Assigned</p>
-                                    <p className="text-white/70 font-medium text-sm">{res}</p>
-                                  </div>
-                                </div>
-                              ) : null
-                            })()}
                             {fullJobDetail.generalInformation?.projectNumber && (
                               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5">
                                 <Briefcase className="w-4 h-4 text-white/60" />
