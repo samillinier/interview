@@ -442,9 +442,7 @@ export default function JobsPage() {
         // Sync to local DB if installer is matched
         if (detail) {
           const resp = detail.responsibleUserInformation
-          const resName = resp?.firstName && resp?.lastName
-            ? `${resp.firstName} ${resp.lastName}`
-            : null
+          const resName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
           const res = resName ||
             detail.schedulingInformation?.scheduledResources ||
             detail.schedulingInformation?.taskOneResource ||
@@ -1158,9 +1156,7 @@ export default function JobsPage() {
                               </h1>
                               {(() => {
                                 const resp = fullJobDetail.responsibleUserInformation
-                                const resName = resp?.firstName && resp?.lastName
-                                  ? `${resp.firstName} ${resp.lastName}`
-                                  : null
+                                const resName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
                                 const fallback = fullJobDetail.schedulingInformation?.scheduledResources ||
                                   fullJobDetail.schedulingInformation?.taskOneResource ||
                                   fullJobDetail.schedulingInformation?.taskTwoResource ||

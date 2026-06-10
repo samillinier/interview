@@ -122,9 +122,7 @@ export async function GET(request: NextRequest) {
         try {
           const detail: any = await cilio.getJobDetail(orderNumber)
           const resp = detail?.responsibleUserInformation
-          const respName = resp?.firstName && resp?.lastName
-            ? `${resp.firstName} ${resp.lastName}`
-            : null
+          const respName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
           const res = respName ||
             detail?.schedulingInformation?.scheduledResources
             || detail?.schedulingInformation?.taskOneResource
