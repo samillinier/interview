@@ -422,10 +422,13 @@ export default function JobsPage() {
     setDetailNotes([])
     setDetailError(null)
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 20000)
       const [detailRes, notesRes] = await Promise.all([
-        fetch(`/api/cilio/jobs/${orderNumber}`),
-        fetch(`/api/cilio/jobs/${orderNumber}/notes`),
+        fetch(`/api/cilio/jobs/${orderNumber}`, { signal: controller.signal }),
+        fetch(`/api/cilio/jobs/${orderNumber}/notes`, { signal: controller.signal }),
       ])
+      clearTimeout(timeout)
       const [detailData, notesData] = await Promise.all([
         detailRes.json(),
         notesRes.json().catch(() => ({ notes: [] })),
@@ -453,7 +456,8 @@ export default function JobsPage() {
       }
       setDetailNotes(notesData.notes || [])
     } catch (err: any) {
-      setDetailError(err.message || 'Network error')
+      const msg = err.name === 'AbortError' ? 'Request timed out — the Cilio API took too long to respond' : err.message || 'Network error'
+      setDetailError(msg)
       setFullJobDetail(null)
     } finally {
       setLoadingFullDetail(false)
