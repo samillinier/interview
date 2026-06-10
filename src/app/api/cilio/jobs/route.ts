@@ -156,7 +156,8 @@ export async function GET(request: NextRequest) {
           // Best-effort — skip silently
         }
       })
-      await Promise.allSettled(syncPromises)
+      // Fire-and-forget: don't block the response waiting for sync
+      Promise.allSettled(syncPromises).catch(() => {})
     }
 
     // Look up installer names from synced CilioJobRecord table
