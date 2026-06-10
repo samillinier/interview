@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
+import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -87,9 +88,31 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Look up installer names from our synced CilioJobRecord table
+    const orderNumbers = filtered.map((j: any) => j.orderNumber)
+    let installerMap: Record<number, { id: string; name: string } | null> = {}
+    if (orderNumbers.length > 0) {
+      const records = await prisma.cilioJobRecord.findMany({
+        where: { orderNumber: { in: orderNumbers } },
+        select: { orderNumber: true, installerId: true, installerName: true },
+      })
+      for (const r of records) {
+        installerMap[r.orderNumber] = { id: r.installerId, name: r.installerName || '' }
+      }
+    }
+
+    // Enrich filtered jobs with installer info
+    const enrichedJobs = filtered.map((j: any) => ({
+      ...j,
+      _installer: installerMap[j.orderNumber] || null,
+    }))
+
     return NextResponse.json({
-      allJobs,
-      jobs: filtered,
+      allJobs: allJobs.map((j: any) => ({
+        ...j,
+        _installer: installerMap[j.orderNumber] || null,
+      })),
+      jobs: enrichedJobs,
       count: filtered.length,
       totalFetched: allJobs.length,
       searchesRan: searches.length,
