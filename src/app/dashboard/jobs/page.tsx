@@ -376,6 +376,42 @@ export default function JobsPage() {
   }
 
 
+  // Sync a single job to the local DB after full detail is loaded
+  const syncJobToDb = useCallback(async (jobDetail: CilioJobFullDetail, match: { id: string; firstName: string; lastName: string }) => {
+    const detail = jobDetail as any
+    const statusDesc = detail.generalInformation?.orderStatusDescription ?? detail.orderStatusDescription ?? ''
+    const isChargeback = statusDesc.toLowerCase().includes("chargeback") ||
+      statusDesc.toLowerCase().includes("charge back")
+
+    const jobType = isChargeback ? "chargeback" : "scheduled"
+
+    try {
+      await fetch("/api/cilio/jobs/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobs: [{
+            orderNumber: detail.orderNumber,
+            orderStatusDescription: statusDesc || null,
+            jobType,
+            storeNumber: detail.storeInformation?.storeNumber ?? null,
+            storeName: detail.storeInformation?.storeName ?? null,
+            laborCategoryDescription: detail.laborCategoryDescription ?? detail.generalInformation?.laborCategoryDescription ?? null,
+            workroom: getWorkroomByStoreNumber(detail.storeInformation?.storeNumber ?? ''),
+            scheduledInstallDate: detail.dateInformation?.scheduledInstallDate ?? null,
+            measureDate: detail.dateInformation?.measureDate ?? null,
+            bookingDate: detail.dateInformation?.bookingDate ?? null,
+            installerId: match.id,
+            installerName: `${match.firstName} ${match.lastName}`,
+            cilioPayload: detail,
+          }],
+        }),
+      })
+    } catch {
+      // Silently fail - sync is best-effort
+    }
+  }, [])
+
   const openDetailModal = useCallback(async (orderNumber: number) => {
     setDetailModal(orderNumber)
     setLoadingFullDetail(true)
@@ -398,7 +434,19 @@ export default function JobsPage() {
         setDetailError(cleaned)
         setFullJobDetail(null)
       } else {
-        setFullJobDetail(detailData.detail || null)
+        const detail = detailData.detail || null
+        setFullJobDetail(detail)
+        // Sync to local DB if installer is matched
+        if (detail) {
+          const res = detail.schedulingInformation?.scheduledResources ||
+            detail.schedulingInformation?.taskOneResource ||
+            detail.schedulingInformation?.taskTwoResource ||
+            detail.schedulingInformation?.taskThreeResource
+          const match = matchInstaller(res)
+          if (match) {
+            syncJobToDb(detail, match)
+          }
+        }
       }
       setDetailNotes(notesData.notes || [])
     } catch (err: any) {
@@ -407,7 +455,7 @@ export default function JobsPage() {
     } finally {
       setLoadingFullDetail(false)
     }
-  }, [])
+  }, [installers, syncJobToDb])
 
   const closeDetailModal = () => {
     setDetailModal(null)
