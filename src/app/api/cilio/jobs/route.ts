@@ -101,6 +101,55 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // For jobs not yet in our DB, fetch full detail in small batch to match installer names
+    const unsynced = filtered.filter((j: any) => !installerMap[j.orderNumber]).slice(0, 5)
+    if (unsynced.length > 0) {
+      const allInstallers = await prisma.installer.findMany({
+        where: { status: 'active' },
+        select: { id: true, firstName: true, lastName: true, companyName: true },
+      })
+      const details = await Promise.all(
+        unsynced.map(async (j: any) => {
+          try { return await cilio.getJobDetail(j.orderNumber) as any }
+          catch { return null }
+        })
+      )
+      for (let i = 0; i < unsynced.length; i++) {
+        const job = unsynced[i]
+        const detail = details[i]
+        if (!detail) continue
+        const res = (detail as any).schedulingInformation?.scheduledResources
+        if (!res) continue
+        const lower = String(res).toLowerCase().trim()
+        const match = allInstallers.find(inst => {
+          const full = `${inst.firstName} ${inst.lastName}`.toLowerCase()
+          const reversed = `${inst.lastName} ${inst.firstName}`.toLowerCase()
+          return full === lower || reversed === lower || full.includes(lower) || lower.includes(full)
+        })
+        if (match) {
+          const name = `${match.firstName} ${match.lastName}`
+          installerMap[job.orderNumber] = { id: match.id, name }
+          // Also sync to DB so it persists
+          try {
+            await prisma.cilioJobRecord.upsert({
+              where: { orderNumber: job.orderNumber },
+              update: { installerId: match.id, installerName: name },
+              create: {
+                orderNumber: job.orderNumber,
+                jobType: 'scheduled',
+                installerId: match.id,
+                installerName: name,
+                orderStatusDescription: detail.generalInformation?.orderStatusDescription || null,
+                storeNumber: detail.storeInformation?.storeNumber || null,
+                storeName: detail.storeInformation?.storeName || null,
+                cilioPayload: detail,
+              },
+            })
+          } catch {}
+        }
+      }
+    }
+
     // Enrich filtered jobs with installer info
     const enrichedJobs = filtered.map((j: any) => ({
       ...j,
