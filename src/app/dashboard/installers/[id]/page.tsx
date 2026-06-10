@@ -3580,7 +3580,16 @@ export default function InstallerProfileViewPage() {
                             title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
                           >
                             <BarChart3 className="w-4 h-4 text-brand-green" />
-                            <span>Compliance Status</span>
+                            <span>Compliance: </span>
+                            <span className={`font-bold ${
+                              installer.complianceStatus === 'COMPLIANT'
+                                ? 'text-emerald-700'
+                                : installer.complianceStatus === 'NOT_COMPLIANT'
+                                  ? 'text-red-700'
+                                  : 'text-amber-700'
+                            }`}>
+                              {installer.complianceStatus === 'COMPLIANT' ? 'Compliant' : installer.complianceStatus === 'NOT_COMPLIANT' ? 'Not Compliant' : installer.complianceStatus ? 'In Progress' : 'Not set'}
+                            </span>
                             {complianceOpen ? (
                               <ChevronUp className="w-4 h-4 text-slate-500" />
                             ) : (
