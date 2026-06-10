@@ -92,6 +92,7 @@ interface CilioJob {
   purchaserPO: string | null
   yearBuilt: string | null
   scheduledUserLeadCertificationNumber: string | null
+  _installer?: { id: string; name: string } | null
 }
 
 interface JobAttachments {
@@ -447,6 +448,13 @@ export default function JobsPage() {
           const match = matchInstaller(res)
           if (match) {
             syncJobToDb(detail, match)
+            // Update the jobs list immediately so the badge shows without refresh
+            const name = `${match.firstName} ${match.lastName}`
+            setJobs(prev => prev.map(j =>
+              j.orderNumber === orderNumber
+                ? { ...j, _installer: { id: match.id, name } } as any
+                : j
+            ))
           }
         }
       }
@@ -826,6 +834,16 @@ export default function JobsPage() {
                         </div>
                         {job.laborCategoryDescription && (
                           <LaborCategoryBadge category={job.laborCategoryDescription} />
+                        )}
+                        {job._installer && (
+                          <Link
+                            href={`/dashboard/installers/${job._installer.id}`}
+                            target="_blank"
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-brand-green bg-brand-green/10 rounded-full hover:bg-brand-green/20 transition-colors"
+                          >
+                            <User className="w-3 h-3" />
+                            {job._installer.name}
+                          </Link>
                         )}
                         <div className="flex items-center gap-1.5 text-xs text-slate-600">
                           <FileText className="w-3.5 h-3.5 text-brand-green" />
