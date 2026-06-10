@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
-import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -29,32 +28,25 @@ export async function GET(request: NextRequest) {
 
     const userTerm = searchTerm.trim()
 
-    // Build search terms from active installer names
-    const installers = await prisma.installer.findMany({
-      where: { status: { in: ["active", "active_approved"] } },
-      select: { firstName: true, lastName: true },
-      take: 30,
-    })
-
-    const nameTerms = installers.map(i => i.firstName).filter(Boolean)
-    // Deduplicate names
-    const uniqueNames = [...new Set(nameTerms)]
-
-    // Build final search list
+    // Search for status/resource terms that return install-focused jobs,
+    // not just the 50 most recent (which are mostly Measure).
     let searches: string[]
     if (userTerm) {
-      searches = [userTerm, ...uniqueNames.slice(0, 10)]
+      searches = [userTerm]
     } else {
-      // Use installer names + category terms for broader coverage
-      searches = [
-        ...uniqueNames.slice(0, 15),
-        "Carpet", "Vinyl", "Tile", "Backsplash",
-      ]
+      // Search by common status terms that match install jobs
+      searches = ["Scheduled", "Tentative", "Confirmed", "Completed", "Chargeback"]
     }
+
+    console.log(`[Cilio API] Running ${searches.length} parallel searches:`, searches)
 
     // Run all searches in parallel
     const results = await Promise.all(
-      searches.map(term => cilio.searchJobs(term).catch(() => [] as any[]))
+      searches.map(async (term) => {
+        const jobs = await cilio.searchJobs(term).catch(() => [] as any[])
+        console.log(`[Cilio API] Search "${term}" returned ${jobs.length} jobs`)
+        return jobs
+      })
     )
 
     // Merge and deduplicate by orderNumber
