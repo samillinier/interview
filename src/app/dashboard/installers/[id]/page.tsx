@@ -3707,22 +3707,24 @@ export default function InstallerProfileViewPage() {
           </motion.div>
 
           {/* Assigned Jobs */}
-          {scheduledJobs.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Assigned Jobs</h2>
-                  <p className="text-sm text-slate-500">Scheduled Cilio jobs assigned to this installer</p>
-                </div>
-                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <Briefcase className="w-6 h-6 text-emerald-600" />
-                </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Assigned Jobs</h2>
+                <p className="text-sm text-slate-500">Scheduled Cilio jobs assigned to this installer</p>
               </div>
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Briefcase className="w-6 h-6 text-emerald-600" />
+              </div>
+            </div>
+            {scheduledJobs.length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-4">{jobsLoading ? 'Loading...' : 'No scheduled jobs yet. Jobs will appear here when this installer is assigned in Cilio.'}</p>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -3757,26 +3759,28 @@ export default function InstallerProfileViewPage() {
                   </tbody>
                 </table>
               </div>
-            </motion.div>
-          )}
+            )}
+          </motion.div>
 
           {/* Chargebacks */}
-          {chargebackJobs.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.09 }}
-              className="bg-white rounded-2xl shadow-lg border border-red-200/60 p-8 mb-6 backdrop-blur-sm"
-            >
-              <div className="flex items-center justify-between mb-6 pb-6 border-b border-red-200">
-                <div>
-                  <h2 className="text-2xl font-bold text-red-800 mb-1">Chargebacks</h2>
-                  <p className="text-sm text-red-600">Chargeback jobs assigned to this installer</p>
-                </div>
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.09 }}
+            className="bg-white rounded-2xl shadow-lg border border-red-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-red-200">
+              <div>
+                <h2 className="text-2xl font-bold text-red-800 mb-1">Chargebacks</h2>
+                <p className="text-sm text-red-600">Chargeback jobs assigned to this installer</p>
               </div>
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+            {chargebackJobs.length === 0 ? (
+              <p className="text-sm text-red-400 italic py-4">{jobsLoading ? 'Loading...' : 'No chargeback jobs yet.'}</p>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -3811,8 +3815,8 @@ export default function InstallerProfileViewPage() {
                   </tbody>
                 </table>
               </div>
-            </motion.div>
-          )}
+            )}
+          </motion.div>
 
           {/* Profile Information */}
           <motion.div
