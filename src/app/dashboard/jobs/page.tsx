@@ -297,6 +297,7 @@ export default function JobsPage() {
   const { sidebarOpen } = useSidebarOpen()
   const [jobs, setJobs] = useState<CilioJob[]>([])
   const [allJobs, setAllJobs] = useState<CilioJob[]>([]) // unfiltered — used for filter dropdowns
+  const [totalFetched, setTotalFetched] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -586,10 +587,12 @@ export default function JobsPage() {
       const data = await res.json()
       setAllJobs(data.allJobs || data.jobs || [])
       setJobs(data.jobs || [])
+      setTotalFetched(data.totalFetched || 0)
     } catch (err) {
       console.error('Error fetching jobs:', err)
       setAllJobs([])
       setJobs([])
+      setTotalFetched(0)
     } finally {
       setIsLoading(false)
     }
@@ -767,6 +770,9 @@ export default function JobsPage() {
             <>
               <div className="mb-4 text-sm text-slate-500">
                 Showing <span className="font-medium text-brand-green">{jobs.length}</span> job{jobs.length !== 1 ? 's' : ''}
+                {totalFetched > 0 && totalFetched !== jobs.length && (
+                  <> of <span className="font-medium text-slate-700">{totalFetched}</span> fetched</>
+                )}
                 {statusFilter && <> with status <span className="font-medium text-brand-green">&ldquo;{statusFilter}&rdquo;</span></>}
                 {laborCategoryFilter && <> &middot; labor <span className="font-medium text-brand-green">&ldquo;{laborCategoryFilter}&rdquo;</span></>}
                 {workroomFilter && <> &middot; workroom <span className="font-medium text-brand-green">&ldquo;{workroomFilter}&rdquo;</span></>}

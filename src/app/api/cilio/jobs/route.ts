@@ -3,15 +3,16 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
+import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
 /**
  * GET /api/cilio/jobs
  * Query params: ?search= &status= &laborCategory= &workroom=
- * Runs parallel searches for multiple labor category terms to bypass the
- * 50-job Cilio limit and reduce Measure noise.
- * Returns { allJobs: unfiltered, jobs: filtered, count }
+ * Runs multiple parallel searches using active installer names plus
+ * category terms to bypass the 50-job Cilio limit.
+ * Returns { allJobs, jobs, count, searchStats }
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,18 +27,29 @@ export async function GET(request: NextRequest) {
     const laborCategoryFilter = searchParams.get("laborCategory") || ""
     const workroomFilter = searchParams.get("workroom") || ""
 
-    // Search for install-related labor categories in parallel to maximize
-    // results beyond the 50-job limit and skip Measure-heavy default search.
-    const categoryTerms = ["Carpet", "Vinyl", "Tile", "Backsplash", "Hardwood", "Laminate"]
     const userTerm = searchTerm.trim()
 
+    // Build search terms from active installer names
+    const installers = await prisma.installer.findMany({
+      where: { status: { in: ["active", "active_approved"] } },
+      select: { firstName: true, lastName: true },
+      take: 30,
+    })
+
+    const nameTerms = installers.map(i => i.firstName).filter(Boolean)
+    // Deduplicate names
+    const uniqueNames = [...new Set(nameTerms)]
+
+    // Build final search list
     let searches: string[]
     if (userTerm) {
-      // If user typed a specific search, use that + category terms
-      searches = [userTerm, ...categoryTerms]
+      searches = [userTerm, ...uniqueNames.slice(0, 10)]
     } else {
-      // Default: search each category individually
-      searches = categoryTerms
+      // Use installer names + category terms for broader coverage
+      searches = [
+        ...uniqueNames.slice(0, 15),
+        "Carpet", "Vinyl", "Tile", "Backsplash",
+      ]
     }
 
     // Run all searches in parallel
@@ -70,7 +82,13 @@ export async function GET(request: NextRequest) {
       filtered = filtered.filter((j: any) => getWorkroomByStoreNumber(j.storeNumber) === workroomFilter)
     }
 
-    return NextResponse.json({ allJobs, jobs: filtered, count: filtered.length })
+    return NextResponse.json({
+      allJobs,
+      jobs: filtered,
+      count: filtered.length,
+      totalFetched: allJobs.length,
+      searchesRan: searches.length,
+    })
   } catch (error: any) {
     console.error("Cilio jobs search error:", error)
     return NextResponse.json(
