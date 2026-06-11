@@ -336,7 +336,7 @@ export async function GET(_request: NextRequest) {
         }
         const detailFromInactive =
           c.state === 'missing' && !c.detail && docs && COLUMN_DOC_TYPES[def.id]
-            ? (docs.some((d) => COLUMN_DOC_TYPES[def.id]!.includes(d.type as any) && String(d.verificationLinkStatus || '') === 'inactive') ? 'Inactive' : undefined)
+            ? (docs.some((d) => COLUMN_DOC_TYPES[def.id]!.includes(d.type as any) && String(d.verificationLinkStatus || '').toLowerCase() === 'inactive') ? 'Inactive' : undefined)
             : undefined
         cells[def.id] = {
           state: c.state,

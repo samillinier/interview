@@ -1098,7 +1098,9 @@ export default function TrackingPage() {
     const dateHintTextClass = (state: MatrixCellState) =>
       state === 'warn'
         ? `${MATRIX_TABLE_WARN.text} font-semibold`
-        : 'text-slate-400'
+        : state === 'missing'
+          ? 'text-red-700 font-semibold'
+          : 'text-slate-400'
 
     const certColumns = (() => {
       if (dateHintsArr.length === 0 && itemStates.length === 0) return []
@@ -1222,7 +1224,10 @@ export default function TrackingPage() {
       return (
         <div className="flex flex-col items-center gap-0.5" title="Expired">
           {itemStates.length > 0 || dateHintsArr.length > 0 ? (
-            renderItemStatusIcons(true)
+            <>
+              {renderItemStatusIcons(true)}
+              <span className="text-[7px] text-red-700 font-semibold leading-tight whitespace-nowrap">Expired</span>
+            </>
           ) : (
             <span className="inline-flex flex-col items-center gap-0.5">
               <XCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -1243,7 +1248,12 @@ export default function TrackingPage() {
         title={itemStates.length > 0 ? itemsTitle : (missingReason || 'Missing')}
       >
         {itemStates.length > 0 || dateHintsArr.length > 0 ? (
-          renderItemStatusIcons(true)
+          <>
+            {renderItemStatusIcons(true)}
+            {missingReason ? (
+              <span className="text-[7px] text-red-700 font-semibold leading-tight whitespace-nowrap">{missingReason}</span>
+            ) : null}
+          </>
         ) : (
           <span className="inline-flex flex-col items-center gap-0.5">
             <XCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -1252,9 +1262,6 @@ export default function TrackingPage() {
             ) : null}
           </span>
         )}
-        {cell.detail && !missingReason && itemStates.length === 0 && dateHintsArr.length === 0 ? (
-          <span className="text-[9px] text-red-600 font-medium leading-none">{cell.detail}</span>
-        ) : null}
       </div>
     )
   }
