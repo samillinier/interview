@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     const row = await prisma.installerTracking.findFirst({
-      where: isRowNoteUpdate
+      where: (isRowNoteUpdate || isRowLabelUpdate)
         ? { id: trackingId, type: { in: ['matrix_manual', 'report_manual'] } }
         : { id: trackingId, type: 'matrix_manual' },
       select: { id: true, matrixCellOverrides: true },

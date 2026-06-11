@@ -154,6 +154,7 @@ function buildReportInstallerPayload(
     photoUrl: inst.photoUrl,
     notes,
     status: inst.status,
+    complianceStatus: inst.complianceStatus,
     cells,
   }
 }
