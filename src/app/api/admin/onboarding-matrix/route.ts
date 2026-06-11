@@ -306,7 +306,21 @@ export async function GET(_request: NextRequest) {
       llrp: 'llrpExpiry',
     }
 
-    const pushCells = (m: ReturnType<typeof computeOnboardingMatrix>, dateHints?: Record<string, string | string[] | null>, dateNullFields?: string[]) => {
+    const COLUMN_DOC_TYPES: Partial<Record<MatrixRowId, string[]>> = {
+      sunbiz: ['sunbiz'],
+      btr: ['business_registration'],
+      wc: ['workers_comp', 'workers_comp_certificate'],
+      wce: ['workers_comp_exemption'],
+      coi: ['liability_insurance'],
+      al: ['auto_insurance'],
+      w9: ['w9'],
+      photo: ['photo'],
+      bg: ['background_check'],
+      lead: ['lead_firm_certificate'],
+      llrp: ['lrrp'],
+    }
+
+    const pushCells = (m: ReturnType<typeof computeOnboardingMatrix>, dateHints?: Record<string, string | string[] | null>, dateNullFields?: string[], docs?: Array<{ type: string; verificationLinkStatus?: string | null }>) => {
       const nullSet = new Set(dateNullFields || [])
       const cells = {} as InstallerRow['cells']
       for (const def of MATRIX_ROW_DEFS) {
@@ -320,9 +334,13 @@ export async function GET(_request: NextRequest) {
           }
           continue
         }
+        const detailFromInactive =
+          c.state === 'missing' && !c.detail && docs && COLUMN_DOC_TYPES[def.id]
+            ? (docs.some((d) => COLUMN_DOC_TYPES[def.id]!.includes(d.type as any) && String(d.verificationLinkStatus || '') === 'inactive') ? 'Inactive' : undefined)
+            : undefined
         cells[def.id] = {
           state: c.state,
-          ...(c.detail ? { detail: c.detail } : {}),
+          ...(c.detail ? { detail: c.detail } : detailFromInactive ? { detail: detailFromInactive } : {}),
           ...(Array.isArray(c.items) ? { items: c.items } : {}),
           ...(dateHints?.[def.id] ? { dateHint: dateHints[def.id] } : {}),
         }
@@ -386,7 +404,7 @@ export async function GET(_request: NextRequest) {
           createdAt: t.createdAt.toISOString(),
           updatedAt: t.updatedAt.toISOString(),
           workroom: inst.workroom,
-          cells: pushCells(merged, cellDates, nullFields),
+          cells: pushCells(merged, cellDates, nullFields, inst.Document),
           hasRequiredGap: merged.hasRequiredGap,
           missingRequiredCount: merged.missingRequiredCount,
           isManual: false,
@@ -511,7 +529,7 @@ export async function GET(_request: NextRequest) {
             createdAt: inst.createdAt.toISOString(),
             updatedAt: inst.updatedAt.toISOString(),
             workroom: inst.workroom,
-            cells: pushCells(m, cellDates, nullFields),
+            cells: pushCells(m, cellDates, nullFields, inst.Document),
             hasRequiredGap: m.hasRequiredGap,
             missingRequiredCount: m.missingRequiredCount,
             isManual: false,

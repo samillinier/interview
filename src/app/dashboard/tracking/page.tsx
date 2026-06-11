@@ -1224,23 +1224,35 @@ export default function TrackingPage() {
           {itemStates.length > 0 || dateHintsArr.length > 0 ? (
             renderItemStatusIcons(true)
           ) : (
-            <span className="text-[10px] text-red-600 font-semibold leading-none">Exp</span>
+            <span className="inline-flex flex-col items-center gap-0.5">
+              <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span className="text-[7px] text-red-700 font-semibold leading-tight whitespace-nowrap">Expired</span>
+            </span>
           )}
         </div>
       )
+    const missingReason =
+      cell.state === 'missing' && cell.detail && cell.detail !== 'exp'
+        ? cell.detail
+        : cell.state === 'missing'
+          ? 'Missing'
+          : null
     return (
       <div
         className="flex flex-col items-center gap-0.5"
-        title={itemStates.length > 0 ? itemsTitle : 'Missing'}
+        title={itemStates.length > 0 ? itemsTitle : (missingReason || 'Missing')}
       >
         {itemStates.length > 0 || dateHintsArr.length > 0 ? (
           renderItemStatusIcons(true)
         ) : (
-          <span className="inline-flex items-center justify-center gap-0.5">
+          <span className="inline-flex flex-col items-center gap-0.5">
             <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+            {missingReason ? (
+              <span className="text-[7px] text-red-700 font-semibold leading-tight whitespace-nowrap">{missingReason}</span>
+            ) : null}
           </span>
         )}
-        {cell.detail && itemStates.length === 0 && dateHintsArr.length === 0 ? (
+        {cell.detail && !missingReason && itemStates.length === 0 && dateHintsArr.length === 0 ? (
           <span className="text-[9px] text-red-600 font-medium leading-none">{cell.detail}</span>
         ) : null}
       </div>
