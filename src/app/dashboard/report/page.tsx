@@ -393,8 +393,9 @@ export default function ReportPage() {
   const getCellReason = (cell: MatrixCell): string | null => {
     if (cell.state === 'ok' || cell.state === 'na') return null
     if (cell.state === 'warn') return cell.dateHint || null
+    // detail from matrix — 'exp' = Expired, 'Inactive' = doc exists but inactive, etc.
     if (cell.detail === 'exp') return 'Expired'
-    if (cell.detail && cell.detail !== 'exp') return cell.detail
+    if (cell.detail) return cell.detail
     return 'Missing'
   }
 

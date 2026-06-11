@@ -14,6 +14,21 @@ export const revalidate = 0
 
 const ICS = 'independent-contractor-services-agreement'
 
+/** Map matrix column IDs to their corresponding Document types. */
+const COLUMN_DOC_TYPES: Partial<Record<MatrixRowId, string[]>> = {
+  sunbiz: ['sunbiz'],
+  btr: ['business_registration'],
+  wc: ['workers_comp'],
+  wce: ['workers_comp_exemption'],
+  coi: ['general_liability'],
+  al: ['auto_liability'],
+  w9: ['w9'],
+  photo: ['photo'],
+  bg: ['background_check'],
+  lead: ['lead_firm_cert'],
+  llrp: ['llrp'],
+}
+
 const installerSelect = {
   id: true,
   firstName: true,
@@ -153,9 +168,26 @@ function buildReportInstallerPayload(
   for (const def of MATRIX_ROW_DEFS) {
     if (def.id === 'compliance') continue
     const c = m[def.id]
+    let detail = c.detail || undefined
+
+    // When state is 'missing' with no detail, check if docs exist but are inactive
+    if (c.state === 'missing' && !detail) {
+      const docTypes = COLUMN_DOC_TYPES[def.id]
+      if (docTypes) {
+        const hasDoc = inst.Document.some((doc) => {
+          if (!docTypes.includes(doc.type)) return false
+          const status = String(doc.verificationLinkStatus || '').trim().toLowerCase()
+          return status === 'inactive' || status === 'missing'
+        })
+        if (hasDoc) {
+          detail = 'Inactive'
+        }
+      }
+    }
+
     cells[def.id] = {
       state: c.state,
-      ...(c.detail ? { detail: c.detail } : {}),
+      ...(detail ? { detail } : {}),
       ...(c.state === 'warn' ? { dateHint: fmtDate(expiryMap[def.id] ?? null) } : {}),
     }
   }
