@@ -389,6 +389,15 @@ export default function ReportPage() {
     return <XCircle className="w-4 h-4 text-red-600 shrink-0" />
   }
 
+  /** Map cell detail + state to a short human-readable label. */
+  const getCellReason = (cell: MatrixCell): string | null => {
+    if (cell.state === 'ok' || cell.state === 'na') return null
+    if (cell.state === 'warn') return cell.dateHint || null
+    if (cell.detail === 'exp') return 'Expired'
+    if (cell.detail && cell.detail !== 'exp') return cell.detail
+    return 'Missing'
+  }
+
   const renderCell = (cell: MatrixCell | undefined, defId: string) => {
     if (!cell) return <span className="text-slate-300">—</span>
     if (defId === 'surface') {
@@ -403,12 +412,14 @@ export default function ReportPage() {
     if (cell.state === 'na' && isAttachmentNullMarked(cell.detail)) {
       return <NullAttachmentShade size="sm" />
     }
-    // Warn cells with expiry date
-    if (cell.state === 'warn' && cell.dateHint) {
+    const reason = getCellReason(cell)
+    if (reason) {
       return (
-        <span className="flex flex-col items-center gap-0.5">
+        <span className="flex flex-col items-center gap-0.5" title={reason}>
           {renderCellIcon(cell.state)}
-          <span className="text-[7px] font-semibold text-amber-700 leading-tight whitespace-nowrap">{cell.dateHint}</span>
+          <span className={`text-[7px] font-semibold leading-tight whitespace-nowrap ${cell.state === 'warn' ? 'text-amber-700' : 'text-red-700'}`}>
+            {reason}
+          </span>
         </span>
       )
     }
