@@ -16,15 +16,27 @@ import {
   Search,
   X,
   Loader2,
+  User,
 } from 'lucide-react'
 import { MATRIX_ROW_DEFS, type MatrixRowId } from '@/lib/onboardingMatrix'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
+import Image from 'next/image'
 
 /** Report table matrix columns — compliance lives on Tracking matrix only. */
 const REPORT_MATRIX_ROW_DEFS = MATRIX_ROW_DEFS.filter((d) => d.id !== 'compliance')
+
+function getInstallerAvatarRing(status?: string | null) {
+  const s = String(status || '').toLowerCase()
+  if (s === 'active') return 'ring-[3px] ring-brand-green'
+  if (s === 'deactive' || s === 'inactive' || s === 'deactivated') return 'ring-[3px] ring-slate-900'
+  if (s === 'passed' || s === 'qualified') return 'ring-[3px] ring-blue-500'
+  if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified') return 'ring-[3px] ring-red-500'
+  if (s === 'pending') return 'ring-[3px] ring-yellow-500'
+  return 'ring-[3px] ring-slate-300'
+}
 
 type MatrixCell = { state: string; detail?: string }
 
@@ -35,6 +47,7 @@ type ReportInstaller = {
   lastName: string
   email: string
   companyName: string | null
+  photoUrl: string | null
   notes: string | null
   status: string
   cells: Record<MatrixRowId, MatrixCell>
@@ -602,34 +615,51 @@ export default function ReportPage() {
                                 )}
                               </button>
                             )}
-                            <div className="min-w-0 flex flex-col gap-1">
-                              <button
-                                type="button"
-                                onClick={() => router.push(`/dashboard/installers/${inst.id}`)}
-                                className="text-left min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 group/name"
-                                title="Open installer profile"
-                              >
-                                <span className="block font-bold text-slate-900 group-hover/name:text-brand-green transition-colors text-lg leading-snug tracking-tight">
-                                  {inst.firstName} {inst.lastName}
+                            <div className="min-w-0 flex items-center gap-3">
+                              <div className={`relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ${getInstallerAvatarRing(inst.status)}`}>
+                                {inst.photoUrl ? (
+                                  <Image
+                                    src={inst.photoUrl}
+                                    alt={`${inst.firstName} ${inst.lastName}`}
+                                    width={48}
+                                    height={48}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-brand-green/10 flex items-center justify-center">
+                                    <User className="w-5 h-5 text-brand-green" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex flex-col gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => router.push(`/dashboard/installers/${inst.id}`)}
+                                  className="text-left min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 group/name"
+                                  title="Open installer profile"
+                                >
+                                  <span className="block font-bold text-slate-900 group-hover/name:text-brand-green transition-colors text-lg leading-snug tracking-tight">
+                                    {inst.firstName} {inst.lastName}
+                                  </span>
+                                </button>
+                                <span
+                                  className={`block text-sm leading-snug ${
+                                    inst.companyName
+                                      ? 'font-medium text-slate-600'
+                                      : 'text-slate-400 italic'
+                                  }`}
+                                >
+                                  {inst.companyName || '—'}
                                 </span>
-                              </button>
-                              <span
-                                className={`block text-sm leading-snug ${
-                                  inst.companyName
-                                    ? 'font-medium text-slate-600'
-                                    : 'text-slate-400 italic'
-                                }`}
-                              >
-                                {inst.companyName || '—'}
-                              </span>
-                              <a
-                                href={`mailto:${inst.email}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="block text-xs text-slate-500 break-all hover:text-brand-green transition-colors"
-                                title={inst.email}
-                              >
-                                {inst.email}
-                              </a>
+                                <a
+                                  href={`mailto:${inst.email}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="block text-xs text-slate-500 break-all hover:text-brand-green transition-colors"
+                                  title={inst.email}
+                                >
+                                  {inst.email}
+                                </a>
+                              </div>
                             </div>
                           </div>
                         </td>

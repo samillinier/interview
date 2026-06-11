@@ -151,6 +151,7 @@ function buildReportInstallerPayload(
     lastName: inst.lastName,
     email: inst.email,
     companyName: inst.companyName,
+    photoUrl: inst.photoUrl,
     notes,
     status: inst.status,
     cells,
