@@ -13,6 +13,16 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const ICS = 'independent-contractor-services-agreement'
+const ROW_LABEL_KEY = '__rowLabel'
+const ROW_LABEL_COLORS = ['gray', 'red', 'orange', 'amber', 'yellow', 'green', 'teal', 'sky', 'blue', 'purple'] as const
+
+function getRowLabelColor(overridesRaw: unknown): string | null {
+  if (!overridesRaw || typeof overridesRaw !== 'object' || Array.isArray(overridesRaw)) return null
+  const rowLabel = (overridesRaw as Record<string, unknown>)[ROW_LABEL_KEY]
+  if (!rowLabel || typeof rowLabel !== 'object' || Array.isArray(rowLabel)) return null
+  const color = (rowLabel as Record<string, unknown>).color
+  return typeof color === 'string' && (ROW_LABEL_COLORS as readonly string[]).includes(color) ? color : null
+}
 
 const installerSelect = {
   id: true,
@@ -100,7 +110,8 @@ type InstallerForReport = {
 function buildReportInstallerPayload(
   inst: InstallerForReport,
   reportTrackingId: string,
-  notes: string | null
+  notes: string | null,
+  rowLabelColor: string | null
 ) {
   const icsSignedAt = inst.InstallerAgreement[0]?.signedAt ?? null
   const activeStaffMembers = (inst.StaffMember || []).filter(
@@ -154,7 +165,7 @@ function buildReportInstallerPayload(
     photoUrl: inst.photoUrl,
     notes,
     status: inst.status,
-    complianceStatus: inst.complianceStatus,
+    rowLabelColor,
     cells,
   }
 }
@@ -195,7 +206,8 @@ export async function GET() {
         buildReportInstallerPayload(
           row.Installer as InstallerForReport,
           row.id,
-          getMatrixRowNote(row.matrixCellOverrides)
+          getMatrixRowNote(row.matrixCellOverrides),
+          getRowLabelColor(row.matrixCellOverrides)
         )
       )
 
