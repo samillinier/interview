@@ -38,6 +38,14 @@ function getInstallerAvatarRing(status?: string | null) {
   return 'ring-[3px] ring-slate-300'
 }
 
+/** Per-cell background color based on individual cell state. */
+function getReportCellBg(state: string | undefined): string {
+  if (!state || state === 'na') return 'bg-white'
+  if (state === 'ok') return 'bg-green-100/65'
+  if (state === 'warn') return 'bg-amber-100/65'
+  return 'bg-red-100/65'
+}
+
 type MatrixCell = { state: string; detail?: string }
 
 type ReportInstaller = {
@@ -596,8 +604,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {filteredInstallers.map((inst) => (
-                      <tr key={inst.id} className="group border-b border-slate-100/90 bg-white hover:bg-white">
-                        <td className="sticky left-0 z-10 bg-white px-3 py-3 align-top group-hover:bg-white w-max max-w-[300px]">
+                      <tr key={inst.id} className="group border-b border-slate-100/90 bg-white hover:bg-slate-50/80">
+                        <td className="sticky left-0 z-10 bg-white px-3 py-3 align-top group-hover:bg-slate-50/80 w-max max-w-[300px]">
                           <div className="relative pr-8">
                             {canEditReport && (
                               <button
@@ -710,7 +718,7 @@ export default function ReportPage() {
                         {visibleDefs.map((def) => (
                           <td
                             key={def.id}
-                            className="text-center align-middle py-2.5 px-1 bg-white border-l border-slate-100"
+                            className={`text-center align-middle py-2.5 px-1 border-l border-slate-100 ${getReportCellBg(inst.cells[def.id]?.state)}`}
                           >
                             <div className="flex min-h-[2rem] items-center justify-center">
                               {renderCell(inst.cells[def.id], def.id)}
