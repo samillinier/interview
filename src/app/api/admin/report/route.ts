@@ -134,13 +134,29 @@ function buildReportInstallerPayload(
     staffMemberPhotoUrls: activeStaffMembers.map((s) => s.photoUrl),
   })
 
-  const cells = {} as Record<MatrixRowId, { state: string; detail?: string }>
+  const cells = {} as Record<MatrixRowId, { state: string; detail?: string; dateHint?: string | null }>
+  
+  /** Map column ID → expiry date field for warn-state date hints. */
+  const expiryMap: Partial<Record<MatrixRowId, Date | null>> = {
+    btr: inst.btrExpiry,
+    coi: inst.generalLiabilityExpiry,
+    al: inst.automobileLiabilityExpiry,
+    llrp: inst.llrpExpiry,
+    wce: (inst as any).workersCompExemExpiry ?? null,
+  }
+
+  const fmtDate = (d: Date | null): string | null => {
+    if (!d) return null
+    return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+  }
+
   for (const def of MATRIX_ROW_DEFS) {
     if (def.id === 'compliance') continue
     const c = m[def.id]
     cells[def.id] = {
       state: c.state,
       ...(c.detail ? { detail: c.detail } : {}),
+      ...(c.state === 'warn' ? { dateHint: fmtDate(expiryMap[def.id] ?? null) } : {}),
     }
   }
 

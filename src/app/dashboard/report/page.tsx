@@ -23,6 +23,8 @@ import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
+import { isAttachmentNullMarked, NULL_MATRIX_CELL_SHADE_STYLE } from '@/lib/nullAttachmentStyle'
+import { NullAttachmentShade } from '@/components/NullAttachmentShade'
 import Image from 'next/image'
 
 /** Report table matrix columns — compliance lives on Tracking matrix only. */
@@ -38,15 +40,24 @@ function getInstallerAvatarRing(status?: string | null) {
   return 'ring-[3px] ring-slate-300'
 }
 
-/** Per-cell background color based on individual cell state. */
-function getReportCellBg(state: string | undefined): string {
-  if (!state || state === 'na') return 'bg-white'
-  if (state === 'ok') return 'bg-green-100/65'
-  if (state === 'warn') return 'bg-amber-100/65'
-  return 'bg-red-100/65'
+/** RGBA color constants matching tracking page MATRIX_CELL_BG. */
+const REPORT_CELL_BG = {
+  ok: 'rgba(52, 211, 153, 0.35)',
+  warn: 'rgba(251, 191, 36, 0.35)',
+  missing: 'rgba(248, 113, 113, 0.35)',
+} as const
+
+/** Per-cell inline background style, matching tracking page matrixCellBgStyle. */
+function getReportCellStyle(cell?: MatrixCell): React.CSSProperties {
+  if (!cell) return {}
+  if (cell.state === 'na' && isAttachmentNullMarked(cell.detail)) return NULL_MATRIX_CELL_SHADE_STYLE
+  if (cell.state === 'ok') return { backgroundColor: REPORT_CELL_BG.ok }
+  if (cell.state === 'warn') return { backgroundColor: REPORT_CELL_BG.warn }
+  if (cell.state === 'missing') return { backgroundColor: REPORT_CELL_BG.missing }
+  return {}
 }
 
-type MatrixCell = { state: string; detail?: string }
+type MatrixCell = { state: string; detail?: string; dateHint?: string | null }
 
 type ReportInstaller = {
   reportTrackingId: string
@@ -388,6 +399,19 @@ export default function ReportPage() {
         <span className="text-slate-400 text-[10px]">—</span>
       )
     }
+    // NULL-marked cells — hatch pattern
+    if (cell.state === 'na' && isAttachmentNullMarked(cell.detail)) {
+      return <NullAttachmentShade size="sm" />
+    }
+    // Warn cells with expiry date
+    if (cell.state === 'warn' && cell.dateHint) {
+      return (
+        <span className="flex flex-col items-center gap-0.5">
+          {renderCellIcon(cell.state)}
+          <span className="text-[7px] font-semibold text-amber-700 leading-tight whitespace-nowrap">{cell.dateHint}</span>
+        </span>
+      )
+    }
     return (
       <span className="inline-flex items-center justify-center">
         {renderCellIcon(cell.state)}
@@ -560,7 +584,7 @@ export default function ReportPage() {
               </div>
             ) : reportData && filteredInstallers.length > 0 ? (
               <div className="overflow-auto max-h-[calc(100vh-320px)] rounded-xl border border-slate-200 bg-white">
-                <table className="w-full table-fixed text-sm border-separate border-spacing-0 bg-white">
+                <table className="w-full table-fixed text-sm border-separate border-spacing-y-px border-spacing-x-0 bg-white">
                   <colgroup>
                     <col style={{ width: reportTableLayout.installerColPx }} />
                     <col style={{ width: reportTableLayout.notesMinPx }} />
@@ -604,8 +628,8 @@ export default function ReportPage() {
                   </thead>
                   <tbody>
                     {filteredInstallers.map((inst) => (
-                      <tr key={inst.id} className="group border-b border-slate-100/90 bg-white hover:bg-slate-50/80">
-                        <td className="sticky left-0 z-10 bg-white px-3 py-3 align-top group-hover:bg-slate-50/80 w-max max-w-[300px]">
+                      <tr key={inst.id} className="group bg-white hover:bg-slate-50/80">
+                        <td className="sticky left-0 z-10 bg-white px-3 py-3 align-top group-hover:bg-slate-50/80 w-max max-w-[300px] border-r border-slate-200">
                           <div className="relative pr-8">
                             {canEditReport && (
                               <button
@@ -718,7 +742,8 @@ export default function ReportPage() {
                         {visibleDefs.map((def) => (
                           <td
                             key={def.id}
-                            className={`text-center align-middle py-2.5 px-1 border-l border-slate-100 ${getReportCellBg(inst.cells[def.id]?.state)}`}
+                            className="text-center align-middle py-2.5 px-1 border-l border-r border-slate-100 bg-white"
+                            style={getReportCellStyle(inst.cells[def.id])}
                           >
                             <div className="flex min-h-[2rem] items-center justify-center">
                               {renderCell(inst.cells[def.id], def.id)}
