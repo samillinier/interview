@@ -1,0 +1,38 @@
+flowchart LR
+  A[Public Candidate] --> B["/interview"]
+  B --> C[Start Interview API]
+  C --> D[AI Interview Questions and Responses]
+  D --> E[Complete Interview API]
+  E --> F[Installer Record Created or Updated]
+
+  F --> G[Email Verify and Create Account]
+  G --> H["/installer/login"]
+  H --> I[Installer Portal]
+
+  I --> J[Profile Updates]
+  I --> K[Job Applications]
+  I --> L[Agreements]
+  I --> M[Attachments Upload]
+  I --> N[Notifications]
+
+  J --> O{Needs Admin Approval?}
+  L --> P{Agreement Type?}
+
+  O -->|Yes| Q[InstallerChangeRequest]
+  Q --> R[Admin Approvals Dashboard]
+  R --> S[Approve or Reject]
+  S --> T[Installer Updated and Notification Sent]
+
+  P -->|NDA| U[Auto Approved on Agree]
+  P -->|Other Forms| V[Pending Admin or Signature Flow]
+  V --> R
+
+  I --> W[Messages and Notifications API]
+  W --> X[Admin Dashboard]
+
+  X --> Y[Analytics API]
+  Y --> Z[Dashboard Analytics]
+
+  AA[Property User] --> AB["/property/login"]
+  AB --> AC[Property Portal]
+  AC --> AD[Fleet, Facilities, Inventory APIs]

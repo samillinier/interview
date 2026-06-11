@@ -1,0 +1,2 @@
+-- This migration was created to align local history with the database.
+-- The columns were applied via prisma db push previously.

@@ -5,17 +5,8 @@ import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 import prisma from "@/lib/db"
 
-// Match a resource name string against an installer record
-function matchInstallerName(installers: Array<{ id: string; firstName: string; lastName: string }>, resourceName: string) {
-  const lower = resourceName.toLowerCase().trim()
-  return installers.find(i => {
-    const full = `${i.firstName} ${i.lastName}`.toLowerCase()
-    const reversed = `${i.lastName} ${i.firstName}`.toLowerCase()
-    return full === lower || reversed === lower || full.includes(lower) || lower.includes(full)
-  }) || null
-}
-
 export const dynamic = "force-dynamic"
+export const maxDuration = 30
 
 /**
  * GET /api/cilio/jobs
@@ -40,9 +31,9 @@ export async function GET(request: NextRequest) {
     const userTerm = searchTerm.trim()
 
     // Broad searches to maximize coverage, then filter client-side.
-    // Includes Canceled/Cancelled, In Progress, and all major statuses.
-    const statusTerms = ["Scheduled", "Tentative", "Confirmed", "Completed",
-      "Chargeback", "Canceled", "Cancelled", "In Progress", "In Review", "Hold"]
+    // Keep to 5 searches to stay under Vercel timeout limits.
+    const statusTerms = ["Scheduled", "Tentative", "Completed",
+      "Chargeback", "Canceled"]
     const searches = userTerm
       ? [userTerm, ...statusTerms]
       : statusTerms
@@ -97,70 +88,6 @@ export async function GET(request: NextRequest) {
         ].filter(Boolean).join(' ').toLowerCase()
         return searchable.includes(lower)
       })
-    }
-
-    // Batch sync: for jobs not yet in the DB, fetch full details to extract installer names.
-    // This is a best-effort background sync so installer badges appear right away.
-    const existingRecords = await prisma.cilioJobRecord.findMany({
-      where: { orderNumber: { in: allJobs.map((j: any) => j.orderNumber) } },
-      select: { orderNumber: true },
-    })
-    const existingSet = new Set(existingRecords.map(r => r.orderNumber))
-    const unsyncedOrderNumbers = allJobs
-      .map((j: any) => j.orderNumber)
-      .filter((on: number) => !existingSet.has(on))
-      .slice(0, 5) // batch at most 5 per request
-
-    if (unsyncedOrderNumbers.length > 0) {
-      // Load local installers for name matching
-      const localInstallers = await prisma.installer.findMany({
-        where: { id: { not: '' } },
-        select: { id: true, firstName: true, lastName: true },
-      })
-
-      const syncPromises = unsyncedOrderNumbers.map(async (orderNumber: number) => {
-        try {
-          const detail: any = await cilio.getJobDetail(orderNumber)
-          const resp = detail?.responsibleUserInformation
-          const respName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
-          const res = respName ||
-            detail?.schedulingInformation?.scheduledResources
-            || detail?.schedulingInformation?.taskOneResource
-            || detail?.schedulingInformation?.taskTwoResource
-            || detail?.schedulingInformation?.taskThreeResource
-          const match = res ? matchInstallerName(localInstallers, res) : null
-          if (match) {
-            const statusDesc = detail?.generalInformation?.orderStatusEnum ?? detail?.generalInformation?.orderStatusDescription ?? ''
-            const isChargeback = statusDesc.toLowerCase().includes("chargeback") || statusDesc.toLowerCase().includes("charge back")
-            await prisma.cilioJobRecord.upsert({
-              where: { orderNumber },
-              create: {
-                orderNumber,
-                orderStatusDescription: statusDesc || null,
-                jobType: isChargeback ? "chargeback" : "scheduled",
-                storeNumber: detail?.storeInformation?.storeNumber ?? null,
-                storeName: detail?.storeInformation?.storeName ?? null,
-                laborCategoryDescription: detail?.laborCategoryDescription ?? detail?.generalInformation?.laborCategoryDescription ?? null,
-                workroom: getWorkroomByStoreNumber(detail?.storeInformation?.storeNumber ?? ''),
-                scheduledInstallDate: detail?.dateInformation?.scheduledInstallDate ? new Date(detail.dateInformation.scheduledInstallDate) : null,
-                measureDate: detail?.dateInformation?.measureDate ? new Date(detail.dateInformation.measureDate) : null,
-                bookingDate: detail?.dateInformation?.bookingDate ? new Date(detail.dateInformation.bookingDate) : null,
-                installerId: match.id,
-                installerName: `${match.firstName} ${match.lastName}`,
-                cilioPayload: detail,
-              },
-              update: {
-                installerId: match.id,
-                installerName: `${match.firstName} ${match.lastName}`,
-              },
-            })
-          }
-        } catch {
-          // Best-effort — skip silently
-        }
-      })
-      // Fire-and-forget: don't block the response waiting for sync
-      Promise.allSettled(syncPromises).catch(() => {})
     }
 
     // Look up installer names from synced CilioJobRecord table

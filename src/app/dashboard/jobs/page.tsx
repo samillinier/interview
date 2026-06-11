@@ -596,7 +596,10 @@ export default function JobsPage() {
       if (workroom) params.set('workroom', workroom)
       const res = await fetch(`/api/cilio/jobs?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to fetch jobs')
-      const data = await res.json()
+      const contentType = res.headers.get('content-type') || ''
+      const data = contentType.includes('application/json')
+        ? await res.json()
+        : (console.error('Non-JSON jobs response:', await res.text().then(t => t.slice(0, 200))), { allJobs: [], jobs: [] })
       setAllJobs(data.allJobs || data.jobs || [])
       setJobs(data.jobs || [])
       setTotalFetched(data.totalFetched || 0)
@@ -1155,34 +1158,49 @@ export default function JobsPage() {
                                   : 'Job Details'}
                               </h1>
                               {(() => {
+                                const sched = fullJobDetail.schedulingInformation
+                                const scheduledResourceName = sched?.scheduledResource
+                                  ? [sched.scheduledResource.firstName, sched.scheduledResource.lastName].filter(Boolean).join(' ')
+                                  : null
+                                const installerName = sched?.scheduledResources ||
+                                  sched?.taskOneResource ||
+                                  sched?.taskTwoResource ||
+                                  sched?.taskThreeResource ||
+                                  scheduledResourceName ||
+                                  null
                                 const resp = fullJobDetail.responsibleUserInformation
-                                const resName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
-                                const fallback = fullJobDetail.schedulingInformation?.scheduledResources ||
-                                  fullJobDetail.schedulingInformation?.taskOneResource ||
-                                  fullJobDetail.schedulingInformation?.taskTwoResource ||
-                                  fullJobDetail.schedulingInformation?.taskThreeResource
-                                const name = resName || fallback || null
-                                const match = matchInstaller(name)
-                                return match ? (
-                                  <Link
-                                    href={`/dashboard/installers/${match.id}`}
-                                    target="_blank"
-                                    className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20 hover:bg-white/30 transition-colors"
-                                  >
-                                    <User className="w-4 h-4 text-white/70" />
-                                    <span className="text-white font-semibold text-sm underline underline-offset-2 decoration-white/30">
-                                      {match.firstName} {match.lastName}
-                                    </span>
-                                    {match.companyName && (
-                                      <span className="text-white/50 text-xs">{match.companyName}</span>
-                                    )}
-                                  </Link>
-                                ) : name ? (
-                                  <p className="text-white/60 text-sm flex items-center gap-2">
-                                    <User className="w-3.5 h-3.5" />
-                                    {name}
-                                  </p>
-                                ) : null
+                                const responsibleName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
+                                const listInstaller = jobs.find(j => j.orderNumber === fullJobDetail.orderNumber)?._installer
+                                const name = installerName || responsibleName || listInstaller?.name || null
+                                const label = installerName || listInstaller ? 'Assigned Installer' : 'Responsible'
+                                const match = matchInstaller(name) ||
+                                  (listInstaller ? installers.find(i => i.id === listInstaller.id) : null)
+                                if (!name && !match) return null
+                                const displayName = match
+                                  ? `${match.firstName} ${match.lastName}`
+                                  : name
+                                return (
+                                  <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2">
+                                    <User className="w-4 h-4 text-white/60 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                      <p className="text-white/50 text-xs">{label}</p>
+                                      {match ? (
+                                        <Link
+                                          href={`/dashboard/installers/${match.id}`}
+                                          target="_blank"
+                                          className="text-white font-bold text-sm underline underline-offset-2 decoration-white/30 hover:decoration-white/60 transition-colors"
+                                        >
+                                          {displayName}
+                                        </Link>
+                                      ) : (
+                                        <p className="text-white font-bold text-sm truncate">{displayName}</p>
+                                      )}
+                                      {match?.companyName && (
+                                        <p className="text-white/50 text-xs truncate">{match.companyName}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
                               })()}
                               {fullJobDetail.customerInformation?.customerAddress?.fullAddress && (
                                 <p className="text-white/70 text-sm flex items-center gap-2">
