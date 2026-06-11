@@ -312,6 +312,7 @@ export default function JobsPage() {
   const [loadingJobDetail, setLoadingJobDetail] = useState<number | null>(null)
   const [detailModal, setDetailModal] = useState<number | null>(null)
   const [fullJobDetail, setFullJobDetail] = useState<CilioJobFullDetail | null>(null)
+  const [detailInstaller, setDetailInstaller] = useState<{ id: string; name: string; companyName?: string | null } | null>(null)
   const [detailNotes, setDetailNotes] = useState<JobNote[]>([])
   const [detailError, setDetailError] = useState<string | null>(null)
   const [loadingFullDetail, setLoadingFullDetail] = useState(false)
@@ -419,6 +420,7 @@ export default function JobsPage() {
     setDetailModal(orderNumber)
     setLoadingFullDetail(true)
     setFullJobDetail(null)
+    setDetailInstaller(null)
     setDetailNotes([])
     setDetailError(null)
     try {
@@ -436,11 +438,27 @@ export default function JobsPage() {
         const cleaned = raw.replace(/^Cilio API error \d+:\s*/i, '')
         setDetailError(cleaned)
         setFullJobDetail(null)
+        setDetailInstaller(null)
       } else {
         const detail = detailData.detail || null
+        const installerFromApi = detailData.installer || null
         setFullJobDetail(detail)
+        setDetailInstaller(installerFromApi)
         // Sync to local DB if installer is matched
-        if (detail) {
+        if (detail && installerFromApi?.id) {
+          const match = installers.find(i => i.id === installerFromApi.id) || {
+            id: installerFromApi.id,
+            firstName: installerFromApi.name.split(' ')[0] || '',
+            lastName: installerFromApi.name.split(' ').slice(1).join(' ') || '',
+            companyName: installerFromApi.companyName ?? null,
+          }
+          syncJobToDb(detail, match)
+          setJobs(prev => prev.map(j =>
+            j.orderNumber === orderNumber
+              ? { ...j, _installer: { id: installerFromApi.id, name: installerFromApi.name } } as any
+              : j
+          ))
+        } else if (detail) {
           const resp = detail.responsibleUserInformation
           const resName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
           const res = resName ||
@@ -451,8 +469,8 @@ export default function JobsPage() {
           const match = matchInstaller(res)
           if (match) {
             syncJobToDb(detail, match)
-            // Update the jobs list immediately so the badge shows without refresh
             const name = `${match.firstName} ${match.lastName}`
+            setDetailInstaller({ id: match.id, name, companyName: match.companyName })
             setJobs(prev => prev.map(j =>
               j.orderNumber === orderNumber
                 ? { ...j, _installer: { id: match.id, name } } as any
@@ -473,6 +491,7 @@ export default function JobsPage() {
   const closeDetailModal = () => {
     setDetailModal(null)
     setFullJobDetail(null)
+    setDetailInstaller(null)
     setDetailNotes([])
     setDetailError(null)
   }
@@ -638,6 +657,59 @@ export default function JobsPage() {
       const reversed = `${i.lastName} ${i.firstName}`.toLowerCase()
       return full === lower || reversed === lower || full.includes(lower) || lower.includes(full)
     }) || null
+  }
+
+  const getJobInstallerInfo = (
+    detail: CilioJobFullDetail,
+    dbInstaller?: { id: string; name: string; companyName?: string | null } | null
+  ) => {
+    const listInstaller = jobs.find(j => j.orderNumber === detail.orderNumber)?._installer
+    const resolvedDb = dbInstaller || (listInstaller ? { id: listInstaller.id, name: listInstaller.name } : null)
+
+    if (resolvedDb?.name) {
+      const match = installers.find(i => i.id === resolvedDb.id) || {
+        id: resolvedDb.id,
+        firstName: resolvedDb.name.split(' ')[0] || '',
+        lastName: resolvedDb.name.split(' ').slice(1).join(' ') || '',
+        companyName: resolvedDb.companyName ?? null,
+      }
+      return {
+        label: 'Assigned Installer',
+        match,
+        displayName: resolvedDb.name,
+        isAssigned: true,
+      }
+    }
+
+    const sched = detail.schedulingInformation
+    const scheduledResourceName = sched?.scheduledResource
+      ? [sched.scheduledResource.firstName, sched.scheduledResource.lastName].filter(Boolean).join(' ')
+      : null
+    const installerName = sched?.scheduledResources ||
+      sched?.taskOneResource ||
+      sched?.taskTwoResource ||
+      sched?.taskThreeResource ||
+      scheduledResourceName ||
+      null
+    const resp = detail.responsibleUserInformation
+    const responsibleName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
+    const name = installerName || responsibleName || null
+    const match = matchInstaller(name)
+    const displayName = match ? `${match.firstName} ${match.lastName}` : name
+    if (displayName) {
+      return {
+        label: 'Assigned Installer',
+        match,
+        displayName,
+        isAssigned: true,
+      }
+    }
+    return {
+      label: 'Assigned Installer',
+      match: null,
+      displayName: 'Not assigned yet',
+      isAssigned: false,
+    }
   }
 
   // Extract unique values from unfiltered jobs so dropdowns don't shrink
@@ -1157,51 +1229,6 @@ export default function JobsPage() {
                                   ? (fullJobDetail.customerInformation.customerFirstLast || (fullJobDetail.customerInformation.customerFirstName || '') + ' ' + (fullJobDetail.customerInformation.customerLastName || '')).trim()
                                   : 'Job Details'}
                               </h1>
-                              {(() => {
-                                const sched = fullJobDetail.schedulingInformation
-                                const scheduledResourceName = sched?.scheduledResource
-                                  ? [sched.scheduledResource.firstName, sched.scheduledResource.lastName].filter(Boolean).join(' ')
-                                  : null
-                                const installerName = sched?.scheduledResources ||
-                                  sched?.taskOneResource ||
-                                  sched?.taskTwoResource ||
-                                  sched?.taskThreeResource ||
-                                  scheduledResourceName ||
-                                  null
-                                const resp = fullJobDetail.responsibleUserInformation
-                                const responsibleName = [resp?.firstName, resp?.lastName].filter(Boolean).join(' ') || null
-                                const listInstaller = jobs.find(j => j.orderNumber === fullJobDetail.orderNumber)?._installer
-                                const name = installerName || responsibleName || listInstaller?.name || null
-                                const label = installerName || listInstaller ? 'Assigned Installer' : 'Responsible'
-                                const match = matchInstaller(name) ||
-                                  (listInstaller ? installers.find(i => i.id === listInstaller.id) : null)
-                                if (!name && !match) return null
-                                const displayName = match
-                                  ? `${match.firstName} ${match.lastName}`
-                                  : name
-                                return (
-                                  <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2">
-                                    <User className="w-4 h-4 text-white/60 flex-shrink-0" />
-                                    <div className="min-w-0">
-                                      <p className="text-white/50 text-xs">{label}</p>
-                                      {match ? (
-                                        <Link
-                                          href={`/dashboard/installers/${match.id}`}
-                                          target="_blank"
-                                          className="text-white font-bold text-sm underline underline-offset-2 decoration-white/30 hover:decoration-white/60 transition-colors"
-                                        >
-                                          {displayName}
-                                        </Link>
-                                      ) : (
-                                        <p className="text-white font-bold text-sm truncate">{displayName}</p>
-                                      )}
-                                      {match?.companyName && (
-                                        <p className="text-white/50 text-xs truncate">{match.companyName}</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })()}
                               {fullJobDetail.customerInformation?.customerAddress?.fullAddress && (
                                 <p className="text-white/70 text-sm flex items-center gap-2">
                                   <MapPin className="w-3.5 h-3.5" />
@@ -1255,6 +1282,30 @@ export default function JobsPage() {
                   </div>
                               </div>
                             )}
+                            {(() => {
+                              const installerInfo = getJobInstallerInfo(fullJobDetail, detailInstaller)
+                              return (
+                                <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5">
+                                  <User className="w-4 h-4 text-white/60 flex-shrink-0" />
+                                  <div className="min-w-0">
+                                    <p className="text-white/50 text-xs">{installerInfo.label}</p>
+                                    {installerInfo.isAssigned && installerInfo.match ? (
+                                      <Link
+                                        href={`/dashboard/installers/${installerInfo.match.id}`}
+                                        target="_blank"
+                                        className="text-white font-bold text-sm underline underline-offset-2 decoration-white/30 hover:decoration-white/60 transition-colors truncate block"
+                                      >
+                                        {installerInfo.displayName}
+                                      </Link>
+                                    ) : (
+                                      <p className={`text-sm truncate ${installerInfo.isAssigned ? 'text-white font-bold' : 'text-white/50 font-medium italic'}`}>
+                                        {installerInfo.displayName}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })()}
                             {fullJobDetail.generalInformation?.hasJobAttachments && fullJobDetail.generalInformation.hasJobAttachments !== 'No' && (
                               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5">
                                 <Paperclip className="w-4 h-4 text-white/60" />
@@ -1454,21 +1505,55 @@ export default function JobsPage() {
                                 )
                               })}
                             </div>
-                            {/* Scheduled Resource */}
-                            {fullJobDetail.schedulingInformation.scheduledResource && (fullJobDetail.schedulingInformation.scheduledResource.firstName || fullJobDetail.schedulingInformation.scheduledResource.lastName || fullJobDetail.schedulingInformation.scheduledResource.email) ? (
-                              <div className="mt-4 bg-brand-green/5 rounded-xl p-4 border border-brand-green/20">
-                                <p className="text-xs font-bold text-brand-green mb-3">Scheduled Resource</p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                  <Field label="Name" value={[fullJobDetail.schedulingInformation.scheduledResource.firstName, fullJobDetail.schedulingInformation.scheduledResource.lastName].filter(Boolean).join(' ')} />
-                                  <Field label="Title" value={fullJobDetail.schedulingInformation.scheduledResource.jobTitle} />
-                                  <Field label="Department" value={fullJobDetail.schedulingInformation.scheduledResource.department} />
-                                  <div className="col-span-2">
-                                    <Field label="Email" value={fullJobDetail.schedulingInformation.scheduledResource.email} noTruncate />
+                            {/* Scheduled Resource / Assigned */}
+                            {(() => {
+                              const si = fullJobDetail.schedulingInformation
+                              const schedUser = si.scheduledResource
+                              const objName = schedUser && (schedUser.firstName || schedUser.lastName)
+                                ? [schedUser.firstName, schedUser.lastName].filter(Boolean).join(' ')
+                                : null
+                              const strName = si.scheduledResources || si.scheduledUserRenovatorName ||
+                                si.taskOneResource || si.taskTwoResource || si.taskThreeResource || null
+                              // Fallback: use responsibleUserInformation when scheduling fields are empty
+                              const ru = fullJobDetail.responsibleUserInformation
+                              const ruName = ru?.firstName || ru?.lastName
+                                ? [ru.firstName, ru.lastName].filter(Boolean).join(' ')
+                                : null
+                              const name = objName || strName || ruName || null
+                              // Also pull email/phone from responsibleUser when schedUser is empty
+                              const user = schedUser?.email || schedUser?.phone ? schedUser : ru
+                              const match = name ? matchInstaller(name) : null
+                              if (!name && !user?.email) return null
+                              return (
+                                <div className="mt-4 bg-brand-green/5 rounded-xl p-4 border border-brand-green/20">
+                                  <p className="text-xs font-bold text-brand-green mb-3">Assigned</p>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className={user?.jobTitle || user?.department ? '' : 'col-span-full'}>
+                                      <p className="text-xs font-medium text-slate-500 mb-1">Name</p>
+                                      {match ? (
+                                        <Link
+                                          href={`/dashboard/installers/${match.id}`}
+                                          target="_blank"
+                                          className="text-brand-green hover:text-brand-green/80 font-semibold text-sm underline underline-offset-2 transition-colors"
+                                        >
+                                          {match.firstName} {match.lastName}
+                                        </Link>
+                                      ) : (
+                                        <p className="text-slate-800 font-semibold text-sm">{name || '—'}</p>
+                                      )}
+                                    </div>
+                                    {user?.jobTitle && <Field label="Title" value={(user as any).jobTitle} />}
+                                    {user?.department && <Field label="Department" value={(user as any).department} />}
+                                    {user?.email && (
+                                      <div className="col-span-2">
+                                        <Field label="Email" value={(user as any).email} noTruncate />
+                                      </div>
+                                    )}
+                                    {user?.phone && <Field label="Phone" value={(user as any).phone} />}
                                   </div>
-                                  <Field label="Phone" value={fullJobDetail.schedulingInformation.scheduledResource.phone} />
                                 </div>
-                              </div>
-                            ) : null}
+                              )
+                            })()}
                           </SectionCard>
                         )}
 
@@ -1487,7 +1572,27 @@ export default function JobsPage() {
                         {fullJobDetail.responsibleUserInformation && (fullJobDetail.responsibleUserInformation.firstName || fullJobDetail.responsibleUserInformation.email) && (
                           <SectionCard icon={User} title="Responsible User" color="green">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              <Field label="Name" value={[fullJobDetail.responsibleUserInformation.firstName, fullJobDetail.responsibleUserInformation.lastName].filter(Boolean).join(' ')} />
+                              {(() => {
+                                const ru = fullJobDetail.responsibleUserInformation
+                                const ruName = [ru.firstName, ru.lastName].filter(Boolean).join(' ') || null
+                                const ruMatch = ruName ? matchInstaller(ruName) : null
+                                return (
+                                  <div className={ru.jobTitle || ru.department ? '' : 'col-span-full'}>
+                                    <p className="text-xs font-medium text-slate-500 mb-1">Name</p>
+                                    {ruMatch ? (
+                                      <Link
+                                        href={`/dashboard/installers/${ruMatch.id}`}
+                                        target="_blank"
+                                        className="text-brand-green hover:text-brand-green/80 font-semibold text-sm underline underline-offset-2 transition-colors"
+                                      >
+                                        {ruMatch.firstName} {ruMatch.lastName}
+                                      </Link>
+                                    ) : (
+                                      <p className="text-slate-800 font-semibold text-sm">{ruName || '—'}</p>
+                                    )}
+                                  </div>
+                                )
+                              })()}
                               <Field label="Title" value={fullJobDetail.responsibleUserInformation.jobTitle} />
                               <Field label="Department" value={fullJobDetail.responsibleUserInformation.department} />
                               <div className="col-span-2">

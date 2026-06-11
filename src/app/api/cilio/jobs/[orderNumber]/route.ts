@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getJobDetail, updateJobStatus, updateSalesOrderNumber } from "@/lib/cilio"
+import prisma from "@/lib/db"
+
+function extractInstallerResourceName(detail: any): string | null {
+  const sched = detail?.schedulingInformation
+  const scheduledResourceName = sched?.scheduledResource
+    ? [sched.scheduledResource.firstName, sched.scheduledResource.lastName].filter(Boolean).join(" ")
+    : null
+  const resp = detail?.responsibleUserInformation
+  const responsibleName = [resp?.firstName, resp?.lastName].filter(Boolean).join(" ") || null
+  return (
+    sched?.scheduledResources ||
+    sched?.taskOneResource ||
+    sched?.taskTwoResource ||
+    sched?.taskThreeResource ||
+    scheduledResourceName ||
+    responsibleName ||
+    null
+  )
+}
+
+function matchInstallerByName(
+  installers: { id: string; firstName: string; lastName: string; companyName: string | null }[],
+  resourceName: string
+) {
+  const lower = resourceName.toLowerCase().trim()
+  return (
+    installers.find((i) => {
+      const full = `${i.firstName} ${i.lastName}`.toLowerCase()
+      const reversed = `${i.lastName} ${i.firstName}`.toLowerCase()
+      return full === lower || reversed === lower || full.includes(lower) || lower.includes(full)
+    }) || null
+  )
+}
 
 export async function GET(
   _request: NextRequest,
@@ -20,7 +53,48 @@ export async function GET(
     }
 
     const detail = await getJobDetail(orderNumber)
-    return NextResponse.json({ detail })
+
+    let installer: { id: string; name: string; companyName: string | null } | null = null
+
+    const record = await prisma.cilioJobRecord.findUnique({
+      where: { orderNumber },
+      select: {
+        installerId: true,
+        installerName: true,
+        Installer: {
+          select: { firstName: true, lastName: true, companyName: true },
+        },
+      },
+    })
+
+    if (record) {
+      const name =
+        record.installerName?.trim() ||
+        `${record.Installer.firstName} ${record.Installer.lastName}`.trim()
+      installer = {
+        id: record.installerId,
+        name,
+        companyName: record.Installer.companyName,
+      }
+    } else {
+      const resourceName = extractInstallerResourceName(detail)
+      if (resourceName) {
+        const localInstallers = await prisma.installer.findMany({
+          where: { status: { not: "rejected" } },
+          select: { id: true, firstName: true, lastName: true, companyName: true },
+        })
+        const match = matchInstallerByName(localInstallers, resourceName)
+        if (match) {
+          installer = {
+            id: match.id,
+            name: `${match.firstName} ${match.lastName}`.trim(),
+            companyName: match.companyName,
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ detail, installer })
   } catch (error: any) {
     console.error("Cilio job detail error:", error)
     const errorMsg = error.message || String(error)

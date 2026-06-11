@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Broad searches to maximize coverage, then filter client-side.
     // Keep to 5 searches to stay under Vercel timeout limits.
-    const statusTerms = ["Scheduled", "Tentative", "Completed",
+    const statusTerms = ["Scheduled", "Dispatched", "Tentative", "Completed",
       "Chargeback", "Canceled"]
     const searches = userTerm
       ? [userTerm, ...statusTerms]
