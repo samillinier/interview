@@ -781,8 +781,8 @@ export default function TrackingPage() {
     missing: 'rgba(248, 113, 113, 0.35)',
   } as const
 
-  /** Active tab only — Admin Added rows use plain white cells (no status tint / NULL hatch fill). */
-  const showMatrixCellShade = matrixStatusFilter !== 'tracked'
+  /** Always show cell background colors (green/yellow/red) based on matrix status. */
+  const showMatrixCellShade = true
 
   const matrixCellBgStyle = (cell?: { state: string; detail?: string } | null): React.CSSProperties => {
     if (!showMatrixCellShade || !cell) return {}

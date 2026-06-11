@@ -17,7 +17,6 @@ import {
   X,
   Loader2,
   User,
-  Clock,
 } from 'lucide-react'
 import { MATRIX_ROW_DEFS, type MatrixRowId } from '@/lib/onboardingMatrix'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
@@ -29,50 +28,14 @@ import Image from 'next/image'
 /** Report table matrix columns — compliance lives on Tracking matrix only. */
 const REPORT_MATRIX_ROW_DEFS = MATRIX_ROW_DEFS.filter((d) => d.id !== 'compliance')
 
-type MatrixRowLabelColor = 'gray' | 'red' | 'orange' | 'amber' | 'yellow' | 'green' | 'teal' | 'sky' | 'blue' | 'purple'
-
-const MATRIX_ROW_LABEL_OPTIONS: Array<{
-  id: MatrixRowLabelColor
-  rowClass: string
-}> = [
-  { id: 'gray', rowClass: 'bg-slate-100/80 group-hover:bg-slate-200/60' },
-  { id: 'red', rowClass: 'bg-red-100/65 group-hover:bg-red-100/85' },
-  { id: 'orange', rowClass: 'bg-orange-100/65 group-hover:bg-orange-100/85' },
-  { id: 'amber', rowClass: 'bg-amber-100/65 group-hover:bg-amber-100/85' },
-  { id: 'yellow', rowClass: 'bg-yellow-100/65 group-hover:bg-yellow-100/85' },
-  { id: 'green', rowClass: 'bg-green-100/65 group-hover:bg-green-100/85' },
-  { id: 'teal', rowClass: 'bg-teal-100/65 group-hover:bg-teal-100/85' },
-  { id: 'sky', rowClass: 'bg-sky-100/65 group-hover:bg-sky-100/85' },
-  { id: 'blue', rowClass: 'bg-blue-100/65 group-hover:bg-blue-100/85' },
-  { id: 'purple', rowClass: 'bg-purple-100/65 group-hover:bg-purple-100/85' },
-]
-
 function getInstallerAvatarRing(status?: string | null) {
   const s = String(status || '').toLowerCase()
-  if (s === 'active') return { ring: 'ring-4 ring-brand-green', initialsBg: 'bg-brand-green' }
-  if (s === 'deactive' || s === 'inactive' || s === 'deactivated') return { ring: 'ring-4 ring-slate-900', initialsBg: 'bg-slate-900' }
-  if (s === 'passed' || s === 'qualified') return { ring: 'ring-4 ring-blue-500', initialsBg: 'bg-blue-500' }
-  if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified') return { ring: 'ring-4 ring-red-500', initialsBg: 'bg-red-500' }
-  if (s === 'pending') return { ring: 'ring-4 ring-yellow-500', initialsBg: 'bg-yellow-500' }
-  return { ring: 'ring-4 ring-slate-300', initialsBg: 'bg-slate-500' }
-}
-
-function getInstallerStatusCircle(status?: string | null) {
-  const s = String(status || '').toLowerCase()
-  if (!s) return null
-  if (s === 'active') return { label: 'Active', bg: 'bg-brand-green', Icon: CheckCircle2 }
-  if (s === 'passed' || s === 'qualified') return { label: 'Qualified', bg: 'bg-blue-500', Icon: CheckCircle2 }
-  if (s === 'pending') return { label: 'Pending', bg: 'bg-yellow-500', Icon: Clock }
-  if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified')
-    return { label: 'Not Qualified', bg: 'bg-red-500', Icon: XCircle }
-  if (s === 'deactive' || s === 'inactive' || s === 'deactivated')
-    return { label: 'Deactive', bg: 'bg-slate-900', Icon: XCircle }
-  return null
-}
-
-/** helper to get initials from first + last name */
-function getInitials(first: string, last: string) {
-  return `${first?.[0] || ''}${last?.[0] || ''}`.toUpperCase()
+  if (s === 'active') return 'ring-[3px] ring-brand-green'
+  if (s === 'deactive' || s === 'inactive' || s === 'deactivated') return 'ring-[3px] ring-slate-900'
+  if (s === 'passed' || s === 'qualified') return 'ring-[3px] ring-blue-500'
+  if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified') return 'ring-[3px] ring-red-500'
+  if (s === 'pending') return 'ring-[3px] ring-yellow-500'
+  return 'ring-[3px] ring-slate-300'
 }
 
 type MatrixCell = { state: string; detail?: string }
@@ -87,7 +50,6 @@ type ReportInstaller = {
   photoUrl: string | null
   notes: string | null
   status: string
-  rowLabelColor: MatrixRowLabelColor | null
   cells: Record<MatrixRowId, MatrixCell>
 }
 
@@ -590,7 +552,7 @@ export default function ReportPage() {
               </div>
             ) : reportData && filteredInstallers.length > 0 ? (
               <div className="overflow-auto max-h-[calc(100vh-320px)] rounded-xl border border-slate-200 bg-white">
-                <table className="w-full table-fixed text-sm border-separate border-spacing-y-px bg-white">
+                <table className="w-full table-fixed text-sm border-separate border-spacing-0 bg-white">
                   <colgroup>
                     <col style={{ width: reportTableLayout.installerColPx }} />
                     <col style={{ width: reportTableLayout.notesMinPx }} />
@@ -598,115 +560,101 @@ export default function ReportPage() {
                       <col key={def.id} style={{ width: reportTableLayout.matrixColPx }} />
                     ))}
                   </colgroup>
-                  <thead className="sticky top-0 z-20 bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-200">
-                    <tr className="border-b-2 border-slate-200">
-                      <th className="sticky top-0 left-0 z-30 bg-slate-50 px-3 py-3 text-left align-bottom border-r border-slate-200 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.08)]" style={{ width: reportTableLayout.installerColPx }}>
+                  <thead className="sticky top-0 z-20 bg-slate-100">
+                    <tr className="border-b border-slate-200/80 bg-slate-100">
+                      <th className="sticky left-0 z-30 bg-slate-100 px-3 py-2.5 text-left w-[200px] max-w-[220px]">
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Installer</span>
-                          <span className="text-[10px] font-medium text-slate-500 normal-case tracking-normal">
+                          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Installer</span>
+                          <span className="text-[10px] font-medium text-slate-400 normal-case tracking-normal">
                             Name, company &amp; email
                           </span>
                         </div>
                       </th>
                       <th
-                        className="sticky top-0 z-20 px-3 py-3 text-left align-bottom bg-slate-50 border-r border-slate-200"
+                        className="px-3 py-2.5 text-left align-top bg-slate-100 border-l border-slate-200"
                         style={{ width: reportTableLayout.notesMinPx }}
                       >
-                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Notes</span>
+                        <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Notes</span>
                       </th>
                       {visibleDefs.map((def) => (
                         <th
                           key={def.id}
-                          className="sticky top-0 z-20 bg-slate-50 px-1.5 py-2 text-center border-l border-slate-200 align-bottom"
+                          className="px-1.5 py-2.5 text-center bg-slate-100 border-l border-slate-200"
                           title={`${def.label}${def.required ? ' (required)' : ''}`}
                         >
-                          <div className="flex flex-col items-center justify-end gap-0.5 mx-auto">
-                            <span className="inline-block text-[10px] font-bold text-slate-700 uppercase tracking-tight leading-snug break-words [overflow-wrap:anywhere]">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">
                               {def.label}
                             </span>
                             {def.subtitle ? (
-                              <span className="text-[8px] font-medium text-slate-500 leading-snug text-center normal-case tracking-normal max-w-[4.85rem]">
-                                {def.subtitle}
-                              </span>
+                              <span className="text-[8px] font-medium text-slate-400 text-center">{def.subtitle}</span>
                             ) : null}
                           </div>
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-white">
-                    {filteredInstallers.map((inst) => {
-                      const rowLabelOption = MATRIX_ROW_LABEL_OPTIONS.find((opt) => opt.id === inst.rowLabelColor)
-                      const matrixRowBgClass = rowLabelOption?.rowClass ?? 'bg-white group-hover:bg-slate-50/80'
-                      const avatarRing = getInstallerAvatarRing(inst.status)
-                      const installerStatusCircle = getInstallerStatusCircle(inst.status)
-                      const StatusIcon = installerStatusCircle?.Icon
-                      return (
-                      <tr key={inst.id} className={`group border-b-2 border-slate-300 transition-colors hover:bg-slate-50/80`}>
-                        <td className={`sticky left-0 z-10 px-3 py-4 ${matrixRowBgClass} border-r border-slate-200 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.06)]`} style={{ width: reportTableLayout.installerColPx }}>
-                          <div className="flex w-[22rem] max-w-full items-center gap-2">
-                            <div className="flex min-w-0 flex-1 items-start gap-3">
-                              <div className="relative flex-shrink-0">
-                                {canEditReport && (
-                                  <button
-                                    type="button"
-                                    disabled={removeBusyId === inst.reportTrackingId}
-                                    onClick={() => void handleRemoveInstaller(inst.reportTrackingId)}
-                                    className="absolute -top-1 -right-1 z-30 p-1 rounded-full bg-white shadow-md border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-50"
-                                    title="Remove from report"
-                                    aria-label="Remove from report"
-                                  >
-                                    {removeBusyId === inst.reportTrackingId ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <X className="w-3 h-3" />
-                                    )}
-                                  </button>
+                  <tbody>
+                    {filteredInstallers.map((inst) => (
+                      <tr key={inst.id} className="group border-b border-slate-100/90 bg-white hover:bg-white">
+                        <td className="sticky left-0 z-10 bg-white px-3 py-3 align-top group-hover:bg-white w-max max-w-[300px]">
+                          <div className="relative pr-8">
+                            {canEditReport && (
+                              <button
+                                type="button"
+                                disabled={removeBusyId === inst.reportTrackingId}
+                                onClick={() => void handleRemoveInstaller(inst.reportTrackingId)}
+                                className="absolute top-0 right-0 p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                title="Remove from report"
+                                aria-label="Remove from report"
+                              >
+                                {removeBusyId === inst.reportTrackingId ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
                                 )}
-                                <div className={`relative w-[52px] h-[52px] rounded-full overflow-hidden shadow-sm bg-slate-200 flex items-center justify-center ${avatarRing.ring}`}>
-                                  {inst.photoUrl ? (
-                                    <Image
-                                      src={inst.photoUrl}
-                                      alt={`${inst.firstName} ${inst.lastName}`}
-                                      width={52}
-                                      height={52}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className={`w-full h-full flex items-center justify-center text-white font-bold text-sm ${avatarRing.initialsBg}`}>
-                                      {getInitials(inst.firstName, inst.lastName)}
-                                    </div>
-                                  )}
-                                </div>
-                                {installerStatusCircle && StatusIcon ? (
-                                  <div
-                                    title={installerStatusCircle.label}
-                                    className={`absolute -bottom-0.5 -right-0.5 w-[1.25rem] h-[1.25rem] rounded-full flex items-center justify-center shadow-md z-20 ring-2 ring-white ${installerStatusCircle.bg}`}
-                                  >
-                                    <StatusIcon className="w-2.5 h-2.5 text-white" />
+                              </button>
+                            )}
+                            <div className="min-w-0 flex items-center gap-3">
+                              <div className={`relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ${getInstallerAvatarRing(inst.status)}`}>
+                                {inst.photoUrl ? (
+                                  <Image
+                                    src={inst.photoUrl}
+                                    alt={`${inst.firstName} ${inst.lastName}`}
+                                    width={48}
+                                    height={48}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-brand-green/10 flex items-center justify-center">
+                                    <User className="w-5 h-5 text-brand-green" />
                                   </div>
-                                ) : null}
+                                )}
                               </div>
-                              <div className="min-w-0 pt-0.5 flex flex-col gap-1">
+                              <div className="min-w-0 flex flex-col gap-0.5">
                                 <button
                                   type="button"
                                   onClick={() => router.push(`/dashboard/installers/${inst.id}`)}
-                                  className="text-left min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 flex flex-col gap-1 items-start"
+                                  className="text-left min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 group/name"
                                   title="Open installer profile"
                                 >
-                                  <span className="block max-w-full truncate font-bold text-slate-900 group-hover:text-brand-green transition-colors text-lg leading-snug tracking-tight">
+                                  <span className="block font-bold text-slate-900 group-hover/name:text-brand-green transition-colors text-lg leading-snug tracking-tight">
                                     {inst.firstName} {inst.lastName}
                                   </span>
-                                  {inst.companyName ? (
-                                    <span className="line-clamp-2 text-sm font-semibold text-slate-600 uppercase tracking-wide leading-snug group-hover:text-slate-800 transition-colors">
-                                      {inst.companyName}
-                                    </span>
-                                  ) : null}
                                 </button>
+                                <span
+                                  className={`block text-sm leading-snug ${
+                                    inst.companyName
+                                      ? 'font-medium text-slate-600'
+                                      : 'text-slate-400 italic'
+                                  }`}
+                                >
+                                  {inst.companyName || '—'}
+                                </span>
                                 <a
                                   href={`mailto:${inst.email}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="text-xs text-slate-500 break-all hover:text-brand-green transition-colors"
+                                  className="block text-xs text-slate-500 break-all hover:text-brand-green transition-colors"
                                   title={inst.email}
                                 >
                                   {inst.email}
@@ -716,7 +664,7 @@ export default function ReportPage() {
                           </div>
                         </td>
                         <td
-                          className={`px-3 py-4 align-top ${matrixRowBgClass} border-r border-slate-200`}
+                          className="px-3 py-3 align-top bg-white border-l border-slate-100"
                           style={{ width: reportTableLayout.notesMinPx }}
                         >
                           <button
@@ -731,7 +679,7 @@ export default function ReportPage() {
                                 ? (e) => openReportNotePicker(e, inst.reportTrackingId, inst.notes)
                                 : undefined
                             }
-                            className="block w-full min-h-[3.25rem] rounded-lg px-2 py-2 -mx-1 text-left hover:bg-white/60 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
+                            className="block w-full min-h-[3.25rem] rounded-lg px-2 py-2 -mx-1 text-left hover:bg-slate-50 disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent"
                             title={
                               inst.notes
                                 ? inst.notes
@@ -762,7 +710,7 @@ export default function ReportPage() {
                         {visibleDefs.map((def) => (
                           <td
                             key={def.id}
-                            className={`text-center align-middle py-2.5 px-1 ${matrixRowBgClass} border-l border-slate-200`}
+                            className="text-center align-middle py-2.5 px-1 bg-white border-l border-slate-100"
                           >
                             <div className="flex min-h-[2rem] items-center justify-center">
                               {renderCell(inst.cells[def.id], def.id)}
@@ -770,7 +718,7 @@ export default function ReportPage() {
                           </td>
                         ))}
                       </tr>
-                    )})}
+                    ))}
                   </tbody>
                 </table>
               </div>
