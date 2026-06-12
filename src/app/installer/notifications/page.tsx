@@ -12,7 +12,6 @@ import {
   Clock,
   Trash2,
   Check,
-  RefreshCw,
   Send,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -427,13 +426,6 @@ export default function NotificationsPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Notifications</h1>
             <p className="text-sm text-slate-500">Stay updated with notifications, messages, and news</p>
           </div>
-          <button
-            onClick={() => loadNotifications()}
-            className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </button>
         </div>
       </header>
 
