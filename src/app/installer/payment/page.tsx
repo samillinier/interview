@@ -3,37 +3,16 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
-  User, 
-  LayoutDashboard,
-  Bell,
-  ClipboardList,
-  Menu,
-  X,
-  LogOut,
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Paperclip,
-  Shield,
-  CreditCard,
   Save,
   Building2,
-  Phone,
-  Mail,
-  MapPin,
   Banknote,
-  FileCheck,
-  FileText,
-  Briefcase,
-  ExternalLink,
-  HelpCircle
+  FileCheck
 } from 'lucide-react'
-import { useRouter, usePathname } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Dancing_Script } from 'next/font/google'
-import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
-import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 const dancingScript = Dancing_Script({
@@ -60,15 +39,12 @@ interface PaymentInfo {
 
 export default function PaymentPage() {
   const router = useRouter()
-  const pathname = usePathname()
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [notificationCount, setNotificationCount] = useState(0)
 
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
     companyName: '',
@@ -148,17 +124,6 @@ export default function PaymentPage() {
       }
       const profileData = await profileResponse.json()
       setInstaller(profileData.installer)
-
-      // Fetch notification count
-      try {
-        const notificationResponse = await fetch(`/api/notifications/count?installerId=${installerId}`)
-        if (notificationResponse.ok) {
-          const notificationData = await notificationResponse.json()
-          setNotificationCount(notificationData.count || 0)
-        }
-      } catch (error) {
-        console.error('Error fetching notification count:', error)
-      }
 
       // Load payment information
       setPaymentInfo({
@@ -251,12 +216,6 @@ export default function PaymentPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('installerToken')
-    localStorage.removeItem('installerId')
-    router.push('/installer/login')
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen interview-gradient flex items-center justify-center">
@@ -284,137 +243,9 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-                <p className="text-xs text-primary-500">Dashboard</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/installer/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/installer/profile"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <User className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Profile</span>}
-          </Link>
-          <Link
-            href="/installer/agreements"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Form</span>}
-          </Link>
-          <Link
-            href="/installer/attachments"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Paperclip className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link
-            href="/installer/referrals"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <ExternalLink className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Referrals</span>}
-          </Link>
-          <Link
-            href="/installer/survey"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ClipboardList className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Survey</span>}
-          </Link>
-          <Link
-            href="/installer/notifications"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-                {notificationCount > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/installer/help"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <HelpCircle className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Help</span>}
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {installer.firstName || installer.lastName 
-                    ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                    : installer.email.split('@')[0]
-                  }
-                </p>
-                <p className="text-xs text-primary-500 truncate">{installer.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
+    <>
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
+          <div className="px-4 lg:px-6 pt-6 pb-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 mb-1">Account Information Form</h1>
@@ -795,7 +626,6 @@ export default function PaymentPage() {
             </motion.div>
           </div>
         </main>
-      </div>
-    </div>
+    </>
   )
 }

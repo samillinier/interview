@@ -4,36 +4,20 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { upload } from '@vercel/blob/client'
 import { 
-  User, 
-  LayoutDashboard,
   FileText,
-  Bell,
-  ClipboardList,
-  Menu,
-  X,
-  LogOut,
   Upload,
   Plus,
   FileCheck,
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Paperclip,
   Shield,
   Building2,
-  FileX,
   Download,
   Trash2,
-  CreditCard,
-  Briefcase,
   ExternalLink,
-  HelpCircle
 } from 'lucide-react'
-import { useRouter, usePathname } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
-import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import { useRouter } from 'next/navigation'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 // All document types now support multiple uploads
@@ -133,15 +117,12 @@ const DOCUMENT_TYPES = [
 
 export default function AttachmentsPage() {
   const router = useRouter()
-  const pathname = usePathname()
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [documents, setDocuments] = useState<Document[]>([])
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({})
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [notificationCount, setNotificationCount] = useState(0)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; documentId: string | null; documentName: string; documentType: string }>({
     show: false,
     documentId: null,
@@ -356,18 +337,6 @@ export default function AttachmentsPage() {
       const profileData = await profileResponse.json()
       setInstaller(profileData.installer)
       
-      // Fetch notification count
-      try {
-        const notificationResponse = await fetch(`/api/notifications/count?installerId=${installerId}`)
-        if (notificationResponse.ok) {
-          const notificationData = await notificationResponse.json()
-          setNotificationCount(notificationData.count || 0)
-        }
-      } catch (error) {
-        console.error('Error fetching notification count:', error)
-      }
-      
-      // Load documents
       // Load documents (then try to auto-fill missing BTR expiry dates)
       const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
       if (docsResponse.ok) {
@@ -506,12 +475,6 @@ export default function AttachmentsPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('installerToken')
-    localStorage.removeItem('installerId')
-    router.push('/installer/login')
-  }
-
 
   if (isLoading) {
     return (
@@ -540,461 +503,332 @@ export default function AttachmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image
-                src={logo}
-                alt="Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-                <p className="text-xs text-primary-500">Dashboard</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+    <>
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
+        <div className="px-4 lg:px-6 pt-6 pb-6">
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">Attachments</h1>
+          <p className="text-sm text-slate-500">Upload and manage your required documents</p>
         </div>
+      </header>
 
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/installer/dashboard"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
+      <main className="p-4 sm:p-6 lg:p-8">
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl text-success-700 text-sm font-medium flex items-center gap-2"
           >
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link
-            href="/installer/profile"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <User className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Profile</span>}
-          </Link>
-          <Link
-            href="/installer/agreements"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Form</span>}
-          </Link>
-          <Link
-            href="/installer/attachments"
-            className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium"
-          >
-            <Paperclip className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link
-            href="/installer/referrals"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <ExternalLink className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Referrals</span>}
-          </Link>
-          <Link
-            href="/installer/survey"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ClipboardList className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Survey</span>}
-          </Link>
-          <Link
-            href="/installer/notifications"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-                {notificationCount > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link
-            href="/installer/help"
-            className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors"
-          >
-            <HelpCircle className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Help</span>}
-          </Link>
-        </nav>
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            {success}
+          </motion.div>
+        )}
 
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {installer.firstName || installer.lastName 
-                    ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                    : installer.email.split('@')[0]
-                  }
-                </p>
-                <p className="text-xs text-primary-500 truncate">{installer.email}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl text-danger-700 text-sm font-medium flex items-center gap-2"
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            {error}
+          </motion.div>
+        )}
 
-      {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Attachments</h1>
-            <p className="text-sm text-slate-500">Upload and manage your required documents</p>
-          </div>
-        </header>
+        <div className="grid gap-6">
+          {DOCUMENT_TYPES.map((docType) => {
+            const Icon = docType.icon
+            const isMulti = true // All document types now support multiple uploads
+            const matchingDocs = documents.filter((d) => d.type === docType.id)
+            const existingDoc = matchingDocs[0] // For display purposes, show first doc
+            const isUploading = uploading[docType.id]
+            
+            // Only show verification link feature for specific document types
+            const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance'
+            const hasActiveVerificationLink = hasVerificationLinkFeature && existingDoc?.verificationLink && existingDoc?.verificationLinkStatus === 'active'
 
-        <main className="p-4 sm:p-6 lg:p-8">
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl text-success-700 text-sm font-medium flex items-center gap-2"
-            >
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-              {success}
-            </motion.div>
-          )}
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl text-danger-700 text-sm font-medium flex items-center gap-2"
-            >
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              {error}
-            </motion.div>
-          )}
-
-          <div className="grid gap-6">
-            {DOCUMENT_TYPES.map((docType) => {
-              const Icon = docType.icon
-              const isMulti = true // All document types now support multiple uploads
-              const matchingDocs = documents.filter((d) => d.type === docType.id)
-              const existingDoc = matchingDocs[0] // For display purposes, show first doc
-              const isUploading = uploading[docType.id]
-              
-              // Only show verification link feature for specific document types
-              const hasVerificationLinkFeature = docType.id === 'sunbiz' || docType.id === 'workers_comp_certificate' || docType.id === 'business_registration' || docType.id === 'liability_insurance'
-              const hasActiveVerificationLink = hasVerificationLinkFeature && existingDoc?.verificationLink && existingDoc?.verificationLinkStatus === 'active'
-
-              return (
-                <motion.div
-                  key={docType.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`bg-white rounded-3xl sm:rounded-2xl shadow-sm sm:shadow-lg border p-4 sm:p-6 backdrop-blur-sm ${
-                    hasActiveVerificationLink 
-                      ? 'border-brand-green/50 bg-brand-green/5' 
-                      : 'border-slate-200'
-                  }`}
-                >
-                  <div className="mb-4">
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        existingDoc ? 'bg-success-100' : 'bg-brand-green/10'
-                      }`}>
-                        <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${existingDoc ? 'text-success-600' : 'text-brand-green'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          {hasActiveVerificationLink && (
-                            <CheckCircle2 className="w-5 h-5 text-brand-green flex-shrink-0" />
-                          )}
-                          <h3 className="text-lg sm:text-lg font-bold text-slate-900 leading-tight">{docType.name}</h3>
-                          {docType.required && (
-                            <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
-                              Required
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm sm:text-sm text-slate-500 leading-snug">{docType.description}</p>
-                        {existingDoc && (
-                          <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
-                            <CheckCircle2 className="w-4 h-4 text-success-600" />
-                            <span>
-                              Uploaded on {
-                                existingDoc.uploadedAt
-                                  ? (() => {
-                                      try {
-                                        const date = new Date(existingDoc.uploadedAt)
-                                        return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
-                                      } catch {
-                                        return 'Unknown date'
-                                      }
-                                    })()
-                                  : 'Unknown date'
-                              }
-                            </span>
-                          </div>
-                        )}
-                        {docType.id === 'business_registration' && (existingDoc?.expiryDate || installer?.btrExpiry) ? (
-                          <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
-                            <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
-                              Valid until{' '}
-                              {(() => {
-                                const raw = (existingDoc?.expiryDate || installer?.btrExpiry) as any
-                                try {
-                                  const d = new Date(raw)
-                                  return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString()
-                                } catch {
-                                  return String(raw)
-                                }
-                              })()}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
+            return (
+              <motion.div
+                key={docType.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`bg-white rounded-3xl sm:rounded-2xl shadow-sm sm:shadow-lg border p-4 sm:p-6 backdrop-blur-sm ${
+                  hasActiveVerificationLink 
+                    ? 'border-brand-green/50 bg-brand-green/5' 
+                    : 'border-slate-200'
+                }`}
+              >
+                <div className="mb-4">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      existingDoc ? 'bg-success-100' : 'bg-brand-green/10'
+                    }`}>
+                      <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${existingDoc ? 'text-success-600' : 'text-brand-green'}`} />
                     </div>
-                    {isMulti && (
-                      <div className="flex justify-end mt-3">
-                        <label
-                          className={`inline-flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-2xl sm:rounded-xl border transition-colors cursor-pointer ${
-                            isUploading ? 'opacity-60 cursor-not-allowed' : 'border-brand-green/30 text-brand-green hover:bg-brand-green/10'
-                          }`}
-                          title="Add another file"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span className="text-sm sm:text-xs font-semibold">Add</span>
-                          <input
-                            type="file"
-                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0]
-                              if (file) handleFileUpload(docType.id, file)
-                              e.target.value = ''
-                            }}
-                            className="hidden"
-                            disabled={isUploading}
-                          />
-                        </label>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        {hasActiveVerificationLink && (
+                          <CheckCircle2 className="w-5 h-5 text-brand-green flex-shrink-0" />
+                        )}
+                        <h3 className="text-lg sm:text-lg font-bold text-slate-900 leading-tight">{docType.name}</h3>
+                        {docType.required && (
+                          <span className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-0.5 rounded-full">
+                            Required
+                          </span>
+                        )}
                       </div>
-                    )}
+                      <p className="text-sm sm:text-sm text-slate-500 leading-snug">{docType.description}</p>
+                      {existingDoc && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
+                          <CheckCircle2 className="w-4 h-4 text-success-600" />
+                          <span>
+                            Uploaded on {
+                              existingDoc.uploadedAt
+                                ? (() => {
+                                    try {
+                                      const date = new Date(existingDoc.uploadedAt)
+                                      return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
+                                    } catch {
+                                      return 'Unknown date'
+                                    }
+                                  })()
+                                : 'Unknown date'
+                            }
+                          </span>
+                        </div>
+                      )}
+                      {docType.id === 'business_registration' && (existingDoc?.expiryDate || installer?.btrExpiry) ? (
+                        <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
+                          <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                            Valid until{' '}
+                            {(() => {
+                              const raw = (existingDoc?.expiryDate || installer?.btrExpiry) as any
+                              try {
+                                const d = new Date(raw)
+                                return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString()
+                              } catch {
+                                return String(raw)
+                              }
+                            })()}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
+                  {isMulti && (
+                    <div className="flex justify-end mt-3">
+                      <label
+                        className={`inline-flex items-center gap-2 px-3 py-2 sm:py-1.5 rounded-2xl sm:rounded-xl border transition-colors cursor-pointer ${
+                          isUploading ? 'opacity-60 cursor-not-allowed' : 'border-brand-green/30 text-brand-green hover:bg-brand-green/10'
+                        }`}
+                        title="Add another file"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span className="text-sm sm:text-xs font-semibold">Add</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleFileUpload(docType.id, file)
+                            e.target.value = ''
+                          }}
+                          className="hidden"
+                          disabled={isUploading}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
 
-                  {matchingDocs.length > 0 ? (
-                    <div className="space-y-3">
-                      {matchingDocs.map((doc) => (
-                          <div key={doc.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                            <div className="flex items-start gap-3 min-w-0">
-                              <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm sm:text-base text-slate-900 whitespace-normal break-all leading-snug">
-                                  {doc.name || doc.fileName}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                                  {doc.fileSize && (
-                                    <p className="text-xs text-slate-500">
-                                      {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
-                                    </p>
-                                  )}
-                                {(doc.uploadedAt || doc.createdAt) && (
+                {matchingDocs.length > 0 ? (
+                  <div className="space-y-3">
+                    {matchingDocs.map((doc) => (
+                        <div key={doc.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm sm:text-base text-slate-900 whitespace-normal break-all leading-snug">
+                                {doc.name || doc.fileName}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                {doc.fileSize && (
                                   <p className="text-xs text-slate-500">
-                                    • {(() => {
-                                      try {
-                                        const dateStr = doc.uploadedAt || doc.createdAt
-                                        if (!dateStr) return 'Unknown date'
-                                        const date = new Date(dateStr)
-                                        return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
-                                      } catch {
-                                        return 'Unknown date'
-                                      }
-                                    })()}
+                                    {(doc.fileSize / 1024 / 1024).toFixed(2)} MB
                                   </p>
                                 )}
-                                {doc.verified ? (
-                                  <span className="text-[11px] font-semibold text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-full">
-                                    Verified
-                                  </span>
-                                ) : null}
-                                {btrAutofillBusyIds[doc.id] ? (
-                                  <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                                    Parsing…
-                                  </span>
-                                ) : null}
-                                {btrAutofillErrorByDocId[doc.id] ? (
-                                  <span className="text-[11px] font-semibold text-danger-700 bg-danger-50 border border-danger-200 px-2 py-0.5 rounded-full">
-                                    {btrAutofillErrorByDocId[doc.id]}
-                                  </span>
-                                ) : null}
-                                {doc.expiryDate ? (
-                                  <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
-                                    Valid until{' '}
-                                    {(() => {
-                                      try {
-                                        const d = new Date(doc.expiryDate as string)
-                                        return isNaN(d.getTime()) ? String(doc.expiryDate) : d.toLocaleDateString()
-                                      } catch {
-                                        return String(doc.expiryDate)
-                                      }
-                                    })()}
-                                  </span>
-                                ) : null}
-                                  {/* Verification Link is admin-only; hidden in installer portal */}
-                                </div>
-                                {doc.type === 'business_registration' && !doc.expiryDate ? (
-                                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <label className="text-xs font-semibold text-slate-600">Expiry date</label>
-                                    <input
-                                      type="date"
-                                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30"
-                                      value={btrManualExpiryByDocId[doc.id] ?? ''}
-                                      onChange={(e) =>
-                                        setBtrManualExpiryByDocId((prev) => ({ ...prev, [doc.id]: e.target.value }))
-                                      }
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => runBtrParseNow(installer.id, doc.id)}
-                                      disabled={Boolean(btrAutofillBusyIds[doc.id])}
-                                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-60"
-                                      title="Try to auto-detect expiry from the file"
-                                    >
-                                      Parse expiry
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => saveBtrExpiryForDoc(installer.id, doc.id, btrManualExpiryByDocId[doc.id] ?? '')}
-                                      disabled={Boolean(btrManualSavingByDocId[doc.id])}
-                                      className="h-9 rounded-xl bg-brand-green px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-green-dark disabled:opacity-60"
-                                    >
-                                      {btrManualSavingByDocId[doc.id] ? 'Saving…' : 'Save'}
-                                    </button>
-                                  </div>
-                                ) : null}
-                                {doc.adminRejectionNote ? (
-                                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 leading-relaxed">
-                                    <span className="font-semibold text-amber-900">Admin note — please fix and re-upload:</span>{' '}
-                                    {doc.adminRejectionNote}
-                                    {doc.adminCorrectionUrl ? (
-                                      <div className="mt-2">
-                                        <a
-                                          href={doc.adminCorrectionUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-semibold text-amber-900 hover:bg-amber-100"
-                                        >
-                                          View correction file
-                                          <ExternalLink className="w-3.5 h-3.5" />
-                                        </a>
-                                        {doc.adminCorrectionName ? (
-                                          <span className="ml-2 text-amber-800">{doc.adminCorrectionName}</span>
-                                        ) : null}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                ) : null}
+                              {(doc.uploadedAt || doc.createdAt) && (
+                                <p className="text-xs text-slate-500">
+                                  • {(() => {
+                                    try {
+                                      const dateStr = doc.uploadedAt || doc.createdAt
+                                      if (!dateStr) return 'Unknown date'
+                                      const date = new Date(dateStr)
+                                      return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
+                                    } catch {
+                                      return 'Unknown date'
+                                    }
+                                  })()}
+                                </p>
+                              )}
+                              {doc.verified ? (
+                                <span className="text-[11px] font-semibold text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-full">
+                                  Verified
+                                </span>
+                              ) : null}
+                              {btrAutofillBusyIds[doc.id] ? (
+                                <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                                  Parsing…
+                                </span>
+                              ) : null}
+                              {btrAutofillErrorByDocId[doc.id] ? (
+                                <span className="text-[11px] font-semibold text-danger-700 bg-danger-50 border border-danger-200 px-2 py-0.5 rounded-full">
+                                  {btrAutofillErrorByDocId[doc.id]}
+                                </span>
+                              ) : null}
+                              {doc.expiryDate ? (
+                                <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                                  Valid until{' '}
+                                  {(() => {
+                                    try {
+                                      const d = new Date(doc.expiryDate as string)
+                                      return isNaN(d.getTime()) ? String(doc.expiryDate) : d.toLocaleDateString()
+                                    } catch {
+                                      return String(doc.expiryDate)
+                                    }
+                                  })()}
+                                </span>
+                              ) : null}
+                                {/* Verification Link is admin-only; hidden in installer portal */}
                               </div>
-                            </div>
-                            <div className="flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-slate-200/80">
-                              <a
-                                href={doc.url || doc.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                download={doc.name || doc.fileName}
-                                className="p-2.5 sm:p-2 text-brand-green hover:bg-brand-green/10 rounded-xl sm:rounded-lg transition-colors"
-                                title="View / Download"
-                              >
-                                <Download className="w-5 h-5" />
-                              </a>
-                              <button
-                                onClick={() => handleDeleteClick(doc.id, doc.name || doc.fileName, docType.id)}
-                                className="p-2.5 sm:p-2 text-danger-600 hover:bg-danger-50 rounded-xl sm:rounded-lg transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
+                              {doc.type === 'business_registration' && !doc.expiryDate ? (
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  <label className="text-xs font-semibold text-slate-600">Expiry date</label>
+                                  <input
+                                    type="date"
+                                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30"
+                                    value={btrManualExpiryByDocId[doc.id] ?? ''}
+                                    onChange={(e) =>
+                                      setBtrManualExpiryByDocId((prev) => ({ ...prev, [doc.id]: e.target.value }))
+                                    }
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => runBtrParseNow(installer.id, doc.id)}
+                                    disabled={Boolean(btrAutofillBusyIds[doc.id])}
+                                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+                                    title="Try to auto-detect expiry from the file"
+                                  >
+                                    Parse expiry
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => saveBtrExpiryForDoc(installer.id, doc.id, btrManualExpiryByDocId[doc.id] ?? '')}
+                                    disabled={Boolean(btrManualSavingByDocId[doc.id])}
+                                    className="h-9 rounded-xl bg-brand-green px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-green-dark disabled:opacity-60"
+                                  >
+                                    {btrManualSavingByDocId[doc.id] ? 'Saving…' : 'Save'}
+                                  </button>
+                                </div>
+                              ) : null}
+                              {doc.adminRejectionNote ? (
+                                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 leading-relaxed">
+                                  <span className="font-semibold text-amber-900">Admin note — please fix and re-upload:</span>{' '}
+                                  {doc.adminRejectionNote}
+                                  {doc.adminCorrectionUrl ? (
+                                    <div className="mt-2">
+                                      <a
+                                        href={doc.adminCorrectionUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-semibold text-amber-900 hover:bg-amber-100"
+                                      >
+                                        View correction file
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                      </a>
+                                      {doc.adminCorrectionName ? (
+                                        <span className="ml-2 text-amber-800">{doc.adminCorrectionName}</span>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                  ) : (
-                    <label className="block">
-                      <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-brand-green transition-colors cursor-pointer bg-slate-50/50">
-                        {isUploading ? (
-                          <div className="flex flex-col items-center gap-3">
-                            <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
-                            <p className="text-sm font-medium text-slate-600">Uploading...</p>
+                          <div className="flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-slate-200/80">
+                            <a
+                              href={doc.url || doc.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={doc.name || doc.fileName}
+                              className="p-2.5 sm:p-2 text-brand-green hover:bg-brand-green/10 rounded-xl sm:rounded-lg transition-colors"
+                              title="View / Download"
+                            >
+                              <Download className="w-5 h-5" />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteClick(doc.id, doc.name || doc.fileName, docType.id)}
+                              className="p-2.5 sm:p-2 text-danger-600 hover:bg-danger-50 rounded-xl sm:rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
                           </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-3">
-                            <Upload className="w-8 h-8 text-slate-400" />
-                            <div>
-                              <p className="text-sm font-medium text-slate-700 mb-1">
-                                Click to upload or drag and drop
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                PDF, DOC, DOCX, JPG, PNG (Max 10MB)
-                              </p>
-                            </div>
+                        </div>
+                      ))}
+                    </div>
+                ) : (
+                  <label className="block">
+                    <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-brand-green transition-colors cursor-pointer bg-slate-50/50">
+                      {isUploading ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+                          <p className="text-sm font-medium text-slate-600">Uploading...</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3">
+                          <Upload className="w-8 h-8 text-slate-400" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-700 mb-1">
+                              Click to upload or drag and drop
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              PDF, DOC, DOCX, JPG, PNG (Max 10MB)
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            if (file.size > 10 * 1024 * 1024) {
-                              setError('File size must be less than 10MB')
-                              e.target.value = ''
-                              return
-                            }
-                            handleFileUpload(docType.id, file)
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          if (file.size > 10 * 1024 * 1024) {
+                            setError('File size must be less than 10MB')
+                            e.target.value = ''
+                            return
                           }
-                          // Reset input to allow re-uploading the same file
-                          e.target.value = ''
-                        }}
-                        className="hidden"
-                        disabled={isUploading}
-                        ref={(el) => {
-                          if (el) {
-                            fileInputRefs.current[docType.id] = el
-                          }
-                        }}
-                      />
-                    </label>
-                  )}
-                </motion.div>
-              )
-            })}
-          </div>
-        </main>
-      </div>
+                          handleFileUpload(docType.id, file)
+                        }
+                        // Reset input to allow re-uploading the same file
+                        e.target.value = ''
+                      }}
+                      className="hidden"
+                      disabled={isUploading}
+                      ref={(el) => {
+                        if (el) {
+                          fileInputRefs.current[docType.id] = el
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </motion.div>
+            )
+          })}
+        </div>
+      </main>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm.show && (
@@ -1064,6 +898,6 @@ export default function AttachmentsPage() {
           </motion.div>
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -1,44 +1,20 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Dancing_Script } from 'next/font/google'
 import {
   AlertCircle,
-  Bell,
   CheckCircle2,
-  CreditCard,
-  ClipboardList,
-  ExternalLink,
   FileText,
-  LayoutDashboard,
-  Loader2,
-  LogOut,
-  Menu,
-  Paperclip,
   Printer,
-  Save,
-  User,
-  X,
-  HelpCircle,
 } from 'lucide-react'
-import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
-import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
 const dancingScript = Dancing_Script({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
 })
-
-type InstallerProfile = {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-}
 
 type FormState = {
   legalFirstName: string
@@ -83,12 +59,8 @@ const DEFAULT_FORM: FormState = {
 
 export default function BackgroundAuthorizationAgreementPage() {
   const router = useRouter()
-  const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const [installerId, setInstallerId] = useState<string | null>(null)
-  const [installer, setInstaller] = useState<InstallerProfile | null>(null)
-  const [notificationCount, setNotificationCount] = useState(0)
   const [agreementStatus, setAgreementStatus] = useState<'draft' | 'pending_admin' | 'approved' | 'rejected'>('draft')
   const [adminSignature, setAdminSignature] = useState<string>('')
   const [adminSignedDate, setAdminSignedDate] = useState<string>('')
@@ -141,22 +113,12 @@ export default function BackgroundAuthorizationAgreementPage() {
         })
         const profileData = await profileRes.json().catch(() => null)
         if (profileRes.ok && profileData?.installer) {
-          setInstaller(profileData.installer)
           setForm((prev) => ({
             ...prev,
             legalFirstName: prev.legalFirstName || profileData.installer.firstName || '',
             legalLastName: prev.legalLastName || profileData.installer.lastName || '',
           }))
         }
-
-        // Notification count (for menu badge)
-        try {
-          const nRes = await fetch(`/api/notifications/count?installerId=${id}`, {
-            headers: { Authorization: `Bearer ${tok}` },
-          })
-          const nData = await nRes.json().catch(() => null)
-          if (nRes.ok) setNotificationCount(nData?.count || 0)
-        } catch {}
 
         // Load saved agreement payload (if exists)
         const agreementRes = await fetch(`/api/installers/${id}/agreements/background-authorization`, {
@@ -261,12 +223,6 @@ export default function BackgroundAuthorizationAgreementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, hasLoaded, loading, isSubmitted, installerId, token])
 
-  const handleLogout = () => {
-    localStorage.removeItem('installerToken')
-    localStorage.removeItem('installerId')
-    router.push('/installer/login')
-  }
-
   const print = () => {
     window.print()
   }
@@ -282,137 +238,37 @@ export default function BackgroundAuthorizationAgreementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg print:hidden`}>
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
-            </div>
-            {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-                <p className="text-xs text-primary-500">Dashboard</p>
-              </div>
-            )}
+    <>
+      <header className="print:hidden bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
+        <div className="px-4 lg:px-6 py-6 flex items-start gap-4">
+          <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <FileText className="w-6 h-6 text-brand-green" />
           </div>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600">
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/installer/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link href="/installer/profile" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <User className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Profile</span>}
-          </Link>
-          <Link href="/installer/agreements" className="flex items-center gap-3 px-4 py-3 bg-white/20 text-white rounded-xl font-medium">
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Form</span>}
-          </Link>
-          <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Paperclip className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <ExternalLink className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Referrals</span>}
-          </Link>
-          <Link
-            href="/installer/survey"
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-            }`}
-          >
-            <ClipboardList className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Survey</span>}
-          </Link>
-          <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-                {notificationCount > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link href="/installer/help" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <HelpCircle className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Help</span>}
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-slate-900">Background Authorization and Release</h1>
+              {agreementStatus === 'approved' && (
+                <span className="text-xs font-bold text-success-700 bg-success-100 border border-success-200 px-2.5 py-1 rounded-full">
+                  Approved
+                </span>
+              )}
+              {agreementStatus === 'pending_admin' && (
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full">
+                  Pending Admin Approval
+                </span>
+              )}
+              {agreementStatus === 'rejected' && (
+                <span className="text-xs font-bold text-red-700 bg-red-100 border border-red-200 px-2.5 py-1 rounded-full">
+                  Rejected
+                </span>
+              )}
             </div>
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {installer?.firstName || installer?.lastName
-                    ? `${installer?.firstName || ''} ${installer?.lastName || ''}`.trim()
-                    : installer?.email?.split('@')[0] || 'Installer'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{installer?.email || ''}</p>
-              </div>
-            )}
+            <p className="text-sm text-slate-500">Fill, save, then print/sign</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
         </div>
-      </aside>
+      </header>
 
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <div className="print:hidden">
-          <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
-
-          <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-            <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6 flex items-start gap-4">
-              <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FileText className="w-6 h-6 text-brand-green" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold text-slate-900">Background Authorization and Release</h1>
-                  {agreementStatus === 'approved' && (
-                    <span className="text-xs font-bold text-success-700 bg-success-100 border border-success-200 px-2.5 py-1 rounded-full">
-                      Approved
-                    </span>
-                  )}
-                  {agreementStatus === 'pending_admin' && (
-                    <span className="text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full">
-                      Pending Admin Approval
-                    </span>
-                  )}
-                  {agreementStatus === 'rejected' && (
-                    <span className="text-xs font-bold text-red-700 bg-red-100 border border-red-200 px-2.5 py-1 rounded-full">
-                      Rejected
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-slate-500">Fill, save, then print/sign</p>
-              </div>
-
-            </div>
-          </header>
-        </div>
-
-        <main className="max-w-5xl mx-auto px-4 lg:px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 lg:px-6 py-8">
         {(success || error) && (
           <div className="print:hidden mb-6">
             {success && (
@@ -622,7 +478,7 @@ export default function BackgroundAuthorizationAgreementPage() {
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <div className={`mt-1 text-2xl leading-tight ${dancingScript.className} text-slate-900`}>
-                        {adminSignature || '—'}
+                        {adminSignature || '\u2014'}
                       </div>
                       <div className="mt-1 text-xs text-slate-600">Executive Director</div>
                       <div className="mt-1 text-sm text-slate-900">{adminSignedDate || ''}</div>
@@ -630,7 +486,7 @@ export default function BackgroundAuthorizationAgreementPage() {
                     </div>
                     <div>
                       <div className={`mt-1 text-2xl leading-tight ${dancingScript.className} text-slate-900`}>
-                        {form.applicantSignature || '—'}
+                        {form.applicantSignature || '\u2014'}
                       </div>
                       <div className="mt-1 text-xs text-slate-600">Installer</div>
                       <div className="mt-1 text-sm text-slate-900">{form.signatureDate || ''}</div>
@@ -714,8 +570,6 @@ export default function BackgroundAuthorizationAgreementPage() {
           </div>
         </div>
       </main>
-      </div>
-    </div>
+    </>
   )
 }
-

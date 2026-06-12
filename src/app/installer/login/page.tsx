@@ -61,8 +61,7 @@ function InstallerLoginContent() {
         localStorage.setItem('installerToken', data.token)
         localStorage.setItem('installerId', data.installerId)
         
-        // Redirect to dashboard page
-        router.push('/installer/dashboard')
+        router.push('/installer/profile')
       } else {
         setError(data.error || 'Invalid username or password')
       }

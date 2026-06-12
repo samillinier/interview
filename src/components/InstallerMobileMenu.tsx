@@ -8,7 +8,6 @@ import {
   ClipboardList,
   ExternalLink,
   FileText,
-  LayoutDashboard,
   LogOut,
   Menu,
   Paperclip,
@@ -55,7 +54,6 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
 
   const items = useMemo(
     () => [
-      { href: '/installer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/installer/profile', label: 'Profile', icon: User },
       { href: '/installer/agreements', label: 'Form', icon: FileText },
       { href: '/installer/attachments', label: 'Attachments', icon: Paperclip },

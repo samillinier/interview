@@ -2,27 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import {
-  Bell,
   ClipboardList,
-  ExternalLink,
-  FileText,
-  HelpCircle,
-  LayoutDashboard,
   Loader2,
-  LogOut,
-  Menu,
-  Paperclip,
   Search,
-  User,
   X,
 } from 'lucide-react'
-
-import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
-import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 type Delivery = {
   id: string
@@ -62,9 +49,6 @@ function ScorePill({ value }: { value: number | null }) {
 
 export default function InstallerSurveyPage() {
   const router = useRouter()
-  const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [notificationCount, setNotificationCount] = useState(0)
   const [token, setToken] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
@@ -99,17 +83,6 @@ export default function InstallerSurveyPage() {
     setToken(tok)
   }, [router])
 
-  const loadNotifications = useCallback(async () => {
-    try {
-      const res = await fetch('/api/notifications/count', { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json().catch(() => null)
-      setNotificationCount(Number(data?.count ?? 0) || 0)
-    } catch {
-      // ignore
-    }
-  }, [])
-
   const loadDeliveries = useCallback(async () => {
     if (!token) return
     const res = await fetch('/api/installers/survey/deliveries', {
@@ -128,7 +101,7 @@ export default function InstallerSurveyPage() {
       setLoading(true)
       setMessage(null)
       try {
-        await Promise.all([loadNotifications(), loadDeliveries()])
+        await loadDeliveries()
       } catch (e: any) {
         if (!cancelled) setMessage(e?.message || 'Failed to load surveys')
       } finally {
@@ -138,7 +111,7 @@ export default function InstallerSurveyPage() {
     return () => {
       cancelled = true
     }
-  }, [token, loadNotifications, loadDeliveries])
+  }, [token, loadDeliveries])
 
   const openDetails = useCallback(async (d: Delivery) => {
     if (!token) return
@@ -171,11 +144,6 @@ export default function InstallerSurveyPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [detailOpen])
 
-  const handleLogout = async () => {
-    localStorage.removeItem('installerToken')
-    localStorage.removeItem('installerId')
-    router.push('/installer/login')
-  }
 
   const title = useMemo(() => {
     if (!selectedDelivery) return 'Survey details'
@@ -200,82 +168,7 @@ export default function InstallerSurveyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
-        <div className="p-6 border-b border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10">
-              <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
-                <p className="text-xs text-primary-500">Dashboard</p>
-              </div>
-            )}
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="ml-auto p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600">
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/installer/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Dashboard</span>}
-          </Link>
-          <Link href="/installer/profile" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <User className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Profile</span>}
-          </Link>
-          <Link href="/installer/agreements" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Form</span>}
-          </Link>
-          <Link href="/installer/attachments" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Paperclip className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Attachments</span>}
-          </Link>
-          <Link href="/installer/referrals" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <ExternalLink className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Referrals</span>}
-          </Link>
-          <Link href="/installer/survey" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/installer/survey' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'}`}>
-            <ClipboardList className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Survey</span>}
-          </Link>
-          <Link href="/installer/notifications" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <Bell className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && (
-              <div className="flex items-center gap-2">
-                <span>Notifications</span>
-                {notificationCount > 0 && (
-                  <span className="bg-white text-brand-green text-xs font-bold rounded-full min-w-[20px] h-5 px-2 flex items-center justify-center">
-                    {notificationCount > 9 ? '9+' : notificationCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </Link>
-          <Link href="/installer/help" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-            <HelpCircle className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Help</span>}
-          </Link>
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <button onClick={handleLogout} className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}>
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      <div
-        className={`flex-1 min-w-0 w-full box-border transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : 'lg:pl-20'}`}
-      >
-        <InstallerMobileMenu pathname={pathname} notificationCount={notificationCount} onLogout={handleLogout} />
-
+    <>
         <main className="w-full max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 lg:px-6 pt-16 lg:pt-8 pb-8 box-border">
           <div className="mb-6 w-full min-w-0">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full min-w-0">
@@ -394,7 +287,6 @@ export default function InstallerSurveyPage() {
             </div>
           )}
         </main>
-      </div>
 
       {mounted && detailOpen && selectedDelivery
         ? createPortal(
@@ -473,7 +365,7 @@ export default function InstallerSurveyPage() {
             document.body
           )
         : null}
-    </div>
+    </>
   )
 }
 
