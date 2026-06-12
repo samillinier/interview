@@ -76,7 +76,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       <button
         onClick={() => setOpen((v) => !v)}
         className="lg:hidden fixed right-4 z-50 p-3 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
-        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+                style={{ top: 'max(env(safe-area-inset-top, 54px), 54px)' }}
         aria-label={open ? 'Close menu' : 'Open menu'}
       >
         <Menu className="w-7 h-7 text-slate-700" />
