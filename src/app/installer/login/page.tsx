@@ -8,6 +8,8 @@ import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
+const SAVED_CREDENTIALS_KEY = 'installerSavedCredentials'
+
 function InstallerLoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,14 +20,43 @@ function InstallerLoginContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
 
+  // Load saved credentials on mount
   useEffect(() => {
-    // Pre-fill email if provided
+    try {
+      const saved = localStorage.getItem(SAVED_CREDENTIALS_KEY)
+      if (saved) {
+        const creds = JSON.parse(saved)
+        if (creds.username) setUsername(creds.username)
+        if (creds.password) setPassword(creds.password)
+        setRememberMe(true)
+      }
+    } catch {
+      // Ignore corrupt data
+    }
+
+    // Pre-fill email if provided via URL param
     if (emailParam) {
-      // Try to find username from email (if email is used as username)
       setUsername(emailParam.split('@')[0])
     }
   }, [emailParam])
+
+  const saveCredentials = (user: string, pass: string) => {
+    try {
+      localStorage.setItem(SAVED_CREDENTIALS_KEY, JSON.stringify({ username: user, password: pass }))
+    } catch {
+      // storage full, silently fail
+    }
+  }
+
+  const clearCredentials = () => {
+    try {
+      localStorage.removeItem(SAVED_CREDENTIALS_KEY)
+    } catch {
+      // ignore
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +91,13 @@ function InstallerLoginContent() {
         // Store installer session
         localStorage.setItem('installerToken', data.token)
         localStorage.setItem('installerId', data.installerId)
+        
+        // Save or clear credentials based on checkbox
+        if (rememberMe) {
+          saveCredentials(username, password)
+        } else {
+          clearCredentials()
+        }
         
         router.push('/installer/profile')
       } else {
@@ -138,7 +176,17 @@ function InstallerLoginContent() {
               </div>
             </div>
 
-            <div className="text-right">
+            {/* Remember Me + Forgot Password row */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-brand-green focus:ring-brand-green cursor-pointer"
+                />
+                <span className="text-sm text-slate-600">Remember me</span>
+              </label>
               <button
                 type="button"
                 onClick={() => router.push('/installer/forgot-password')}
