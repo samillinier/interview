@@ -2305,7 +2305,7 @@ export default function InstallerProfilePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Email</p>
-                  <p className="font-semibold text-slate-900 text-lg break-all">{installer?.email}</p>
+                  <p className="font-semibold text-slate-900 text-base sm:text-lg break-all">{installer?.email}</p>
                 </div>
               </div>
             </div>
@@ -2344,7 +2344,7 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={digitalId}
                       onChange={(e) => setDigitalId(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="e.g., Installer ID, Badge #"
                     />
                   ) : (
@@ -2369,7 +2369,7 @@ export default function InstallerProfilePage() {
                     <select
                       value={workroom}
                       onChange={(e) => setWorkroom(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     >
                       <option value="">Select workroom</option>
                       {[
@@ -2390,7 +2390,7 @@ export default function InstallerProfilePage() {
                       ))}
                     </select>
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.workroom || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.workroom || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2404,7 +2404,7 @@ export default function InstallerProfilePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Username</p>
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.username}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.username}</p>
                   </div>
                 </div>
               </div>
@@ -2422,12 +2422,12 @@ export default function InstallerProfilePage() {
                       type="number"
                       value={yearsOfExperience || ''}
                       onChange={(e) => setYearsOfExperience(e.target.value ? parseInt(e.target.value) : undefined)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Enter years of experience"
                       min="0"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">
                       {yearsOfExperience ? `${yearsOfExperience} years` : <span className="text-slate-400 italic">Not specified</span>}
                     </p>
                   )}
@@ -2503,7 +2503,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={crewSize || ''}
                             onChange={(e) => setCrewSize(e.target.value ? parseInt(e.target.value) : undefined)}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                             placeholder="Number of crew members"
                             min="0"
                           />
@@ -2511,7 +2511,7 @@ export default function InstallerProfilePage() {
                       )}
                     </div>
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">
                       {hasOwnCrew ? (
                         `Yes${crewSize ? ` (${crewSize} members)` : ''}`
                       ) : (
@@ -2535,12 +2535,12 @@ export default function InstallerProfilePage() {
                       <textarea
                         value={vehicleDescription}
                         onChange={(e) => setVehicleDescription(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
                         placeholder="Describe your vehicle"
                         rows={3}
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installer?.vehicleDescription || <span className="text-slate-400 italic">Not provided</span>}
                       </p>
                     )}
@@ -2591,11 +2591,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Please enter your Company Name"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.companyName || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2613,11 +2613,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={companyTitle}
                       onChange={(e) => setCompanyTitle(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Please enter your company title"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyTitle || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.companyTitle || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2635,11 +2635,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={companyStreetAddress}
                       onChange={(e) => setCompanyStreetAddress(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Street address"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyStreetAddress || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.companyStreetAddress || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2657,11 +2657,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={companyCity}
                       onChange={(e) => setCompanyCity(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Please enter your Company City"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyCity || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.companyCity || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2678,7 +2678,7 @@ export default function InstallerProfilePage() {
                     <select
                       value={companyState}
                       onChange={(e) => setCompanyState(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     >
                     <option value="">Select a state</option>
                     <option value="AL">Alabama</option>
@@ -2734,7 +2734,7 @@ export default function InstallerProfilePage() {
                     <option value="DC">District of Columbia</option>
                   </select>
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">
                       {(() => {
                         const stateToDisplay = installer?.companyState || companyState || ''
                         if (!stateToDisplay) {
@@ -2775,11 +2775,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={companyZipCode}
                       onChange={(e) => setCompanyZipCode(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Please enter your Zip Code"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyZipCode || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.companyZipCode || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2797,11 +2797,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={companyCounty}
                       onChange={(e) => setCompanyCounty(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Please enter your County"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.companyCounty || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.companyCounty || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -3073,11 +3073,11 @@ export default function InstallerProfilePage() {
                           type="text"
                           value={insuranceType}
                           onChange={(e) => setInsuranceType(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                          className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                           placeholder="Enter insurance type"
                         />
                       ) : (
-                        <p className="font-semibold text-slate-900 text-lg">{insuranceType || <span className="text-slate-400 italic">Not provided</span>}</p>
+                        <p className="font-semibold text-slate-900 text-base sm:text-lg">{insuranceType || <span className="text-slate-400 italic">Not provided</span>}</p>
                       )}
                     </div>
                   </div>
@@ -3236,7 +3236,7 @@ export default function InstallerProfilePage() {
                           type="text"
                           value={feiEin}
                           onChange={(e) => setFeiEin(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                          className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                           placeholder="Enter FEI / EIN"
                         />
                       ) : (
@@ -3258,7 +3258,7 @@ export default function InstallerProfilePage() {
                           type="text"
                           value={employerLiabilityPolicyNumber}
                           onChange={(e) => setEmployerLiabilityPolicyNumber(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                          className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                           placeholder="Enter Employer Liability Policy Number"
                         />
                       ) : (
@@ -3553,7 +3553,7 @@ export default function InstallerProfilePage() {
                               type="text"
                               value={licenseNumber}
                               onChange={(e) => setLicenseNumber(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                              className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                               placeholder="License Number"
                             />
                             <input
@@ -3561,7 +3561,7 @@ export default function InstallerProfilePage() {
                               max="2099-12-31"
                               value={licenseExpiry}
                               onChange={(e) => setLicenseExpiry(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                              className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                               placeholder="License Expiry"
                             />
                           </div>
@@ -3569,7 +3569,7 @@ export default function InstallerProfilePage() {
                       </div>
                     ) : (
                       <div>
-                        <p className="font-semibold text-slate-900 text-lg">
+                        <p className="font-semibold text-slate-900 text-base sm:text-lg">
                           {hasLicense !== undefined ? (
                             hasLicense ? (
                               <span className="text-success-600 flex items-center gap-1">
@@ -3633,7 +3633,7 @@ export default function InstallerProfilePage() {
                             <textarea
                               value={backgroundCheckDetails}
                               onChange={(e) => setBackgroundCheckDetails(e.target.value)}
-                              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
+                              className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
                               placeholder="Provide details if applicable"
                               rows={2}
                             />
@@ -3696,11 +3696,11 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={mondayToFridayAvailability}
                         onChange={(e) => setMondayToFridayAvailability(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="e.g., 8:00 AM - 5:00 PM"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">{mondayToFridayAvailability || <span className="text-slate-400 italic">Not provided</span>}</p>
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">{mondayToFridayAvailability || <span className="text-slate-400 italic">Not provided</span>}</p>
                     )}
                   </div>
                 </div>
@@ -3718,11 +3718,11 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={saturdayAvailability}
                         onChange={(e) => setSaturdayAvailability(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="e.g., 9:00 AM - 1:00 PM"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">{saturdayAvailability || <span className="text-slate-400 italic">Not provided</span>}</p>
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">{saturdayAvailability || <span className="text-slate-400 italic">Not provided</span>}</p>
                     )}
                   </div>
                 </div>
@@ -3782,7 +3782,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {hasOwnTools !== undefined ? (
                           hasOwnTools ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -3812,12 +3812,12 @@ export default function InstallerProfilePage() {
                         <textarea
                           value={toolsDescription}
                           onChange={(e) => setToolsDescription(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
+                          className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400 resize-none"
                           placeholder="Describe your tools"
                           rows={3}
                         />
                       ) : (
-                        <p className="font-semibold text-slate-900 text-lg">
+                        <p className="font-semibold text-slate-900 text-base sm:text-lg">
                           {toolsDescription || <span className="text-slate-400 italic">Not provided</span>}
                         </p>
                       )}
@@ -3860,7 +3860,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {(hasVehicle !== undefined && hasVehicle) || (vehicleDescription && vehicleDescription.trim().length > 0) ? (
                             <span className="text-success-600 flex items-center gap-1">
                               <CheckCircle2 className="w-4 h-4" /> Yes
@@ -3931,7 +3931,7 @@ export default function InstallerProfilePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Previous Employers</p>
-                            <p className="font-semibold text-slate-900 text-lg">{installer?.previousEmployers}</p>
+                            <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.previousEmployers}</p>
                           </div>
                         </div>
                       </div>
@@ -3973,7 +3973,7 @@ export default function InstallerProfilePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Service Areas</p>
-                            <p className="font-semibold text-slate-900 text-lg">{installer?.serviceAreas}</p>
+                            <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.serviceAreas}</p>
                           </div>
                         </div>
                       </div>
@@ -4033,7 +4033,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {willingToTravel !== undefined ? (
                           willingToTravel ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4063,12 +4063,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={maxTravelDistance || ''}
                         onChange={(e) => setMaxTravelDistance(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter max distance"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">{maxTravelDistance ? `${maxTravelDistance} miles` : <span className="text-slate-400 italic">Not provided</span>}</p>
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">{maxTravelDistance ? `${maxTravelDistance} miles` : <span className="text-slate-400 italic">Not provided</span>}</p>
                     )}
                   </div>
                 </div>
@@ -4105,7 +4105,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {canStartImmediately !== undefined ? (
                           canStartImmediately ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4136,10 +4136,10 @@ export default function InstallerProfilePage() {
                         max="2099-12-31"
                         value={preferredStartDate}
                         onChange={(e) => setPreferredStartDate(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {preferredStartDate ? (
                           new Date(preferredStartDate).toLocaleDateString('en-US', {
                             year: 'numeric',
@@ -4184,7 +4184,7 @@ export default function InstallerProfilePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Notes</p>
-                        <p className="font-semibold text-slate-900 text-lg whitespace-pre-wrap">{installer?.notes}</p>
+                        <p className="font-semibold text-slate-900 text-base sm:text-lg whitespace-pre-wrap">{installer?.notes}</p>
                       </div>
                     </div>
                   </div>
@@ -4198,7 +4198,7 @@ export default function InstallerProfilePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Follow-up Date</p>
-                        <p className="font-semibold text-slate-900 text-lg">
+                        <p className="font-semibold text-slate-900 text-base sm:text-lg">
                           {new Date(installer.followUpDate).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
@@ -4218,7 +4218,7 @@ export default function InstallerProfilePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Follow-up Reason</p>
-                        <p className="font-semibold text-slate-900 text-lg">{installer?.followUpReason}</p>
+                        <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.followUpReason}</p>
                       </div>
                     </div>
                   </div>
@@ -4276,7 +4276,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {wantsToAddCarpet !== undefined ? (
                           wantsToAddCarpet ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4325,7 +4325,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsStretchInCarpet !== undefined ? (
                           installsStretchInCarpet ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4355,12 +4355,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyStretchInCarpetSqft || ''}
                         onChange={(e) => setDailyStretchInCarpetSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyStretchInCarpetSqft ? (
                           `${dailyStretchInCarpetSqft.toLocaleString()} sq ft`
                         ) : (
@@ -4403,7 +4403,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsGlueDownCarpet !== undefined ? (
                           installsGlueDownCarpet ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4472,7 +4472,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {wantsToAddHardwood !== undefined ? (
                           wantsToAddHardwood ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4521,7 +4521,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsNailDownSolidHardwood !== undefined ? (
                           installsNailDownSolidHardwood ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4551,12 +4551,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyNailDownSolidHardwoodSqft || ''}
                         onChange={(e) => setDailyNailDownSolidHardwoodSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyNailDownSolidHardwoodSqft ? (
                           `${dailyNailDownSolidHardwoodSqft.toLocaleString()} sq ft`
                         ) : (
@@ -4599,7 +4599,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsStapleDownEngineeredHardwood !== undefined ? (
                           installsStapleDownEngineeredHardwood ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4668,7 +4668,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {wantsToAddLaminate !== undefined ? (
                           wantsToAddLaminate ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4698,12 +4698,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyLaminateSqft || ''}
                         onChange={(e) => setDailyLaminateSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyLaminateSqft ? (
                           `${dailyLaminateSqft.toLocaleString()} sq ft`
                         ) : (
@@ -4746,7 +4746,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsLaminateOnStairs !== undefined ? (
                           installsLaminateOnStairs ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4815,7 +4815,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {wantsToAddVinyl !== undefined ? (
                           wantsToAddVinyl ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4864,7 +4864,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsSheetVinyl !== undefined ? (
                           installsSheetVinyl ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4913,7 +4913,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsLuxuryVinylPlank !== undefined ? (
                           installsLuxuryVinylPlank ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -4943,12 +4943,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyLuxuryVinylPlankSqft || ''}
                         onChange={(e) => setDailyLuxuryVinylPlankSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyLuxuryVinylPlankSqft ? (
                           `${dailyLuxuryVinylPlankSqft.toLocaleString()} sq ft`
                         ) : (
@@ -4991,7 +4991,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsLuxuryVinylTile !== undefined ? (
                           installsLuxuryVinylTile ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5040,7 +5040,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsVinylCompositionTile !== undefined ? (
                           installsVinylCompositionTile ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5070,12 +5070,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyVinylCompositionTileSqft || ''}
                         onChange={(e) => setDailyVinylCompositionTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyVinylCompositionTileSqft ? (
                           `${dailyVinylCompositionTileSqft.toLocaleString()} sq ft`
                         ) : (
@@ -5138,7 +5138,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {wantsToAddTile !== undefined ? (
                           wantsToAddTile ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5187,7 +5187,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsCeramicTile !== undefined ? (
                           installsCeramicTile ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5217,12 +5217,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyCeramicTileSqft || ''}
                         onChange={(e) => setDailyCeramicTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyCeramicTileSqft ? (
                           `${dailyCeramicTileSqft.toLocaleString()} sq ft`
                         ) : (
@@ -5265,7 +5265,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsPorcelainTile !== undefined ? (
                           installsPorcelainTile ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5295,12 +5295,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyPorcelainTileSqft || ''}
                         onChange={(e) => setDailyPorcelainTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyPorcelainTileSqft ? (
                           `${dailyPorcelainTileSqft.toLocaleString()} sq ft`
                         ) : (
@@ -5343,7 +5343,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsStoneTile !== undefined ? (
                           installsStoneTile ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5373,12 +5373,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyStoneTileSqft || ''}
                         onChange={(e) => setDailyStoneTileSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyStoneTileSqft ? (
                           `${dailyStoneTileSqft.toLocaleString()} sq ft`
                         ) : (
@@ -5421,7 +5421,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {offersTileRemoval !== undefined ? (
                           offersTileRemoval ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5470,7 +5470,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsTileBacksplash !== undefined ? (
                           installsTileBacksplash ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5500,12 +5500,12 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={dailyTileBacksplashSqft || ''}
                         onChange={(e) => setDailyTileBacksplashSqft(e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                         placeholder="Enter square footage"
                         min="0"
                       />
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {dailyTileBacksplashSqft ? (
                           `${dailyTileBacksplashSqft.toLocaleString()} sq ft`
                         ) : (
@@ -5568,7 +5568,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {movesFurniture !== undefined ? (
                           movesFurniture ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -5618,7 +5618,7 @@ export default function InstallerProfilePage() {
                         </label>
                       </div>
                     ) : (
-                      <p className="font-semibold text-slate-900 text-lg">
+                      <p className="font-semibold text-slate-900 text-base sm:text-lg">
                         {installsTrim !== undefined ? (
                           installsTrim ? (
                             <span className="text-success-600 flex items-center gap-1">
@@ -6033,7 +6033,7 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={staffForm.firstName}
                       onChange={(e) => setStaffForm({ ...staffForm, firstName: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       placeholder="Enter first name"
                       required
                     />
@@ -6047,7 +6047,7 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={staffForm.lastName}
                       onChange={(e) => setStaffForm({ ...staffForm, lastName: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       placeholder="Enter last name"
                       required
                     />
@@ -6059,7 +6059,7 @@ export default function InstallerProfilePage() {
                       type="email"
                       value={staffForm.email}
                       onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       placeholder="Enter email address"
                     />
                   </div>
@@ -6070,7 +6070,7 @@ export default function InstallerProfilePage() {
                       type="tel"
                       value={staffForm.phone}
                       onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       placeholder="Enter phone number"
                     />
                   </div>
@@ -6081,7 +6081,7 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={staffForm.digitalId}
                       onChange={(e) => setStaffForm({ ...staffForm, digitalId: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       placeholder="e.g., Badge #, Employee ID, Internal ID"
                     />
                   </div>
@@ -6092,7 +6092,7 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={staffForm.title}
                       onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       placeholder="e.g., Lead Installer, Assistant"
                     />
                   </div>
@@ -6106,7 +6106,7 @@ export default function InstallerProfilePage() {
                       type="date"
                       value={staffForm.expirationDate}
                       onChange={(e) => setStaffForm({ ...staffForm, expirationDate: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     />
                   </div>
                   <div>
@@ -6114,7 +6114,7 @@ export default function InstallerProfilePage() {
                     <select
                       value={staffForm.status}
                       onChange={(e) => setStaffForm({ ...staffForm, status: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     >
                       <option value="active">Active</option>
                       <option value="expired">Expired</option>
@@ -6127,7 +6127,7 @@ export default function InstallerProfilePage() {
                   <textarea
                     value={staffForm.notes}
                     onChange={(e) => setStaffForm({ ...staffForm, notes: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                    className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
                     placeholder="Additional information about this team member"
                     rows={3}
                   />
@@ -6219,7 +6219,7 @@ export default function InstallerProfilePage() {
                     type="number"
                     value={historyForm.year}
                     onChange={(e) => setHistoryForm({ ...historyForm, year: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                    className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     placeholder="e.g., 2024, 2025"
                     min="2000"
                     max={new Date().getFullYear()}
@@ -6241,7 +6241,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.firstName || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, firstName: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="First name"
                       />
                     </div>
@@ -6251,7 +6251,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.lastName || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, lastName: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Last name"
                       />
                     </div>
@@ -6261,7 +6261,7 @@ export default function InstallerProfilePage() {
                         type="tel"
                         value={historyForm.phone || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, phone: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Phone number"
                       />
                     </div>
@@ -6271,7 +6271,7 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={historyForm.yearsOfExperience || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, yearsOfExperience: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Years"
                         min="0"
                       />
@@ -6282,7 +6282,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.flooringSpecialties || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, flooringSpecialties: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Comma-separated specialties"
                       />
                     </div>
@@ -6292,7 +6292,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.flooringSkills || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, flooringSkills: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Comma-separated skills"
                       />
                     </div>
@@ -6312,7 +6312,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyName || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyName: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Company name"
                       />
                     </div>
@@ -6322,7 +6322,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyTitle || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyTitle: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Job title"
                       />
                     </div>
@@ -6332,7 +6332,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyStreetAddress || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyStreetAddress: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Street address"
                       />
                     </div>
@@ -6342,7 +6342,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyCity || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyCity: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="City"
                       />
                     </div>
@@ -6352,7 +6352,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyState || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyState: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="State"
                       />
                     </div>
@@ -6362,7 +6362,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyZipCode || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyZipCode: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Zip code"
                       />
                     </div>
@@ -6372,7 +6372,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyCounty || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyCounty: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="County"
                       />
                     </div>
@@ -6382,7 +6382,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.companyAddress || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyAddress: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Full formatted address"
                       />
                     </div>
@@ -6427,7 +6427,7 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={historyForm.crewSize || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, crewSize: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Number of crew members"
                         min="0"
                       />
@@ -6487,7 +6487,7 @@ export default function InstallerProfilePage() {
                       <textarea
                         value={historyForm.toolsDescription || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, toolsDescription: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
                         placeholder="Describe your tools"
                         rows={3}
                       />
@@ -6497,7 +6497,7 @@ export default function InstallerProfilePage() {
                       <textarea
                         value={historyForm.vehicleDescription || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, vehicleDescription: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
                         placeholder="Describe your vehicle"
                         rows={3}
                       />
@@ -6543,7 +6543,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.insuranceType || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, insuranceType: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Insurance type"
                       />
                     </div>
@@ -6578,7 +6578,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.licenseNumber || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, licenseNumber: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="License number"
                       />
                     </div>
@@ -6589,7 +6589,7 @@ export default function InstallerProfilePage() {
                         max="2099-12-31"
                         value={historyForm.licenseExpiry || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, licenseExpiry: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       />
                     </div>
                     <div>
@@ -6793,7 +6793,7 @@ export default function InstallerProfilePage() {
                         type="number"
                         value={historyForm.maxTravelDistance || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, maxTravelDistance: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="Miles"
                         min="0"
                       />
@@ -6830,7 +6830,7 @@ export default function InstallerProfilePage() {
                         max="2099-12-31"
                         value={historyForm.preferredStartDate || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, preferredStartDate: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       />
                     </div>
                     <div>
@@ -6839,7 +6839,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.mondayToFridayAvailability || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, mondayToFridayAvailability: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="e.g., 8am-5pm"
                       />
                     </div>
@@ -6849,7 +6849,7 @@ export default function InstallerProfilePage() {
                         type="text"
                         value={historyForm.saturdayAvailability || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, saturdayAvailability: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                         placeholder="e.g., 8am-12pm"
                       />
                     </div>
@@ -6858,7 +6858,7 @@ export default function InstallerProfilePage() {
                       <select
                         value={historyForm.availability || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, availability: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       >
                         <option value="">Select availability</option>
                         <option value="full-time">Full-time</option>
@@ -6934,7 +6934,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyStretchInCarpetSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyStretchInCarpetSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7034,7 +7034,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyNailDownSolidHardwoodSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyNailDownSolidHardwoodSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7109,7 +7109,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyLaminateSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyLaminateSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7234,7 +7234,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyLuxuryVinylPlankSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyLuxuryVinylPlankSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7295,7 +7295,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyVinylCompositionTileSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyVinylCompositionTileSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7370,7 +7370,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyCeramicTileSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyCeramicTileSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7406,7 +7406,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyPorcelainTileSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyPorcelainTileSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7442,7 +7442,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyStoneTileSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyStoneTileSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7503,7 +7503,7 @@ export default function InstallerProfilePage() {
                             type="number"
                             value={historyForm.dailyTileBacksplashSqft || ''}
                             onChange={(e) => setHistoryForm({ ...historyForm, dailyTileBacksplashSqft: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                            className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                             placeholder="Square feet per day"
                             min="0"
                           />
@@ -7579,7 +7579,7 @@ export default function InstallerProfilePage() {
                   <textarea
                     value={historyForm.notes || ''}
                     onChange={(e) => setHistoryForm({ ...historyForm, notes: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                    className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
                     placeholder="Additional notes about this year's data"
                     rows={4}
                   />
