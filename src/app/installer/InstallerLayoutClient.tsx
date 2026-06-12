@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import InstallerSidebar from '@/components/InstallerSidebar'
-import InstallerPWA from '@/components/InstallerPWA'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 // Public pages that don't need auth
@@ -125,12 +124,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
 
   // Public pages — no sidebar
   if (isPublicPage) {
-    return (
-      <>
-        {children}
-        <InstallerPWA />
-      </>
-    )
+    return <>{children}</>
   }
 
   // Auth checking — show loader
@@ -162,7 +156,6 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         {children}
       </div>
-      <InstallerPWA />
     </div>
   )
 }
