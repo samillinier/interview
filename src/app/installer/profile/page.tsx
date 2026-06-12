@@ -2046,22 +2046,13 @@ export default function InstallerProfilePage() {
                 </motion.h2>
                 {(() => {
                   const companyNameToShow = (isEditing ? companyName : installer?.companyName) || ''
-                  const workroomToShow = (isEditing ? workroom : installer?.workroom) || ''
-                  if (!companyNameToShow && !workroomToShow) return null
+                  if (!companyNameToShow) return null
                   return (
                     <div className="flex flex-wrap items-center gap-2 mt-1 mb-1">
-                      {companyNameToShow && (
-                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
-                          <Building2 className="w-4 h-4 text-slate-500" />
-                          <span className="truncate max-w-[280px]">{companyNameToShow}</span>
-                        </span>
-                      )}
-                      {workroomToShow && (
-                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
-                          <MapPin className="w-4 h-4 text-slate-500" />
-                          <span>{workroomToShow}</span>
-                        </span>
-                      )}
+                      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                        <Building2 className="w-4 h-4 text-slate-500" />
+                        <span className="truncate max-w-[280px]">{companyNameToShow}</span>
+                      </span>
                     </div>
                   )
                 })()}
