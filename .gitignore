@@ -53,3 +53,4 @@ public/uploads/
 .env.vercel-prod
 .env*.local
 .env*.bak*
+.env.vercel-prod
