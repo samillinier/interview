@@ -3641,6 +3641,7 @@ function DashboardPageContent() {
                         onChange={(next) => setNewInstaller({ ...newInstaller, workersCompExemExpiryDates: next })}
                         isEditing={true}
                         addLabel="Add certificate date"
+                        allowNull={true}
                       />
                     </div>
 
@@ -3662,6 +3663,7 @@ function DashboardPageContent() {
                         onChange={(next) => setNewInstaller({ ...newInstaller, automobileLiabilityExpiryDates: next })}
                         isEditing={true}
                         addLabel="Add policy date"
+                        allowNull={true}
                       />
                     </div>
                     <div className="md:col-span-2">

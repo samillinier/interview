@@ -5732,6 +5732,7 @@ export default function InstallerProfileViewPage() {
                     value={llrpExpiry}
                     onChange={setLlrpExpiry}
                     isEditing={isEditing}
+                    allowNull={true}
                     onNullToggle={(active) => saveDateNullFields('llrpExpiry', active)}
                     initialNullActive={nullDateFields.has('llrpExpiry')}
                   />
@@ -5740,6 +5741,7 @@ export default function InstallerProfileViewPage() {
                     value={btrExpiry}
                     onChange={setBtrExpiry}
                     isEditing={isEditing}
+                    allowNull={true}
                     onNullToggle={(active) => saveDateNullFields('btrExpiry', active)}
                     initialNullActive={nullDateFields.has('btrExpiry')}
                   />
@@ -5752,6 +5754,7 @@ export default function InstallerProfileViewPage() {
                     }}
                     isEditing={isEditing}
                     addLabel="Add certificate date"
+                    allowNull={true}
                     onNullToggle={(active) => saveDateNullFields('workersCompExemExpiry', active)}
                     initialNullActive={nullDateFields.has('workersCompExemExpiry')}
                   />
@@ -5770,6 +5773,7 @@ export default function InstallerProfileViewPage() {
                     value={generalLiabilityExpiry}
                     onChange={setGeneralLiabilityExpiry}
                     isEditing={isEditing}
+                    allowNull={true}
                     onNullToggle={(active) => saveDateNullFields('generalLiabilityExpiry', active)}
                     initialNullActive={nullDateFields.has('generalLiabilityExpiry')}
                   />
@@ -5782,6 +5786,7 @@ export default function InstallerProfileViewPage() {
                     }}
                     isEditing={isEditing}
                     addLabel="Add policy date"
+                    allowNull={true}
                     onNullToggle={(active) => saveDateNullFields('automobileLiabilityExpiry', active)}
                     initialNullActive={nullDateFields.has('automobileLiabilityExpiry')}
                   />
@@ -5790,6 +5795,7 @@ export default function InstallerProfileViewPage() {
                     value={employersLiabilityExpiry}
                     onChange={setEmployersLiabilityExpiry}
                     isEditing={isEditing}
+                    allowNull={true}
                     onNullToggle={(active) => saveDateNullFields('employersLiabilityExpiry', active)}
                     initialNullActive={nullDateFields.has('employersLiabilityExpiry')}
                   />

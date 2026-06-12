@@ -145,9 +145,9 @@ function ExpirationDatePicker({
   }
   
   return (
-    <div className={`group relative p-4 rounded-xl border-2 ${getStatusColor()} hover:shadow-sm transition-all duration-200`}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
+    <div className={`group relative p-3 sm:p-4 rounded-xl border-2 ${getStatusColor()} hover:shadow-sm transition-all duration-200`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1.5 sm:mb-2 gap-0.5 sm:gap-0">
+        <p className="text-[10px] sm:text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
         {getStatusBadge()}
       </div>
       {isEditing ? (
@@ -156,12 +156,12 @@ function ExpirationDatePicker({
           max="2099-12-31"
           value={value ? new Date(value).toISOString().split('T')[0] : ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+          className="w-full px-3 py-2 sm:px-4 sm:py-2.5 text-sm border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
         />
       ) : (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          <p className="font-semibold text-slate-900">{formatDate(value)}</p>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
+          <p className="font-semibold text-sm sm:text-base text-slate-900">{formatDate(value)}</p>
         </div>
       )}
     </div>
@@ -2266,11 +2266,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 text-sm sm:text-base border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Enter first name"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.firstName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.firstName || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2288,11 +2288,11 @@ export default function InstallerProfilePage() {
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 text-sm sm:text-base border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Enter last name"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.lastName || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.lastName || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -2322,11 +2322,11 @@ export default function InstallerProfilePage() {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2.5 text-sm sm:text-base border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
                       placeholder="Enter phone number"
                     />
                   ) : (
-                    <p className="font-semibold text-slate-900 text-lg">{installer?.phone || <span className="text-slate-400 italic">Not provided</span>}</p>
+                    <p className="font-semibold text-slate-900 text-base sm:text-lg">{installer?.phone || <span className="text-slate-400 italic">Not provided</span>}</p>
                   )}
                 </div>
               </div>
@@ -3287,14 +3287,14 @@ export default function InstallerProfilePage() {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Certificates Section */}
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4 flex items-center gap-2">
                     <FileCheck className="w-4 h-4 text-brand-green" />
                     Certificates
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <MultiExpirationDatePicker
                       label="LLRP & Lead Certificate"
                       values={llrpExpiryDates}
@@ -3330,7 +3330,7 @@ export default function InstallerProfilePage() {
                     <Shield className="w-4 h-4 text-brand-green" />
                     Insurance Policies
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                     <ExpirationDatePicker
                       label="General Liability"
                       value={generalLiabilityExpiry}

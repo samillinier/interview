@@ -48,6 +48,7 @@ export function ExpirationDatePicker({
   isEditing,
   onNullToggle,
   initialNullActive = false,
+  allowNull = false,
 }: { 
   label: string
   value: string
@@ -55,6 +56,7 @@ export function ExpirationDatePicker({
   isEditing: boolean
   onNullToggle?: (active: boolean) => void
   initialNullActive?: boolean
+  allowNull?: boolean
 }) {
   const [nullActive, setNullActive] = useState(initialNullActive)
   const prevValueRef = useRef<string>('')
@@ -143,10 +145,12 @@ export function ExpirationDatePicker({
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
             <div className="flex items-center gap-2">
               {getStatusBadge()}
+              {allowNull && (
               <button type="button" onClick={handleDeactivateNull} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0 border-slate-400 bg-slate-200 text-slate-800" title="Deactivate NULL">
                 <CheckCircle2 className="w-3.5 h-3.5 text-slate-700" />
                 NULL
               </button>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -164,7 +168,7 @@ export function ExpirationDatePicker({
         <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{label}</p>
         <div className="flex items-center gap-2">
           {getStatusBadge()}
-          {!isEditing && (
+          {allowNull && !isEditing && (
             <button type="button" onClick={handleActivateNullNonEdit} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors shrink-0 border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Set to NULL">
               <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
               NULL
@@ -180,18 +184,22 @@ export function ExpirationDatePicker({
               <Calendar className="w-4 h-4 text-slate-400" />
               <p className="font-semibold text-slate-900">N/A (NULL)</p>
             </div>
+            {allowNull && (
             <button type="button" onClick={() => { setNullActiveAndNotify(false); prevValueRef.current = '' }} className="relative z-10 inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border text-xs font-semibold transition-colors shrink-0 border-slate-400 bg-slate-200 text-slate-800" title="Deactivate NULL">
               <CheckCircle2 className="w-3.5 h-3.5 text-slate-700" />
               NULL
             </button>
+            )}
           </div>
         ) : (
           <div className="flex items-center gap-2">
             <input type="date" max="2099-12-31" value={value ? new Date(value).toISOString().split('T')[0] : ''} onChange={(e) => onChange(e.target.value)} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900" />
+            {allowNull && (
             <button type="button" onClick={handleActivateNullEdit} className={`inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border text-xs font-semibold transition-colors shrink-0 ${!value || value === 'null' ? 'border-slate-400 bg-slate-200 text-slate-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`} title="Set to NULL">
               <CheckCircle2 className={`w-3.5 h-3.5 ${!value || value === 'null' ? 'text-slate-700' : 'text-slate-400'}`} />
               NULL
             </button>
+            )}
           </div>
         )
       ) : (
