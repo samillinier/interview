@@ -75,10 +75,10 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       {/* Hamburger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="lg:hidden fixed top-3 left-3 z-50 p-2.5 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+        className="lg:hidden fixed top-3 right-3 z-50 p-3 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
         aria-label={open ? 'Close menu' : 'Open menu'}
       >
-        <Menu className="w-6 h-6 text-slate-700" />
+        <Menu className="w-7 h-7 text-slate-700" />
       </button>
 
       {/* Overlay */}
