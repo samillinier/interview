@@ -42,10 +42,11 @@ function NotificationsPageContent() {
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const tabParam = searchParams.get('tab') as 'message' | 'news' | null
-  const [activeTab, setActiveTab] = useState<'notification' | 'message' | 'news'>(
-    tabParam === 'message' ? 'message' : tabParam === 'news' ? 'news' : 'notification'
-  )
+  // Derive tab directly from URL — always in sync, no useState race
+  const activeTab: 'notification' | 'message' | 'news' =
+    (searchParams.get('tab') as 'message' | 'news' | null) === 'message' ? 'message' :
+    (searchParams.get('tab') as 'message' | 'news' | null) === 'news' ? 'news' :
+    'notification'
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isMarkingRead, setIsMarkingRead] = useState<string | null>(null)
   const [messageContent, setMessageContent] = useState('')
@@ -65,13 +66,6 @@ function NotificationsPageContent() {
   useEffect(() => {
     checkAuthAndLoadData()
   }, [])
-
-  // Sync activeTab when URL query param changes (e.g. from mobile menu links)
-  useEffect(() => {
-    if (tabParam === 'message') setActiveTab('message')
-    else if (tabParam === 'news') setActiveTab('news')
-    // don't reset to 'notification' if param is absent — user may have switched manually
-  }, [tabParam])
 
   useEffect(() => {
     if (installer) {
@@ -453,7 +447,7 @@ function NotificationsPageContent() {
         {/* Mobile: section selector (separate buttons, not tabs) */}
         <div className="grid gap-3 mb-6 sm:hidden">
           <button
-            onClick={() => setActiveTab('notification')}
+            onClick={() => router.push('/installer/notifications')}
             className={`w-full rounded-2xl border p-4 text-left transition-all ${
               activeTab === 'notification'
                 ? 'border-brand-green bg-brand-green/10 shadow-sm'
@@ -487,7 +481,7 @@ function NotificationsPageContent() {
         <div className="hidden sm:block bg-white rounded-2xl shadow-lg border border-slate-200/60 p-2 mb-6 backdrop-blur-sm">
           <div className="flex gap-2">
             <button
-              onClick={() => setActiveTab('notification')}
+              onClick={() => router.push('/installer/notifications')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'notification'
                   ? 'bg-brand-green text-white shadow-md'
@@ -504,7 +498,7 @@ function NotificationsPageContent() {
             </button>
 
             <button
-              onClick={() => setActiveTab('message')}
+              onClick={() => router.push('/installer/notifications?tab=message')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'message'
                   ? 'bg-brand-green text-white shadow-md'
@@ -521,7 +515,7 @@ function NotificationsPageContent() {
             </button>
 
             <button
-              onClick={() => setActiveTab('news')}
+              onClick={() => router.push('/installer/notifications?tab=news')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'news'
                   ? 'bg-brand-green text-white shadow-md'

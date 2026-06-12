@@ -62,7 +62,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
       { href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount },
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount, match: (p: string) => p === '/installer/notifications' && (typeof window === 'undefined' || !new URLSearchParams(window.location.search).get('tab')) },
-      { href: '/installer/notifications?tab=messages', label: 'Messages', icon: MessageSquare, match: (p: string) => p === '/installer/notifications' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'messages' },
+      { href: '/installer/notifications?tab=message', label: 'Messages', icon: MessageSquare, match: (p: string) => p === '/installer/notifications' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'message' },
       { href: '/installer/notifications?tab=news', label: 'News', icon: Newspaper, match: (p: string) => p === '/installer/notifications' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'news' },
       { href: '/installer/help', label: 'Help', icon: HelpCircle },
     ],
