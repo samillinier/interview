@@ -2091,13 +2091,13 @@ export default function InstallerProfilePage() {
 
                 return (
                   <div className="-mx-2 px-2">
-                    <div className="w-full bg-transparent border border-transparent rounded-full px-0 py-0 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:w-max lg:whitespace-nowrap lg:overflow-x-auto lg:hide-scrollbar">
+                    <div className="w-full bg-transparent px-0 py-0 grid grid-cols-2 sm:grid-cols-3 gap-2 lg:flex lg:flex-nowrap lg:w-max lg:whitespace-nowrap lg:overflow-x-auto lg:hide-scrollbar">
                     {stages.map((s, idx) => {
                       const isCurrent = idx === currentIdx
                       const isDone = idx < currentIdx
                         const showCheck = isDone || isCurrent
                       const base =
-                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors'
+                        'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors w-full lg:w-auto'
                       const cls = isCurrent
                         ? `${base} bg-brand-green text-white shadow-sm`
                         : isDone
@@ -2105,12 +2105,10 @@ export default function InstallerProfilePage() {
                           : `${base} bg-white text-slate-500 border border-slate-200`
 
                       return (
-                        <div key={s.key} className="flex items-center flex-shrink-0">
-                          <span className={cls}>
-                            {showCheck && <CheckCircle2 className="w-3.5 h-3.5" />}
-                            {s.label}
-                          </span>
-                        </div>
+                        <span key={s.key} className={cls}>
+                          {showCheck && <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />}
+                          <span className="text-center">{s.label}</span>
+                        </span>
                       )
                     })}
                     </div>
