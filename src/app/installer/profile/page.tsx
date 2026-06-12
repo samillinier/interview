@@ -3275,7 +3275,7 @@ export default function InstallerProfilePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5 sm:p-8 mb-6 backdrop-blur-sm"
             >
               <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
                 <div>
@@ -3294,7 +3294,7 @@ export default function InstallerProfilePage() {
                     <FileCheck className="w-4 h-4 text-brand-green" />
                     Certificates
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <MultiExpirationDatePicker
                       label="LLRP & Lead Certificate"
                       values={llrpExpiryDates}
@@ -3330,7 +3330,7 @@ export default function InstallerProfilePage() {
                     <Shield className="w-4 h-4 text-brand-green" />
                     Insurance Policies
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <ExpirationDatePicker
                       label="General Liability"
                       value={generalLiabilityExpiry}
