@@ -66,6 +66,13 @@ function NotificationsPageContent() {
     checkAuthAndLoadData()
   }, [])
 
+  // Sync activeTab when URL query param changes (e.g. from mobile menu links)
+  useEffect(() => {
+    if (tabParam === 'message') setActiveTab('message')
+    else if (tabParam === 'news') setActiveTab('news')
+    // don't reset to 'notification' if param is absent — user may have switched manually
+  }, [tabParam])
+
   useEffect(() => {
     if (installer) {
       loadNotifications()
