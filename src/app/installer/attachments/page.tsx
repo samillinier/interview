@@ -505,7 +505,7 @@ export default function AttachmentsPage() {
   return (
     <>
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-        <div className="px-4 lg:px-6 pt-6 pb-6">
+        <div className="px-4 lg:px-6 pt-20 lg:pt-6 pb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-1">Attachments</h1>
           <p className="text-sm text-slate-500">Upload and manage your required documents</p>
         </div>

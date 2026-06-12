@@ -152,7 +152,7 @@ export default function InstallerAgreementsPage() {
   return (
     <>
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-        <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-5 lg:pb-6">
+        <div className="px-4 lg:px-6 pt-20 lg:pt-6 pb-5 lg:pb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green" />

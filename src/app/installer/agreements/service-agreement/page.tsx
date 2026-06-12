@@ -147,7 +147,7 @@ export default function ServiceAgreementPage() {
   return (
     <>
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
+          <div className="px-4 lg:px-6 pt-20 lg:pt-6 pb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center">
                 <FileCheck className="w-6 h-6 text-brand-green" />

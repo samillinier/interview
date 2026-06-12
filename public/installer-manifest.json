@@ -1,0 +1,87 @@
+{
+  "name": "FIS Installer",
+  "short_name": "FIS Installer",
+  "description": "Floor Interior Services Installer Portal - Manage jobs, payments, and documents on the go",
+  "start_url": "/installer/login",
+  "scope": "/installer",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#003B2E",
+  "theme_color": "#003B2E",
+  "orientation": "portrait-primary",
+  "lang": "en-US",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/installer/dashboard",
+      "description": "View your dashboard"
+    },
+    {
+      "name": "Documents",
+      "url": "/installer/attachments",
+      "description": "Manage your documents"
+    },
+    {
+      "name": "Payment",
+      "url": "/installer/payment",
+      "description": "View payment info"
+    }
+  ]
+}

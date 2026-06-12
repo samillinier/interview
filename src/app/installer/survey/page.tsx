@@ -169,7 +169,7 @@ export default function InstallerSurveyPage() {
 
   return (
     <>
-        <main className="w-full max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 lg:px-6 pt-16 lg:pt-8 pb-8 box-border">
+        <main className="w-full max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 lg:px-6 pt-20 lg:pt-8 pb-8 box-border">
           <div className="mb-6 w-full min-w-0">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full min-w-0">
               <div className="min-w-0 shrink lg:max-w-[min(100%,42rem)]">
