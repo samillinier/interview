@@ -47,21 +47,13 @@ class WebViewController: UIViewController, WKNavigationDelegate {
             splashLayer = layer
             view.layer.addSublayer(layer)
 
-            // Attributed text: company name + copyright year
+            // Small URL label at bottom
             let label = UILabel()
-            label.numberOfLines = 2
+            label.text = "floorinteriorservices.com"
+            label.font = UIFont.systemFont(ofSize: 10, weight: .light)
+            label.textColor = .darkGray
             label.textAlignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
-
-            let year = Calendar.current.component(.year, from: Date())
-            let text = "Floor Interior Services\n© \(year)"
-            let attributed = NSMutableAttributedString(string: text, attributes: [
-                .font: UIFont.systemFont(ofSize: 10, weight: .light),
-                .foregroundColor: UIColor.darkGray
-            ])
-            // Make company name slightly heavier
-            attributed.addAttribute(.font, value: UIFont.systemFont(ofSize: 10, weight: .medium), range: NSRange(location: 0, length: "Floor Interior Services".count))
-            label.attributedText = attributed
 
             view.addSubview(label)
             splashLabel = label

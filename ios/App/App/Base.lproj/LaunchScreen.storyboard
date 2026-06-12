@@ -14,8 +14,8 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Floor Interior Services&#10;&#169; 2026" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="2" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="splash-bottom-label">
-                                <rect key="frame" x="0.0" y="623" width="375" height="28"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="floorinteriorservices.com" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="splash-bottom-label">
+                                <rect key="frame" x="0.0" y="639" width="375" height="12"/>
                                 <fontDescription key="fontDescription" type="system" weight="light" pointSize="10"/>
                                 <color key="textColor" red="0.333" green="0.333" blue="0.333" alpha="1.0" colorSpace="custom" customColorSpace="sRGB"/>
                                 <nil key="highlightedColor"/>
