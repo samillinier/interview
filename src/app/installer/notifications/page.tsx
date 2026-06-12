@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, type ChangeEvent, Suspense } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Bell,
@@ -15,7 +15,7 @@ import {
   RefreshCw,
   Send,
 } from 'lucide-react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -36,17 +36,12 @@ interface Notification {
   attachmentName?: string | null
 }
 
-function NotificationsPageContent() {
+export default function NotificationsPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [installer, setInstaller] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  // Derive tab directly from URL — always in sync, no useState race
-  const activeTab: 'notification' | 'message' | 'news' =
-    (searchParams.get('tab') as 'message' | 'news' | null) === 'message' ? 'message' :
-    (searchParams.get('tab') as 'message' | 'news' | null) === 'news' ? 'news' :
-    'notification'
+  const [activeTab, setActiveTab] = useState<'notification' | 'message' | 'news'>('notification')
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isMarkingRead, setIsMarkingRead] = useState<string | null>(null)
   const [messageContent, setMessageContent] = useState('')
@@ -447,7 +442,7 @@ function NotificationsPageContent() {
         {/* Mobile: section selector (separate buttons, not tabs) */}
         <div className="grid gap-3 mb-6 sm:hidden">
           <button
-            onClick={() => router.push('/installer/notifications')}
+            onClick={() => setActiveTab('notification')}
             className={`w-full rounded-2xl border p-4 text-left transition-all ${
               activeTab === 'notification'
                 ? 'border-brand-green bg-brand-green/10 shadow-sm'
@@ -475,13 +470,73 @@ function NotificationsPageContent() {
               </div>
             </div>
           </button>
+
+          <button
+            onClick={() => setActiveTab('message')}
+            className={`w-full rounded-2xl border p-4 text-left transition-all ${
+              activeTab === 'message'
+                ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                : 'border-slate-200 bg-white hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                  activeTab === 'message' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900 truncate">Messages</p>
+                  {unreadCount.message > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                      {unreadCount.message}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">Chat with admin</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('news')}
+            className={`w-full rounded-2xl border p-4 text-left transition-all ${
+              activeTab === 'news'
+                ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                : 'border-slate-200 bg-white hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                  activeTab === 'news' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                <Newspaper className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900 truncate">News</p>
+                  {unreadCount.news > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                      {unreadCount.news}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">Announcements</p>
+              </div>
+            </div>
+          </button>
         </div>
 
         {/* Desktop/tablet: tabs (keep existing desktop behavior) */}
         <div className="hidden sm:block bg-white rounded-2xl shadow-lg border border-slate-200/60 p-2 mb-6 backdrop-blur-sm">
           <div className="flex gap-2">
             <button
-              onClick={() => router.push('/installer/notifications')}
+              onClick={() => setActiveTab('notification')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'notification'
                   ? 'bg-brand-green text-white shadow-md'
@@ -498,7 +553,7 @@ function NotificationsPageContent() {
             </button>
 
             <button
-              onClick={() => router.push('/installer/notifications?tab=message')}
+              onClick={() => setActiveTab('message')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'message'
                   ? 'bg-brand-green text-white shadow-md'
@@ -515,7 +570,7 @@ function NotificationsPageContent() {
             </button>
 
             <button
-              onClick={() => router.push('/installer/notifications?tab=news')}
+              onClick={() => setActiveTab('news')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 activeTab === 'news'
                   ? 'bg-brand-green text-white shadow-md'
@@ -945,17 +1000,5 @@ function NotificationsPageContent() {
         </div>
       )}
     </>
-  )
-}
-
-export default function NotificationsPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen interview-gradient flex items-center justify-center">
-        <LogoHeartbeatLoader />
-      </div>
-    }>
-      <NotificationsPageContent />
-    </Suspense>
   )
 }
