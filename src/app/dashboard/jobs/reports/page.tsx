@@ -343,8 +343,8 @@ export default function JobsReportsPage() {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80">
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Job Name / Order #</th>
-                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Labor</th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Workroom</th>
+                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Labor</th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
                       <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Amount</th>
                     </tr>
@@ -381,17 +381,17 @@ export default function JobsReportsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
+                            <span className="text-sm text-slate-700">
+                              {record.workroom || <span className="text-slate-300">—</span>}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
                             {record.laborCategoryDescription ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
                                 <Wrench className="w-3 h-3" />
                                 {record.laborCategoryDescription}
                               </span>
                             ) : <span className="text-xs text-slate-300">—</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-sm text-slate-700">
-                              {record.workroom || <span className="text-slate-300">—</span>}
-                            </span>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
