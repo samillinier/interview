@@ -9,9 +9,9 @@ datasource db {
 }
 
 model Admin {
-  id                     String    @id
+  id                     String    @id @default(cuid())
   createdAt              DateTime  @default(now())
-  updatedAt              DateTime
+  updatedAt              DateTime @updatedAt
   email                  String    @unique
   name                   String?
   isActive               Boolean   @default(true)
@@ -25,7 +25,7 @@ model Admin {
 }
 
 model AdminAuditLog {
-  id          String   @id
+  id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
   adminEmail  String
   adminId     String?
@@ -43,9 +43,9 @@ model AdminAuditLog {
 }
 
 model CilioJobRecord {
-  id                       String     @id
+  id                       String     @id @default(cuid())
   createdAt                DateTime   @default(now())
-  updatedAt                DateTime
+  updatedAt                DateTime @updatedAt
   orderNumber              Int        @unique
   orderStatusDescription   String?
   jobType                  String     @default("scheduled")
@@ -68,9 +68,9 @@ model CilioJobRecord {
 }
 
 model Claim {
-  id                   String          @id
+  id                   String          @id @default(cuid())
   createdAt            DateTime        @default(now())
-  updatedAt            DateTime
+  updatedAt            DateTime @updatedAt
   customer             String?
   jobNumber            String?
   workroom             String?
@@ -105,9 +105,9 @@ model Claim {
 }
 
 model ClaimDocument {
-  id        String   @id
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   claimId   String
   name      String
   url       String
@@ -117,7 +117,7 @@ model ClaimDocument {
 }
 
 model Communication {
-  id          String    @id
+  id          String    @id @default(cuid())
   createdAt   DateTime  @default(now())
   installerId String
   type        String
@@ -129,9 +129,9 @@ model Communication {
 }
 
 model DashboardUpdate {
-  id             String   @id
+  id             String   @id @default(cuid())
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   updateNumber   String?
   title          String
   description    String
@@ -148,7 +148,7 @@ model DashboardUpdate {
 }
 
 model Document {
-  id                     String    @id
+  id                     String    @id @default(cuid())
   createdAt              DateTime  @default(now())
   installerId            String
   type                   String
@@ -166,9 +166,9 @@ model Document {
 }
 
 model Installer {
-  id                                   String                   @id
+  id                                   String                   @id @default(cuid())
   createdAt                            DateTime                 @default(now())
-  updatedAt                            DateTime
+  updatedAt                            DateTime @updatedAt
   firstName                            String
   lastName                             String
   email                                String                   @unique
@@ -318,9 +318,9 @@ model Installer {
 }
 
 model InstallerAgreement {
-  id              String    @id
+  id              String    @id @default(cuid())
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime @updatedAt
   installerId     String
   type            String
   status          String    @default("draft")
@@ -339,9 +339,9 @@ model InstallerAgreement {
 }
 
 model InstallerChangeRequest {
-  id              String    @id
+  id              String    @id @default(cuid())
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime @updatedAt
   installerId     String
   status          String    @default("pending")
   source          String?
@@ -359,9 +359,9 @@ model InstallerChangeRequest {
 }
 
 model InstallerHistory {
-  id                                   String    @id
+  id                                   String    @id @default(cuid())
   createdAt                            DateTime  @default(now())
-  updatedAt                            DateTime
+  updatedAt                            DateTime @updatedAt
   installerId                          String
   year                                 Int
   firstName                            String?
@@ -450,9 +450,9 @@ model InstallerHistory {
 }
 
 model InstallerTracking {
-  id                     String     @id
+  id                     String     @id @default(cuid())
   createdAt              DateTime   @default(now())
-  updatedAt              DateTime
+  updatedAt              DateTime @updatedAt
   installerId            String?
   type                   String
   title                  String
@@ -478,9 +478,9 @@ model InstallerTracking {
 }
 
 model Interview {
-  id                       String              @id
+  id                       String              @id @default(cuid())
   createdAt                DateTime            @default(now())
-  updatedAt                DateTime
+  updatedAt                DateTime @updatedAt
   installerId              String
   status                   String              @default("in_progress")
   startedAt                DateTime            @default(now())
@@ -496,7 +496,7 @@ model Interview {
 }
 
 model InterviewResponse {
-  id             String    @id
+  id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
   interviewId    String
   questionId     String
@@ -509,9 +509,9 @@ model InterviewResponse {
 }
 
 model Inventory {
-  id                String    @id
+  id                String    @id @default(cuid())
   createdAt         DateTime  @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime @updatedAt
   propertyId        String
   itemName          String
   sku               String?
@@ -551,9 +551,9 @@ model Inventory {
 }
 
 model Job {
-  id             String           @id
+  id             String           @id @default(cuid())
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   title          String
   description    String
   location       String
@@ -573,7 +573,7 @@ model Job {
 }
 
 model JobApplication {
-  id          String    @id
+  id          String    @id @default(cuid())
   createdAt   DateTime  @default(now())
   jobId       String
   installerId String
@@ -589,9 +589,9 @@ model JobApplication {
 }
 
 model Licence {
-  id                          String            @id
+  id                          String            @id @default(cuid())
   createdAt                   DateTime          @default(now())
-  updatedAt                   DateTime
+  updatedAt                   DateTime @updatedAt
   county                      String?
   city                        String?
   isActive                    Boolean           @default(true)
@@ -623,9 +623,9 @@ model Licence {
 }
 
 model LicenceDocument {
-  id        String   @id
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   licenceId String
   name      String
   url       String
@@ -635,9 +635,9 @@ model LicenceDocument {
 }
 
 model Location {
-  id                    String             @id
+  id                    String             @id @default(cuid())
   createdAt             DateTime           @default(now())
-  updatedAt             DateTime
+  updatedAt             DateTime @updatedAt
   propertyId            String
   location              String?
   aliasLocation         String?
@@ -677,9 +677,9 @@ model Location {
 }
 
 model LocationDocument {
-  id         String                   @id
+  id         String                   @id @default(cuid())
   createdAt  DateTime                 @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   locationId String
   category   LocationDocumentCategory
   name       String
@@ -691,7 +691,7 @@ model LocationDocument {
 }
 
 model LtrSurveyDelivery {
-  id             String         @id
+  id             String         @id @default(cuid())
   createdAt      DateTime       @default(now())
   installerId    String
   batchId        String
@@ -708,7 +708,7 @@ model LtrSurveyDelivery {
 }
 
 model LtrSurveyRecord {
-  id                      String         @id
+  id                      String         @id @default(cuid())
   createdAt               DateTime       @default(now())
   batchId                 String
   region                  String?
@@ -736,7 +736,7 @@ model LtrSurveyRecord {
 }
 
 model LtrUploadBatch {
-  id                String              @id
+  id                String              @id @default(cuid())
   createdAt         DateTime            @default(now())
   fileName          String?
   uploadedByEmail   String?
@@ -770,9 +770,9 @@ model Notification {
 }
 
 model Property {
-  id                 String               @id
+  id                 String               @id @default(cuid())
   createdAt          DateTime             @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime @updatedAt
   firstName          String
   lastName           String
   email              String               @unique
@@ -796,9 +796,9 @@ model Property {
 }
 
 model PropertySafetyWalk {
-  id             String   @id
+  id             String   @id @default(cuid())
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   propertyId     String
   inspectorName  String
   inspectionDate DateTime
@@ -817,9 +817,9 @@ model PropertySafetyWalk {
 }
 
 model ScreeningCriteria {
-  id          String   @id
+  id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
   name        String
   description String?
   isActive    Boolean  @default(true)
@@ -828,9 +828,9 @@ model ScreeningCriteria {
 }
 
 model StaffMember {
-  id             String    @id
+  id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   installerId    String
   firstName      String
   lastName       String
@@ -849,9 +849,9 @@ model StaffMember {
 }
 
 model Vehicle {
-  id                    String            @id
+  id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())
-  updatedAt             DateTime
+  updatedAt             DateTime @updatedAt
   propertyId            String
   vehicleYear           Int?
   vehicleMake           String?
@@ -876,9 +876,9 @@ model Vehicle {
 }
 
 model VehicleDocument {
-  id        String                  @id
+  id        String                  @id @default(cuid())
   createdAt DateTime                @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   vehicleId String
   category  VehicleDocumentCategory
   name      String
