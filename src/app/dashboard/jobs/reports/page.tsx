@@ -13,14 +13,16 @@ import {
   ClipboardList,
   Clock,
   DollarSign,
+  Download,
   ExternalLink,
-  FileText,
   Hammer,
   Loader2,
   MapPin,
+  Paperclip,
   Phone,
   Receipt,
   Search,
+  StickyNote,
   Store,
   User,
   Wrench,
@@ -32,6 +34,7 @@ import { AdminSidebar } from '@/components/AdminSidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
+// ── Types ──────────────────────────────────────────────────
 type CilioJobRecord = {
   id: string
   orderNumber: number
@@ -51,16 +54,40 @@ type CilioJobRecord = {
   cilioPayload: any
 }
 
+type CilioJobFullDetail = Record<string, any>
+
+interface JobAttachment {
+  orderAttachmentNumber: number
+  filename: string
+  orderAttachmentTypeDescription: string
+  lastModifiedDate: string
+}
+
+interface JobNote {
+  orderNoteNumber: number
+  note: string
+  createdOn: string
+  noteSource: string | null
+  orderNoteTypeDescription: string
+}
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]+>/g, '')
+}
+
+// ── Helpers ────────────────────────────────────────────────
 const formatDate = (d: string | null | undefined) => {
   if (!d) return null
   const date = new Date(d)
-  if (isNaN(date.getTime())) return null
+  if (isNaN(date.getTime())) return 'Invalid date'
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 }
 
-const formatCurrency = (n: number | null | undefined) => {
-  if (n == null || n === 0) return null
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+const formatCurrency = (n: number | string | null | undefined) => {
+  if (n == null || n === '' || Number(n) === 0) return null
+  const val = typeof n === 'string' ? parseFloat(n) : n
+  if (isNaN(val)) return null
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val)
 }
 
 const getStatusPill = (status: string | null) => {
@@ -73,13 +100,13 @@ const getStatusPill = (status: string | null) => {
   return 'bg-amber-100 text-amber-700 border-amber-200'
 }
 
-const Field = ({ label, value, icon: Icon, accent }: { label: string; value?: string | number | null; icon?: any; accent?: boolean }) => {
+function Field({ label, value, icon: Icon, accent, noTruncate }: { label: string; value?: any; icon?: any; accent?: boolean; noTruncate?: boolean }) {
   if (value == null || value === '') return null
   const display = typeof value === 'number' ? String(value) : value
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${accent ? 'border-brand-green/20 bg-brand-green/5' : 'border-slate-100 bg-white'}`}>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm font-semibold truncate flex items-center gap-1.5 ${accent ? 'text-brand-green' : 'text-slate-800'}`}>
+      <p className={`text-sm font-semibold flex items-center gap-1.5 ${noTruncate ? '' : 'truncate'} ${accent ? 'text-brand-green' : 'text-slate-800'}`}>
         {Icon && <Icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
         {display}
       </p>
@@ -87,42 +114,59 @@ const Field = ({ label, value, icon: Icon, accent }: { label: string; value?: st
   )
 }
 
+function SectionCard({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-brand-green/10 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-brand-green" />
+        </div>
+        <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ── Main Component ─────────────────────────────────────────
 export default function JobsReportsPage() {
   const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
-  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
-  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(
+    String((session?.user as any)?.role || '').toUpperCase()
+  )
 
   const [records, setRecords] = useState<CilioJobRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [detailRecord, setDetailRecord] = useState<CilioJobRecord | null>(null)
+  const [fullDetail, setFullDetail] = useState<CilioJobFullDetail | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [detailNotes, setDetailNotes] = useState<JobNote[]>([])
+  const [jobAttachments, setJobAttachments] = useState<JobAttachment[]>([])
+  const [loadingAttachments, setLoadingAttachments] = useState(false)
   const [jobTypeFilter, setJobTypeFilter] = useState('all')
   const [workroomFilter, setWorkroomFilter] = useState('all')
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
-    if (sessionStatus === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
-  }, [sessionStatus, router, canAccess, normalizedRole])
+    if (sessionStatus === 'authenticated' && !canAccess) router.push('/dashboard')
+  }, [sessionStatus, router, canAccess])
 
   const fetchReports = async () => {
     setIsLoading(true)
     try {
       const res = await fetch('/api/cilio/jobs/saved')
-      if (res.ok) {
-        const data = await res.json()
-        setRecords(data.records || [])
-      }
+      if (res.ok) setRecords((await res.json()).records || [])
     } catch { /* ignore */ }
     setIsLoading(false)
   }
 
   useEffect(() => {
-    if (sessionStatus === 'authenticated' && canAccess) {
-      fetchReports()
-    }
+    if (sessionStatus === 'authenticated' && canAccess) fetchReports()
   }, [sessionStatus, canAccess])
 
   const workrooms = useMemo(() => {
@@ -142,22 +186,61 @@ export default function JobsReportsPage() {
         (r.storeName || '').toLowerCase().includes(q) ||
         (r.storeNumber || '').toLowerCase().includes(q) ||
         (r.installerName || '').toLowerCase().includes(q) ||
-        (r.laborCategoryDescription || '').toLowerCase().includes(q)
+        (r.laborCategoryDescription || '').toLowerCase().includes(q) ||
+        (r.cilioPayload?.customerFirstName || '').toLowerCase().includes(q) ||
+        (r.cilioPayload?.customerLastName || '').toLowerCase().includes(q) ||
+        (r.cilioPayload?.customerFirstLast || '').toLowerCase().includes(q)
       )
     }
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
   }, [records, search, jobTypeFilter, workroomFilter])
 
+  const openDetail = async (record: CilioJobRecord) => {
+    setDetailRecord(record)
+    setFullDetail(null)
+    setDetailError(null)
+    setDetailNotes([])
+    setJobAttachments([])
+    setLoadingDetail(true)
+    setLoadingAttachments(true)
+    try {
+      const [detailRes, notesRes, attRes] = await Promise.all([
+        fetch(`/api/cilio/jobs/${record.orderNumber}`),
+        fetch(`/api/cilio/jobs/${record.orderNumber}/notes`),
+        fetch(`/api/cilio/jobs/${record.orderNumber}/attachments`),
+      ])
+      const [detailData, notesData, attData] = await Promise.all([
+        detailRes.json(),
+        notesRes.json().catch(() => ({ notes: [] })),
+        attRes.json().catch(() => ({ attachments: [] })),
+      ])
+      if (detailRes.ok && detailData.detail) {
+        setFullDetail(detailData.detail)
+        setDetailNotes(notesData.notes || [])
+        setJobAttachments(attData.attachments || [])
+      } else {
+        setDetailError(detailData.error || 'Failed to load detail')
+      }
+    } catch {
+      setDetailError('Network error loading detail')
+    }
+    setLoadingDetail(false)
+    setLoadingAttachments(false)
+  }
+
+  const closeDetail = () => {
+    setDetailRecord(null)
+    setFullDetail(null)
+    setDetailError(null)
+  }
+
   const getCustomerName = (record: CilioJobRecord) => {
     const p = record.cilioPayload
-    const first = p?.customerFirstName || ''
-    const last = p?.customerLastName || ''
-    return (first + ' ' + last).trim() || null
+    return [p?.customerFirstName, p?.customerLastName].filter(Boolean).join(' ') || null
   }
 
   if (sessionStatus === 'loading') return <div className="min-h-screen flex items-center justify-center"><LogoHeartbeatLoader /></div>
-  if (!session) return null
-  if (!canAccess) return null
+  if (!session || !canAccess) return null
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -169,32 +252,19 @@ export default function JobsReportsPage() {
             <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Link href="/dashboard/jobs" className="text-xs font-medium text-slate-400 hover:text-brand-green transition-colors">
-                    Job Hub
-                  </Link>
+                  <Link href="/dashboard/jobs" className="text-xs font-medium text-slate-400 hover:text-brand-green transition-colors">Job Hub</Link>
                   <span className="text-slate-300">/</span>
                   <span className="text-xs font-medium text-brand-green">Reports</span>
                 </div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">Reports</p>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Saved Job Reports</h1>
-                <p className="text-sm text-slate-500">
-                  {records.length} jobs saved · Click any row for full detail
-                </p>
+                <p className="text-sm text-slate-500">{records.length} jobs saved · Click any row for full detail</p>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={fetchReports}
-                  disabled={isLoading}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                >
+                <button onClick={fetchReports} disabled={isLoading} className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
                 </button>
-                <Link
-                  href="/dashboard/jobs/cilio"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-green text-white text-sm font-semibold hover:bg-brand-green-dark transition-colors"
-                >
-                  <Hammer className="w-4 h-4" />
-                  <span className="hidden sm:inline">Cilio Jobs</span>
+                <Link href="/dashboard/jobs/cilio" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-green text-white text-sm font-semibold hover:bg-brand-green-dark transition-colors">
+                  <Hammer className="w-4 h-4" /><span className="hidden sm:inline">Cilio Jobs</span>
                 </Link>
               </div>
             </div>
@@ -202,50 +272,27 @@ export default function JobsReportsPage() {
         </header>
 
         <main className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
-          {/* Filters */}
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-[400px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search by order #, store, installer..."
-                className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-              />
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by order #, store, installer..." className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none" />
             </div>
-            <select
-              value={jobTypeFilter}
-              onChange={e => setJobTypeFilter(e.target.value)}
-              className="px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-            >
-              <option value="all">All Types</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="chargeback">Chargeback</option>
+            <select value={jobTypeFilter} onChange={e => setJobTypeFilter(e.target.value)} className="px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none">
+              <option value="all">All Types</option><option value="scheduled">Scheduled</option><option value="chargeback">Chargeback</option>
             </select>
-            <select
-              value={workroomFilter}
-              onChange={e => setWorkroomFilter(e.target.value)}
-              className="px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-            >
-              <option value="all">All Workrooms</option>
-              {workrooms.map(w => <option key={w} value={w}>{w}</option>)}
+            <select value={workroomFilter} onChange={e => setWorkroomFilter(e.target.value)} className="px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none">
+              <option value="all">All Workrooms</option>{workrooms.map(w => <option key={w} value={w}>{w}</option>)}
             </select>
           </div>
 
-          {/* Table */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-brand-green" />
-            </div>
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
               <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 font-semibold">No saved job reports</p>
               <p className="text-sm text-slate-400 mt-1">Save jobs from Cilio Jobs to see them here.</p>
-              <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors">
-                <Hammer className="w-4 h-4" /> Go to Cilio Jobs
-              </Link>
+              <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Cilio Jobs</Link>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
@@ -254,58 +301,50 @@ export default function JobsReportsPage() {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80">
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Job Name / Order #</th>
+                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Labor</th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Type</th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
                       <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((record) => {
+                    {filtered.map(record => {
                       const poAmount = record.cilioPayload?.poAmount ?? null
                       const statusClass = getStatusPill(record.orderStatusDescription)
                       const customerName = getCustomerName(record)
-
+                      const p = record.cilioPayload
+                      const schedDate = record.scheduledInstallDate || record.cilioPayload?.scheduledInstallDate || p?.dateInformation?.scheduledInstallDate || null
+                      const measureDate = record.measureDate || p?.measureDate || p?.dateInformation?.measureDate || null
+                      const bookingDate = record.bookingDate || p?.bookingDate || p?.dateInformation?.bookingDate || null
                       return (
-                        <tr
-                          key={record.id}
-                          onClick={() => setDetailRecord(record)}
-                          className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"
-                        >
+                        <tr key={record.id} onClick={() => openDetail(record)} className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center">
-                                <Building2 className="w-4 h-4 text-brand-green" />
-                              </div>
+                              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center"><Building2 className="w-4 h-4 text-brand-green" /></div>
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-900 truncate">
-                                  {customerName || record.storeName || `Order #${record.orderNumber}`}
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                  #{record.orderNumber}
-                                  {record.storeName && <> · {record.storeName}</>}
-                                </p>
+                                <p className="text-sm font-semibold text-slate-900 truncate">{customerName || record.storeName || `Order #${record.orderNumber}`}</p>
+                                <p className="text-xs text-slate-400">#{record.orderNumber}{record.storeName && <> · {record.storeName}</>}{record.installerName && record.installerId && <> · <Link href={`/dashboard/installers/${record.installerId}`} onClick={e => e.stopPropagation()} className="text-brand-green underline underline-offset-2 decoration-brand-green/30 hover:decoration-brand-green/60 font-medium transition-colors">{record.installerName}</Link></>}</p>
+                                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                                  {schedDate && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(schedDate)}</span>}
+                                  {measureDate && <span className="flex items-center gap-1">· Measure {formatDate(measureDate)}</span>}
+                                  {bookingDate && <span className="flex items-center gap-1">· Booked {formatDate(bookingDate)}</span>}
+                                </div>
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                              record.jobType === 'chargeback'
-                                ? 'bg-red-50 text-red-600 border border-red-200'
-                                : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                            }`}>
-                              {record.jobType}
-                            </span>
+                            {record.laborCategoryDescription ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
+                                <Wrench className="w-3 h-3" />
+                                {record.laborCategoryDescription}
+                              </span>
+                            ) : <span className="text-xs text-slate-300">—</span>}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>
-                              {record.orderStatusDescription || 'Unknown'}
-                            </span>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${record.jobType === 'chargeback' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>{record.jobType}</span>
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className="text-sm font-semibold text-slate-900">
-                              {formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}
-                            </span>
-                          </td>
+                          <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>{record.orderStatusDescription || 'Unknown'}</span></td>
+                          <td className="px-4 py-3 text-right"><span className="text-sm font-semibold text-slate-900">{formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}</span></td>
                         </tr>
                       )
                     })}
@@ -317,214 +356,345 @@ export default function JobsReportsPage() {
         </main>
       </div>
 
-      {/* ── Detail Modal ── */}
+      {/* Detail Modal */}
       <AnimatePresence>
-        {detailRecord && (() => {
-          const p = detailRecord.cilioPayload || {}
-          const statusClass = getStatusPill(detailRecord.orderStatusDescription)
-          const customerName = getCustomerName(detailRecord)
+        {detailRecord && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={closeDetail} />
+            <div className="relative min-h-screen flex items-start justify-center px-2 sm:px-4 py-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden my-4 pointer-events-auto"
+              >
+                {loadingDetail ? (
+                  <div className="flex flex-col items-center py-24">
+                    <Loader2 className="w-10 h-10 text-brand-green animate-spin mb-4" />
+                    <p className="text-brand-green/70 font-medium">Loading full job detail...</p>
+                  </div>
+                ) : detailError ? (
+                  <div className="flex flex-col items-center py-24 text-slate-400">
+                    <AlertCircle className="w-14 h-14 mb-4 opacity-40" />
+                    <p className="font-medium text-lg text-slate-500">{detailError}</p>
+                    <button onClick={() => openDetail(detailRecord)} className="mt-4 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/20">Retry</button>
+                  </div>
+                ) : !fullDetail ? (
+                  <div className="flex flex-col items-center py-24 text-slate-400">
+                    <AlertCircle className="w-14 h-14 mb-4 opacity-40" />
+                    <p className="font-medium text-lg text-slate-500">Failed to load job detail</p>
+                    <button onClick={() => openDetail(detailRecord)} className="mt-4 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/20">Retry</button>
+                  </div>
+                ) : (() => {
+                  const d = fullDetail
+                  const gi = d.generalInformation || {}
+                  const ci = d.customerInformation || {}
+                  const di = d.dateInformation || {}
+                  const si = d.schedulingInformation || {}
+                  const st = d.storeInformation || {}
 
-          return (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 overflow-y-auto"
-            >
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDetailRecord(null)} />
-              <div className="relative min-h-screen flex items-start justify-center p-4 pointer-events-none">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                  className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden my-4 pointer-events-auto"
-                >
-                  {/* Hero Header */}
-                  <div className="bg-gradient-to-br from-brand-green to-emerald-700 px-6 sm:px-8 py-6 sm:py-8 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-                    <div className="absolute bottom-0 left-1/2 w-96 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-                    <div className="relative">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold tracking-wide">
-                              #{detailRecord.orderNumber}
-                            </span>
-                            <span className={`px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold`}>
-                              {detailRecord.orderStatusDescription || 'Unknown'}
-                            </span>
-                            {p.jobNumber && (
-                              <span className="px-2.5 py-1 bg-white/10 rounded-full text-white/70 text-xs">
-                                Job #{p.jobNumber}
-                              </span>
+                  return <>
+                    {/* Hero Header */}
+                    <div className="bg-gradient-to-br from-brand-green to-emerald-700 px-4 sm:px-8 py-5 sm:py-8 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+                      <div className="absolute bottom-0 left-1/2 w-96 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+                      <div className="relative">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold tracking-wide">#{d.orderNumber}</span>
+                              {gi.orderStatusEnum && <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold">{gi.orderStatusEnum}</span>}
+                              {gi.orderTypeEnum && <span className="px-2.5 py-1 bg-white/10 rounded-full text-white/70 text-xs">{gi.orderTypeEnum}</span>}
+                            </div>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                              {ci.customerFirstLast || [ci.customerFirstName, ci.customerLastName].filter(Boolean).join(' ') || `Order #${d.orderNumber}`}
+                            </h1>
+                            {ci.customerAddress?.fullAddress && (
+                              <p className="text-white/70 text-sm flex items-center gap-2"><MapPin className="w-3.5 h-3.5 flex-shrink-0" /><span className="truncate">{ci.customerAddress.fullAddress}</span></p>
                             )}
                           </div>
-                          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                            {customerName || `Order #${detailRecord.orderNumber}`}
-                          </h1>
+                          <button onClick={closeDetail} className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors backdrop-blur-sm flex-shrink-0 ml-2"><X className="w-5 h-5 text-white" /></button>
                         </div>
-                        <button
-                          onClick={() => setDetailRecord(null)}
-                          className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors backdrop-blur-sm flex-shrink-0"
-                        >
-                          <X className="w-5 h-5 text-white" />
-                        </button>
-                      </div>
 
-                      {/* Quick Stats */}
-                      <div className="flex flex-wrap gap-2 sm:gap-3 mt-5">
-                        {p.poAmount != null && (
-                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
-                            <DollarSign className="w-4 h-4 text-white/60" />
-                            <div>
-                              <p className="text-white/50 text-xs">PO Amount</p>
-                              <p className="text-white font-bold text-sm">{formatCurrency(p.poAmount)}</p>
-                            </div>
-                          </div>
-                        )}
-                        {p.invoiceNumber && (
-                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
-                            <Receipt className="w-4 h-4 text-white/60" />
-                            <div>
-                              <p className="text-white/50 text-xs">Invoice</p>
-                              <p className="text-white font-bold text-sm">{p.invoiceNumber}</p>
-                            </div>
-                          </div>
-                        )}
-                        {p.projectNumber && (
-                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
-                            <Briefcase className="w-4 h-4 text-white/60" />
-                            <div>
-                              <p className="text-white/50 text-xs">Project</p>
-                              <p className="text-white font-bold text-sm">{p.projectNumber}</p>
-                            </div>
-                          </div>
-                        )}
-                        {detailRecord.installerName && (
-                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
-                            <User className="w-4 h-4 text-white/60" />
-                            <div className="min-w-0">
-                              <p className="text-white/50 text-xs">Installer</p>
-                              <p className="text-white font-bold text-sm truncate">{detailRecord.installerName}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Detail Content */}
-                  <div className="p-6 space-y-4 bg-slate-50/50">
-                    {/* Job Info */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
-                        <Briefcase className="w-4 h-4 text-brand-green" /> Job Information
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        <Field label="Order #" value={detailRecord.orderNumber} />
-                        <Field label="Job #" value={p.jobNumber} icon={Wrench} />
-                        <Field label="Project #" value={p.projectNumber} />
-                        <Field label="Store" value={detailRecord.storeName || p.storeName} icon={Store} />
-                        <Field label="Store #" value={detailRecord.storeNumber || p.storeNumber} />
-                        <Field label="Workroom" value={detailRecord.workroom} icon={MapPin} />
-                        <Field label="Labor Category" value={detailRecord.laborCategoryDescription || p.laborCategoryDescription} />
-                        <Field label="Job Type" value={detailRecord.jobType === 'chargeback' ? 'Chargeback' : 'Scheduled'} />
-                        <Field label="Status" value={detailRecord.orderStatusDescription} />
-                      </div>
-                    </div>
-
-                    {/* Financial */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
-                        <DollarSign className="w-4 h-4 text-brand-green" /> Financial
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        <Field label="PO Amount" value={p.poAmount != null ? formatCurrency(p.poAmount) : null} accent />
-                        <Field label="Labor Amount" value={p.laborAmount != null ? formatCurrency(p.laborAmount) : null} />
-                        <Field label="Sales Order" value={p.salesOrderNumber} />
-                        <Field label="Invoice #" value={p.invoiceNumber} />
-                        <Field label="Tax Amount" value={p.taxAmount != null ? formatCurrency(p.taxAmount) : null} />
-                        <Field label="Product Amount" value={p.productAmount != null ? formatCurrency(p.productAmount) : null} />
-                      </div>
-                    </div>
-
-                    {/* Dates */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
-                        <Calendar className="w-4 h-4 text-brand-green" /> Dates
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                        <Field label="Scheduled Install" value={formatDate(detailRecord.scheduledInstallDate)} icon={Clock} />
-                        <Field label="Measure Date" value={formatDate(detailRecord.measureDate)} />
-                        <Field label="Booking Date" value={formatDate(detailRecord.bookingDate)} />
-                        <Field label="Saved At" value={formatDate(detailRecord.createdAt)} />
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    {(p.scopeOfWorkNotes || p.deliveryInfoSchedulingNotes) && (
-                      <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
-                          <FileText className="w-4 h-4 text-brand-green" /> Notes
-                        </h3>
-                        <div className="space-y-3">
-                          {p.scopeOfWorkNotes && (
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Scope of Work</p>
-                              <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3 border border-slate-100">{p.scopeOfWorkNotes}</p>
+                        {/* Quick Stats */}
+                        <div className="flex flex-wrap gap-2 sm:gap-3 mt-5">
+                          {gi.poAmount != null && (
+                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2">
+                              <DollarSign className="w-4 h-4 text-white/60" />
+                              <div><p className="text-white/50 text-xs">PO Amount</p><p className="text-white font-bold text-sm">{formatCurrency(gi.poAmount)}</p></div>
                             </div>
                           )}
-                          {p.deliveryInfoSchedulingNotes && (
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Scheduling Notes</p>
-                              <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3 border border-slate-100">{p.deliveryInfoSchedulingNotes}</p>
+                          {gi.invoiceNumber && (
+                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2">
+                              <Receipt className="w-4 h-4 text-white/60" />
+                              <div><p className="text-white/50 text-xs">Invoice</p><p className="text-white font-bold text-sm">{gi.invoiceNumber}</p></div>
+                            </div>
+                          )}
+                          {gi.jobNumber && (
+                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2">
+                              <Wrench className="w-4 h-4 text-white/60" />
+                              <div><p className="text-white/50 text-xs">Job #</p><p className="text-white font-bold text-sm">{gi.jobNumber}</p></div>
+                            </div>
+                          )}
+                          {gi.projectNumber && (
+                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2">
+                              <Briefcase className="w-4 h-4 text-white/60" />
+                              <div><p className="text-white/50 text-xs">Project</p><p className="text-white font-bold text-sm">{gi.projectNumber}</p></div>
+                            </div>
+                          )}
+                          {detailRecord.installerName && (
+                            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2">
+                              <User className="w-4 h-4 text-white/60" />
+                              <div><p className="text-white/50 text-xs">Installer</p>{detailRecord.installerId ? <Link href={`/dashboard/installers/${detailRecord.installerId}`} className="text-white font-bold text-sm underline underline-offset-2 decoration-white/30 hover:decoration-white/60 transition-colors">{detailRecord.installerName}</Link> : <p className="text-white font-bold text-sm">{detailRecord.installerName}</p>}</div>
                             </div>
                           )}
                         </div>
                       </div>
-                    )}
-
-                    {/* Quick Actions */}
-                    <div className="bg-white rounded-2xl border border-brand-green/20 p-5 bg-gradient-to-br from-brand-green/5 to-white">
-                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
-                        <ExternalLink className="w-4 h-4 text-brand-green" /> Quick Actions
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          href={`/dashboard/jobs/cilio?search=${detailRecord.orderNumber}`}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-green/20 bg-brand-green/5 text-sm font-semibold text-brand-green hover:bg-brand-green/10 transition-colors"
-                        >
-                          <Search className="w-4 h-4" />
-                          Find in Jobs
-                        </Link>
-                        <a
-                          href={`https://app.cilio.com/Job/Detail/${detailRecord.orderNumber}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          Open in Cilio
-                        </a>
-                        {detailRecord.storeNumber && (
-                          <a
-                            href={`https://app.cilio.com/Store/Detail/${detailRecord.storeNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-                          >
-                            <Store className="w-4 h-4" />
-                            Store: {detailRecord.storeNumber}
-                          </a>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          )
-        })()}
+
+                    {/* Section Content */}
+                    <div className="p-4 sm:p-6 space-y-4 bg-slate-50/50 max-h-[70vh] overflow-y-auto">
+                      {/* Customer */}
+                      {ci && (ci.customerFirstLast || ci.customerFirstName || ci.customerEmail || ci.customerPhone) && (
+                        <SectionCard icon={User} title="Customer">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Field label="Name" value={ci.customerFirstLast} />
+                            <Field label="First Name" value={ci.customerFirstName} />
+                            <Field label="Last Name" value={ci.customerLastName} />
+                            <Field label="Customer #" value={ci.customerNumber} />
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                            <div className="col-span-2"><Field label="Email" value={ci.customerEmail} noTruncate /></div>
+                            <Field label="Phone" value={ci.customerPhone} icon={Phone} />
+                            <Field label="Alt Contact" value={ci.customerAltContact} />
+                          </div>
+                          {ci.customerAddress?.fullAddress && (
+                            <div className="mt-3 bg-brand-green/5 rounded-xl p-3 border border-brand-green/20">
+                              <p className="text-[10px] font-bold text-brand-green uppercase tracking-wider mb-1">Service Address</p>
+                              <p className="text-sm font-semibold text-slate-800">{ci.customerAddress.fullAddress}</p>
+                              {ci.customerAddress.city && <p className="text-xs text-slate-500">{ci.customerAddress.city}{ci.customerAddress.state ? `, ${ci.customerAddress.state}` : ''} {ci.customerAddress.zip}</p>}
+                            </div>
+                          )}
+                        </SectionCard>
+                      )}
+
+                      {/* General */}
+                      {gi && Object.keys(gi).length > 1 && (
+                        <SectionCard icon={Briefcase} title="General">
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            <Field label="Job #" value={gi.jobNumber} />
+                            <Field label="Project #" value={gi.projectNumber} />
+                            <Field label="PO Amount" value={gi.poAmount != null ? formatCurrency(gi.poAmount) : null} accent />
+                            <Field label="Invoice #" value={gi.invoiceNumber} />
+                            <Field label="Sales Order" value={gi.salesOrderNumber} />
+                            <Field label="Order Type" value={gi.orderTypeEnum} />
+                            <Field label="Status" value={gi.orderStatusEnum} />
+                            <Field label="Status Date" value={formatDate(gi.currentOrderStatusDate)} />
+                            <Field label="Construction" value={gi.constructionTypeEnum} />
+                            <Field label="Labor Amount" value={gi.laborAmount} />
+                            <Field label="Budgeted Amt" value={gi.budgetedAmount} />
+                            <Field label="Budgeted Year" value={gi.budgetedYear} />
+                            <Field label="Job Duration" value={gi.jobDuration} />
+                            <Field label="Total Duration" value={gi.totalJobDuration} />
+                            <Field label="Est. Time" value={gi.estTimeToComplete} />
+                            <Field label="Distance" value={gi.siteDetailsDistanceToSeller != null ? gi.siteDetailsDistanceToSeller + ' mi' : null} />
+                            <Field label="Store District" value={gi.storeDistrict} />
+                            <Field label="Project Umbrella" value={gi.projectUmbrella} />
+                            <Field label="Store PO" value={gi.orderStorePO} />
+                            <Field label="PO Daily Total" value={gi.poAmountDailyTotal != null ? formatCurrency(gi.poAmountDailyTotal) : null} />
+                            <Field label="Product Amt" value={gi.productAmount} />
+                            <Field label="Permit #" value={gi.permitNumber} />
+                            <Field label="Year Built" value={gi.yearBuilt} />
+                            <Field label="Lead-Safe" value={gi.leadSafeJob === 'True' ? 'Yes' : gi.leadSafeJob} />
+                          </div>
+                          {/* Payment */}
+                          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Field label="Paid in Full" value={gi.paidInFull} />
+                            <Field label="Total Paid" value={gi.paymentsTotalPaid} accent />
+                            <Field label="Remaining Due" value={gi.paymentsRemainingDue} />
+                            <Field label="Pending" value={gi.paymentsPendingAmount} />
+                            <Field label="Last Trans Status" value={gi.paymentsLastTransStatus} />
+                            <Field label="COD" value={gi.cod} />
+                          </div>
+                          {/* Sales */}
+                          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <Field label="Sales Associate" value={gi.salesAssociate} />
+                            <div className="col-span-2"><Field label="SA Email" value={gi.salesAssociateEmail} noTruncate /></div>
+                            <Field label="SA Phone" value={gi.salesAssociatePhone} />
+                            <Field label="Invoice Comment" value={gi.invoiceComment} />
+                            <Field label="Reason Changed" value={gi.reasonChanged} />
+                          </div>
+                          {/* Notes */}
+                          {(gi.scopeOfWorkNotes || gi.deliveryInfoSchedulingNotes) && (
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {gi.scopeOfWorkNotes && (
+                                <div className="bg-slate-100/60 rounded-xl p-3">
+                                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Scope of Work</p>
+                                  <p className="text-sm text-slate-700 leading-relaxed">{String(gi.scopeOfWorkNotes).replace(/<[^>]+>/g, '')}</p>
+                                </div>
+                              )}
+                              {gi.deliveryInfoSchedulingNotes && (
+                                <div className="bg-slate-100/60 rounded-xl p-3">
+                                  <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Scheduling Notes</p>
+                                  <p className="text-sm text-slate-700 leading-relaxed">{String(gi.deliveryInfoSchedulingNotes).replace(/<[^>]+>/g, '')}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </SectionCard>
+                      )}
+
+                      {/* Dates */}
+                      {di && (di.currentDate || di.desiredInstallDate || di.scheduledInstallDate || di.measureDate) && (
+                        <SectionCard icon={Calendar} title="Dates">
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <Field label="Current Date" value={formatDate(di.currentDate)} />
+                            <Field label="Desired Install" value={formatDate(di.desiredInstallDate)} />
+                            <Field label="Scheduled Install" value={formatDate(di.scheduledInstallDate)} icon={Clock} />
+                            <Field label="Measure Date" value={formatDate(di.measureDate)} />
+                            <Field label="Booking Date" value={formatDate(di.bookingDate)} />
+                            <Field label="Status Date" value={formatDate(di.statusDate)} />
+                            <Field label="ETA Date" value={formatDate(di.etaDate)} />
+                            <Field label="Current Promise" value={formatDate(di.currentPromiseDate)} />
+                            <Field label="Original Promise" value={formatDate(di.originalPromiseDate)} />
+                            <Field label="Invoice Date" value={formatDate(di.invoiceDate)} />
+                            <Field label="Follow-Up" value={formatDate(di.followUpDate)} />
+                            <Field label="Import Date" value={formatDate(di.importDate)} />
+                          </div>
+                        </SectionCard>
+                      )}
+
+                      {/* Scheduling */}
+                      {si && (si.scheduledUserFirmName || si.scheduleDate || si.taskOneResource || si.taskTwoResource || si.taskThreeResource) && (
+                        <SectionCard icon={Briefcase} title="Scheduling">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {si.scheduledUserFirmName && <div className="col-span-2"><Field label="Firm Name" value={si.scheduledUserFirmName} noTruncate /></div>}
+                            <Field label="Schedule Date" value={formatDate(si.scheduleDate)} />
+                            <Field label="Lead Cert#" value={si.scheduledUserLeadCertificationNumber} />
+                            <Field label="Firm Cert#" value={si.scheduledUserFirmCertificationNumber} />
+                            <Field label="Renovator" value={si.scheduledUserRenovatorName} />
+                            <Field label="Avg Time to Seller" value={si.siteDetailsAvgTimeToSeller} />
+                          </div>
+                          {/* Tasks */}
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {[1, 2, 3].map(n => {
+                              const res = (si as any)[`task${['One', 'Two', 'Three'][n - 1]}Resource`]
+                              const start = (si as any)[`task${['One', 'Two', 'Three'][n - 1]}StartDate`]
+                              const end = (si as any)[`task${['One', 'Two', 'Three'][n - 1]}EndDate`]
+                              if (!res && !start && !end) return null
+                              return (
+                                <div key={n} className="bg-brand-green/5 rounded-xl p-3 border border-brand-green/20">
+                                  <p className="text-xs font-bold text-brand-green mb-2">Task #{n}</p>
+                                  <div className="space-y-1.5">
+                                    {res && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Resource:</span> {res}</p>}
+                                    {start && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">Start:</span> {formatDate(start)}</p>}
+                                    {end && <p className="text-xs text-slate-600"><span className="font-medium text-slate-500">End:</span> {formatDate(end)}</p>}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </SectionCard>
+                      )}
+
+                      {/* Store */}
+                      {st && (st.storeName || st.storeNumber) && (
+                        <SectionCard icon={Store} title="Store">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="col-span-2"><Field label="Store Name" value={st.storeName} noTruncate /></div>
+                            <Field label="Store #" value={st.storeNumber} />
+                            <Field label="Region" value={st.region} />
+                            <Field label="Phone" value={st.phone} />
+                            <div className="col-span-2"><Field label="Email" value={st.email} noTruncate /></div>
+                          </div>
+                          {st.address?.fullAddress && (
+                            <div className="mt-3 bg-brand-green/5 rounded-xl p-3 border border-brand-green/20">
+                              <p className="text-sm font-medium text-slate-700"><MapPin className="w-4 h-4 inline-block mr-1 text-brand-green" /> {st.address.fullAddress}</p>
+                            </div>
+                          )}
+                        </SectionCard>
+                      )}
+
+                      {/* Notes */}
+                      {detailNotes.length > 0 && (
+                        <SectionCard icon={StickyNote} title="Notes">
+                          <div className="space-y-3">
+                            {detailNotes.map((note) => (
+                              <div key={note.orderNoteNumber} className="bg-white rounded-lg border border-brand-green/10 p-3">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                    note.noteSource === 'System' ? 'bg-brand-green/10 text-brand-green' : 'bg-blue-50 text-blue-600'
+                                  }`}>
+                                    {note.noteSource || 'Note'}
+                                  </span>
+                                  <span className="text-xs text-slate-400">{new Date(note.createdOn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                  {note.orderNoteTypeDescription && (
+                                    <span className="text-xs text-slate-400 border-l border-slate-200 pl-2">{note.orderNoteTypeDescription}</span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{stripHtml(note.note)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </SectionCard>
+                      )}
+
+                      {/* Attachments */}
+                      {loadingAttachments ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-brand-green/10 flex items-center justify-center">
+                              <Paperclip className="w-4 h-4 text-brand-green" />
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-800">Attachments</h3>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Loading attachments...
+                          </div>
+                        </div>
+                      ) : jobAttachments.length > 0 ? (
+                        <SectionCard icon={Paperclip} title="Attachments">
+                          <div className="space-y-2">
+                            {jobAttachments.map(att => (
+                              <div
+                                key={att.orderAttachmentNumber}
+                                className="flex items-center justify-between bg-white rounded-lg border border-slate-200 hover:border-brand-green/30 hover:bg-brand-green/[0.02] transition-all p-3 group"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-7 h-7 rounded bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+                                    <Paperclip className="w-3.5 h-3.5 text-brand-green" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-slate-700 truncate">{att.filename}</p>
+                                    <p className="text-xs text-slate-400">{att.orderAttachmentTypeDescription}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                  <span className="text-xs text-slate-400">{formatDate(att.lastModifiedDate)}</span>
+                                  <a
+                                    href={`/api/cilio/jobs/${detailRecord.orderNumber}/attachment/${att.orderAttachmentNumber}/file`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-brand-green bg-brand-green/10 rounded-lg hover:bg-brand-green/20 transition-colors opacity-0 group-hover:opacity-100"
+                                    title={`Download ${att.filename}`}
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    Download
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </SectionCard>
+                      ) : null}
+                    </div>
+                  </>
+                })()}
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   )
