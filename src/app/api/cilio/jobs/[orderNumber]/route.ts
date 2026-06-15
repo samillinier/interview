@@ -70,11 +70,12 @@ export async function GET(
     if (record) {
       const name =
         record.installerName?.trim() ||
-        `${record.Installer.firstName} ${record.Installer.lastName}`.trim()
+        (record.Installer ? `${record.Installer.firstName} ${record.Installer.lastName}`.trim() : null) ||
+        ''
       installer = {
-        id: record.installerId,
+        id: record.installerId ?? '',
         name,
-        companyName: record.Installer.companyName,
+        companyName: record.Installer?.companyName ?? null,
       }
     } else {
       const resourceName = extractInstallerResourceName(detail)

@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
         select: { orderNumber: true, installerId: true, installerName: true },
       })
       for (const r of records) {
-        installerMap[r.orderNumber] = { id: r.installerId, name: r.installerName || '' }
+        installerMap[r.orderNumber] = r.installerId ? { id: r.installerId, name: r.installerName || '' } : null
       }
     }
 
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         select: { orderNumber: true, installerId: true, installerName: true },
       })
       for (const r of allRecords) {
-        allInstallerMap[r.orderNumber] = { id: r.installerId, name: r.installerName || '' }
+        allInstallerMap[r.orderNumber] = r.installerId ? { id: r.installerId, name: r.installerName || '' } : null
       }
     }
 

@@ -7,6 +7,10 @@
     {
       "path": "/api/installers/check-incomplete-interviews",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cilio/jobs/auto-sync",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

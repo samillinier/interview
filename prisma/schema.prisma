@@ -955,13 +955,13 @@ model CilioJobRecord {
   bookingDate            DateTime?
 
   /// Matched installer from local DB
-  installerId            String
+  installerId            String?
   installerName          String?
 
   /// Snapshot of Cilio data (JSON)
   cilioPayload           Json
 
-  Installer Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  Installer Installer? @relation(fields: [installerId], references: [id], onDelete: SetNull)
 
   @@index([installerId])
   @@index([jobType])

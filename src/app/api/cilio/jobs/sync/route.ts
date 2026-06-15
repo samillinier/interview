@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       scheduledInstallDate?: string | null
       measureDate?: string | null
       bookingDate?: string | null
-      installerId: string
+      installerId?: string | null
       installerName?: string | null
       cilioPayload: any
     }> = body.jobs || []
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     let synced = 0
 
     for (const job of jobs) {
-      if (!job.orderNumber || !job.installerId) continue
+      if (!job.orderNumber) continue
 
       await prisma.cilioJobRecord.upsert({
         where: { orderNumber: job.orderNumber },
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
           scheduledInstallDate: job.scheduledInstallDate ? new Date(job.scheduledInstallDate) : null,
           measureDate: job.measureDate ? new Date(job.measureDate) : null,
           bookingDate: job.bookingDate ? new Date(job.bookingDate) : null,
-          installerId: job.installerId,
+          installerId: job.installerId || null,
           installerName: job.installerName ?? null,
           cilioPayload: job.cilioPayload ?? {},
         },
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
           scheduledInstallDate: job.scheduledInstallDate ? new Date(job.scheduledInstallDate) : null,
           measureDate: job.measureDate ? new Date(job.measureDate) : null,
           bookingDate: job.bookingDate ? new Date(job.bookingDate) : null,
-          installerId: job.installerId,
+          installerId: job.installerId || null,
           installerName: job.installerName ?? null,
           cilioPayload: job.cilioPayload ?? {},
         },
