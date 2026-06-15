@@ -2009,10 +2009,10 @@ export default function TrackingPage() {
                       {visibleDefs.map((def) => (
                         <th
                           key={def.id}
-                          className={`sticky top-[-1.5rem] z-20 bg-slate-50 px-1.5 py-2 text-center border-l border-slate-200 align-bottom ${
+                          className={`sticky top-[-1.5rem] z-20 bg-slate-50 px-1 py-2 text-center border-l border-slate-200 align-bottom ${
                             def.id === 'surface' || def.id === 'compliance'
-                              ? 'min-w-[5.75rem]'
-                              : 'min-w-[52px]'
+                              ? 'min-w-[5rem]'
+                              : 'min-w-[44px]'
                           }`}
                           title={`${def.label}${def.required ? ' (required)' : ''}`}
                         >
@@ -2022,7 +2022,7 @@ export default function TrackingPage() {
                               {def.required ? <span className="text-slate-500">*</span> : null}
                             </span>
                             {def.subtitle ? (
-                              <span className="text-[8px] font-medium text-slate-500 leading-snug text-center normal-case tracking-normal max-w-[4.85rem]">
+                              <span className="text-[7px] font-medium text-slate-500 leading-snug text-center normal-case tracking-normal max-w-[3.8rem]">
                                 {def.subtitle}
                               </span>
                             ) : null}
@@ -2267,7 +2267,7 @@ export default function TrackingPage() {
                                         ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
                                         : undefined
                                     }
-                                    className="relative rounded-lg px-2 py-1.5 -mx-1 -my-0.5 min-w-[4.5rem] min-h-[2.5rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
+                                    className="relative rounded-lg px-1 py-1.5 -mx-0.5 -my-0.5 min-w-[3.5rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
                                     title={canEditRow ? 'Choose flooring surface' : 'Auto-populated row'}
                                     aria-label="Choose flooring surface"
                                   >
@@ -2285,7 +2285,7 @@ export default function TrackingPage() {
                                   </button>
                                 ) : def.id === 'compliance' ? (
                                   <span
-                                    className="inline-flex min-w-[5rem] min-h-[2.5rem] items-center justify-center px-2 py-1.5 text-center"
+                                    className="inline-flex min-w-[4rem] min-h-[2.25rem] items-center justify-center px-1 py-1.5 text-center"
                                     title="Set on installer profile → Insurance & Registration"
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
@@ -2318,7 +2318,7 @@ export default function TrackingPage() {
                                         )
                                       }
                                     }}
-                                    className="relative rounded-lg px-2 py-1.5 -mx-1 -my-0.5 min-w-[2.5rem] min-h-[2.5rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors cursor-pointer"
+                                    className="relative rounded-lg px-1 py-1.5 -mx-0.5 -my-0.5 min-w-[2rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors cursor-pointer"
                                     aria-label={`Edit ${def.label} status`}
                                     title="Edit column status"
                                   >
@@ -2344,7 +2344,7 @@ export default function TrackingPage() {
                                         ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
                                         : undefined
                                     }
-                                    className="relative rounded-lg px-2 py-1.5 -mx-1 -my-0.5 min-w-[2.5rem] min-h-[2.5rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
+                                    className="relative rounded-lg px-1 py-1.5 -mx-0.5 -my-0.5 min-w-[2rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
                                     title="Set column status"
                                   >
                                     {renderMatrixCell(inst.cells[def.id])}
