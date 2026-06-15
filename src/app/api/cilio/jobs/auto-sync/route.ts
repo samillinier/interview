@@ -10,8 +10,10 @@ export const maxDuration = 60
  * GET  /api/cilio/jobs/auto-sync  ← Vercel Cron Job (every 5 min)
  * POST /api/cilio/jobs/auto-sync  ← manual trigger (requires auth)
  *
- * Fetches ALL Cilio jobs (parallel status-term searches) and upserts
- * each one into CilioJobRecord so the Reports archive stays current.
+ * Phase 1: Fetches ALL Cilio jobs (parallel status-term searches) and upserts
+ *          each one into CilioJobRecord so the Reports archive stays current.
+ * Phase 2: Enriches records that are missing dates by fetching full job detail
+ *          from Cilio (scheduledInstallDate, measureDate, bookingDate).
  */
 export async function GET(request: NextRequest) {
   return runAutoSync(request)
@@ -24,7 +26,6 @@ export async function POST(request: NextRequest) {
 async function runAutoSync(request: NextRequest) {
   const isGet = request.method === "GET"
 
-  // Auth: GET (cron) uses bearer or query param, POST uses session
   if (isGet) {
     const auth = request.headers.get("authorization") || ""
     const headerToken = auth.startsWith("Bearer ") ? auth.slice(7) : ""
@@ -87,6 +88,7 @@ async function runAutoSync(request: NextRequest) {
     })
   }
 
+  // Phase 1: Bulk upsert search results
   let synced = 0
   let skipped = 0
 
@@ -95,6 +97,14 @@ async function runAutoSync(request: NextRequest) {
     const isChargeback = statusDesc.toLowerCase().includes("chargeback") ||
       statusDesc.toLowerCase().includes("charge back")
     const jobType = isChargeback ? "chargeback" : "scheduled"
+
+    const dateFields = job.scheduledInstallDate
+      ? {
+          scheduledInstallDate: new Date(job.scheduledInstallDate),
+          measureDate: job.measureDate ? new Date(job.measureDate) : null,
+          bookingDate: job.bookingDate ? new Date(job.bookingDate) : null,
+        }
+      : {}
 
     try {
       await prisma.cilioJobRecord.upsert({
@@ -121,9 +131,7 @@ async function runAutoSync(request: NextRequest) {
           storeName: job.storeName || null,
           laborCategoryDescription: job.laborCategoryDescription || null,
           workroom: getWorkroomByStoreNumber(job.storeNumber || "") || null,
-          scheduledInstallDate: job.scheduledInstallDate ? new Date(job.scheduledInstallDate) : null,
-          measureDate: job.measureDate ? new Date(job.measureDate) : null,
-          bookingDate: job.bookingDate ? new Date(job.bookingDate) : null,
+          ...dateFields,
           cilioPayload: job,
         },
       })
@@ -133,14 +141,56 @@ async function runAutoSync(request: NextRequest) {
     }
   }
 
+  // Phase 2: Enrich records missing dates from the full detail API
+  let enriched = 0
+  try {
+    const missingDates = await prisma.cilioJobRecord.findMany({
+      where: { scheduledInstallDate: null },
+      select: { orderNumber: true },
+      orderBy: { updatedAt: "desc" },
+      take: 30,
+    })
+
+    if (missingDates.length > 0) {
+      console.log(`[AutoSync] Enriching ${missingDates.length} records missing dates...`)
+
+      for (const record of missingDates) {
+        try {
+          const detail = await cilio.getJobDetail(record.orderNumber)
+          const di = (detail as any).dateInformation || {}
+          const sched = di.scheduledInstallDate ?? null
+          const meas = di.measureDate ?? null
+          const book = di.bookingDate ?? null
+
+          if (sched || meas || book) {
+            await prisma.cilioJobRecord.update({
+              where: { orderNumber: record.orderNumber },
+              data: {
+                scheduledInstallDate: sched ? new Date(sched) : null,
+                measureDate: meas ? new Date(meas) : null,
+                bookingDate: book ? new Date(book) : null,
+              },
+            })
+            enriched++
+          }
+        } catch {
+          // Skip individual enrichment failures
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[AutoSync] Enrichment phase failed:", e)
+  }
+
   const durationMs = Date.now() - startTime
-  console.log(`[AutoSync] Done: ${synced} upserted, ${skipped} skipped in ${durationMs}ms`)
+  console.log(`[AutoSync] Done: ${synced} upserted, ${skipped} skipped, ${enriched} enriched in ${(durationMs / 1000).toFixed(1)}s`)
 
   return NextResponse.json({
     synced,
     skipped,
+    enriched,
     total: allJobs.length,
-    message: `Synced ${synced} jobs (${skipped} skipped) in ${(durationMs / 1000).toFixed(1)}s`,
+    message: `Synced ${synced} jobs, enriched ${enriched} with dates (${skipped} skipped) in ${(durationMs / 1000).toFixed(1)}s`,
     durationMs,
   })
 }
