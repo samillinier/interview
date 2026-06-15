@@ -22,6 +22,24 @@ export async function GET(request: NextRequest) {
     }
 
     const records = await prisma.cilioJobRecord.findMany({
+      select: {
+        id: true,
+        orderNumber: true,
+        orderStatusDescription: true,
+        jobType: true,
+        storeNumber: true,
+        storeName: true,
+        laborCategoryDescription: true,
+        workroom: true,
+        scheduledInstallDate: true,
+        measureDate: true,
+        bookingDate: true,
+        installerId: true,
+        installerName: true,
+        createdAt: true,
+        updatedAt: true,
+        cilioPayload: true,
+      },
       orderBy: { updatedAt: 'desc' },
       take: 1000,
     })

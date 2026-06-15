@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Fragment } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertCircle,
-  ArrowRight,
   Building2,
   Calendar,
+  ChevronDown,
   ClipboardList,
+  DollarSign,
   ExternalLink,
   FileText,
   Hammer,
@@ -19,8 +20,6 @@ import {
   Search,
   Store,
   User,
-  X,
-  ChevronDown,
 } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
@@ -44,6 +43,7 @@ type CilioJobRecord = {
   installerId: string | null
   createdAt: string
   updatedAt: string
+  cilioPayload: any
 }
 
 const formatDate = (d: string | null) => {
@@ -52,7 +52,20 @@ const formatDate = (d: string | null) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 }
 
-const CARD_WIDTH = 'min-w-[320px] max-w-[380px]'
+const formatCurrency = (n: number | null | undefined) => {
+  if (n == null) return null
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+}
+
+const getStatusPill = (status: string | null) => {
+  const s = (status || '').toLowerCase()
+  if (s.includes('chargeback')) return 'bg-red-100 text-red-700 border-red-200'
+  if (s.includes('complete')) return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  if (s.includes('dispatched')) return 'bg-blue-100 text-blue-700 border-blue-200'
+  if (s.includes('cancel')) return 'bg-slate-100 text-slate-500 border-slate-200'
+  if (s.includes('tentative')) return 'bg-purple-100 text-purple-700 border-purple-200'
+  return 'bg-amber-100 text-amber-700 border-amber-200'
+}
 
 export default function JobsReportsPage() {
   const { data: session, status: sessionStatus } = useSession()
@@ -119,38 +132,6 @@ export default function JobsReportsPage() {
   if (!session) return null
   if (!canAccess) return null
 
-  const ReportLinks = ({ record }: { record: CilioJobRecord }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
-      <Link
-        href={`/dashboard/jobs/cilio?search=${record.orderNumber}`}
-        className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-brand-green/20 bg-brand-green/5 text-sm font-semibold text-brand-green hover:bg-brand-green/10 transition-colors"
-      >
-        <Search className="w-4 h-4" />
-        <span>Find in Jobs</span>
-      </Link>
-      <a
-        href={`https://app.cilio.com/Job/Detail/${record.orderNumber}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
-      >
-        <ExternalLink className="w-4 h-4" />
-        <span>Open in Cilio</span>
-      </a>
-      {record.storeNumber && (
-        <a
-          href={`https://app.cilio.com/Store/Detail/${record.storeNumber}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-        >
-          <Store className="w-4 h-4" />
-          <span>Store: {record.storeNumber}</span>
-        </a>
-      )}
-    </div>
-  )
-
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <AdminSidebar pathname={pathname} />
@@ -161,10 +142,7 @@ export default function JobsReportsPage() {
             <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Link
-                    href="/dashboard/jobs"
-                    className="text-xs font-medium text-slate-400 hover:text-brand-green transition-colors"
-                  >
+                  <Link href="/dashboard/jobs" className="text-xs font-medium text-slate-400 hover:text-brand-green transition-colors">
                     Job Hub
                   </Link>
                   <span className="text-slate-300">/</span>
@@ -173,7 +151,7 @@ export default function JobsReportsPage() {
                 <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">Reports</p>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Saved Job Reports</h1>
                 <p className="text-sm text-slate-500">
-                  {records.length} jobs saved · Click a card to view report links
+                  {records.length} jobs saved · Click a row to view report links
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -228,7 +206,7 @@ export default function JobsReportsPage() {
             </select>
           </div>
 
-          {/* Job Cards Grid */}
+          {/* Table */}
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-brand-green" />
@@ -243,115 +221,163 @@ export default function JobsReportsPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map((record, i) => {
-                const isExpanded = expandedId === record.id
-                const statusColor = record.orderStatusDescription?.toLowerCase().includes('chargeback')
-                  ? 'bg-red-100 text-red-700 border-red-200'
-                  : record.orderStatusDescription?.toLowerCase().includes('complete')
-                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                    : record.orderStatusDescription?.toLowerCase().includes('dispatched')
-                      ? 'bg-blue-100 text-blue-700 border-blue-200'
-                      : record.orderStatusDescription?.toLowerCase().includes('cancel')
-                        ? 'bg-slate-100 text-slate-500 border-slate-200'
-                        : 'bg-amber-100 text-amber-700 border-amber-200'
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80">
+                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3 w-[30px]"></th>
+                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Job Name / Order #</th>
+                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Type</th>
+                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
+                      <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((record) => {
+                      const isExpanded = expandedId === record.id
+                      const poAmount = record.cilioPayload?.poAmount ?? null
+                      const statusClass = getStatusPill(record.orderStatusDescription)
 
-                return (
-                  <motion.div
-                    key={record.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className={`relative bg-white rounded-2xl border border-slate-200/80 shadow-md hover:shadow-xl transition-all overflow-hidden ${
-                      isExpanded ? 'ring-2 ring-brand-green/40 shadow-lg' : 'hover:-translate-y-0.5'
-                    }`}
-                  >
-                    {/* Card Header */}
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : record.id)}
-                      className="w-full text-left p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <p className="text-xs font-medium text-slate-400 mb-0.5">Order #</p>
-                          <p className="text-lg font-bold text-slate-900">{record.orderNumber}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
-                            {record.orderStatusDescription || 'Unknown'}
-                          </span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            record.jobType === 'chargeback'
-                              ? 'bg-red-50 text-red-600 border border-red-200'
-                              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                          }`}>
-                            {record.jobType}
-                          </span>
-                        </div>
-                      </div>
+                      return (
+                        <Fragment key={record.id}>
+                          {/* Main Row */}
+                          <tr
+                            onClick={() => setExpandedId(isExpanded ? null : record.id)}
+                            className={`border-b border-slate-100 cursor-pointer transition-colors ${
+                              isExpanded ? 'bg-brand-green/5' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <td className="px-4 py-3">
+                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                                  <Building2 className="w-4 h-4 text-brand-green" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">
+                                    {record.storeName || `Order #${record.orderNumber}`}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    #{record.orderNumber}
+                                    {record.installerName && <> · {record.installerName}</>}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                record.jobType === 'chargeback'
+                                  ? 'bg-red-50 text-red-600 border border-red-200'
+                                  : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                              }`}>
+                                {record.jobType}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>
+                                {record.orderStatusDescription || 'Unknown'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-sm font-semibold text-slate-900">
+                                {formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}
+                              </span>
+                            </td>
+                          </tr>
 
-                      <div className="space-y-1.5 mb-3">
-                        {record.storeName && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <Store className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span className="truncate">{record.storeName}</span>
-                            {record.storeNumber && <span className="text-slate-400">({record.storeNumber})</span>}
-                          </div>
-                        )}
-                        {record.workroom && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span>{record.workroom}</span>
-                          </div>
-                        )}
-                        {record.installerName && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <User className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span className="truncate">{record.installerName}</span>
-                          </div>
-                        )}
-                        {record.laborCategoryDescription && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span>{record.laborCategoryDescription}</span>
-                          </div>
-                        )}
-                        {record.scheduledInstallDate && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span>{formatDate(record.scheduledInstallDate)}</span>
-                          </div>
-                        )}
-                      </div>
+                          {/* Expanded Detail Row */}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <tr key={`detail-${record.id}`} className="border-b border-slate-100">
+                                <td colSpan={5} className="p-0">
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="overflow-hidden"
+                                  >
+                                    <div className="px-6 py-4 bg-gradient-to-b from-brand-green/5 to-white border-t border-brand-green/10">
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                                        {/* Detail fields */}
+                                        {record.storeName && (
+                                          <div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Store</p>
+                                            <p className="text-sm font-semibold text-slate-800">{record.storeName}</p>
+                                            {record.storeNumber && <p className="text-xs text-slate-500">#{record.storeNumber}</p>}
+                                          </div>
+                                        )}
+                                        {record.workroom && (
+                                          <div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workroom</p>
+                                            <p className="text-sm font-semibold text-slate-800 flex items-center gap-1">
+                                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                              {record.workroom}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {record.laborCategoryDescription && (
+                                          <div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Labor Category</p>
+                                            <p className="text-sm font-semibold text-slate-800">{record.laborCategoryDescription}</p>
+                                          </div>
+                                        )}
+                                        {record.scheduledInstallDate && (
+                                          <div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Install Date</p>
+                                            <p className="text-sm font-semibold text-slate-800 flex items-center gap-1">
+                                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                              {formatDate(record.scheduledInstallDate)}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                        <span className="text-[10px] text-slate-400">
-                          Saved {formatDate(record.createdAt)}
-                        </span>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-                    </button>
-
-                    {/* Expanded Reports */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-4 pb-4 border-t border-brand-green/10 bg-gradient-to-b from-brand-green/5 to-white">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-3 mb-2">Report Actions</p>
-                            <ReportLinks record={record} />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )
-              })}
+                                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        <Link
+                                          href={`/dashboard/jobs/cilio?search=${record.orderNumber}`}
+                                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-green/20 bg-brand-green/5 text-sm font-semibold text-brand-green hover:bg-brand-green/10 transition-colors"
+                                        >
+                                          <Search className="w-4 h-4" />
+                                          Find in Jobs
+                                        </Link>
+                                        <a
+                                          href={`https://app.cilio.com/Job/Detail/${record.orderNumber}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                                        >
+                                          <ExternalLink className="w-4 h-4" />
+                                          Open in Cilio
+                                        </a>
+                                        {record.storeNumber && (
+                                          <a
+                                            href={`https://app.cilio.com/Store/Detail/${record.storeNumber}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                                          >
+                                            <Store className="w-4 h-4" />
+                                            Store: {record.storeNumber}
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                </td>
+                              </tr>
+                            )}
+                          </AnimatePresence>
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </main>
