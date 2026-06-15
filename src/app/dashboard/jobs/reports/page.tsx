@@ -259,14 +259,6 @@ export default function JobsReportsPage() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Saved Job Reports</h1>
                 <p className="text-sm text-slate-500">{records.length} jobs saved · Click any row for full detail</p>
               </div>
-              <div className="flex items-center gap-3">
-                <button onClick={fetchReports} disabled={isLoading} className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
-                </button>
-                <Link href="/dashboard/jobs/cilio" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-green text-white text-sm font-semibold hover:bg-brand-green-dark transition-colors">
-                  <Hammer className="w-4 h-4" /><span className="hidden sm:inline">Cilio Jobs</span>
-                </Link>
-              </div>
             </div>
           </div>
         </header>

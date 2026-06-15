@@ -836,22 +836,6 @@ export default function JobsPage() {
               </h1>
               <p className="text-sm text-slate-500 mt-1">Browse, search, and manage Cilio jobs — Pre-Scheduled, Dispatched, and more</p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {saveResult && (
-                <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-sm font-semibold text-emerald-700 whitespace-nowrap">
-                  <CheckCircle2 className="w-4 h-4" />
-                  {saveResult.synced} saved
-                </span>
-              )}
-              <button
-                onClick={handleSaveAll}
-                disabled={isSavingAll || allJobs.length === 0}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-green text-white text-sm font-semibold hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-brand-green/20 whitespace-nowrap"
-              >
-                {isSavingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save All to Reports
-              </button>
-            </div>
           </div>
 
           {/* Search + Filters Card */}
