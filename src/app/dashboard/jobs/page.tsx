@@ -23,7 +23,7 @@ const jobGroups = [
         href: '/dashboard/jobs/cilio',
         icon: Briefcase,
         cta: 'Open Cilio Jobs',
-        highlights: ['Search & filter', 'Job details', 'Save to reports', 'Status updates'],
+        highlights: [] as string[],
       },
       {
         title: 'Reports',
@@ -31,7 +31,7 @@ const jobGroups = [
         href: '/dashboard/jobs/reports',
         icon: ClipboardList,
         cta: 'Open reports',
-        highlights: ['Saved archive', 'Cilio links', 'Store links', 'Filter by type'],
+        highlights: [] as string[],
       },
     ],
   },
@@ -145,11 +145,6 @@ export default function JobsHubPage() {
                               <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">{card.description}</p>
                             </div>
                             <div className="mt-5 flex flex-wrap gap-2">
-                              {card.highlights.map((highlight) => (
-                                <span key={highlight} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-600 shadow-sm">
-                                  {highlight}
-                                </span>
-                              ))}
                             </div>
                           </div>
 
