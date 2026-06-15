@@ -23,6 +23,7 @@ export const MATRIX_ROW_DEFS = [
   { id: 'lead', label: 'Lead', subtitle: 'Lead firm cert.', required: false },
   { id: 'llrp', label: 'LLRP', subtitle: 'Lead registry', required: false },
   { id: 'ics', label: 'ICS', subtitle: 'Contractor agreement', required: true },
+  { id: 'bank', label: 'Bank', subtitle: 'Direct deposit', required: false },
 ] as const
 
 export type MatrixRowId = (typeof MATRIX_ROW_DEFS)[number]['id']
@@ -569,6 +570,17 @@ export function computeOnboardingMatrix(input: {
   }
 
   cells.ics = input.icsSignedAt ? { state: 'ok' } : { state: 'missing' }
+
+  // Bank — direct deposit info
+  const hasAccount = (input.paymentAccountNumber || '').trim().length > 0
+  const hasRouting = (input.paymentRoutingNumber || '').trim().length > 0
+  if (hasAccount && hasRouting) {
+    cells.bank = { state: 'ok' }
+  } else if (hasAccount || hasRouting) {
+    cells.bank = { state: 'warn', detail: hasAccount ? 'No routing' : 'No account' }
+  } else {
+    cells.bank = { state: 'missing' }
+  }
 
   const wcPathOk = wcPathSatisfied(cells.wc, cells.wce)
 
