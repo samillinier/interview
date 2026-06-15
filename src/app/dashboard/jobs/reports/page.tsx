@@ -51,6 +51,7 @@ type CilioJobRecord = {
   installerId: string | null
   createdAt: string
   updatedAt: string
+  statusChangedAt: string | null
   cilioPayload: any
 }
 
@@ -80,7 +81,7 @@ const formatDate = (d: string | null | undefined) => {
   if (!d) return null
   const date = new Date(d)
   if (isNaN(date.getTime())) return 'Invalid date'
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 const formatCurrency = (n: number | string | null | undefined) => {
@@ -148,7 +149,8 @@ export default function JobsReportsPage() {
   const [detailNotes, setDetailNotes] = useState<JobNote[]>([])
   const [jobAttachments, setJobAttachments] = useState<JobAttachment[]>([])
   const [loadingAttachments, setLoadingAttachments] = useState(false)
-  const [jobTypeFilter, setJobTypeFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [laborFilter, setLaborFilter] = useState('')
   const [workroomFilter, setWorkroomFilter] = useState('all')
 
   useEffect(() => {
@@ -175,9 +177,22 @@ export default function JobsReportsPage() {
     return Array.from(set).sort()
   }, [records])
 
+  const statuses = useMemo(() => {
+    const set = new Set<string>()
+    records.forEach(r => { if (r.orderStatusDescription) set.add(r.orderStatusDescription) })
+    return Array.from(set).sort()
+  }, [records])
+
+  const laborCategories = useMemo(() => {
+    const set = new Set<string>()
+    records.forEach(r => { if (r.laborCategoryDescription) set.add(r.laborCategoryDescription) })
+    return Array.from(set).sort()
+  }, [records])
+
   const filtered = useMemo(() => {
     let list = records
-    if (jobTypeFilter !== 'all') list = list.filter(r => r.jobType === jobTypeFilter)
+    if (statusFilter) list = list.filter(r => r.orderStatusDescription === statusFilter)
+    if (laborFilter) list = list.filter(r => r.laborCategoryDescription === laborFilter)
     if (workroomFilter !== 'all') list = list.filter(r => r.workroom === workroomFilter)
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -193,7 +208,7 @@ export default function JobsReportsPage() {
       )
     }
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
-  }, [records, search, jobTypeFilter, workroomFilter])
+  }, [records, search, statusFilter, laborFilter, workroomFilter])
 
   const openDetail = async (record: CilioJobRecord) => {
     setDetailRecord(record)
@@ -264,17 +279,52 @@ export default function JobsReportsPage() {
         </header>
 
         <main className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
-          <div className="flex flex-wrap gap-3 mb-6">
-            <div className="relative flex-1 min-w-[200px] max-w-[400px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by order #, store, installer..." className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none" />
+          {/* Search + Filters Card */}
+          <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
+                <input
+                  type="text"
+                  placeholder="Search by customer name, store, project number..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
+                />
+              </div>
+              <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[140px]"
+                >
+                  <option value="">All Statuses</option>
+                  {statuses.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <select
+                  value={laborFilter}
+                  onChange={(e) => setLaborFilter(e.target.value)}
+                  className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[160px]"
+                >
+                  <option value="">All Labor Categories</option>
+                  {laborCategories.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <select
+                  value={workroomFilter}
+                  onChange={(e) => setWorkroomFilter(e.target.value)}
+                  className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[155px]"
+                >
+                  <option value="all">All Workrooms</option>
+                  {workrooms.map(w => (
+                    <option key={w} value={w}>{w}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <select value={jobTypeFilter} onChange={e => setJobTypeFilter(e.target.value)} className="px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none">
-              <option value="all">All Types</option><option value="scheduled">Scheduled</option><option value="chargeback">Chargeback</option>
-            </select>
-            <select value={workroomFilter} onChange={e => setWorkroomFilter(e.target.value)} className="px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none">
-              <option value="all">All Workrooms</option>{workrooms.map(w => <option key={w} value={w}>{w}</option>)}
-            </select>
           </div>
 
           {isLoading ? (
@@ -305,9 +355,15 @@ export default function JobsReportsPage() {
                       const statusClass = getStatusPill(record.orderStatusDescription)
                       const customerName = getCustomerName(record)
                       const p = record.cilioPayload
-                      const schedDate = record.scheduledInstallDate || record.cilioPayload?.scheduledInstallDate || p?.dateInformation?.scheduledInstallDate || null
-                      const measureDate = record.measureDate || p?.measureDate || p?.dateInformation?.measureDate || null
-                      const bookingDate = record.bookingDate || p?.bookingDate || p?.dateInformation?.bookingDate || null
+                      const di = p?.dateInformation || {}
+                      const si = p?.schedulingInformation || {}
+                      const schedDate = record.scheduledInstallDate
+                        || di?.desiredInstallDate
+                        || si?.scheduleDate
+                        || p?.currentOrderStatusDate
+                        || null
+                      const measureDate = record.measureDate || di?.currentDate || null
+                      const bookingDate = record.bookingDate || di?.leadCreationDate || null
                       return (
                         <tr key={record.id} onClick={() => openDetail(record)} className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3">
@@ -335,7 +391,22 @@ export default function JobsReportsPage() {
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${record.jobType === 'chargeback' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>{record.jobType}</span>
                           </td>
-                          <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>{record.orderStatusDescription || 'Unknown'}</span></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>{record.orderStatusDescription || 'Unknown'}</span>
+                              {record.statusChangedAt && (() => {
+                                const changed = new Date(record.statusChangedAt)
+                                const daysAgo = Math.floor((Date.now() - changed.getTime()) / 86400000)
+                                if (daysAgo <= 7) return (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title={`Status changed ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`}`}>
+                                    <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                                    {daysAgo === 0 ? 'Today' : `${daysAgo}d`}
+                                  </span>
+                                )
+                                return null
+                              })()}
+                            </div>
+                          </td>
                           <td className="px-4 py-3 text-right"><span className="text-sm font-semibold text-slate-900">{formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}</span></td>
                         </tr>
                       )

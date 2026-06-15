@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
         scheduledInstallDate: true,
         measureDate: true,
         bookingDate: true,
+        statusChangedAt: true,
         installerId: true,
         installerName: true,
         createdAt: true,

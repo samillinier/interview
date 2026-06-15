@@ -107,6 +107,13 @@ async function runAutoSync(request: NextRequest) {
       : {}
 
     try {
+      // Check if status changed before upsert
+      const existing = await prisma.cilioJobRecord.findUnique({
+        where: { orderNumber: job.orderNumber },
+        select: { orderStatusDescription: true },
+      })
+      const statusChanged = existing && existing.orderStatusDescription !== (statusDesc || null)
+
       await prisma.cilioJobRecord.upsert({
         where: { orderNumber: job.orderNumber },
         create: {
@@ -133,6 +140,7 @@ async function runAutoSync(request: NextRequest) {
           workroom: getWorkroomByStoreNumber(job.storeNumber || "") || null,
           ...dateFields,
           cilioPayload: job,
+          ...(statusChanged ? { statusChangedAt: new Date() } : {}),
         },
       })
       synced++
@@ -147,8 +155,6 @@ async function runAutoSync(request: NextRequest) {
     const missingDates = await prisma.cilioJobRecord.findMany({
       where: { scheduledInstallDate: null },
       select: { orderNumber: true },
-      orderBy: { updatedAt: "desc" },
-      take: 30,
     })
 
     if (missingDates.length > 0) {
@@ -158,9 +164,14 @@ async function runAutoSync(request: NextRequest) {
         try {
           const detail = await cilio.getJobDetail(record.orderNumber)
           const di = (detail as any).dateInformation || {}
-          const sched = di.scheduledInstallDate ?? null
-          const meas = di.measureDate ?? null
-          const book = di.bookingDate ?? null
+          const si = (detail as any).schedulingInformation || {}
+          // Cilio field mappings:
+          //   scheduledInstallDate ← desiredInstallDate (dateInformation) or scheduleDate (schedulingInformation)
+          //   measureDate ← currentDate (dateInformation)
+          //   bookingDate ← leadCreationDate (dateInformation)
+          const sched = di.desiredInstallDate || si.scheduleDate || null
+          const meas = di.currentDate || null
+          const book = di.leadCreationDate || null
 
           if (sched || meas || book) {
             await prisma.cilioJobRecord.update({

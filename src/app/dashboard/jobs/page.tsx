@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, Briefcase, ClipboardList, Hammer } from 'lucide-react'
+import { AlertCircle, ArrowRight, BarChart3, Briefcase, ClipboardList, Hammer } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -31,6 +31,14 @@ const jobGroups = [
         href: '/dashboard/jobs/reports',
         icon: ClipboardList,
         cta: 'Open reports',
+        highlights: [] as string[],
+      },
+      {
+        title: 'Analytics',
+        description: 'Visualize job data with charts and metrics, trends, distributions, PO amounts, and more.',
+        href: '/dashboard/jobs/analytics',
+        icon: BarChart3,
+        cta: 'Open Analytics',
         highlights: [] as string[],
       },
     ],

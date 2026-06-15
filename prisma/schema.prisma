@@ -49,6 +49,7 @@ model CilioJobRecord {
   orderNumber              Int        @unique
   orderStatusDescription   String?
   jobType                  String     @default("scheduled")
+  statusChangedAt          DateTime?
   storeNumber              String?
   storeName                String?
   laborCategoryDescription String?

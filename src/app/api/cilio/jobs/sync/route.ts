@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
     for (const job of jobs) {
       if (!job.orderNumber) continue
 
+      // Detect status change
+      const existing = await prisma.cilioJobRecord.findUnique({
+        where: { orderNumber: job.orderNumber },
+        select: { orderStatusDescription: true },
+      })
+      const statusDesc = job.orderStatusDescription ?? null
+      const statusChanged = existing && existing.orderStatusDescription !== statusDesc
+
       await prisma.cilioJobRecord.upsert({
         where: { orderNumber: job.orderNumber },
         create: {
@@ -74,6 +82,7 @@ export async function POST(request: NextRequest) {
           installerId: job.installerId || null,
           installerName: job.installerName ?? null,
           cilioPayload: job.cilioPayload ?? {},
+          ...(statusChanged ? { statusChangedAt: new Date() } : {}),
         },
       })
       synced++
