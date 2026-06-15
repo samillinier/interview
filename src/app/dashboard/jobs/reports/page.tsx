@@ -7,19 +7,24 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertCircle,
+  Briefcase,
   Building2,
   Calendar,
-  ChevronDown,
   ClipboardList,
+  Clock,
   DollarSign,
   ExternalLink,
   FileText,
   Hammer,
   Loader2,
   MapPin,
+  Phone,
+  Receipt,
   Search,
   Store,
   User,
+  Wrench,
+  X,
 } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
@@ -46,15 +51,16 @@ type CilioJobRecord = {
   cilioPayload: any
 }
 
-const formatDate = (d: string | null) => {
+const formatDate = (d: string | null | undefined) => {
   if (!d) return null
   const date = new Date(d)
+  if (isNaN(date.getTime())) return null
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 }
 
 const formatCurrency = (n: number | null | undefined) => {
-  if (n == null) return null
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+  if (n == null || n === 0) return null
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 }
 
 const getStatusPill = (status: string | null) => {
@@ -65,6 +71,20 @@ const getStatusPill = (status: string | null) => {
   if (s.includes('cancel')) return 'bg-slate-100 text-slate-500 border-slate-200'
   if (s.includes('tentative')) return 'bg-purple-100 text-purple-700 border-purple-200'
   return 'bg-amber-100 text-amber-700 border-amber-200'
+}
+
+const Field = ({ label, value, icon: Icon, accent }: { label: string; value?: string | number | null; icon?: any; accent?: boolean }) => {
+  if (value == null || value === '') return null
+  const display = typeof value === 'number' ? String(value) : value
+  return (
+    <div className={`rounded-xl border px-3 py-2.5 ${accent ? 'border-brand-green/20 bg-brand-green/5' : 'border-slate-100 bg-white'}`}>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className={`text-sm font-semibold truncate flex items-center gap-1.5 ${accent ? 'text-brand-green' : 'text-slate-800'}`}>
+        {Icon && <Icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
+        {display}
+      </p>
+    </div>
+  )
 }
 
 export default function JobsReportsPage() {
@@ -78,7 +98,7 @@ export default function JobsReportsPage() {
   const [records, setRecords] = useState<CilioJobRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [detailRecord, setDetailRecord] = useState<CilioJobRecord | null>(null)
   const [jobTypeFilter, setJobTypeFilter] = useState('all')
   const [workroomFilter, setWorkroomFilter] = useState('all')
 
@@ -128,6 +148,13 @@ export default function JobsReportsPage() {
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
   }, [records, search, jobTypeFilter, workroomFilter])
 
+  const getCustomerName = (record: CilioJobRecord) => {
+    const p = record.cilioPayload
+    const first = p?.customerFirstName || ''
+    const last = p?.customerLastName || ''
+    return (first + ' ' + last).trim() || null
+  }
+
   if (sessionStatus === 'loading') return <div className="min-h-screen flex items-center justify-center"><LogoHeartbeatLoader /></div>
   if (!session) return null
   if (!canAccess) return null
@@ -151,7 +178,7 @@ export default function JobsReportsPage() {
                 <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">Reports</p>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Saved Job Reports</h1>
                 <p className="text-sm text-slate-500">
-                  {records.length} jobs saved · Click a row to view report links
+                  {records.length} jobs saved · Click any row for full detail
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -226,7 +253,6 @@ export default function JobsReportsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/80">
-                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3 w-[30px]"></th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Job Name / Order #</th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Type</th>
                       <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
@@ -235,144 +261,52 @@ export default function JobsReportsPage() {
                   </thead>
                   <tbody>
                     {filtered.map((record) => {
-                      const isExpanded = expandedId === record.id
                       const poAmount = record.cilioPayload?.poAmount ?? null
                       const statusClass = getStatusPill(record.orderStatusDescription)
+                      const customerName = getCustomerName(record)
 
                       return (
-                        <Fragment key={record.id}>
-                          {/* Main Row */}
-                          <tr
-                            onClick={() => setExpandedId(isExpanded ? null : record.id)}
-                            className={`border-b border-slate-100 cursor-pointer transition-colors ${
-                              isExpanded ? 'bg-brand-green/5' : 'hover:bg-slate-50'
-                            }`}
-                          >
-                            <td className="px-4 py-3">
-                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center">
-                                  <Building2 className="w-4 h-4 text-brand-green" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-slate-900 truncate">
-                                    {record.storeName || `Order #${record.orderNumber}`}
-                                  </p>
-                                  <p className="text-xs text-slate-400">
-                                    #{record.orderNumber}
-                                    {record.installerName && <> · {record.installerName}</>}
-                                  </p>
-                                </div>
+                        <tr
+                          key={record.id}
+                          onClick={() => setDetailRecord(record)}
+                          className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                                <Building2 className="w-4 h-4 text-brand-green" />
                               </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                                record.jobType === 'chargeback'
-                                  ? 'bg-red-50 text-red-600 border border-red-200'
-                                  : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                              }`}>
-                                {record.jobType}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>
-                                {record.orderStatusDescription || 'Unknown'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <span className="text-sm font-semibold text-slate-900">
-                                {formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}
-                              </span>
-                            </td>
-                          </tr>
-
-                          {/* Expanded Detail Row */}
-                          <AnimatePresence>
-                            {isExpanded && (
-                              <tr key={`detail-${record.id}`} className="border-b border-slate-100">
-                                <td colSpan={5} className="p-0">
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="px-6 py-4 bg-gradient-to-b from-brand-green/5 to-white border-t border-brand-green/10">
-                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                                        {/* Detail fields */}
-                                        {record.storeName && (
-                                          <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Store</p>
-                                            <p className="text-sm font-semibold text-slate-800">{record.storeName}</p>
-                                            {record.storeNumber && <p className="text-xs text-slate-500">#{record.storeNumber}</p>}
-                                          </div>
-                                        )}
-                                        {record.workroom && (
-                                          <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workroom</p>
-                                            <p className="text-sm font-semibold text-slate-800 flex items-center gap-1">
-                                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                              {record.workroom}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {record.laborCategoryDescription && (
-                                          <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Labor Category</p>
-                                            <p className="text-sm font-semibold text-slate-800">{record.laborCategoryDescription}</p>
-                                          </div>
-                                        )}
-                                        {record.scheduledInstallDate && (
-                                          <div>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Install Date</p>
-                                            <p className="text-sm font-semibold text-slate-800 flex items-center gap-1">
-                                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                              {formatDate(record.scheduledInstallDate)}
-                                            </p>
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</p>
-                                      <div className="flex flex-wrap gap-2">
-                                        <Link
-                                          href={`/dashboard/jobs/cilio?search=${record.orderNumber}`}
-                                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-green/20 bg-brand-green/5 text-sm font-semibold text-brand-green hover:bg-brand-green/10 transition-colors"
-                                        >
-                                          <Search className="w-4 h-4" />
-                                          Find in Jobs
-                                        </Link>
-                                        <a
-                                          href={`https://app.cilio.com/Job/Detail/${record.orderNumber}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
-                                        >
-                                          <ExternalLink className="w-4 h-4" />
-                                          Open in Cilio
-                                        </a>
-                                        {record.storeNumber && (
-                                          <a
-                                            href={`https://app.cilio.com/Store/Detail/${record.storeNumber}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
-                                          >
-                                            <Store className="w-4 h-4" />
-                                            Store: {record.storeNumber}
-                                          </a>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                </td>
-                              </tr>
-                            )}
-                          </AnimatePresence>
-                        </Fragment>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-900 truncate">
+                                  {customerName || record.storeName || `Order #${record.orderNumber}`}
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  #{record.orderNumber}
+                                  {record.storeName && <> · {record.storeName}</>}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              record.jobType === 'chargeback'
+                                ? 'bg-red-50 text-red-600 border border-red-200'
+                                : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                            }`}>
+                              {record.jobType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>
+                              {record.orderStatusDescription || 'Unknown'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="text-sm font-semibold text-slate-900">
+                              {formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}
+                            </span>
+                          </td>
+                        </tr>
                       )
                     })}
                   </tbody>
@@ -382,6 +316,216 @@ export default function JobsReportsPage() {
           )}
         </main>
       </div>
+
+      {/* ── Detail Modal ── */}
+      <AnimatePresence>
+        {detailRecord && (() => {
+          const p = detailRecord.cilioPayload || {}
+          const statusClass = getStatusPill(detailRecord.orderStatusDescription)
+          const customerName = getCustomerName(detailRecord)
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 overflow-y-auto"
+            >
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDetailRecord(null)} />
+              <div className="relative min-h-screen flex items-start justify-center p-4 pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden my-4 pointer-events-auto"
+                >
+                  {/* Hero Header */}
+                  <div className="bg-gradient-to-br from-brand-green to-emerald-700 px-6 sm:px-8 py-6 sm:py-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+                    <div className="absolute bottom-0 left-1/2 w-96 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+                    <div className="relative">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold tracking-wide">
+                              #{detailRecord.orderNumber}
+                            </span>
+                            <span className={`px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold`}>
+                              {detailRecord.orderStatusDescription || 'Unknown'}
+                            </span>
+                            {p.jobNumber && (
+                              <span className="px-2.5 py-1 bg-white/10 rounded-full text-white/70 text-xs">
+                                Job #{p.jobNumber}
+                              </span>
+                            )}
+                          </div>
+                          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                            {customerName || `Order #${detailRecord.orderNumber}`}
+                          </h1>
+                        </div>
+                        <button
+                          onClick={() => setDetailRecord(null)}
+                          className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors backdrop-blur-sm flex-shrink-0"
+                        >
+                          <X className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
+
+                      {/* Quick Stats */}
+                      <div className="flex flex-wrap gap-2 sm:gap-3 mt-5">
+                        {p.poAmount != null && (
+                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
+                            <DollarSign className="w-4 h-4 text-white/60" />
+                            <div>
+                              <p className="text-white/50 text-xs">PO Amount</p>
+                              <p className="text-white font-bold text-sm">{formatCurrency(p.poAmount)}</p>
+                            </div>
+                          </div>
+                        )}
+                        {p.invoiceNumber && (
+                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
+                            <Receipt className="w-4 h-4 text-white/60" />
+                            <div>
+                              <p className="text-white/50 text-xs">Invoice</p>
+                              <p className="text-white font-bold text-sm">{p.invoiceNumber}</p>
+                            </div>
+                          </div>
+                        )}
+                        {p.projectNumber && (
+                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
+                            <Briefcase className="w-4 h-4 text-white/60" />
+                            <div>
+                              <p className="text-white/50 text-xs">Project</p>
+                              <p className="text-white font-bold text-sm">{p.projectNumber}</p>
+                            </div>
+                          </div>
+                        )}
+                        {detailRecord.installerName && (
+                          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3 sm:px-4 py-2 sm:py-2.5">
+                            <User className="w-4 h-4 text-white/60" />
+                            <div className="min-w-0">
+                              <p className="text-white/50 text-xs">Installer</p>
+                              <p className="text-white font-bold text-sm truncate">{detailRecord.installerName}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detail Content */}
+                  <div className="p-6 space-y-4 bg-slate-50/50">
+                    {/* Job Info */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                        <Briefcase className="w-4 h-4 text-brand-green" /> Job Information
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <Field label="Order #" value={detailRecord.orderNumber} />
+                        <Field label="Job #" value={p.jobNumber} icon={Wrench} />
+                        <Field label="Project #" value={p.projectNumber} />
+                        <Field label="Store" value={detailRecord.storeName || p.storeName} icon={Store} />
+                        <Field label="Store #" value={detailRecord.storeNumber || p.storeNumber} />
+                        <Field label="Workroom" value={detailRecord.workroom} icon={MapPin} />
+                        <Field label="Labor Category" value={detailRecord.laborCategoryDescription || p.laborCategoryDescription} />
+                        <Field label="Job Type" value={detailRecord.jobType === 'chargeback' ? 'Chargeback' : 'Scheduled'} />
+                        <Field label="Status" value={detailRecord.orderStatusDescription} />
+                      </div>
+                    </div>
+
+                    {/* Financial */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                        <DollarSign className="w-4 h-4 text-brand-green" /> Financial
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <Field label="PO Amount" value={p.poAmount != null ? formatCurrency(p.poAmount) : null} accent />
+                        <Field label="Labor Amount" value={p.laborAmount != null ? formatCurrency(p.laborAmount) : null} />
+                        <Field label="Sales Order" value={p.salesOrderNumber} />
+                        <Field label="Invoice #" value={p.invoiceNumber} />
+                        <Field label="Tax Amount" value={p.taxAmount != null ? formatCurrency(p.taxAmount) : null} />
+                        <Field label="Product Amount" value={p.productAmount != null ? formatCurrency(p.productAmount) : null} />
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                        <Calendar className="w-4 h-4 text-brand-green" /> Dates
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <Field label="Scheduled Install" value={formatDate(detailRecord.scheduledInstallDate)} icon={Clock} />
+                        <Field label="Measure Date" value={formatDate(detailRecord.measureDate)} />
+                        <Field label="Booking Date" value={formatDate(detailRecord.bookingDate)} />
+                        <Field label="Saved At" value={formatDate(detailRecord.createdAt)} />
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {(p.scopeOfWorkNotes || p.deliveryInfoSchedulingNotes) && (
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                          <FileText className="w-4 h-4 text-brand-green" /> Notes
+                        </h3>
+                        <div className="space-y-3">
+                          {p.scopeOfWorkNotes && (
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Scope of Work</p>
+                              <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3 border border-slate-100">{p.scopeOfWorkNotes}</p>
+                            </div>
+                          )}
+                          {p.deliveryInfoSchedulingNotes && (
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Scheduling Notes</p>
+                              <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 rounded-xl p-3 border border-slate-100">{p.deliveryInfoSchedulingNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Actions */}
+                    <div className="bg-white rounded-2xl border border-brand-green/20 p-5 bg-gradient-to-br from-brand-green/5 to-white">
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                        <ExternalLink className="w-4 h-4 text-brand-green" /> Quick Actions
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          href={`/dashboard/jobs/cilio?search=${detailRecord.orderNumber}`}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-green/20 bg-brand-green/5 text-sm font-semibold text-brand-green hover:bg-brand-green/10 transition-colors"
+                        >
+                          <Search className="w-4 h-4" />
+                          Find in Jobs
+                        </Link>
+                        <a
+                          href={`https://app.cilio.com/Job/Detail/${detailRecord.orderNumber}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Open in Cilio
+                        </a>
+                        {detailRecord.storeNumber && (
+                          <a
+                            href={`https://app.cilio.com/Store/Detail/${detailRecord.storeNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                          >
+                            <Store className="w-4 h-4" />
+                            Store: {detailRecord.storeNumber}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
     </div>
   )
 }
