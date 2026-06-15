@@ -319,8 +319,10 @@ export default function TrackingPage() {
     return 'tracked'
   })
   const matrixColumnFilters = useMemo(
-    () => buildMatrixColumnFilters(onboardingMatrix?.rows),
-    [onboardingMatrix?.rows]
+    () => buildMatrixColumnFilters(onboardingMatrix?.rows).filter(
+      (col) => !(matrixStatusFilter === 'active' && col.id === 'bank')
+    ),
+    [onboardingMatrix?.rows, matrixStatusFilter]
   )
 
   const [visibleColumns, setVisibleColumns] = useState<Set<MatrixRowId>>(() => {
@@ -543,7 +545,11 @@ export default function TrackingPage() {
     return result
   }, [onboardingMatrix, workroomFilter])
 
-  const visibleDefs = useMemo(() => MATRIX_ROW_DEFS.filter(d => visibleColumns.has(d.id)), [visibleColumns])
+  const visibleDefs = useMemo(() => MATRIX_ROW_DEFS.filter(d => {
+    if (!visibleColumns.has(d.id)) return false
+    if (matrixStatusFilter === 'active' && d.id === 'bank') return false
+    return true
+  }), [visibleColumns, matrixStatusFilter])
 
   // Keep installer column only as wide as avatar + text + row actions (not stretched across the table).
   const installerColClass = 'w-[1%] align-middle'
