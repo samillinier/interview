@@ -5973,6 +5973,103 @@ export default function InstallerProfileViewPage() {
           </motion.div>
           )}
 
+          {/* Payment / Bank Information Section */}
+          {installer && (installer.paymentBankName || installer.paymentAccountNumber || installer.paymentRoutingNumber || installer.paymentAccountName || installer.paymentCompanyName) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.29 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Payment / Bank Information</h2>
+                <p className="text-sm text-slate-500">Direct deposit and payment details</p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-emerald-600" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {installer.paymentCompanyName && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Company Name</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentCompanyName}</p>
+                </div>
+              )}
+              {installer.paymentContactPerson && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Contact Person</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentContactPerson}</p>
+                </div>
+              )}
+              {installer.paymentPhoneNumber && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Phone Number</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentPhoneNumber}</p>
+                </div>
+              )}
+              {installer.paymentEmailAddress && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Email Address</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentEmailAddress}</p>
+                </div>
+              )}
+              {installer.paymentBusinessAddress && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Business Address</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentBusinessAddress}</p>
+                </div>
+              )}
+              {installer.paymentBankName && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Bank Name</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentBankName}</p>
+                </div>
+              )}
+              {installer.paymentAccountName && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Account Name</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentAccountName}</p>
+                </div>
+              )}
+              {installer.paymentAccountNumber && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Account Number</p>
+                  <p className="text-base font-medium text-slate-900 font-mono">
+                    ****{installer.paymentAccountNumber.slice(-4)}
+                  </p>
+                </div>
+              )}
+              {installer.paymentRoutingNumber && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Routing Number (ACH)</p>
+                  <p className="text-base font-medium text-slate-900 font-mono">{installer.paymentRoutingNumber}</p>
+                </div>
+              )}
+              {installer.paymentAccountType && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Account Type</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentAccountType}</p>
+                </div>
+              )}
+              {installer.paymentAuthorizationName && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Authorization Name</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentAuthorizationName}</p>
+                </div>
+              )}
+              {installer.paymentAuthorizationDate && (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Authorization Date</p>
+                  <p className="text-base font-medium text-slate-900">{installer.paymentAuthorizationDate}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+          )}
+
           {/* License & Background Check Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
