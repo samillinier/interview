@@ -923,8 +923,8 @@ export default function JobsAnalyticsPage() {
                                               <span className={`absolute top-0.5 right-1 text-2xl font-black w-8 h-8 flex items-center justify-center rounded-lg leading-none
                                                 ${isToday ? 'bg-brand-green text-white shadow-md' : 'text-brand-green-dark'}
                                               `}>{day}</span>
-                                              {/* Job count — bottom left */}
-                                              <div className="absolute bottom-0.5 left-1">
+                                              {/* Job count — center */}
+                                              <div className="absolute inset-0 flex items-center justify-center">
                                                 {isScheduled ? (
                                                   <span className={`inline-flex items-center justify-center text-sm font-bold rounded-lg px-1.5 py-0.5 leading-tight
                                                     ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/20 text-brand-green-dark'}
