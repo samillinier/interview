@@ -841,12 +841,12 @@ export default function JobsAnalyticsPage() {
                           {data.hasInstallDates ? (
                             <div className="mt-4">
                               {/* Month navigation */}
-                              <div className="flex items-center justify-between mb-5">
+                              <div className="flex items-center justify-between mb-6">
                                 <button
                                   onClick={() => setCalendarMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
-                                  className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
+                                  className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-brand-green/40 hover:bg-brand-green/5 flex items-center justify-center transition-all shadow-sm"
                                 >
-                                  <ChevronLeft className="w-4 h-4 text-brand-green-dark" />
+                                  <ChevronLeft className="w-4 h-4 text-slate-500" />
                                 </button>
                                 {(() => {
                                   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -860,27 +860,19 @@ export default function JobsAnalyticsPage() {
                                   }, 0)
                                   return (
                                     <div className="text-center">
-                                      <h3 className="text-base font-bold text-brand-green-dark">{monthLabel}</h3>
-                                      <p className="text-xs text-brand-green/70 font-medium">{monthJobs} job{monthJobs !== 1 ? 's' : ''}</p>
+                                      <h3 className="text-xl font-bold text-slate-900 tracking-tight">{monthLabel}</h3>
+                                      <p className="text-xs text-slate-400 font-medium mt-0.5">{monthJobs} job{monthJobs !== 1 ? 's' : ''} scheduled</p>
                                     </div>
                                   )
                                 })()}
                                 <button
                                   onClick={() => setCalendarMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
-                                  className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
+                                  className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-brand-green/40 hover:bg-brand-green/5 flex items-center justify-center transition-all shadow-sm"
                                 >
-                                  <ChevronRight className="w-4 h-4 text-brand-green-dark" />
+                                  <ChevronRight className="w-4 h-4 text-slate-500" />
                                 </button>
                               </div>
-                              {/* Day-of-week headers */}
-                              <div className="grid grid-cols-7 mb-0">
-                                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                                  <div key={d} className="text-center py-1.5 bg-brand-green/10 first:rounded-tl-lg last:rounded-tr-lg border-x border-t border-brand-green/15">
-                                    <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d.slice(0,1)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              {/* Calendar grid */}
+                              {/* Calendar card */}
                               {(() => {
                                 const today = new Date()
                                 const todayKey = today.toISOString().split('T')[0]
@@ -894,45 +886,63 @@ export default function JobsAnalyticsPage() {
                                   if (week.length === 7) { weeks.push(week); week = [] }
                                 }
                                 if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
+                                const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
                                 return (
-                                  <div className="rounded-xl overflow-hidden border border-brand-green/15 shadow-sm">
+                                  <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                                    {/* Day headers */}
+                                    <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
+                                      {dayLabels.map((d, idx) => (
+                                        <div key={d} className={`text-center py-2.5 ${idx === 0 || idx === 6 ? 'bg-slate-100/80' : ''}`}>
+                                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{d}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {/* Weeks */}
                                     {weeks.map((w, wi) => (
-                                      <div key={wi} className="grid grid-cols-7">
+                                      <div key={wi} className="grid grid-cols-7 border-b border-slate-100 last:border-b-0">
                                         {w.map((day, di) => {
-                                          if (day === null) return <div key={di} className="aspect-square bg-brand-green/[0.04] border-r border-b border-brand-green/10 last:border-r-0" />
+                                          if (day === null) return (
+                                            <div key={di} className="aspect-[4/3] bg-slate-50/50 border-r border-slate-100 last:border-r-0 p-1.5" />
+                                          )
                                           const dateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                                           const dateData = data.scheduledDates[dateKey]
                                           const count = dateData
                                             ? (calendarWorkroom === 'all' ? dateData.total : (dateData.byWorkroom[calendarWorkroom] || 0))
                                             : 0
                                           const isToday = dateKey === todayKey
+                                          const isWeekend = di === 0 || di === 6
                                           const isScheduled = count > 0
                                           return (
                                             <div
                                               key={di}
-                                              className={`aspect-square flex flex-col items-end justify-between border-r border-b border-brand-green/10 last:border-r-0 relative group cursor-default transition-colors p-1
-                                                ${isToday ? 'bg-brand-green/15 shadow-[inset_0_0_0_1px_rgba(140,182,60,0.25)]' : isScheduled ? 'bg-brand-green/[0.06]' : 'bg-white hover:bg-brand-green/[0.04]'}
+                                              className={`aspect-[4/3] border-r border-slate-100 last:border-r-0 p-1.5 flex flex-col relative group transition-colors
+                                                ${isToday ? 'bg-brand-green/10 ring-1 ring-brand-green/30 ring-inset' : isWeekend ? 'bg-slate-50/80' : 'bg-white hover:bg-slate-50/60'}
                                               `}
                                             >
-                                              <span className={`text-sm font-bold leading-none px-1 py-0.5 rounded-md
-                                                ${isToday ? 'text-white bg-brand-green shadow-sm' : 'text-slate-600'}
+                                              {/* Date number */}
+                                              <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full leading-none
+                                                ${isToday ? 'bg-brand-green text-white shadow-sm' : 'text-slate-600'}
                                               `}>{day}</span>
-                                              <div className="flex-1 flex items-center justify-center w-full">
-                                                {isScheduled ? (
-                                                  <span className={`text-[11px] font-bold leading-tight text-center px-1.5 py-0.5 rounded-md
-                                                    ${isToday ? 'bg-white text-brand-green-dark' : 'bg-brand-green/15 text-brand-green-dark'}
+                                              {/* Job count badge */}
+                                              {isScheduled ? (
+                                                <div className="mt-auto">
+                                                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold rounded-md px-1.5 py-0.5
+                                                    ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/15 text-brand-green-dark'}
                                                   `}>
-                                                    {count} {count === 1 ? 'job' : 'jobs'}
+                                                    <span className="w-1 h-1 rounded-full bg-brand-green" />
+                                                    {count}
                                                   </span>
-                                                ) : (
-                                                  <span className="text-[10px] text-slate-300">—</span>
-                                                )}
-                                              </div>
+                                                </div>
+                                              ) : (
+                                                <div className="mt-auto">
+                                                  <span className="text-[10px] text-slate-300/50">—</span>
+                                                </div>
+                                              )}
                                               {/* Tooltip */}
                                               {isScheduled && (
-                                                <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                                  <span className="inline-block px-2 py-1 rounded-md bg-brand-green-dark text-white text-[10px] font-medium shadow-lg">
-                                                    {count} job{count > 1 ? 's' : ''} on {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                                  <span className="inline-block px-2.5 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-xl">
+                                                    {count} job{count > 1 ? 's' : ''} · {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                   </span>
                                                 </div>
                                               )}
