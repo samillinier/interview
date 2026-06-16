@@ -919,8 +919,8 @@ export default function JobsAnalyticsPage() {
                                                 ${isToday ? 'bg-brand-green/15 ring-1 ring-brand-green/40 ring-inset' : isWeekend ? 'bg-brand-green/[0.04]' : 'bg-white hover:bg-brand-green/[0.05]'}
                                               `}
                                             >
-                                              {/* Date number — top right, bigger */}
-                                              <span className={`absolute top-1 right-1 text-sm font-extrabold w-6 h-6 flex items-center justify-center rounded-lg leading-none
+                                              {/* Date number — top right */}
+                                              <span className={`absolute top-0.5 right-0.5 text-lg font-extrabold w-7 h-7 flex items-center justify-center rounded-lg leading-none
                                                 ${isToday ? 'bg-brand-green text-white shadow-md' : 'text-brand-green-dark'}
                                               `}>{day}</span>
                                               {/* Job count — centered */}
