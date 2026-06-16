@@ -888,21 +888,21 @@ export default function JobsAnalyticsPage() {
                                 if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
                                 const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
                                 return (
-                                  <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                                  <div className="rounded-2xl overflow-hidden border border-brand-green/20 bg-brand-green/[0.03] shadow-md">
                                     {/* Day headers */}
-                                    <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200">
+                                    <div className="grid grid-cols-7 bg-brand-green/10 border-b border-brand-green/20">
                                       {dayLabels.map((d, idx) => (
-                                        <div key={d} className={`text-center py-2.5 ${idx === 0 || idx === 6 ? 'bg-slate-100/80' : ''}`}>
-                                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{d}</span>
+                                        <div key={d} className={`text-center py-2.5 ${idx === 0 || idx === 6 ? 'bg-brand-green/[0.12]' : ''}`}>
+                                          <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d}</span>
                                         </div>
                                       ))}
                                     </div>
                                     {/* Weeks */}
                                     {weeks.map((w, wi) => (
-                                      <div key={wi} className="grid grid-cols-7 border-b border-slate-100 last:border-b-0">
+                                      <div key={wi} className="grid grid-cols-7 border-b border-brand-green/10 last:border-b-0">
                                         {w.map((day, di) => {
                                           if (day === null) return (
-                                            <div key={di} className="aspect-[4/3] bg-slate-50/50 border-r border-slate-100 last:border-r-0 p-1.5" />
+                                            <div key={di} className="aspect-square bg-brand-green/[0.03] border-r border-brand-green/10 last:border-r-0 p-1" />
                                           )
                                           const dateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                                           const dateData = data.scheduledDates[dateKey]
@@ -915,19 +915,19 @@ export default function JobsAnalyticsPage() {
                                           return (
                                             <div
                                               key={di}
-                                              className={`aspect-square border-r border-slate-100 last:border-r-0 p-1 relative group transition-colors
-                                                ${isToday ? 'bg-brand-green/10 ring-1 ring-brand-green/30 ring-inset' : isWeekend ? 'bg-slate-50/80' : 'bg-white hover:bg-slate-50/60'}
+                                              className={`aspect-square border-r border-brand-green/10 last:border-r-0 p-1 relative group transition-colors
+                                                ${isToday ? 'bg-brand-green/15 ring-1 ring-brand-green/40 ring-inset' : isWeekend ? 'bg-brand-green/[0.04]' : 'bg-white hover:bg-brand-green/[0.05]'}
                                               `}
                                             >
-                                              {/* Date number — top right */}
-                                              <span className={`absolute top-1 right-1 text-xs font-bold w-5 h-5 flex items-center justify-center rounded leading-none
-                                                ${isToday ? 'bg-brand-green text-white shadow-sm' : 'text-slate-500'}
+                                              {/* Date number — top right, bigger */}
+                                              <span className={`absolute top-1 right-1 text-sm font-extrabold w-6 h-6 flex items-center justify-center rounded-lg leading-none
+                                                ${isToday ? 'bg-brand-green text-white shadow-md' : 'text-brand-green-dark'}
                                               `}>{day}</span>
                                               {/* Job count — centered */}
                                               <div className="absolute inset-0 flex items-center justify-center">
                                                 {isScheduled ? (
                                                   <span className={`inline-flex items-center justify-center text-[11px] font-bold rounded-lg px-2 py-1 leading-tight
-                                                    ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/15 text-brand-green-dark'}
+                                                    ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/20 text-brand-green-dark'}
                                                   `}>
                                                     {count} {count === 1 ? 'job' : 'jobs'}
                                                   </span>
