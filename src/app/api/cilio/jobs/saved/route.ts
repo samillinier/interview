@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         cilioPayload: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 1000,
+      take: 5000,
     })
 
     return NextResponse.json({ records })
