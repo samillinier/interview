@@ -45,9 +45,12 @@ interface JobsAnalytics {
   monthlyTrend: { month: string; count: number; poTotal: number }[]
   dailyTrend: { date: string; count: number }[]
   weeklyDistribution: { day: string; count: number }[]
-  scheduledDates: Record<string, number>
+  scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number> }>
   scheduledCount: number
   hasInstallDates: boolean
+  workrooms: string[]
+  completionBreakdown: { label: string; count: number; color: string }[]
+  completionByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }>
 }
 
 const fmtCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
@@ -113,6 +116,8 @@ export default function JobsAnalyticsPage() {
     const now = new Date()
     return { year: now.getFullYear(), month: now.getMonth() }
   })
+  const [calendarWorkroom, setCalendarWorkroom] = useState('all')
+  const [completionWorkroom, setCompletionWorkroom] = useState('all')
 
   const fetchData = async () => {
     setLoading(true)
@@ -220,6 +225,7 @@ export default function JobsAnalyticsPage() {
               <a href="#trends" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Trends</a>
               <a href="#distributions" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Distributions</a>
               <a href="#stores" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Stores &amp; Installers</a>
+              <a href="#completion" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Completion</a>
               <a href="#financial" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Financial</a>
             </div>
           </div>
@@ -359,85 +365,145 @@ export default function JobsAnalyticsPage() {
           {/* Masonry Charts Grid */}
           <div className="columns-1 lg:columns-2 lg:gap-6 [column-fill:_balance]">
 
-            {/* Status Distribution */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 break-inside-avoid bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Status Distribution</h2>
-                  <p className="mt-1 text-sm text-slate-500">Jobs by current status</p>
-                </div>
-                <BarChart3 className="w-5 h-5 text-slate-400" />
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <SectionHeader title="Scheduled Install Dates" subtitle={`${data.scheduledCount} jobs with scheduled dates`} icon={<Calendar className="w-5 h-5" />} />
+                <select
+                  value={calendarWorkroom}
+                  onChange={(e) => setCalendarWorkroom(e.target.value)}
+                  className="px-3 py-2 text-xs font-bold border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600"
+                >
+                  <option value="all">All Workrooms</option>
+                  {data.workrooms.map(w => (
+                    <option key={w} value={w}>{w}</option>
+                  ))}
+                </select>
               </div>
-              {(() => {
-                const statusData = data.statusDistribution
-                const maxVal = Math.max(1, ...statusData.map((item) => item.count))
-                const leadingStatus = statusData.reduce(
-                  (best, item) => (item.count > best.count ? item : best),
-                  statusData[0] || { status: '-', count: 0 }
-                )
-
-                return (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Top Status</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900 capitalize truncate">{leadingStatus.status}</div>
-                        <div className="text-sm text-slate-500">{leadingStatus.count} jobs</div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900">{data.totalJobs}</div>
-                        <div className="text-sm text-slate-500">Across all statuses</div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
-                      <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
-                        <span>Job statuses</span>
-                        <span>Max {maxVal}</span>
-                      </div>
-
-                      <div className="relative h-72">
-                        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
-                          {[1, 2, 3, 4].map((line) => (
-                            <div key={line} className="border-t border-dashed border-slate-200" />
-                          ))}
+              {data.hasInstallDates ? (
+                <div className="mt-4">
+                  {/* Month navigation */}
+                  <div className="flex items-center justify-between mb-5">
+                    <button
+                      onClick={() => setCalendarMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
+                      className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-brand-green-dark" />
+                    </button>
+                    {(() => {
+                      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+                      const monthLabel = `${monthNames[calendarMonth.month]} ${calendarMonth.year}`
+                      const prefix = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-`
+                      const monthDays = Object.entries(data.scheduledDates)
+                        .filter(([k]) => k.startsWith(prefix))
+                      const monthJobs = monthDays.reduce((acc, [, v]) => {
+                        if (calendarWorkroom === 'all') return acc + v.total
+                        return acc + (v.byWorkroom[calendarWorkroom] || 0)
+                      }, 0)
+                      return (
+                        <div className="text-center">
+                          <h3 className="text-base font-bold text-brand-green-dark">{monthLabel}</h3>
+                          <p className="text-xs text-brand-green/70 font-medium">{monthJobs} job{monthJobs !== 1 ? 's' : ''}</p>
                         </div>
-
-                        <div className="absolute inset-0 flex items-end gap-2">
-                          {statusData.slice(0, 8).map((item, index) => {
-                            const percentage = data.totalJobs > 0 ? (item.count / data.totalJobs) * 100 : 0
-                            const barHeight = item.count === 0 ? 6 : Math.max((item.count / maxVal) * 100, 8)
-                            const isLeader = item.status === leadingStatus.status && item.count === leadingStatus.count
-
-                            return (
-                              <div
-                                key={`${item.status}-${index}`}
-                                className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-xl px-1 text-center"
-                              >
-                                <div className="mb-2 text-sm font-semibold text-slate-900">{item.count}</div>
-                                <div
-                                  className={`relative rounded-t-2xl transition-all duration-300 group-hover:opacity-90 ${
-                                    isLeader ? 'bg-brand-green shadow-[0_14px_30px_-18px_rgba(101,163,13,0.9)]' : 'bg-brand-green/80'
-                                  }`}
-                                  style={{ height: `${barHeight}%` }}
-                                >
-                                  <div className="absolute inset-x-0 top-0 h-8 rounded-t-2xl bg-white/15" />
-                                </div>
-                                <div className="mt-3 space-y-1">
-                                  <div className="text-xs font-medium capitalize leading-tight text-slate-700 group-hover:text-slate-900 truncate">{item.status}</div>
-                                  <div className="text-[11px] text-slate-500">{percentage.toFixed(1)}%</div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })()}
+                    <button
+                      onClick={() => setCalendarMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
+                      className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-brand-green-dark" />
+                    </button>
                   </div>
-                )
-              })()}
+                  {/* Day-of-week headers */}
+                  <div className="grid grid-cols-7 mb-0">
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                      <div key={d} className="text-center py-1.5 bg-brand-green/10 first:rounded-tl-lg last:rounded-tr-lg border-x border-t border-brand-green/15">
+                        <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d.slice(0,1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Calendar grid */}
+                  {(() => {
+                    const today = new Date()
+                    const todayKey = today.toISOString().split('T')[0]
+                    const firstDay = new Date(calendarMonth.year, calendarMonth.month, 1).getDay()
+                    const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate()
+                    const weeks: (number | null)[][] = []
+                    let week: (number | null)[] = []
+                    for (let i = 0; i < firstDay; i++) week.push(null)
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      week.push(d)
+                      if (week.length === 7) { weeks.push(week); week = [] }
+                    }
+                    if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
+                    return (
+                      <div className="rounded-xl overflow-hidden border border-brand-green/15 shadow-sm">
+                        {weeks.map((w, wi) => (
+                          <div key={wi} className="grid grid-cols-7">
+                            {w.map((day, di) => {
+                              if (day === null) return <div key={di} className="aspect-square bg-brand-green/[0.04] border-r border-b border-brand-green/10 last:border-r-0" />
+                              const dateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                              const dateData = data.scheduledDates[dateKey]
+                              const count = dateData
+                                ? (calendarWorkroom === 'all' ? dateData.total : (dateData.byWorkroom[calendarWorkroom] || 0))
+                                : 0
+                              const isToday = dateKey === todayKey
+                              const isScheduled = count > 0
+                              return (
+                                <div
+                                  key={di}
+                                  className={`aspect-square flex flex-col items-end justify-between border-r border-b border-brand-green/10 last:border-r-0 relative group cursor-default transition-colors p-1
+                                    ${isToday ? 'bg-brand-green/15 shadow-[inset_0_0_0_1px_rgba(140,182,60,0.25)]' : isScheduled ? 'bg-brand-green/[0.06]' : 'bg-white hover:bg-brand-green/[0.04]'}
+                                  `}
+                                >
+                                  <span className={`text-sm font-bold leading-none px-1 py-0.5 rounded-md
+                                    ${isToday ? 'text-white bg-brand-green shadow-sm' : 'text-slate-600'}
+                                  `}>{day}</span>
+                                  <div className="flex-1 flex items-center justify-center w-full">
+                                    {isScheduled ? (
+                                      <span className={`text-[11px] font-bold leading-tight text-center px-1.5 py-0.5 rounded-md
+                                        ${isToday ? 'bg-white text-brand-green-dark' : 'bg-brand-green/15 text-brand-green-dark'}
+                                      `}>
+                                        {count} {count === 1 ? 'job' : 'jobs'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-300">—</span>
+                                    )}
+                                  </div>
+                                  {/* Tooltip */}
+                                  {isScheduled && (
+                                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                      <span className="inline-block px-2 py-1 rounded-md bg-brand-green-dark text-white text-[10px] font-medium shadow-lg">
+                                        {count} job{count > 1 ? 's' : ''} on {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                  {/* Summary badges */}
+                  <div className="mt-4 flex gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green-dark font-semibold">
+                      <div className="w-2.5 h-2.5 rounded-full bg-brand-green" />
+                      Scheduled
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/5 border border-brand-green/15 text-brand-green-dark/70 font-medium">
+                      <div className="w-2.5 h-2.5 rounded-full bg-brand-green-dark" />
+                      Today
+                    </span>
+                    <span className="ml-auto text-brand-green-dark/60 font-medium">{data.scheduledCount} total</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 py-8 text-center">No scheduled install dates found in job records</p>
+              )}
             </motion.div>
+
+            <div className="h-8 lg:h-10" />
 
             {/* Weekly Report */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 break-inside-avoid bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
@@ -724,121 +790,172 @@ export default function JobsAnalyticsPage() {
               )}
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
-              <SectionHeader title="Scheduled Install Dates" subtitle={`${data.scheduledCount} jobs with scheduled dates`} icon={<Calendar className="w-5 h-5" />} />
-              {data.hasInstallDates ? (
-                <div className="mt-4">
-                  {/* Month navigation */}
-                  <div className="flex items-center justify-between mb-5">
-                    <button
-                      onClick={() => setCalendarMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
-                      className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-brand-green-dark" />
-                    </button>
-                    {(() => {
-                      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
-                      const monthLabel = `${monthNames[calendarMonth.month]} ${calendarMonth.year}`
-                      const prefix = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-`
-                      const monthJobs = Object.entries(data.scheduledDates).filter(([k]) => k.startsWith(prefix)).length
-                      return (
-                        <div className="text-center">
-                          <h3 className="text-base font-bold text-brand-green-dark">{monthLabel}</h3>
-                          <p className="text-xs text-brand-green/70 font-medium">{monthJobs} install day{monthJobs !== 1 ? 's' : ''}</p>
-                        </div>
-                      )
-                    })()}
-                    <button
-                      onClick={() => setCalendarMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
-                      className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-brand-green-dark" />
-                    </button>
-                  </div>
-                  {/* Day-of-week headers */}
-                  <div className="grid grid-cols-7 mb-0">
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                      <div key={d} className="text-center py-1.5 bg-brand-green/10 first:rounded-tl-lg last:rounded-tr-lg border-x border-t border-brand-green/15">
-                        <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d.slice(0,1)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Calendar grid */}
-                  {(() => {
-                    const today = new Date()
-                    const todayKey = today.toISOString().split('T')[0]
-                    const firstDay = new Date(calendarMonth.year, calendarMonth.month, 1).getDay()
-                    const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate()
-                    const weeks: (number | null)[][] = []
-                    let week: (number | null)[] = []
-                    for (let i = 0; i < firstDay; i++) week.push(null)
-                    for (let d = 1; d <= daysInMonth; d++) {
-                      week.push(d)
-                      if (week.length === 7) { weeks.push(week); week = [] }
-                    }
-                    if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
-                    return (
-                      <div className="rounded-xl overflow-hidden border border-brand-green/15 shadow-sm">
-                        {weeks.map((w, wi) => (
-                          <div key={wi} className="grid grid-cols-7">
-                            {w.map((day, di) => {
-                              if (day === null) return <div key={di} className="aspect-square bg-brand-green/[0.04] border-r border-b border-brand-green/10 last:border-r-0" />
-                              const dateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                              const count = data.scheduledDates[dateKey] || 0
-                              const isToday = dateKey === todayKey
-                              const isScheduled = count > 0
-                              return (
-                                <div
-                                  key={di}
-                                  className={`aspect-square flex flex-col items-center justify-center border-r border-b border-brand-green/10 last:border-r-0 relative group cursor-default transition-colors
-                                    ${isToday ? 'bg-brand-green/15 shadow-[inset_0_0_0_1px_rgba(140,182,60,0.25)]' : isScheduled ? 'bg-brand-green/[0.06]' : 'bg-white hover:bg-brand-green/[0.04]'}
-                                  `}
-                                >
-                                  <span className={`text-xs font-semibold leading-none
-                                    ${isToday ? 'text-white bg-brand-green rounded-full w-6 h-6 flex items-center justify-center shadow-sm' : 'text-slate-600'}
-                                  `}>{day}</span>
-                                  {isScheduled && (
-                                    <div className="mt-0.5">
-                                      <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-[10px] font-extrabold leading-none px-1
-                                        ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green text-white shadow-sm'}
-                                      `}>
-                                        {count}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {!isScheduled && <div className="h-[18px] mt-0.5" />}
-                                  {/* Tooltip */}
-                                  {isScheduled && (
-                                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                      <span className="inline-block px-2 py-1 rounded-md bg-brand-green-dark text-white text-[10px] font-medium shadow-lg">
-                                        {count} job{count > 1 ? 's' : ''} on {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })()}
-                  {/* Summary badges */}
-                  <div className="mt-4 flex gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green-dark font-semibold">
-                      <div className="w-2.5 h-2.5 rounded-full bg-brand-green" />
-                      Scheduled
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/5 border border-brand-green/15 text-brand-green-dark/70 font-medium">
-                      <div className="w-2.5 h-2.5 rounded-full bg-brand-green-dark" />
-                      Today
-                    </span>
-                    <span className="ml-auto text-brand-green-dark/60 font-medium">{data.scheduledCount} total</span>
-                  </div>
+            {/* Status Distribution */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 break-inside-avoid bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Status Distribution</h2>
+                  <p className="mt-1 text-sm text-slate-500">Jobs by current status</p>
                 </div>
-              ) : (
-                <p className="text-sm text-slate-400 py-8 text-center">No scheduled install dates found in job records</p>
-              )}
+                <BarChart3 className="w-5 h-5 text-slate-400" />
+              </div>
+              {(() => {
+                const statusData = data.statusDistribution
+                const maxVal = Math.max(1, ...statusData.map((item) => item.count))
+                const leadingStatus = statusData.reduce(
+                  (best, item) => (item.count > best.count ? item : best),
+                  statusData[0] || { status: '-', count: 0 }
+                )
+
+                return (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Top Status</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900 capitalize truncate">{leadingStatus.status}</div>
+                        <div className="text-sm text-slate-500">{leadingStatus.count} jobs</div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900">{data.totalJobs}</div>
+                        <div className="text-sm text-slate-500">Across all statuses</div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
+                      <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
+                        <span>Job statuses</span>
+                        <span>Max {maxVal}</span>
+                      </div>
+
+                      <div className="relative h-72">
+                        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+                          {[1, 2, 3, 4].map((line) => (
+                            <div key={line} className="border-t border-dashed border-slate-200" />
+                          ))}
+                        </div>
+
+                        <div className="absolute inset-0 flex items-end gap-2">
+                          {statusData.slice(0, 8).map((item, index) => {
+                            const percentage = data.totalJobs > 0 ? (item.count / data.totalJobs) * 100 : 0
+                            const barHeight = item.count === 0 ? 6 : Math.max((item.count / maxVal) * 100, 8)
+                            const isLeader = item.status === leadingStatus.status && item.count === leadingStatus.count
+
+                            return (
+                              <div
+                                key={`${item.status}-${index}`}
+                                className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-xl px-1 text-center"
+                              >
+                                <div className="mb-2 text-sm font-semibold text-slate-900">{item.count}</div>
+                                <div
+                                  className={`relative rounded-t-2xl transition-all duration-300 group-hover:opacity-90 ${
+                                    isLeader ? 'bg-brand-green shadow-[0_14px_30px_-18px_rgba(101,163,13,0.9)]' : 'bg-brand-green/80'
+                                  }`}
+                                  style={{ height: `${barHeight}%` }}
+                                >
+                                  <div className="absolute inset-x-0 top-0 h-8 rounded-t-2xl bg-white/15" />
+                                </div>
+                                <div className="mt-3 space-y-1">
+                                  <div className="text-xs font-medium capitalize leading-tight text-slate-700 group-hover:text-slate-900 truncate">{item.status}</div>
+                                  <div className="text-[11px] text-slate-500">{percentage.toFixed(1)}%</div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </motion.div>
+          </div>
+
+          {/* Completion Breakdown */}
+          <div id="completion" className="scroll-mt-24">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Completion Overview</h2>
+                    <p className="mt-1 text-sm text-slate-500">Job completion status breakdown</p>
+                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-brand-green" />
+                </div>
+                <select
+                  value={completionWorkroom}
+                  onChange={(e) => setCompletionWorkroom(e.target.value)}
+                  className="px-3 py-2 text-xs font-bold border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600"
+                >
+                  <option value="all">All Workrooms</option>
+                  {data.workrooms.map(w => (
+                    <option key={w} value={w}>{w}</option>
+                  ))}
+                </select>
+              </div>
+              {(() => {
+                // Compute filtered breakdown based on workroom selection
+                let items: { label: string; count: number; color: string }[]
+                if (completionWorkroom === 'all') {
+                  items = data.completionBreakdown
+                } else {
+                  const wr = data.completionByWorkroom[completionWorkroom] || { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
+                  items = [
+                    { label: 'Completed', count: wr.completed, color: '#7ab82e' },
+                    { label: 'In Progress', count: wr.inProgress, color: '#9dcf4a' },
+                    { label: 'Pending', count: wr.pending, color: '#c5e88f' },
+                    { label: 'Canceled', count: wr.canceled, color: '#4a6a1e' },
+                  ].filter(c => c.count > 0)
+                }
+                const total = items.reduce((s, c) => s + c.count, 0)
+
+                return total > 0 ? (
+                  <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
+                    {/* Pie Chart */}
+                    <div className="flex justify-center">
+                      {(() => {
+                        let cumulative = 0
+                        const segments = items.map(c => {
+                          const start = (cumulative / total) * 100
+                          cumulative += c.count
+                          const end = (cumulative / total) * 100
+                          return `${c.color} ${start}% ${end}%`
+                        })
+                        const gradient = `conic-gradient(${segments.join(', ')})`
+                        return (
+                          <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-brand-green/15 bg-brand-green/[0.02] shadow-sm">
+                            <div className="h-40 w-40 rounded-full" style={{ background: gradient }} />
+                            <div className="absolute flex h-20 w-20 flex-col items-center justify-center rounded-full border border-brand-green/20 bg-white shadow-sm">
+                              <span className="text-xl font-bold text-slate-900">{total}</span>
+                              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-brand-green/70">Total</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                    {/* Legend */}
+                    <div className="space-y-2">
+                      {items.map((item) => {
+                        const pct = total > 0 ? ((item.count / total) * 100).toFixed(1) : '0'
+                        return (
+                          <div key={item.label} className="group flex w-full items-center justify-between gap-3 rounded-xl border border-brand-green/10 bg-brand-green/[0.03] px-3 py-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="h-3 w-3 flex-shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-bold text-slate-600">{item.count}</span>
+                              <span className="text-xs text-slate-400 w-12 text-right">{pct}%</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 py-6 text-center">No completion data available</p>
+                )
+              })()}
             </motion.div>
           </div>
 

@@ -152,6 +152,8 @@ export default function JobsReportsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [laborFilter, setLaborFilter] = useState('')
   const [workroomFilter, setWorkroomFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
@@ -194,6 +196,21 @@ export default function JobsReportsPage() {
     if (statusFilter) list = list.filter(r => r.orderStatusDescription === statusFilter)
     if (laborFilter) list = list.filter(r => r.laborCategoryDescription === laborFilter)
     if (workroomFilter !== 'all') list = list.filter(r => r.workroom === workroomFilter)
+    if (dateFrom || dateTo) {
+      const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null
+      const to = dateTo ? new Date(dateTo + 'T23:59:59') : null
+      list = list.filter(r => {
+        const d = r.scheduledInstallDate
+          || r.cilioPayload?.dateInformation?.desiredInstallDate
+          || r.cilioPayload?.schedulingInformation?.scheduleDate
+          || r.cilioPayload?.currentOrderStatusDate
+        if (!d) return false
+        const date = new Date(d)
+        if (from && date < from) return false
+        if (to && date > to) return false
+        return true
+      })
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(r =>
@@ -208,7 +225,7 @@ export default function JobsReportsPage() {
       )
     }
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
-  }, [records, search, statusFilter, laborFilter, workroomFilter])
+  }, [records, search, statusFilter, laborFilter, workroomFilter, dateFrom, dateTo])
 
   const openDetail = async (record: CilioJobRecord) => {
     setDetailRecord(record)
@@ -292,7 +309,7 @@ export default function JobsReportsPage() {
                   className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
                 />
               </div>
-              <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
+              <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 items-center">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -323,6 +340,30 @@ export default function JobsReportsPage() {
                     <option key={w} value={w}>{w}</option>
                   ))}
                 </select>
+                <span className="text-slate-300 text-xs font-bold px-1">|</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="flex-shrink-0 px-2 py-3 text-sm border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600 min-w-[130px]"
+                  title="From date"
+                />
+                <span className="text-slate-300 text-xs">–</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="flex-shrink-0 px-2 py-3 text-sm border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600 min-w-[130px]"
+                  title="To date"
+                />
+                {(dateFrom || dateTo) && (
+                  <button
+                    onClick={() => { setDateFrom(''); setDateTo('') }}
+                    className="flex-shrink-0 p-2.5 text-xs font-bold text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -54,6 +54,26 @@ export async function GET(request: NextRequest) {
       .map(([status, count]) => ({ status, count }))
       .sort((a, b) => b.count - a.count)
 
+    // Completion breakdown — group statuses into categories, per-workroom
+    const completed = { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
+    const completedByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }> = {}
+    records.forEach(r => {
+      const s = (r.orderStatusDescription || '').toLowerCase()
+      const wr = r.workroom || 'Unassigned'
+      if (!completedByWorkroom[wr]) completedByWorkroom[wr] = { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
+      if (s.includes('complet')) { completed.completed++; completedByWorkroom[wr].completed++ }
+      else if (s.includes('cancel') || s.includes('chargeback')) { completed.canceled++; completedByWorkroom[wr].canceled++ }
+      else if (s.includes('scheduled') || s.includes('dispatched') || s.includes('tentative') || s.includes('sched')) { completed.inProgress++; completedByWorkroom[wr].inProgress++ }
+      else { completed.pending++; completedByWorkroom[wr].pending++ }
+    })
+    const completionBreakdown = [
+      { label: 'Completed', count: completed.completed, color: '#7ab82e' },
+      { label: 'In Progress', count: completed.inProgress, color: '#9dcf4a' },
+      { label: 'Pending', count: completed.pending, color: '#c5e88f' },
+      { label: 'Canceled', count: completed.canceled, color: '#4a6a1e' },
+    ].filter(c => c.count > 0)
+    const completionByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }> = completedByWorkroom
+
     // Labor category distribution
     const laborCounts: Record<string, number> = {}
     records.forEach(r => {
@@ -180,8 +200,9 @@ export async function GET(request: NextRequest) {
     })
     const weeklyDistribution = dayNames.map(day => ({ day, count: weeklyCounts[day] || 0 }))
 
-    // Scheduled install dates — individual dates for calendar
-    const scheduledDates: Record<string, number> = {}
+    // Scheduled install dates — individual dates for calendar with workroom breakdown
+    const scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number> }> = {}
+    const allWorkrooms = new Set<string>()
     let hasInstallDates = false
     let scheduledCount = 0
     records.forEach(r => {
@@ -190,7 +211,11 @@ export async function GET(request: NextRequest) {
         scheduledCount++
         hasInstallDates = true
         const key = d.toISOString().split('T')[0] // YYYY-MM-DD
-        scheduledDates[key] = (scheduledDates[key] || 0) + 1
+        const wr = r.workroom || 'Unassigned'
+        allWorkrooms.add(wr)
+        if (!scheduledDates[key]) scheduledDates[key] = { total: 0, byWorkroom: {} }
+        scheduledDates[key].total++
+        scheduledDates[key].byWorkroom[wr] = (scheduledDates[key].byWorkroom[wr] || 0) + 1
       }
     })
 
@@ -219,6 +244,9 @@ export async function GET(request: NextRequest) {
       scheduledDates,
       scheduledCount,
       hasInstallDates,
+      workrooms: Array.from(allWorkrooms).sort(),
+      completionBreakdown,
+      completionByWorkroom,
     }, { headers: noStoreHeaders })
   } catch (error) {
     console.error('Jobs analytics error:', error)
