@@ -404,7 +404,9 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
   if (params.orderCreatedDateEnd) q.set("OrderCreatedDateEnd", params.orderCreatedDateEnd)
   if (params.orderModifiedDateStart) q.set("OrderModifiedDateStart", params.orderModifiedDateStart)
   if (params.orderModifiedDateEnd) q.set("OrderModifiedDateEnd", params.orderModifiedDateEnd)
-  const query = q.toString()
+  // Cilio API does NOT handle %3A-encoded colons in date params.
+  // URLSearchParams encodes ":" → "%3A", so we decode them back.
+  const query = q.toString().replace(/%3A/g, ":")
   return cilioFetch<CilioJob[]>(`/job/search${query ? `?${query}` : ""}`)
 }
 
