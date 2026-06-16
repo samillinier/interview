@@ -147,6 +147,7 @@ async function runAutoSync(request: NextRequest) {
         ],
       },
       select: { orderNumber: true, scheduledInstallDate: true, installerName: true },
+      orderBy: { orderNumber: "asc" },
       take: 500,
     })
 
