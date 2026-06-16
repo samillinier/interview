@@ -3228,7 +3228,7 @@ export default function InstallerProfileViewPage() {
                                   <Share2 className="w-4 h-4 text-slate-500" />
                                   <span className="font-medium">Share Profile</span>
                                 </button>
-                                <button
+                                {false && (<button
                                   onClick={async () => {
                                     await handleGenerateIndependentContractorContract()
                                   }}
@@ -3239,7 +3239,7 @@ export default function InstallerProfileViewPage() {
                                   <span className="font-medium">
                                     {isGeneratingContract ? 'Generating…' : 'Generate Contract'}
                                   </span>
-                                </button>
+                                </button>)}
                               </div>
                             </>
                           )}
