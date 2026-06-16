@@ -226,6 +226,7 @@ export default function JobsAnalyticsPage() {
               <a href="#distributions" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Distributions</a>
               <a href="#stores" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Stores &amp; Installers</a>
               <a href="#completion" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Completion</a>
+              <a href="#calendar" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Calendar</a>
               <a href="#financial" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Financial</a>
             </div>
           </div>
@@ -364,13 +365,20 @@ export default function JobsAnalyticsPage() {
 
           {/* Masonry Charts Grid */}
           <div className="columns-1 lg:columns-2 lg:gap-6 [column-fill:_balance]">
-
+          {/* Completion Breakdown */}
+          <div id="completion" className="scroll-mt-24">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <SectionHeader title="Scheduled Install Dates" subtitle={`${data.scheduledCount} jobs with scheduled dates`} icon={<Calendar className="w-5 h-5" />} />
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Completion Overview</h2>
+                    <p className="mt-1 text-sm text-slate-500">Job completion status breakdown</p>
+                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-brand-green" />
+                </div>
                 <select
-                  value={calendarWorkroom}
-                  onChange={(e) => setCalendarWorkroom(e.target.value)}
+                  value={completionWorkroom}
+                  onChange={(e) => setCompletionWorkroom(e.target.value)}
                   className="px-3 py-2 text-xs font-bold border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600"
                 >
                   <option value="all">All Workrooms</option>
@@ -379,129 +387,71 @@ export default function JobsAnalyticsPage() {
                   ))}
                 </select>
               </div>
-              {data.hasInstallDates ? (
-                <div className="mt-4">
-                  {/* Month navigation */}
-                  <div className="flex items-center justify-between mb-5">
-                    <button
-                      onClick={() => setCalendarMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
-                      className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-brand-green-dark" />
-                    </button>
-                    {(() => {
-                      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
-                      const monthLabel = `${monthNames[calendarMonth.month]} ${calendarMonth.year}`
-                      const prefix = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-`
-                      const monthDays = Object.entries(data.scheduledDates)
-                        .filter(([k]) => k.startsWith(prefix))
-                      const monthJobs = monthDays.reduce((acc, [, v]) => {
-                        if (calendarWorkroom === 'all') return acc + v.total
-                        return acc + (v.byWorkroom[calendarWorkroom] || 0)
-                      }, 0)
-                      return (
-                        <div className="text-center">
-                          <h3 className="text-base font-bold text-brand-green-dark">{monthLabel}</h3>
-                          <p className="text-xs text-brand-green/70 font-medium">{monthJobs} job{monthJobs !== 1 ? 's' : ''}</p>
-                        </div>
-                      )
-                    })()}
-                    <button
-                      onClick={() => setCalendarMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
-                      className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-brand-green-dark" />
-                    </button>
-                  </div>
-                  {/* Day-of-week headers */}
-                  <div className="grid grid-cols-7 mb-0">
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                      <div key={d} className="text-center py-1.5 bg-brand-green/10 first:rounded-tl-lg last:rounded-tr-lg border-x border-t border-brand-green/15">
-                        <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d.slice(0,1)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Calendar grid */}
-                  {(() => {
-                    const today = new Date()
-                    const todayKey = today.toISOString().split('T')[0]
-                    const firstDay = new Date(calendarMonth.year, calendarMonth.month, 1).getDay()
-                    const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate()
-                    const weeks: (number | null)[][] = []
-                    let week: (number | null)[] = []
-                    for (let i = 0; i < firstDay; i++) week.push(null)
-                    for (let d = 1; d <= daysInMonth; d++) {
-                      week.push(d)
-                      if (week.length === 7) { weeks.push(week); week = [] }
-                    }
-                    if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
-                    return (
-                      <div className="rounded-xl overflow-hidden border border-brand-green/15 shadow-sm">
-                        {weeks.map((w, wi) => (
-                          <div key={wi} className="grid grid-cols-7">
-                            {w.map((day, di) => {
-                              if (day === null) return <div key={di} className="aspect-square bg-brand-green/[0.04] border-r border-b border-brand-green/10 last:border-r-0" />
-                              const dateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                              const dateData = data.scheduledDates[dateKey]
-                              const count = dateData
-                                ? (calendarWorkroom === 'all' ? dateData.total : (dateData.byWorkroom[calendarWorkroom] || 0))
-                                : 0
-                              const isToday = dateKey === todayKey
-                              const isScheduled = count > 0
-                              return (
-                                <div
-                                  key={di}
-                                  className={`aspect-square flex flex-col items-end justify-between border-r border-b border-brand-green/10 last:border-r-0 relative group cursor-default transition-colors p-1
-                                    ${isToday ? 'bg-brand-green/15 shadow-[inset_0_0_0_1px_rgba(140,182,60,0.25)]' : isScheduled ? 'bg-brand-green/[0.06]' : 'bg-white hover:bg-brand-green/[0.04]'}
-                                  `}
-                                >
-                                  <span className={`text-sm font-bold leading-none px-1 py-0.5 rounded-md
-                                    ${isToday ? 'text-white bg-brand-green shadow-sm' : 'text-slate-600'}
-                                  `}>{day}</span>
-                                  <div className="flex-1 flex items-center justify-center w-full">
-                                    {isScheduled ? (
-                                      <span className={`text-[11px] font-bold leading-tight text-center px-1.5 py-0.5 rounded-md
-                                        ${isToday ? 'bg-white text-brand-green-dark' : 'bg-brand-green/15 text-brand-green-dark'}
-                                      `}>
-                                        {count} {count === 1 ? 'job' : 'jobs'}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] text-slate-300">—</span>
-                                    )}
-                                  </div>
-                                  {/* Tooltip */}
-                                  {isScheduled && (
-                                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
-                                      <span className="inline-block px-2 py-1 rounded-md bg-brand-green-dark text-white text-[10px] font-medium shadow-lg">
-                                        {count} job{count > 1 ? 's' : ''} on {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })}
+              {(() => {
+                // Compute filtered breakdown based on workroom selection
+                let items: { label: string; count: number; color: string }[]
+                if (completionWorkroom === 'all') {
+                  items = data.completionBreakdown
+                } else {
+                  const wr = data.completionByWorkroom[completionWorkroom] || { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
+                  items = [
+                    { label: 'Completed', count: wr.completed, color: '#7ab82e' },
+                    { label: 'In Progress', count: wr.inProgress, color: '#9dcf4a' },
+                    { label: 'Pending', count: wr.pending, color: '#c5e88f' },
+                    { label: 'Canceled', count: wr.canceled, color: '#4a6a1e' },
+                  ].filter(c => c.count > 0)
+                }
+                const total = items.reduce((s, c) => s + c.count, 0)
+
+                return total > 0 ? (
+                  <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
+                    {/* Pie Chart */}
+                    <div className="flex justify-center">
+                      {(() => {
+                        let cumulative = 0
+                        const segments = items.map(c => {
+                          const start = (cumulative / total) * 100
+                          cumulative += c.count
+                          const end = (cumulative / total) * 100
+                          return `${c.color} ${start}% ${end}%`
+                        })
+                        const gradient = `conic-gradient(${segments.join(', ')})`
+                        return (
+                          <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-brand-green/15 bg-brand-green/[0.02] shadow-sm">
+                            <div className="h-40 w-40 rounded-full" style={{ background: gradient }} />
+                            <div className="absolute flex h-20 w-20 flex-col items-center justify-center rounded-full border border-brand-green/20 bg-white shadow-sm">
+                              <span className="text-xl font-bold text-slate-900">{total}</span>
+                              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-brand-green/70">Total</span>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )
-                  })()}
-                  {/* Summary badges */}
-                  <div className="mt-4 flex gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green-dark font-semibold">
-                      <div className="w-2.5 h-2.5 rounded-full bg-brand-green" />
-                      Scheduled
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/5 border border-brand-green/15 text-brand-green-dark/70 font-medium">
-                      <div className="w-2.5 h-2.5 rounded-full bg-brand-green-dark" />
-                      Today
-                    </span>
-                    <span className="ml-auto text-brand-green-dark/60 font-medium">{data.scheduledCount} total</span>
+                        )
+                      })()}
+                    </div>
+                    {/* Legend */}
+                    <div className="space-y-2">
+                      {items.map((item) => {
+                        const pct = total > 0 ? ((item.count / total) * 100).toFixed(1) : '0'
+                        return (
+                          <div key={item.label} className="group flex w-full items-center justify-between gap-3 rounded-xl border border-brand-green/10 bg-brand-green/[0.03] px-3 py-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="h-3 w-3 flex-shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-bold text-slate-600">{item.count}</span>
+                              <span className="text-xs text-slate-400 w-12 text-right">{pct}%</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400 py-8 text-center">No scheduled install dates found in job records</p>
-              )}
+                ) : (
+                  <p className="text-sm text-slate-400 py-6 text-center">No completion data available</p>
+                )
+              })()}
             </motion.div>
+          </div>
 
             <div className="h-8 lg:h-10" />
 
@@ -871,93 +821,148 @@ export default function JobsAnalyticsPage() {
             </motion.div>
           </div>
 
-          {/* Completion Breakdown */}
-          <div id="completion" className="scroll-mt-24">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
-              <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Completion Overview</h2>
-                    <p className="mt-1 text-sm text-slate-500">Job completion status breakdown</p>
-                  </div>
-                  <CheckCircle2 className="w-5 h-5 text-brand-green" />
-                </div>
-                <select
-                  value={completionWorkroom}
-                  onChange={(e) => setCompletionWorkroom(e.target.value)}
-                  className="px-3 py-2 text-xs font-bold border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600"
-                >
-                  <option value="all">All Workrooms</option>
-                  {data.workrooms.map(w => (
-                    <option key={w} value={w}>{w}</option>
-                  ))}
-                </select>
-              </div>
-              {(() => {
-                // Compute filtered breakdown based on workroom selection
-                let items: { label: string; count: number; color: string }[]
-                if (completionWorkroom === 'all') {
-                  items = data.completionBreakdown
-                } else {
-                  const wr = data.completionByWorkroom[completionWorkroom] || { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
-                  items = [
-                    { label: 'Completed', count: wr.completed, color: '#7ab82e' },
-                    { label: 'In Progress', count: wr.inProgress, color: '#9dcf4a' },
-                    { label: 'Pending', count: wr.pending, color: '#c5e88f' },
-                    { label: 'Canceled', count: wr.canceled, color: '#4a6a1e' },
-                  ].filter(c => c.count > 0)
-                }
-                const total = items.reduce((s, c) => s + c.count, 0)
 
-                return total > 0 ? (
-                  <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
-                    {/* Pie Chart */}
-                    <div className="flex justify-center">
-                      {(() => {
-                        let cumulative = 0
-                        const segments = items.map(c => {
-                          const start = (cumulative / total) * 100
-                          cumulative += c.count
-                          const end = (cumulative / total) * 100
-                          return `${c.color} ${start}% ${end}%`
-                        })
-                        const gradient = `conic-gradient(${segments.join(', ')})`
-                        return (
-                          <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-brand-green/15 bg-brand-green/[0.02] shadow-sm">
-                            <div className="h-40 w-40 rounded-full" style={{ background: gradient }} />
-                            <div className="absolute flex h-20 w-20 flex-col items-center justify-center rounded-full border border-brand-green/20 bg-white shadow-sm">
-                              <span className="text-xl font-bold text-slate-900">{total}</span>
-                              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-brand-green/70">Total</span>
-                            </div>
+          {/* Scheduled Install Dates - Full Width */}
+          <div id="calendar" className="scroll-mt-24">
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
+                          <div className="flex items-center justify-between flex-wrap gap-3">
+                            <SectionHeader title="Scheduled Install Dates" subtitle={`${data.scheduledCount} jobs with scheduled dates`} icon={<Calendar className="w-5 h-5" />} />
+                            <select
+                              value={calendarWorkroom}
+                              onChange={(e) => setCalendarWorkroom(e.target.value)}
+                              className="px-3 py-2 text-xs font-bold border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-slate-600"
+                            >
+                              <option value="all">All Workrooms</option>
+                              {data.workrooms.map(w => (
+                                <option key={w} value={w}>{w}</option>
+                              ))}
+                            </select>
                           </div>
-                        )
-                      })()}
-                    </div>
-                    {/* Legend */}
-                    <div className="space-y-2">
-                      {items.map((item) => {
-                        const pct = total > 0 ? ((item.count / total) * 100).toFixed(1) : '0'
-                        return (
-                          <div key={item.label} className="group flex w-full items-center justify-between gap-3 rounded-xl border border-brand-green/10 bg-brand-green/[0.03] px-3 py-2.5">
-                            <div className="flex items-center gap-2.5">
-                              <span className="h-3 w-3 flex-shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
-                              <span className="text-sm font-semibold text-slate-700">{item.label}</span>
+                          {data.hasInstallDates ? (
+                            <div className="mt-4">
+                              {/* Month navigation */}
+                              <div className="flex items-center justify-between mb-5">
+                                <button
+                                  onClick={() => setCalendarMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 })}
+                                  className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
+                                >
+                                  <ChevronLeft className="w-4 h-4 text-brand-green-dark" />
+                                </button>
+                                {(() => {
+                                  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+                                  const monthLabel = `${monthNames[calendarMonth.month]} ${calendarMonth.year}`
+                                  const prefix = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-`
+                                  const monthDays = Object.entries(data.scheduledDates)
+                                    .filter(([k]) => k.startsWith(prefix))
+                                  const monthJobs = monthDays.reduce((acc, [, v]) => {
+                                    if (calendarWorkroom === 'all') return acc + v.total
+                                    return acc + (v.byWorkroom[calendarWorkroom] || 0)
+                                  }, 0)
+                                  return (
+                                    <div className="text-center">
+                                      <h3 className="text-base font-bold text-brand-green-dark">{monthLabel}</h3>
+                                      <p className="text-xs text-brand-green/70 font-medium">{monthJobs} job{monthJobs !== 1 ? 's' : ''}</p>
+                                    </div>
+                                  )
+                                })()}
+                                <button
+                                  onClick={() => setCalendarMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 })}
+                                  className="p-1.5 rounded-lg hover:bg-brand-green/10 transition-colors"
+                                >
+                                  <ChevronRight className="w-4 h-4 text-brand-green-dark" />
+                                </button>
+                              </div>
+                              {/* Day-of-week headers */}
+                              <div className="grid grid-cols-7 mb-0">
+                                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                                  <div key={d} className="text-center py-1.5 bg-brand-green/10 first:rounded-tl-lg last:rounded-tr-lg border-x border-t border-brand-green/15">
+                                    <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d.slice(0,1)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Calendar grid */}
+                              {(() => {
+                                const today = new Date()
+                                const todayKey = today.toISOString().split('T')[0]
+                                const firstDay = new Date(calendarMonth.year, calendarMonth.month, 1).getDay()
+                                const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate()
+                                const weeks: (number | null)[][] = []
+                                let week: (number | null)[] = []
+                                for (let i = 0; i < firstDay; i++) week.push(null)
+                                for (let d = 1; d <= daysInMonth; d++) {
+                                  week.push(d)
+                                  if (week.length === 7) { weeks.push(week); week = [] }
+                                }
+                                if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
+                                return (
+                                  <div className="rounded-xl overflow-hidden border border-brand-green/15 shadow-sm">
+                                    {weeks.map((w, wi) => (
+                                      <div key={wi} className="grid grid-cols-7">
+                                        {w.map((day, di) => {
+                                          if (day === null) return <div key={di} className="aspect-square bg-brand-green/[0.04] border-r border-b border-brand-green/10 last:border-r-0" />
+                                          const dateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                                          const dateData = data.scheduledDates[dateKey]
+                                          const count = dateData
+                                            ? (calendarWorkroom === 'all' ? dateData.total : (dateData.byWorkroom[calendarWorkroom] || 0))
+                                            : 0
+                                          const isToday = dateKey === todayKey
+                                          const isScheduled = count > 0
+                                          return (
+                                            <div
+                                              key={di}
+                                              className={`aspect-square flex flex-col items-end justify-between border-r border-b border-brand-green/10 last:border-r-0 relative group cursor-default transition-colors p-1
+                                                ${isToday ? 'bg-brand-green/15 shadow-[inset_0_0_0_1px_rgba(140,182,60,0.25)]' : isScheduled ? 'bg-brand-green/[0.06]' : 'bg-white hover:bg-brand-green/[0.04]'}
+                                              `}
+                                            >
+                                              <span className={`text-sm font-bold leading-none px-1 py-0.5 rounded-md
+                                                ${isToday ? 'text-white bg-brand-green shadow-sm' : 'text-slate-600'}
+                                              `}>{day}</span>
+                                              <div className="flex-1 flex items-center justify-center w-full">
+                                                {isScheduled ? (
+                                                  <span className={`text-[11px] font-bold leading-tight text-center px-1.5 py-0.5 rounded-md
+                                                    ${isToday ? 'bg-white text-brand-green-dark' : 'bg-brand-green/15 text-brand-green-dark'}
+                                                  `}>
+                                                    {count} {count === 1 ? 'job' : 'jobs'}
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-[10px] text-slate-300">—</span>
+                                                )}
+                                              </div>
+                                              {/* Tooltip */}
+                                              {isScheduled && (
+                                                <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                                  <span className="inline-block px-2 py-1 rounded-md bg-brand-green-dark text-white text-[10px] font-medium shadow-lg">
+                                                    {count} job{count > 1 ? 's' : ''} on {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
+                              {/* Summary badges */}
+                              <div className="mt-4 flex gap-2 text-xs">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green-dark font-semibold">
+                                  <div className="w-2.5 h-2.5 rounded-full bg-brand-green" />
+                                  Scheduled
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-green/5 border border-brand-green/15 text-brand-green-dark/70 font-medium">
+                                  <div className="w-2.5 h-2.5 rounded-full bg-brand-green-dark" />
+                                  Today
+                                </span>
+                                <span className="ml-auto text-brand-green-dark/60 font-medium">{data.scheduledCount} total</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-slate-600">{item.count}</span>
-                              <span className="text-xs text-slate-400 w-12 text-right">{pct}%</span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-400 py-6 text-center">No completion data available</p>
-                )
-              })()}
-            </motion.div>
+                          ) : (
+                            <p className="text-sm text-slate-400 py-8 text-center">No scheduled install dates found in job records</p>
+                          )}
+                        </motion.div>
           </div>
+
 
           {/* Financial */}
           <div id="financial" className="scroll-mt-24">
