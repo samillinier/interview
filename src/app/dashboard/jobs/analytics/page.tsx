@@ -336,7 +336,7 @@ export default function JobsAnalyticsPage() {
                         {/* Glow + line */}
                         <path d={dailyPath} fill="none" stroke="#8CB63C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#dailyGlow)" />
                         <path d={dailyPath} fill="none" stroke="#8CB63C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        {/* Peak dots only */}
+                        {/* Dots + count labels */}
                         {dailyPoints.map((p, i) => {
                           if (data.dailyTrend[i].count === 0) return null
                           const isPeak = data.dailyTrend[i].count === maxDaily
@@ -344,7 +344,7 @@ export default function JobsAnalyticsPage() {
                             <g key={i}>
                               <circle cx={p.x} cy={p.y} r={isPeak ? 5 : 2.5} fill="white" stroke="#8CB63C" strokeWidth={isPeak ? 2.5 : 1.5} />
                               <circle cx={p.x} cy={p.y} r={isPeak ? 2 : 1} fill="#8CB63C" />
-                              {isPeak && <text x={p.x} y={p.y - 11} textAnchor="middle" className="text-[10px] font-bold" fill="#1e293b">{data.dailyTrend[i].count}</text>}
+                              <text x={p.x} y={p.y - 10} textAnchor="middle" className="text-[9px] font-semibold" fill="#1e293b">{data.dailyTrend[i].count}</text>
                             </g>
                           )
                         })}
