@@ -4,7 +4,7 @@ import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 60
+export const maxDuration = 300
 
 /**
  * GET  /api/cilio/jobs/auto-sync  ← Vercel Cron Job (every 5 min)
@@ -51,8 +51,10 @@ async function runAutoSync(request: NextRequest) {
   console.log("[AutoSync] Starting full Cilio job fetch...")
   const startTime = Date.now()
 
-  const allJobs = await cilio.searchAllJobs((fetched, window) => {
-    console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
+  const allJobs = await cilio.searchAllJobs({
+    onProgress: (fetched, window) => {
+      console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
+    },
   }).catch(() => [] as any[])
 
   if (allJobs.length === 0) {

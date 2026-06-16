@@ -410,19 +410,21 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
 
 /** Fetch ALL jobs by date-range pagination. The Cilio API hard-caps at 50 results per request
  *  with no server-side pagination, so we walk backward in weekly windows (split to daily
- *  if a week looks full) and deduplicate. */
+ *  if a week looks full) and deduplicate.
+ *  @param monthsBack How many months of history to fetch (default 2) */
 export async function searchAllJobs(
-  onProgress?: (fetched: number, window: string) => void
+  options?: { monthsBack?: number; onProgress?: (fetched: number, window: string) => void }
 ): Promise<CilioJob[]> {
   const MAX_PER_REQUEST = 50
+  const monthsBack = options?.monthsBack ?? 2
+  const onProgress = options?.onProgress
   const now = new Date()
   const allJobs = new Map<number, CilioJob>()
 
-  // Walk back 6 months in 7-day windows
   const endDate = new Date(now)
   endDate.setDate(endDate.getDate() + 1) // include today
   const startDate = new Date(now)
-  startDate.setMonth(startDate.getMonth() - 6)
+  startDate.setMonth(startDate.getMonth() - monthsBack)
 
   const windows: { start: Date; end: Date }[] = []
   let cursor = new Date(startDate)
