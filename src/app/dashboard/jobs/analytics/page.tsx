@@ -404,7 +404,7 @@ export default function JobsAnalyticsPage() {
                 const total = items.reduce((s, c) => s + c.count, 0)
 
                 return total > 0 ? (
-                  <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
+                  <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
                     {/* Pie Chart */}
                     <div className="flex justify-center">
                       {(() => {
@@ -417,29 +417,29 @@ export default function JobsAnalyticsPage() {
                         })
                         const gradient = `conic-gradient(${segments.join(', ')})`
                         return (
-                          <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-brand-green/15 bg-brand-green/[0.02] shadow-sm">
-                            <div className="h-40 w-40 rounded-full" style={{ background: gradient }} />
-                            <div className="absolute flex h-20 w-20 flex-col items-center justify-center rounded-full border border-brand-green/20 bg-white shadow-sm">
-                              <span className="text-xl font-bold text-slate-900">{total}</span>
-                              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-brand-green/70">Total</span>
+                          <div className="relative flex h-64 w-64 items-center justify-center rounded-full border border-brand-green/15 bg-brand-green/[0.02] shadow-sm">
+                            <div className="h-56 w-56 rounded-full" style={{ background: gradient }} />
+                            <div className="absolute flex h-28 w-28 flex-col items-center justify-center rounded-full border border-brand-green/20 bg-white shadow-sm">
+                              <span className="text-2xl font-bold text-slate-900">{total}</span>
+                              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-brand-green/70">Total</span>
                             </div>
                           </div>
                         )
                       })()}
                     </div>
                     {/* Legend */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {items.map((item) => {
                         const pct = total > 0 ? ((item.count / total) * 100).toFixed(1) : '0'
                         return (
-                          <div key={item.label} className="group flex w-full items-center justify-between gap-3 rounded-xl border border-brand-green/10 bg-brand-green/[0.03] px-3 py-2.5">
-                            <div className="flex items-center gap-2.5">
-                              <span className="h-3 w-3 flex-shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                          <div key={item.label} className="group flex w-full items-center justify-between gap-3 rounded-xl border border-brand-green/10 bg-brand-green/[0.03] px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <span className="h-3.5 w-3.5 flex-shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
                               <span className="text-sm font-semibold text-slate-700">{item.label}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-slate-600">{item.count}</span>
-                              <span className="text-xs text-slate-400 w-12 text-right">{pct}%</span>
+                              <span className="text-base font-bold text-slate-600">{item.count}</span>
+                              <span className="text-sm text-slate-400 w-14 text-right">{pct}%</span>
                             </div>
                           </div>
                         )
@@ -447,7 +447,7 @@ export default function JobsAnalyticsPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-400 py-6 text-center">No completion data available</p>
+                  <p className="text-sm text-slate-400 py-8 text-center">No completion data available</p>
                 )
               })()}
             </motion.div>
