@@ -920,7 +920,7 @@ export default function JobsAnalyticsPage() {
                                               `}
                                             >
                                               {/* Date number — top right */}
-                                              <span className={`absolute top-0.5 right-0.5 text-lg font-extrabold w-7 h-7 flex items-center justify-center rounded-lg leading-none
+                                              <span className={`absolute top-0.5 right-1 text-2xl font-black w-8 h-8 flex items-center justify-center rounded-lg leading-none
                                                 ${isToday ? 'bg-brand-green text-white shadow-md' : 'text-brand-green-dark'}
                                               `}>{day}</span>
                                               {/* Job count — centered */}
