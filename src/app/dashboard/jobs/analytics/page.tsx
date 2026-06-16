@@ -454,8 +454,6 @@ export default function JobsAnalyticsPage() {
             </motion.div>
           </div>
 
-            <div className="h-8 lg:h-10" />
-
             {/* Weekly Report */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 break-inside-avoid bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
               <div className="flex items-center justify-between mb-6">
@@ -472,7 +470,7 @@ export default function JobsAnalyticsPage() {
 
                 return (
                   <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Busiest Day</div>
                         <div className="mt-1 text-lg font-bold text-slate-900">{leading.day}</div>
@@ -481,7 +479,12 @@ export default function JobsAnalyticsPage() {
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Weekly Total</div>
                         <div className="mt-1 text-lg font-bold text-slate-900">{data.totalJobs}</div>
-                        <div className="text-sm text-slate-500">All days combined</div>
+                        <div className="text-sm text-slate-500">All days</div>
+                      </div>
+                      <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">Avg / Day</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900">{Math.round(data.totalJobs / 7)}</div>
+                        <div className="text-sm text-slate-500">Per weekday</div>
                       </div>
                     </div>
 
@@ -491,7 +494,7 @@ export default function JobsAnalyticsPage() {
                         <span>Max {maxVal}</span>
                       </div>
 
-                      <div className="relative h-72">
+                      <div className="relative h-96">
                         <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
                           {[1, 2, 3, 4].map((line) => (
                             <div key={line} className="border-t border-dashed border-slate-200" />
@@ -520,6 +523,36 @@ export default function JobsAnalyticsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Weekday vs Weekend breakdown */}
+                    {(() => {
+                      const weekdays = weekData.filter(d => d.day !== 'Sun' && d.day !== 'Sat')
+                      const weekends = weekData.filter(d => d.day === 'Sun' || d.day === 'Sat')
+                      const weekdayTotal = weekdays.reduce((s, d) => s + d.count, 0)
+                      const weekendTotal = weekends.reduce((s, d) => s + d.count, 0)
+                      const weekdayAvg = weekdays.length > 0 ? Math.round(weekdayTotal / weekdays.length) : 0
+                      const weekendAvg = weekends.length > 0 ? Math.round(weekendTotal / weekends.length) : 0
+                      return (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-500">Weekdays</div>
+                            <div className="mt-1 flex items-baseline gap-2">
+                              <span className="text-lg font-bold text-slate-900">{weekdayTotal}</span>
+                              <span className="text-xs text-slate-400">({weekdayAvg}/day)</span>
+                            </div>
+                            <div className="text-sm text-slate-500">Mon–Fri</div>
+                          </div>
+                          <div className="rounded-2xl border border-purple-100 bg-purple-50/50 px-4 py-3">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-500">Weekends</div>
+                            <div className="mt-1 flex items-baseline gap-2">
+                              <span className="text-lg font-bold text-slate-900">{weekendTotal}</span>
+                              <span className="text-xs text-slate-400">({weekendAvg}/day)</span>
+                            </div>
+                            <div className="text-sm text-slate-500">Sat–Sun</div>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })()}
