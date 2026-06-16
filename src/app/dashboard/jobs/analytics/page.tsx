@@ -915,29 +915,26 @@ export default function JobsAnalyticsPage() {
                                           return (
                                             <div
                                               key={di}
-                                              className={`aspect-[4/3] border-r border-slate-100 last:border-r-0 p-1.5 flex flex-col relative group transition-colors
+                                              className={`aspect-square border-r border-slate-100 last:border-r-0 p-1 relative group transition-colors
                                                 ${isToday ? 'bg-brand-green/10 ring-1 ring-brand-green/30 ring-inset' : isWeekend ? 'bg-slate-50/80' : 'bg-white hover:bg-slate-50/60'}
                                               `}
                                             >
-                                              {/* Date number */}
-                                              <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full leading-none
-                                                ${isToday ? 'bg-brand-green text-white shadow-sm' : 'text-slate-600'}
+                                              {/* Date number — top right */}
+                                              <span className={`absolute top-1 right-1 text-xs font-bold w-5 h-5 flex items-center justify-center rounded leading-none
+                                                ${isToday ? 'bg-brand-green text-white shadow-sm' : 'text-slate-500'}
                                               `}>{day}</span>
-                                              {/* Job count badge */}
-                                              {isScheduled ? (
-                                                <div className="mt-auto">
-                                                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold rounded-md px-1.5 py-0.5
+                                              {/* Job count — centered */}
+                                              <div className="absolute inset-0 flex items-center justify-center">
+                                                {isScheduled ? (
+                                                  <span className={`inline-flex items-center justify-center text-[11px] font-bold rounded-lg px-2 py-1 leading-tight
                                                     ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/15 text-brand-green-dark'}
                                                   `}>
-                                                    <span className="w-1 h-1 rounded-full bg-brand-green" />
-                                                    {count}
+                                                    {count} {count === 1 ? 'job' : 'jobs'}
                                                   </span>
-                                                </div>
-                                              ) : (
-                                                <div className="mt-auto">
-                                                  <span className="text-[10px] text-slate-300/50">—</span>
-                                                </div>
-                                              )}
+                                                ) : (
+                                                  <span className="text-[10px] text-slate-200/50">—</span>
+                                                )}
+                                              </div>
                                               {/* Tooltip */}
                                               {isScheduled && (
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
