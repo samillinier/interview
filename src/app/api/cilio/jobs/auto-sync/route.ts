@@ -51,8 +51,9 @@ async function runAutoSync(request: NextRequest) {
   console.log("[AutoSync] Starting full Cilio job fetch...")
   const startTime = Date.now()
 
-  const allJobs = await cilio.searchJobs().catch(() => [] as any[])
-  console.log(`[AutoSync] Fetched ${allJobs.length} jobs`)
+  const allJobs = await cilio.searchAllJobs((fetched, window) => {
+    console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
+  }).catch(() => [] as any[])
 
   if (allJobs.length === 0) {
     return NextResponse.json({

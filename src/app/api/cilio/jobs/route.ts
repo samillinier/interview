@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       jobs: filtered.map((j: any) => ({ ...j, _installer: installerMap[j.orderNumber] || null })),
       count: filtered.length,
       totalFetched: allJobs.length,
-      searchesRan: searches.length,
+      searchesRan: 1,
     })
   } catch (error: any) {
     console.error("Cilio jobs search error:", error)

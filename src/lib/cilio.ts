@@ -408,6 +408,70 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
   return cilioFetch<CilioJob[]>(`/job/search${query ? `?${query}` : ""}`)
 }
 
+/** Fetch ALL jobs by date-range pagination. The Cilio API hard-caps at 50 results per request
+ *  with no server-side pagination, so we walk backward in weekly windows (split to daily
+ *  if a week looks full) and deduplicate. */
+export async function searchAllJobs(
+  onProgress?: (fetched: number, window: string) => void
+): Promise<CilioJob[]> {
+  const MAX_PER_REQUEST = 50
+  const now = new Date()
+  const allJobs = new Map<number, CilioJob>()
+
+  // Walk back 6 months in 7-day windows
+  const endDate = new Date(now)
+  endDate.setDate(endDate.getDate() + 1) // include today
+  const startDate = new Date(now)
+  startDate.setMonth(startDate.getMonth() - 6)
+
+  const windows: { start: Date; end: Date }[] = []
+  let cursor = new Date(startDate)
+  while (cursor < endDate) {
+    const wEnd = new Date(cursor)
+    wEnd.setDate(wEnd.getDate() + 7)
+    if (wEnd > endDate) wEnd.setTime(endDate.getTime())
+    windows.push({ start: new Date(cursor), end: new Date(wEnd) })
+    cursor = wEnd
+  }
+
+  const toISO = (d: Date) => d.toISOString()
+
+  for (const win of windows) {
+    const label = `${win.start.toISOString().slice(0, 10)} → ${win.end.toISOString().slice(0, 10)}`
+    let batch = await searchJobs({
+      orderModifiedDateStart: toISO(win.start),
+      orderModifiedDateEnd: toISO(win.end),
+    }).catch(() => [] as CilioJob[])
+
+    // If the week is full, drop to daily windows
+    if (batch.length >= MAX_PER_REQUEST && (win.end.getTime() - win.start.getTime()) > 86400000) {
+      let day = new Date(win.start)
+      while (day < win.end) {
+        const dEnd = new Date(day)
+        dEnd.setDate(dEnd.getDate() + 1)
+        if (dEnd > win.end) dEnd.setTime(win.end.getTime())
+        const dayLabel = `${day.toISOString().slice(0, 10)}`
+        const dayBatch = await searchJobs({
+          orderModifiedDateStart: toISO(day),
+          orderModifiedDateEnd: toISO(dEnd),
+        }).catch(() => [] as CilioJob[])
+        for (const j of dayBatch) {
+          if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
+        }
+        onProgress?.(allJobs.size, dayLabel)
+        day = dEnd
+      }
+    } else {
+      for (const j of batch) {
+        if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
+      }
+      onProgress?.(allJobs.size, label)
+    }
+  }
+
+  return Array.from(allJobs.values())
+}
+
 export interface UpdateJobStatusPayload {
   orderNumber: number
   orderStatusId: number
