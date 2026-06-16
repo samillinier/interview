@@ -440,37 +440,32 @@ export async function searchAllJobs(
 
   const toISO = (d: Date) => d.toISOString()
 
-  for (const win of windows) {
-    const label = `${win.start.toISOString().slice(0, 10)} → ${win.end.toISOString().slice(0, 10)}`
-    let batch = await searchJobs({
-      orderModifiedDateStart: toISO(win.start),
-      orderModifiedDateEnd: toISO(win.end),
+  /** Recursively fetch a time window, splitting in half when the 50-job cap is hit.
+   *  Stops splitting at 1-hour granularity to avoid infinite recursion. */
+  async function fetchWindow(start: Date, end: Date, depth: number = 0): Promise<void> {
+    const ms = end.getTime() - start.getTime()
+    const label = `${start.toISOString().slice(0, 16)} → ${end.toISOString().slice(0, 16)}`
+    const batch = await searchJobs({
+      orderModifiedDateStart: toISO(start),
+      orderModifiedDateEnd: toISO(end),
     }).catch(() => [] as CilioJob[])
 
-    // If the week is full, drop to daily windows
-    if (batch.length >= MAX_PER_REQUEST && (win.end.getTime() - win.start.getTime()) > 86400000) {
-      let day = new Date(win.start)
-      while (day < win.end) {
-        const dEnd = new Date(day)
-        dEnd.setDate(dEnd.getDate() + 1)
-        if (dEnd > win.end) dEnd.setTime(win.end.getTime())
-        const dayLabel = `${day.toISOString().slice(0, 10)}`
-        const dayBatch = await searchJobs({
-          orderModifiedDateStart: toISO(day),
-          orderModifiedDateEnd: toISO(dEnd),
-        }).catch(() => [] as CilioJob[])
-        for (const j of dayBatch) {
-          if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
-        }
-        onProgress?.(allJobs.size, dayLabel)
-        day = dEnd
-      }
+    if (batch.length >= MAX_PER_REQUEST && ms > 3600000 && depth < 4) {
+      // Split in half — window is full and large enough to split further
+      const mid = new Date(start.getTime() + ms / 2)
+      await fetchWindow(start, mid, depth + 1)
+      await fetchWindow(mid, end, depth + 1)
+      onProgress?.(allJobs.size, `${label} (split d${depth + 1})`)
     } else {
       for (const j of batch) {
         if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
       }
       onProgress?.(allJobs.size, label)
     }
+  }
+
+  for (const win of windows) {
+    await fetchWindow(win.start, win.end)
   }
 
   return Array.from(allJobs.values())
