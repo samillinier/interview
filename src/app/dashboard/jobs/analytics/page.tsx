@@ -261,95 +261,99 @@ export default function JobsAnalyticsPage() {
 
           {/* Trends */}
 
-          {/* Monthly Trend Chart */}
+          {/* Daily Trend */}
           <div id="trends" className="scroll-mt-24">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Monthly Jobs Trend</h2>
-                  <p className="mt-1 text-sm text-slate-500">Job count over the last 12 months</p>
-                </div>
-                <TrendingUp className="w-5 h-5 text-slate-400" />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Daily Jobs Trend</h2>
+                <p className="mt-1 text-sm text-slate-500">Job count over the last 30 days</p>
               </div>
-              {(() => {
-                const totalPeriod = data.monthlyTrend.reduce((s, t) => s + t.count, 0)
-                const totalPO = data.monthlyTrend.reduce((s, t) => s + t.poTotal, 0)
-                const peakMonth = data.monthlyTrend.reduce((best, t) => (t.count > best.count ? t : best), data.monthlyTrend[0] || { month: '-', count: 0 })
-                const guideCount = 4
-                const step = Math.ceil(maxMonthly / guideCount)
-                const guideValues = Array.from({ length: guideCount + 1 }, (_, i) => i * step)
-                return (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Peak Month</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900">{fmtMonth(peakMonth.month)}</div>
-                        <div className="text-sm text-slate-500">{peakMonth.count} jobs</div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">12-Month Total</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900">{totalPeriod.toLocaleString()}</div>
-                        <div className="text-sm text-slate-500">{fmtCurrency(totalPO)} PO</div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Monthly Avg</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900">{Math.round(totalPeriod / 12)}</div>
-                        <div className="text-sm text-slate-500">{fmtCurrency(Math.round(totalPO / 12))} PO</div>
-                      </div>
+              <Calendar className="w-5 h-5 text-slate-400" />
+            </div>
+            {(() => {
+              const totalPeriod = data.dailyTrend.reduce((s, t) => s + t.count, 0)
+              const peakDay = data.dailyTrend.reduce((best, t) => (t.count > best.count ? t : best), data.dailyTrend[0] || { date: '-', count: 0 })
+              const avgDaily = Math.round(totalPeriod / 30)
+              const guideCount = 4
+              const step = Math.ceil(maxDaily / guideCount)
+              const guideValues = Array.from({ length: guideCount + 1 }, (_, i) => i * step)
+              return (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Peak Day</div>
+                      <div className="mt-1 text-lg font-bold text-slate-900">{fmtDate(peakDay.date)}</div>
+                      <div className="text-sm text-slate-500">{peakDay.count} jobs</div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
-                      <div className="relative">
-                        <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-auto">
-                          <defs>
-                            <linearGradient id="monthlyGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.35" />
-                              <stop offset="50%" stopColor="#8CB63C" stopOpacity="0.08" />
-                              <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.0" />
-                            </linearGradient>
-                            <filter id="monthlyGlow" x="-50%" y="-50%" width="200%" height="200%">
-                              <feGaussianBlur stdDeviation="3" result="blur" />
-                              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                            </filter>
-                          </defs>
-                          {/* Guide lines */}
-                          {guideValues.map(v => (
-                            <g key={v}>
-                              <line
-                                x1={chartPad} y1={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2))}
-                                x2={chartW - chartPad} y2={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2))}
-                                stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4"
-                              />
-                              <text
-                                x={chartPad - 6} y={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2)) + 3}
-                                textAnchor="end" className="text-[9px]" fill="#94a3b8">{v}</text>
-                            </g>
-                          ))}
-                          {/* Area fill */}
-                          <path d={`${monthlyPath} L ${monthlyPoints[monthlyPoints.length - 1].x} ${chartH - chartPad} L ${chartPad} ${chartH - chartPad} Z`} fill="url(#monthlyGrad)" />
-                          {/* Smooth line */}
-                          <path d={monthlyPath} fill="none" stroke="#8CB63C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter="url(#monthlyGlow)" />
-                          <path d={monthlyPath} fill="none" stroke="#8CB63C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          {/* Data points */}
-                          {monthlyPoints.map((p, i) => (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">30-Day Total</div>
+                      <div className="mt-1 text-lg font-bold text-slate-900">{totalPeriod.toLocaleString()}</div>
+                      <div className="text-sm text-slate-500">All days combined</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Daily Avg</div>
+                      <div className="mt-1 text-lg font-bold text-slate-900">{avgDaily}</div>
+                      <div className="text-sm text-slate-500">Per day</div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
+                    <div className="relative">
+                      <svg viewBox={`0 0 ${dailyW} ${dailyH}`} className="w-full h-auto">
+                        <defs>
+                          <linearGradient id="dailyGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.35" />
+                            <stop offset="50%" stopColor="#8CB63C" stopOpacity="0.08" />
+                            <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.0" />
+                          </linearGradient>
+                          <filter id="dailyGlow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2" result="blur" />
+                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                          </filter>
+                        </defs>
+                        {/* Guide lines */}
+                        {guideValues.map(v => (
+                          <g key={v}>
+                            <line
+                              x1={dailyPad} y1={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2))}
+                              x2={dailyW - dailyPad} y2={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2))}
+                              stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4"
+                            />
+                            <text
+                              x={dailyPad - 6} y={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2)) + 3}
+                              textAnchor="end" className="text-[9px]" fill="#94a3b8">{v}</text>
+                          </g>
+                        ))}
+                        {/* Area fill */}
+                        <path d={`${dailyPath} L ${dailyPoints[dailyPoints.length - 1].x} ${dailyH - dailyPad} L ${dailyPad} ${dailyH - dailyPad} Z`} fill="url(#dailyGrad)" />
+                        {/* Glow + line */}
+                        <path d={dailyPath} fill="none" stroke="#8CB63C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#dailyGlow)" />
+                        <path d={dailyPath} fill="none" stroke="#8CB63C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        {/* Peak dots only */}
+                        {dailyPoints.map((p, i) => {
+                          if (data.dailyTrend[i].count === 0) return null
+                          const isPeak = data.dailyTrend[i].count === maxDaily
+                          return (
                             <g key={i}>
-                              <circle cx={p.x} cy={p.y} r="6" fill="white" stroke="#8CB63C" strokeWidth="2.5" />
-                              <circle cx={p.x} cy={p.y} r="2.5" fill="#8CB63C" />
-                              {data.monthlyTrend[i].count > 0 && <text x={p.x} y={p.y - 13} textAnchor="middle" className="text-[10px] font-bold" fill="#1e293b">{data.monthlyTrend[i].count}</text>}
+                              <circle cx={p.x} cy={p.y} r={isPeak ? 5 : 2.5} fill="white" stroke="#8CB63C" strokeWidth={isPeak ? 2.5 : 1.5} />
+                              <circle cx={p.x} cy={p.y} r={isPeak ? 2 : 1} fill="#8CB63C" />
+                              {isPeak && <text x={p.x} y={p.y - 11} textAnchor="middle" className="text-[10px] font-bold" fill="#1e293b">{data.dailyTrend[i].count}</text>}
                             </g>
-                          ))}
-                        </svg>
-                        {/* Month labels */}
-                        <div className="flex justify-between mt-1 px-1">
-                          {data.monthlyTrend.map(t => (
-                            <span key={t.month} className="text-[10px] font-semibold text-slate-400">{fmtMonth(t.month)}</span>
-                          ))}
-                        </div>
+                          )
+                        })}
+                      </svg>
+                      {/* Date labels at key intervals */}
+                      <div className="flex justify-between mt-1 px-1">
+                        {data.dailyTrend.filter((_, i) => i % 5 === 0 || i === data.dailyTrend.length - 1).map(t => (
+                          <span key={t.date} className="text-[10px] font-semibold text-slate-400">{fmtDate(t.date)}</span>
+                        ))}
                       </div>
                     </div>
                   </div>
-                )
-              })()}
-            </motion.div>
+                </div>
+              )
+            })()}
+          </motion.div>
           </div>
 
           {/* Masonry Charts Grid */}
@@ -875,98 +879,94 @@ export default function JobsAnalyticsPage() {
             </div>
           </div>
 
-          {/* Daily Trend */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Daily Jobs Trend</h2>
-                <p className="mt-1 text-sm text-slate-500">Job count over the last 30 days</p>
+          {/* Monthly Trend Chart */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Monthly Jobs Trend</h2>
+                  <p className="mt-1 text-sm text-slate-500">Job count over the last 12 months</p>
+                </div>
+                <TrendingUp className="w-5 h-5 text-slate-400" />
               </div>
-              <Calendar className="w-5 h-5 text-slate-400" />
-            </div>
-            {(() => {
-              const totalPeriod = data.dailyTrend.reduce((s, t) => s + t.count, 0)
-              const peakDay = data.dailyTrend.reduce((best, t) => (t.count > best.count ? t : best), data.dailyTrend[0] || { date: '-', count: 0 })
-              const avgDaily = Math.round(totalPeriod / 30)
-              const guideCount = 4
-              const step = Math.ceil(maxDaily / guideCount)
-              const guideValues = Array.from({ length: guideCount + 1 }, (_, i) => i * step)
-              return (
-                <div className="space-y-5">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Peak Day</div>
-                      <div className="mt-1 text-lg font-bold text-slate-900">{fmtDate(peakDay.date)}</div>
-                      <div className="text-sm text-slate-500">{peakDay.count} jobs</div>
+              {(() => {
+                const totalPeriod = data.monthlyTrend.reduce((s, t) => s + t.count, 0)
+                const totalPO = data.monthlyTrend.reduce((s, t) => s + t.poTotal, 0)
+                const peakMonth = data.monthlyTrend.reduce((best, t) => (t.count > best.count ? t : best), data.monthlyTrend[0] || { month: '-', count: 0 })
+                const guideCount = 4
+                const step = Math.ceil(maxMonthly / guideCount)
+                const guideValues = Array.from({ length: guideCount + 1 }, (_, i) => i * step)
+                return (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Peak Month</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900">{fmtMonth(peakMonth.month)}</div>
+                        <div className="text-sm text-slate-500">{peakMonth.count} jobs</div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">12-Month Total</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900">{totalPeriod.toLocaleString()}</div>
+                        <div className="text-sm text-slate-500">{fmtCurrency(totalPO)} PO</div>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Monthly Avg</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900">{Math.round(totalPeriod / 12)}</div>
+                        <div className="text-sm text-slate-500">{fmtCurrency(Math.round(totalPO / 12))} PO</div>
+                      </div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">30-Day Total</div>
-                      <div className="mt-1 text-lg font-bold text-slate-900">{totalPeriod.toLocaleString()}</div>
-                      <div className="text-sm text-slate-500">All days combined</div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Daily Avg</div>
-                      <div className="mt-1 text-lg font-bold text-slate-900">{avgDaily}</div>
-                      <div className="text-sm text-slate-500">Per day</div>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
-                    <div className="relative">
-                      <svg viewBox={`0 0 ${dailyW} ${dailyH}`} className="w-full h-auto">
-                        <defs>
-                          <linearGradient id="dailyGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.35" />
-                            <stop offset="50%" stopColor="#8CB63C" stopOpacity="0.08" />
-                            <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.0" />
-                          </linearGradient>
-                          <filter id="dailyGlow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="2" result="blur" />
-                            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                          </filter>
-                        </defs>
-                        {/* Guide lines */}
-                        {guideValues.map(v => (
-                          <g key={v}>
-                            <line
-                              x1={dailyPad} y1={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2))}
-                              x2={dailyW - dailyPad} y2={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2))}
-                              stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4"
-                            />
-                            <text
-                              x={dailyPad - 6} y={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2)) + 3}
-                              textAnchor="end" className="text-[9px]" fill="#94a3b8">{v}</text>
-                          </g>
-                        ))}
-                        {/* Area fill */}
-                        <path d={`${dailyPath} L ${dailyPoints[dailyPoints.length - 1].x} ${dailyH - dailyPad} L ${dailyPad} ${dailyH - dailyPad} Z`} fill="url(#dailyGrad)" />
-                        {/* Glow + line */}
-                        <path d={dailyPath} fill="none" stroke="#8CB63C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#dailyGlow)" />
-                        <path d={dailyPath} fill="none" stroke="#8CB63C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        {/* Peak dots only */}
-                        {dailyPoints.map((p, i) => {
-                          if (data.dailyTrend[i].count === 0) return null
-                          const isPeak = data.dailyTrend[i].count === maxDaily
-                          return (
-                            <g key={i}>
-                              <circle cx={p.x} cy={p.y} r={isPeak ? 5 : 2.5} fill="white" stroke="#8CB63C" strokeWidth={isPeak ? 2.5 : 1.5} />
-                              <circle cx={p.x} cy={p.y} r={isPeak ? 2 : 1} fill="#8CB63C" />
-                              {isPeak && <text x={p.x} y={p.y - 11} textAnchor="middle" className="text-[10px] font-bold" fill="#1e293b">{data.dailyTrend[i].count}</text>}
+                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
+                      <div className="relative">
+                        <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full h-auto">
+                          <defs>
+                            <linearGradient id="monthlyGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.35" />
+                              <stop offset="50%" stopColor="#8CB63C" stopOpacity="0.08" />
+                              <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.0" />
+                            </linearGradient>
+                            <filter id="monthlyGlow" x="-50%" y="-50%" width="200%" height="200%">
+                              <feGaussianBlur stdDeviation="3" result="blur" />
+                              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                            </filter>
+                          </defs>
+                          {/* Guide lines */}
+                          {guideValues.map(v => (
+                            <g key={v}>
+                              <line
+                                x1={chartPad} y1={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2))}
+                                x2={chartW - chartPad} y2={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2))}
+                                stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4"
+                              />
+                              <text
+                                x={chartPad - 6} y={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2)) + 3}
+                                textAnchor="end" className="text-[9px]" fill="#94a3b8">{v}</text>
                             </g>
-                          )
-                        })}
-                      </svg>
-                      {/* Date labels at key intervals */}
-                      <div className="flex justify-between mt-1 px-1">
-                        {data.dailyTrend.filter((_, i) => i % 5 === 0 || i === data.dailyTrend.length - 1).map(t => (
-                          <span key={t.date} className="text-[10px] font-semibold text-slate-400">{fmtDate(t.date)}</span>
-                        ))}
+                          ))}
+                          {/* Area fill */}
+                          <path d={`${monthlyPath} L ${monthlyPoints[monthlyPoints.length - 1].x} ${chartH - chartPad} L ${chartPad} ${chartH - chartPad} Z`} fill="url(#monthlyGrad)" />
+                          {/* Smooth line */}
+                          <path d={monthlyPath} fill="none" stroke="#8CB63C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter="url(#monthlyGlow)" />
+                          <path d={monthlyPath} fill="none" stroke="#8CB63C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          {/* Data points */}
+                          {monthlyPoints.map((p, i) => (
+                            <g key={i}>
+                              <circle cx={p.x} cy={p.y} r="6" fill="white" stroke="#8CB63C" strokeWidth="2.5" />
+                              <circle cx={p.x} cy={p.y} r="2.5" fill="#8CB63C" />
+                              {data.monthlyTrend[i].count > 0 && <text x={p.x} y={p.y - 13} textAnchor="middle" className="text-[10px] font-bold" fill="#1e293b">{data.monthlyTrend[i].count}</text>}
+                            </g>
+                          ))}
+                        </svg>
+                        {/* Month labels */}
+                        <div className="flex justify-between mt-1 px-1">
+                          {data.monthlyTrend.map(t => (
+                            <span key={t.month} className="text-[10px] font-semibold text-slate-400">{fmtMonth(t.month)}</span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })()}
-          </motion.div>
+                )
+              })()}
+            </motion.div>
 
           </div>
         </div>
