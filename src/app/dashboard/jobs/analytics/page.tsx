@@ -892,8 +892,8 @@ export default function JobsAnalyticsPage() {
                                     {/* Day headers */}
                                     <div className="grid grid-cols-7 bg-brand-green/10 border-b border-brand-green/20">
                                       {dayLabels.map((d, idx) => (
-                                        <div key={d} className={`text-center py-2.5 ${idx === 0 || idx === 6 ? 'bg-brand-green/[0.12]' : ''}`}>
-                                          <span className="text-[11px] font-bold text-brand-green-dark uppercase tracking-wider">{d}</span>
+                                        <div key={d} className={`text-center py-3 ${idx === 0 || idx === 6 ? 'bg-brand-green/[0.12]' : ''}`}>
+                                          <span className="text-sm font-extrabold text-brand-green-dark uppercase tracking-wider">{d}</span>
                                         </div>
                                       ))}
                                     </div>
