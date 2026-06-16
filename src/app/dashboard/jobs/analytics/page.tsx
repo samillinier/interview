@@ -344,7 +344,7 @@ export default function JobsAnalyticsPage() {
                             <g key={i}>
                               <circle cx={p.x} cy={p.y} r={isPeak ? 5 : 2.5} fill="white" stroke="#8CB63C" strokeWidth={isPeak ? 2.5 : 1.5} />
                               <circle cx={p.x} cy={p.y} r={isPeak ? 2 : 1} fill="#8CB63C" />
-                              <text x={p.x} y={p.y - 9} textAnchor="middle" className="text-[8px] font-semibold" fill="#9ca3af">{data.dailyTrend[i].count}</text>
+                              <text x={p.x} y={p.y - 9} textAnchor="middle" className="text-[10px] font-semibold" fill="#9ca3af">{data.dailyTrend[i].count}</text>
                             </g>
                           )
                         })}
