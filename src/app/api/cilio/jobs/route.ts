@@ -30,36 +30,12 @@ export async function GET(request: NextRequest) {
 
     const userTerm = searchTerm.trim()
 
-    // Broad searches to maximize coverage, then filter client-side.
-    // Keep to 5 searches to stay under Vercel timeout limits.
-    const statusTerms = ["Scheduled", "Dispatched", "Tentative", "Completed",
-      "Chargeback", "Canceled"]
-    const searches = userTerm
-      ? [userTerm, ...statusTerms]
-      : statusTerms
-
-    console.log(`[Cilio API] Running ${searches.length} parallel searches:`, searches)
-
-    // Run all searches in parallel
-    const results = await Promise.all(
-      searches.map(async (term) => {
-        const jobs = await cilio.searchJobs(term).catch(() => [] as any[])
-        console.log(`[Cilio API] Search "${term}" returned ${jobs.length} jobs`)
-        return jobs
-      })
-    )
-
-    // Merge and deduplicate by orderNumber
-    const seen = new Set<number>()
-    const allJobs: any[] = []
-    for (const batch of results) {
-      for (const job of batch) {
-        if (!seen.has(job.orderNumber)) {
-          seen.add(job.orderNumber)
-          allJobs.push(job)
-        }
-      }
-    }
+    // If user typed a search term, try POJobNumber search first.
+    // If no term, fetch ALL jobs in a single call.
+    const allJobs = await cilio.searchJobs(
+      userTerm ? { poJobNumber: userTerm } : {}
+    ).catch(() => [] as any[])
+    console.log(`[Cilio API] searchJobs returned ${allJobs.length} jobs`)
 
     let filtered = allJobs
     if (statusFilter) {

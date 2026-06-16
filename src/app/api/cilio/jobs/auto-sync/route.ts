@@ -51,33 +51,8 @@ async function runAutoSync(request: NextRequest) {
   console.log("[AutoSync] Starting full Cilio job fetch...")
   const startTime = Date.now()
 
-  const statusTerms = [
-    "Scheduled", "Dispatched", "Tentative",
-    "Completed", "Chargeback", "Canceled",
-  ]
-
-  console.log(`[AutoSync] Running ${statusTerms.length} parallel searches`)
-
-  const results = await Promise.all(
-    statusTerms.map(async (term) => {
-      const jobs = await cilio.searchJobs(term).catch(() => [] as any[])
-      console.log(`[AutoSync] Search "${term}" returned ${jobs.length} jobs`)
-      return jobs
-    })
-  )
-
-  const seen = new Set<number>()
-  const allJobs: any[] = []
-  for (const batch of results) {
-    for (const job of batch) {
-      if (!seen.has(job.orderNumber)) {
-        seen.add(job.orderNumber)
-        allJobs.push(job)
-      }
-    }
-  }
-
-  console.log(`[AutoSync] Total unique jobs fetched: ${allJobs.length}`)
+  const allJobs = await cilio.searchJobs().catch(() => [] as any[])
+  console.log(`[AutoSync] Fetched ${allJobs.length} jobs`)
 
   if (allJobs.length === 0) {
     return NextResponse.json({

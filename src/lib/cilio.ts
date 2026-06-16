@@ -376,9 +376,36 @@ export async function getJobDetail(orderNumber: number): Promise<CilioJobDetail>
   return cilioFetch<CilioJobDetail>(`/job/${orderNumber}`)
 }
 
-/** Search jobs by search term */
-export async function searchJobs(searchTerm: string): Promise<CilioJob[]> {
-  return cilioFetch<CilioJob[]>(`/job/search?searchTerm=${encodeURIComponent(searchTerm)}`)
+/** Parameters for the Cilio /job/search endpoint */
+export interface CilioJobSearchParams {
+  orderStatusId?: number[]
+  poJobNumber?: string
+  address?: string
+  storeLocation?: string
+  city?: string
+  zipCode?: string
+  orderCreatedDateStart?: string  // RFC3339 date-time
+  orderCreatedDateEnd?: string    // RFC3339 date-time
+  orderModifiedDateStart?: string // RFC3339 date-time
+  orderModifiedDateEnd?: string   // RFC3339 date-time
+}
+
+/** Search jobs using the documented Cilio Gateway API parameters.
+ *  Call with no params to fetch ALL jobs. */
+export async function searchJobs(params: CilioJobSearchParams = {}): Promise<CilioJob[]> {
+  const q = new URLSearchParams()
+  if (params.orderStatusId?.length) params.orderStatusId.forEach(id => q.append("OrderStatusId", String(id)))
+  if (params.poJobNumber) q.set("POJobNumber", params.poJobNumber)
+  if (params.address) q.set("Address", params.address)
+  if (params.storeLocation) q.set("StoreLocation", params.storeLocation)
+  if (params.city) q.set("City", params.city)
+  if (params.zipCode) q.set("ZipCode", params.zipCode)
+  if (params.orderCreatedDateStart) q.set("OrderCreatedDateStart", params.orderCreatedDateStart)
+  if (params.orderCreatedDateEnd) q.set("OrderCreatedDateEnd", params.orderCreatedDateEnd)
+  if (params.orderModifiedDateStart) q.set("OrderModifiedDateStart", params.orderModifiedDateStart)
+  if (params.orderModifiedDateEnd) q.set("OrderModifiedDateEnd", params.orderModifiedDateEnd)
+  const query = q.toString()
+  return cilioFetch<CilioJob[]>(`/job/search${query ? `?${query}` : ""}`)
 }
 
 export interface UpdateJobStatusPayload {
