@@ -48,20 +48,29 @@ async function runAutoSync(request: NextRequest) {
     }
   }
 
-  console.log("[AutoSync] Starting full Cilio job fetch...")
+  const cilioKey = process.env.CILIO_SUBSCRIPTION_KEY || ""
+  const cilioUrl = process.env.CILIO_API_BASE_URL || "default-gatewayqa"
+  console.log(`[AutoSync] Starting full Cilio job fetch... (key=${cilioKey.slice(0,6)}..., url=${cilioUrl})`)
   const startTime = Date.now()
 
+  let fetchError: string | null = null
   const allJobs = await cilio.searchAllJobs({
     onProgress: (fetched, window) => {
       console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
     },
-  }).catch(() => [] as any[])
+  }).catch((e: any) => {
+    fetchError = e?.message || String(e)
+    console.error("[AutoSync] searchAllJobs FAILED:", fetchError, e?.stack?.slice(0, 500))
+    return [] as any[]
+  })
 
   if (allJobs.length === 0) {
     return NextResponse.json({
       synced: 0,
       total: 0,
       message: "No jobs fetched from Cilio",
+      diagnostic: fetchError ? `Cilio fetch error: ${fetchError}` : "Cilio returned no jobs for the date windows",
+      env: { keyConfigured: cilioKey.length > 0, url: cilioUrl },
       durationMs: Date.now() - startTime,
     })
   }
