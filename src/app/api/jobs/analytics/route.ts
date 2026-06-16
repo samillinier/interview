@@ -133,7 +133,14 @@ export async function GET(request: NextRequest) {
       monthlyPO[key] = 0
     }
     records.forEach(r => {
-      const d = r.createdAt ? new Date(r.createdAt) : null
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
       if (d) {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         if (monthlyCounts[key] !== undefined) {
@@ -149,7 +156,7 @@ export async function GET(request: NextRequest) {
       poTotal: monthlyPO[month] || 0,
     }))
 
-    // Daily trend (last 30 days)
+    // Daily trend (last 30 days) — by actual job date, not DB save date
     const dailyCounts: Record<string, number> = {}
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now)
@@ -158,7 +165,15 @@ export async function GET(request: NextRequest) {
       dailyCounts[key] = 0
     }
     records.forEach(r => {
-      const d = r.createdAt ? new Date(r.createdAt) : null
+      // Use the best available date: scheduledInstallDate, then cilioPayload date, then createdAt
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
       if (d) {
         const key = d.toISOString().split('T')[0]
         if (dailyCounts[key] !== undefined) dailyCounts[key]++
@@ -192,7 +207,14 @@ export async function GET(request: NextRequest) {
     const weeklyCounts: Record<string, number> = {}
     dayNames.forEach(d => { weeklyCounts[d] = 0 })
     records.forEach(r => {
-      const d = r.createdAt ? new Date(r.createdAt) : null
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
       if (d) {
         const day = dayNames[d.getDay()]
         weeklyCounts[day] = (weeklyCounts[day] || 0) + 1
