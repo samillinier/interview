@@ -4,7 +4,7 @@ import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 300
+export const maxDuration = 600
 
 /**
  * GET  /api/cilio/jobs/auto-sync  ← Vercel Cron Job (every 5 min)
