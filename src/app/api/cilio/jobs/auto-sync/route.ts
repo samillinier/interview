@@ -136,38 +136,58 @@ async function runAutoSync(request: NextRequest) {
     }
   }
 
-  // Phase 2: Enrich records missing dates from the full detail API
+  // Phase 2: Enrich records from the full detail API (dates + installer name)
   let enriched = 0
   try {
-    const missingDates = await prisma.cilioJobRecord.findMany({
-      where: { scheduledInstallDate: null },
-      select: { orderNumber: true },
+    const needsEnrichment = await prisma.cilioJobRecord.findMany({
+      where: {
+        OR: [
+          { scheduledInstallDate: null },
+          { installerName: null },
+        ],
+      },
+      select: { orderNumber: true, scheduledInstallDate: true, installerName: true },
+      take: 500,
     })
 
-    if (missingDates.length > 0) {
-      console.log(`[AutoSync] Enriching ${missingDates.length} records missing dates...`)
+    if (needsEnrichment.length > 0) {
+      console.log(`[AutoSync] Enriching ${needsEnrichment.length} records...`)
 
-      for (const record of missingDates) {
+      for (const record of needsEnrichment) {
         try {
           const detail = await cilio.getJobDetail(record.orderNumber)
           const di = (detail as any).dateInformation || {}
           const si = (detail as any).schedulingInformation || {}
-          // Cilio field mappings:
-          //   scheduledInstallDate ← desiredInstallDate (dateInformation) or scheduleDate (schedulingInformation)
-          //   measureDate ← currentDate (dateInformation)
-          //   bookingDate ← leadCreationDate (dateInformation)
+
+          // Date fields
           const sched = di.desiredInstallDate || si.scheduleDate || null
           const meas = di.currentDate || null
           const book = di.leadCreationDate || null
 
-          if (sched || meas || book) {
+          // Installer name: extract from scheduling info or responsible user
+          const scheduledResources = si.scheduledResources?.trim() || null
+          const taskResources = [si.taskOneResource, si.taskTwoResource, si.taskThreeResource]
+            .filter(Boolean)
+            .map((r: string) => r.trim())
+            .join(', ') || null
+          const scheduledUser = si.scheduledUserRenovatorName?.trim() || null
+          const firmName = si.scheduledUserFirmName?.trim() || null
+          const installerName = scheduledResources || taskResources || scheduledUser || firmName || null
+
+          const updateData: any = {}
+          if (!record.scheduledInstallDate && (sched || meas || book)) {
+            if (sched) updateData.scheduledInstallDate = new Date(sched)
+            if (meas) updateData.measureDate = new Date(meas)
+            if (book) updateData.bookingDate = new Date(book)
+          }
+          if (!record.installerName && installerName) {
+            updateData.installerName = installerName
+          }
+
+          if (Object.keys(updateData).length > 0) {
             await prisma.cilioJobRecord.update({
               where: { orderNumber: record.orderNumber },
-              data: {
-                scheduledInstallDate: sched ? new Date(sched) : null,
-                measureDate: meas ? new Date(meas) : null,
-                bookingDate: book ? new Date(book) : null,
-              },
+              data: updateData,
             })
             enriched++
           }
