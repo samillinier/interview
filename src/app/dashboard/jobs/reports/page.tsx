@@ -368,15 +368,53 @@ export default function JobsReportsPage() {
             </div>
           </div>
 
+          {/* Results summary */}
+          {!isLoading && (
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-700">
+                  {filtered.length.toLocaleString()} {filtered.length === 1 ? 'job' : 'jobs'} matching
+                </span>
+                {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search) && (
+                  <span className="text-xs text-slate-400">
+                    (filtered from {records.length.toLocaleString()} total)
+                  </span>
+                )}
+              </div>
+              {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search) && (
+                <button
+                  onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch('') }}
+                  className="text-xs font-semibold text-brand-green hover:text-brand-green-dark transition-colors flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Clear all filters
+                </button>
+              )}
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
-              <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 font-semibold">No saved job reports</p>
-              <p className="text-sm text-slate-400 mt-1">Save jobs from Cilio Jobs to see them here.</p>
-              <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Cilio Jobs</Link>
-            </div>
+            records.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+                <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500 font-semibold">No saved job reports</p>
+                <p className="text-sm text-slate-400 mt-1">Save jobs from Cilio Jobs to see them here.</p>
+                <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Cilio Jobs</Link>
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
+                <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500 font-semibold">No jobs match your filters</p>
+                <p className="text-sm text-slate-400 mt-1">Try adjusting your search or filter criteria.</p>
+                <button
+                  onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch('') }}
+                  className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"
+                >
+                  <X className="w-4 h-4" /> Clear filters
+                </button>
+              </div>
+            )
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
               <div className="overflow-x-auto">
