@@ -914,6 +914,7 @@ export default function JobsAnalyticsPage() {
                                 const todayKey = today.toISOString().split('T')[0]
                                 const firstDay = new Date(calendarMonth.year, calendarMonth.month, 1).getDay()
                                 const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate()
+                                let overflowDay = 1
                                 const weeks: ({ day: number; current: boolean } | null)[][] = []
                                 let week: ({ day: number; current: boolean } | null)[] = []
                                 for (let i = 0; i < firstDay; i++) week.push(null)
@@ -921,7 +922,13 @@ export default function JobsAnalyticsPage() {
                                   week.push({ day: d, current: true })
                                   if (week.length === 7) { weeks.push(week); week = [] }
                                 }
-                                if (week.length > 0) { let overflowDay = 1; while (week.length < 7) { week.push({ day: overflowDay, current: false }); overflowDay++; } weeks.push(week) }
+                                if (week.length > 0) { while (week.length < 7) { week.push({ day: overflowDay, current: false }); overflowDay++; } weeks.push(week) }
+                                // Always show 6 full weeks (standard calendar)
+                                while (weeks.length < 6) {
+                                  week = []
+                                  while (week.length < 7) { week.push({ day: overflowDay, current: false }); overflowDay++; }
+                                  weeks.push(week)
+                                }
                                 const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
                                 return (
                                   <div className="rounded-2xl overflow-hidden border border-brand-green/20 bg-brand-green/[0.03] shadow-md">
