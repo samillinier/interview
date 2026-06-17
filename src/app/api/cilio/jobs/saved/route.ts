@@ -45,6 +45,38 @@ export async function GET(request: NextRequest) {
       take: 5000,
     })
 
+    // Resolve installerId by name for records without one
+    const needsLookup = records.filter(r => !r.installerId && r.installerName)
+    if (needsLookup.length > 0) {
+      const installerNames = [...new Set(needsLookup.map(r => r.installerName!.trim()))]
+      const dbInstallers = await prisma.installer.findMany({
+        where: { status: { not: 'rejected' } },
+        select: { id: true, firstName: true, lastName: true },
+      })
+      const nameToId = new Map<string, string>()
+      for (const name of installerNames) {
+        const lower = name.toLowerCase()
+        for (const i of dbInstallers) {
+          const full = `${i.firstName} ${i.lastName}`.trim().toLowerCase()
+          const rev = `${i.lastName} ${i.firstName}`.trim().toLowerCase()
+          if (lower === full || lower === rev || full.includes(lower) || lower.includes(full)) {
+            nameToId.set(lower, i.id)
+            // Also persist the match for future requests
+            prisma.cilioJobRecord.updateMany({
+              where: { installerName: name, installerId: null },
+              data: { installerId: i.id },
+            }).catch(() => {}) // fire-and-forget
+            break
+          }
+        }
+      }
+      // Augment records with resolved installerId
+      for (const r of needsLookup) {
+        const id = nameToId.get(r.installerName!.trim().toLowerCase())
+        if (id) (r as any).installerId = id
+      }
+    }
+
     return NextResponse.json({ records })
   } catch (error: any) {
     console.error("Fetch saved jobs error:", error)
