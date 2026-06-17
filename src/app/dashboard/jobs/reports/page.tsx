@@ -207,29 +207,36 @@ export default function JobsReportsPage() {
       const from = new Date(effectiveFrom + 'T00:00:00')
       const to = new Date(effectiveTo + 'T23:59:59')
       list = list.filter(r => {
-        // Use only actual job dates (scheduled, measure, booking), NOT status-change dates
         const d = r.scheduledInstallDate
           || r.cilioPayload?.dateInformation?.desiredInstallDate
           || r.cilioPayload?.schedulingInformation?.scheduleDate
+          || r.measureDate
+          || r.bookingDate
+          || r.createdAt
         if (!d) return false
         const date = new Date(d)
         return date >= from && date <= to
       })
     }
     if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter(r =>
-        String(r.orderNumber).includes(q) ||
-        (r.storeName || '').toLowerCase().includes(q) ||
-        (r.storeNumber || '').toLowerCase().includes(q) ||
-        (r.installerName || '').toLowerCase().includes(q) ||
-        (r.laborCategoryDescription || '').toLowerCase().includes(q) ||
-        (r.cilioPayload?.customerFirstName || '').toLowerCase().includes(q) ||
-        (r.cilioPayload?.customerLastName || '').toLowerCase().includes(q) ||
-        (r.cilioPayload?.customerFirstLast || '').toLowerCase().includes(q) ||
-        (r.cilioPayload?.customerInformation?.customerName || '').toLowerCase().includes(q) ||
-        (r.cilioPayload?.customerInformation?.customerFullName || '').toLowerCase().includes(q)
-      )
+      const tokens = search.trim().toLowerCase().split(/\s+/)
+      list = list.filter(r => {
+        // Build a single searchable string from all relevant fields
+        const haystack = [
+          String(r.orderNumber),
+          r.storeName || '',
+          r.storeNumber || '',
+          r.installerName || '',
+          r.laborCategoryDescription || '',
+          r.cilioPayload?.customerFirstName || '',
+          r.cilioPayload?.customerLastName || '',
+          r.cilioPayload?.customerFirstLast || '',
+          r.cilioPayload?.customerInformation?.customerName || '',
+          r.cilioPayload?.customerInformation?.customerFullName || '',
+        ].join(' ').toLowerCase()
+        // ALL tokens must be found somewhere in the combined fields
+        return tokens.every(token => haystack.includes(token))
+      })
     }
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
   }, [records, search, statusFilter, laborFilter, workroomFilter, dateFrom, dateTo])
