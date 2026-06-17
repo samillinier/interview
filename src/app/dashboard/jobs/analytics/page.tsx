@@ -305,20 +305,26 @@ export default function JobsAnalyticsPage() {
                       <div className="text-sm text-slate-500">Per day</div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
+                    <div className="rounded-2xl border border-brand-green/15 bg-gradient-to-b from-brand-green/[0.04] to-brand-green/[0.01] p-4">
                     <div className="relative">
                       <svg viewBox={`0 0 ${dailyW} ${dailyH}`} className="w-full h-auto">
                         <defs>
                           <linearGradient id="dailyGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.35" />
-                            <stop offset="50%" stopColor="#8CB63C" stopOpacity="0.08" />
-                            <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.0" />
+                            <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.20" />
+                            <stop offset="40%" stopColor="#8CB63C" stopOpacity="0.12" />
+                            <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.04" />
+                          </linearGradient>
+                          <linearGradient id="dailyBgGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8CB63C" stopOpacity="0.06" />
+                            <stop offset="100%" stopColor="#8CB63C" stopOpacity="0.02" />
                           </linearGradient>
                           <filter id="dailyGlow" x="-50%" y="-50%" width="200%" height="200%">
                             <feGaussianBlur stdDeviation="2" result="blur" />
                             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                           </filter>
                         </defs>
+                        {/* Chart background gradient */}
+                        <rect x={dailyPad} y={dailyPad} width={dailyW - dailyPad * 2} height={dailyH - dailyPad * 2} rx="8" fill="url(#dailyBgGrad)" />
                         {/* Guide lines */}
                         {guideValues.map(v => (
                           <g key={v}>
