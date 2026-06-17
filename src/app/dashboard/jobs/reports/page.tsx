@@ -326,9 +326,9 @@ export default function JobsReportsPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <Link href="/dashboard/jobs" className="text-xs font-medium text-slate-400 hover:text-brand-green transition-colors">Job Hub</Link>
                   <span className="text-slate-300">/</span>
-                  <span className="text-xs font-medium text-brand-green">Reports</span>
+                  <span className="text-xs font-medium text-brand-green">Cilio Jobs</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Saved Job Reports</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Cilio Jobs</h1>
                 <p className="text-sm text-slate-500">{records.length} jobs saved · Click any row for full detail</p>
               </div>
             </div>
@@ -438,7 +438,7 @@ export default function JobsReportsPage() {
             records.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
                 <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-semibold">No saved job reports</p>
+                <p className="text-slate-500 font-semibold">No saved Cilio jobs</p>
                 <p className="text-sm text-slate-400 mt-1">Save jobs from Realtime to see them here.</p>
                 <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Realtime</Link>
               </div>

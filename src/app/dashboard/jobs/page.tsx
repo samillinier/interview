@@ -26,11 +26,11 @@ const jobGroups = [
         highlights: [] as string[],
       },
       {
-        title: 'Reports',
+        title: 'Cilio Jobs',
         description: 'View saved job reports with quick access links to Cilio, store details, and cross-reference with the jobs page.',
         href: '/dashboard/jobs/reports',
         icon: ClipboardList,
-        cta: 'Open reports',
+        cta: 'Open Cilio Jobs',
         highlights: [] as string[],
       },
       {
