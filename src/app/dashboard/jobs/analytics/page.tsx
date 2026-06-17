@@ -454,6 +454,8 @@ export default function JobsAnalyticsPage() {
             </motion.div>
           </div>
 
+            <div className="h-6 lg:h-8" />
+
             {/* Weekly Report */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 break-inside-avoid bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
               <div className="flex items-center justify-between mb-6">
