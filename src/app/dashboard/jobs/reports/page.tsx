@@ -226,7 +226,9 @@ export default function JobsReportsPage() {
         (r.laborCategoryDescription || '').toLowerCase().includes(q) ||
         (r.cilioPayload?.customerFirstName || '').toLowerCase().includes(q) ||
         (r.cilioPayload?.customerLastName || '').toLowerCase().includes(q) ||
-        (r.cilioPayload?.customerFirstLast || '').toLowerCase().includes(q)
+        (r.cilioPayload?.customerFirstLast || '').toLowerCase().includes(q) ||
+        (r.cilioPayload?.customerInformation?.customerName || '').toLowerCase().includes(q) ||
+        (r.cilioPayload?.customerInformation?.customerFullName || '').toLowerCase().includes(q)
       )
     }
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
@@ -308,7 +310,7 @@ export default function JobsReportsPage() {
                 <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
                 <input
                   type="text"
-                  placeholder="Search by customer name, store, project number..."
+                  placeholder="Search by name, store, project #, installer..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
