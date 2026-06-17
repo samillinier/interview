@@ -102,15 +102,19 @@ const getStatusPill = (status: string | null) => {
 }
 
 function Field({ label, value, icon: Icon, accent, noTruncate }: { label: string; value?: any; icon?: any; accent?: boolean; noTruncate?: boolean }) {
-  if (value == null || value === '') return null
-  const display = typeof value === 'number' ? String(value) : value
+  const hasValue = value != null && value !== ''
+  const display = hasValue ? (typeof value === 'number' ? String(value) : value) : null
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${accent ? 'border-brand-green/20 bg-brand-green/5' : 'border-slate-100 bg-white'}`}>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm font-semibold flex items-center gap-1.5 ${noTruncate ? '' : 'truncate'} ${accent ? 'text-brand-green' : 'text-slate-800'}`}>
-        {Icon && <Icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
-        {display}
-      </p>
+      {hasValue ? (
+        <p className={`text-sm font-semibold flex items-center gap-1.5 ${noTruncate ? '' : 'truncate'} ${accent ? 'text-brand-green' : 'text-slate-800'}`}>
+          {Icon && <Icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
+          {display}
+        </p>
+      ) : (
+        <p className="text-xs italic text-slate-300">No data</p>
+      )}
     </div>
   )
 }
@@ -461,7 +465,7 @@ export default function JobsReportsPage() {
                           </td>
                           <td className="px-4 py-3">
                             <span className="text-sm text-slate-700">
-                              {record.workroom || <span className="text-slate-300">—</span>}
+                              {record.workroom || <span className="text-xs italic text-slate-300">No data</span>}
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -470,7 +474,7 @@ export default function JobsReportsPage() {
                                 <Wrench className="w-3 h-3" />
                                 {record.laborCategoryDescription}
                               </span>
-                            ) : <span className="text-xs text-slate-300">—</span>}
+                            ) : <span className="text-xs italic text-slate-300">No data</span>}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
@@ -488,7 +492,7 @@ export default function JobsReportsPage() {
                               })()}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right"><span className="text-sm font-semibold text-slate-900">{formatCurrency(poAmount) ?? <span className="text-slate-300">—</span>}</span></td>
+                          <td className="px-4 py-3 text-right"><span className="text-sm font-semibold text-slate-900">{formatCurrency(poAmount) ?? <span className="text-xs italic text-slate-300">No data</span>}</span></td>
                         </tr>
                       )
                     })}
