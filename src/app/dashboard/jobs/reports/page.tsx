@@ -201,18 +201,19 @@ export default function JobsReportsPage() {
     if (laborFilter) list = list.filter(r => r.laborCategoryDescription === laborFilter)
     if (workroomFilter !== 'all') list = list.filter(r => r.workroom === workroomFilter)
     if (dateFrom || dateTo) {
-      const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null
-      const to = dateTo ? new Date(dateTo + 'T23:59:59') : null
+      // If only one date is set, filter to that exact date
+      const effectiveFrom = dateFrom || dateTo
+      const effectiveTo = dateTo || dateFrom
+      const from = new Date(effectiveFrom + 'T00:00:00')
+      const to = new Date(effectiveTo + 'T23:59:59')
       list = list.filter(r => {
+        // Use only actual job dates (scheduled, measure, booking), NOT status-change dates
         const d = r.scheduledInstallDate
           || r.cilioPayload?.dateInformation?.desiredInstallDate
           || r.cilioPayload?.schedulingInformation?.scheduleDate
-          || r.cilioPayload?.currentOrderStatusDate
         if (!d) return false
         const date = new Date(d)
-        if (from && date < from) return false
-        if (to && date > to) return false
-        return true
+        return date >= from && date <= to
       })
     }
     if (search.trim()) {
