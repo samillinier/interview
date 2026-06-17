@@ -177,6 +177,15 @@ export default function JobsReportsPage() {
     if (sessionStatus === 'authenticated' && canAccess) fetchReports()
   }, [sessionStatus, canAccess])
 
+  // Shared date extraction — MUST match what the table's "Scheduled" column displays
+  const getDisplayDate = (r: CilioJobRecord): string | null => {
+    return r.scheduledInstallDate
+      || r.cilioPayload?.dateInformation?.desiredInstallDate
+      || r.cilioPayload?.schedulingInformation?.scheduleDate
+      || r.cilioPayload?.currentOrderStatusDate
+      || null
+  }
+
   const workrooms = useMemo(() => {
     const set = new Set<string>()
     records.forEach(r => { if (r.workroom) set.add(r.workroom) })
@@ -207,11 +216,7 @@ export default function JobsReportsPage() {
       const from = new Date(effectiveFrom + 'T00:00:00')
       const to = new Date(effectiveTo + 'T23:59:59')
       list = list.filter(r => {
-        // Use scheduled dates first, fall back to createdAt as last resort
-        const d = r.scheduledInstallDate
-          || r.cilioPayload?.dateInformation?.desiredInstallDate
-          || r.cilioPayload?.schedulingInformation?.scheduleDate
-          || r.createdAt
+        const d = getDisplayDate(r)
         if (!d) return false
         const date = new Date(d)
         return date >= from && date <= to
@@ -449,11 +454,7 @@ export default function JobsReportsPage() {
                       const p = record.cilioPayload
                       const di = p?.dateInformation || {}
                       const si = p?.schedulingInformation || {}
-                      const schedDate = record.scheduledInstallDate
-                        || di?.desiredInstallDate
-                        || si?.scheduleDate
-                        || p?.currentOrderStatusDate
-                        || null
+                      const schedDate = getDisplayDate(record)
                       const measureDate = record.measureDate || di?.currentDate || null
                       const bookingDate = record.bookingDate || di?.leadCreationDate || null
                       return (
