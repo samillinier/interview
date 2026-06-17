@@ -45,7 +45,7 @@ interface JobsAnalytics {
   monthlyTrend: { month: string; count: number; poTotal: number }[]
   dailyTrend: { date: string; count: number }[]
   weeklyDistribution: { day: string; count: number }[]
-  scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number> }>
+  scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number>; byLaborCategory: Record<string, number> }>
   scheduledCount: number
   hasInstallDates: boolean
   workrooms: string[]
@@ -945,6 +945,12 @@ export default function JobsAnalyticsPage() {
                                           const count = dateData
                                             ? (calendarWorkroom === 'all' ? dateData.total : (dateData.byWorkroom[calendarWorkroom] || 0))
                                             : 0
+                                          // Top labor categories for this date (sorted by count desc)
+                                          const topLabor = dateData?.byLaborCategory
+                                            ? Object.entries(dateData.byLaborCategory)
+                                                .sort((a, b) => b[1] - a[1])
+                                                .slice(0, 2)
+                                            : []
                                           const isToday = dateKey === todayKey
                                           const isWeekend = di === 0 || di === 6
                                           const isScheduled = count > 0
@@ -971,11 +977,22 @@ export default function JobsAnalyticsPage() {
                                                   <span className="text-[10px] text-slate-200/50">—</span>
                                                 )}
                                               </div>
+                                              {/* Labor categories — bottom of cell */}
+                                              {isScheduled && topLabor.length > 0 && (
+                                                <div className="absolute bottom-0.5 left-0 right-0 flex items-center justify-center gap-0.5 flex-wrap">
+                                                  {topLabor.map(([cat, n]) => (
+                                                    <span key={cat} className="text-[8px] font-medium text-brand-green-dark/50 bg-brand-green/5 px-1 py-px rounded leading-tight">
+                                                      {cat.length > 8 ? cat.slice(0, 7) + '…' : cat}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              )}
                                               {/* Tooltip */}
                                               {isScheduled && (
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
                                                   <span className="inline-block px-2.5 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-xl">
                                                     {count} job{count > 1 ? 's' : ''} · {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    {topLabor.length > 0 && <span className="block text-[10px] text-slate-300 mt-0.5">{topLabor.map(([cat, n]) => `${cat} (${n})`).join(', ')}</span>}
                                                   </span>
                                                 </div>
                                               )}

@@ -226,8 +226,8 @@ export async function GET(request: NextRequest) {
     })
     const weeklyDistribution = dayNames.map(day => ({ day, count: weeklyCounts[day] || 0 }))
 
-    // Scheduled install dates — individual dates for calendar with workroom breakdown
-    const scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number> }> = {}
+    // Scheduled install dates — individual dates for calendar with workroom + labor breakdown
+    const scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number>; byLaborCategory: Record<string, number> }> = {}
     const allWorkrooms = new Set<string>()
     let hasInstallDates = false
     let scheduledCount = 0
@@ -238,10 +238,12 @@ export async function GET(request: NextRequest) {
         hasInstallDates = true
         const key = d.toISOString().split('T')[0] // YYYY-MM-DD
         const wr = r.workroom || 'Unassigned'
+        const labor = r.laborCategoryDescription || 'Unspecified'
         allWorkrooms.add(wr)
-        if (!scheduledDates[key]) scheduledDates[key] = { total: 0, byWorkroom: {} }
+        if (!scheduledDates[key]) scheduledDates[key] = { total: 0, byWorkroom: {}, byLaborCategory: {} }
         scheduledDates[key].total++
         scheduledDates[key].byWorkroom[wr] = (scheduledDates[key].byWorkroom[wr] || 0) + 1
+        scheduledDates[key].byLaborCategory[labor] = (scheduledDates[key].byLaborCategory[labor] || 0) + 1
       }
     })
 
