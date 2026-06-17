@@ -479,6 +479,10 @@ export default function JobsReportsPage() {
                       const schedDate = getDisplayDate(record)
                       const measureDate = record.measureDate || di?.currentDate || null
                       const bookingDate = record.bookingDate || di?.leadCreationDate || null
+                      const isChargeback =
+                        (record.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
+                        record.jobType === 'chargeback' ||
+                        (record.laborCategoryDescription || '').toLowerCase().includes('chargeback')
                       return (
                         <tr key={record.id} onClick={() => openDetail(record)} className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
                           <td className="px-4 py-3">
@@ -511,6 +515,12 @@ export default function JobsReportsPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>{record.orderStatusDescription || 'Unknown'}</span>
+                              {isChargeback && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                                  <span className="w-1 h-1 rounded-full bg-red-500" />
+                                  Chargeback
+                                </span>
+                              )}
                               {record.statusChangedAt && (() => {
                                 const changed = new Date(record.statusChangedAt)
                                 const daysAgo = Math.floor((Date.now() - changed.getTime()) / 86400000)
