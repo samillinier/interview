@@ -439,8 +439,8 @@ export default function JobsReportsPage() {
               <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
                 <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-500 font-semibold">No saved job reports</p>
-                <p className="text-sm text-slate-400 mt-1">Save jobs from Cilio Jobs to see them here.</p>
-                <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Cilio Jobs</Link>
+                <p className="text-sm text-slate-400 mt-1">Save jobs from Realtime to see them here.</p>
+                <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Realtime</Link>
               </div>
             ) : (
               <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">

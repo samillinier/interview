@@ -15,14 +15,14 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 const jobGroups = [
   {
     title: 'Job Management',
-    description: 'Open dedicated workspaces for browsing Cilio jobs and saved reports.',
+    description: 'Open dedicated workspaces for browsing Realtime jobs and saved reports.',
     cards: [
       {
-        title: 'Cilio Jobs',
-        description: 'Browse, search, filter, and manage Cilio jobs — Scheduled, Dispatched, Completed, and more. Sync jobs to reports from here.',
+        title: 'Realtime',
+        description: 'Browse, search, filter, and manage Realtime jobs — Scheduled, Dispatched, Completed, and more. Sync jobs to reports from here.',
         href: '/dashboard/jobs/cilio',
         icon: Briefcase,
-        cta: 'Open Cilio Jobs',
+        cta: 'Open Realtime',
         highlights: [] as string[],
       },
       {
@@ -98,7 +98,7 @@ export default function JobsHubPage() {
             <div className="max-w-[1400px] mx-auto">
               <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">Jobs</p>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Job Hub</h1>
-              <p className="text-sm text-slate-500">Fast access to Cilio jobs, saved reports, and postings.</p>
+              <p className="text-sm text-slate-500">Fast access to Realtime jobs, saved reports, and postings.</p>
             </div>
           </div>
         </header>

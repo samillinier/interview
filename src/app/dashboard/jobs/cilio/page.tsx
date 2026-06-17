@@ -828,13 +828,13 @@ export default function JobsPage() {
                   Job Hub
                 </Link>
                 <span className="text-slate-300">/</span>
-                <span className="text-xs font-medium text-brand-green">Cilio Jobs</span>
+                <span className="text-xs font-medium text-brand-green">Realtime</span>
               </div>
               <h1 className="text-2xl font-bold text-brand-green flex items-center gap-2">
                 <Hammer className="w-7 h-7 text-brand-green" />
-                Cilio Jobs
+                Realtime
               </h1>
-              <p className="text-sm text-slate-500 mt-1">Browse, search, and manage Cilio jobs — Pre-Scheduled, Dispatched, and more</p>
+              <p className="text-sm text-slate-500 mt-1">Browse, search, and manage Realtime jobs — Pre-Scheduled, Dispatched, and more</p>
             </div>
           </div>
 
