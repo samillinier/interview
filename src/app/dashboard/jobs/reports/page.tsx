@@ -158,6 +158,12 @@ export default function JobsReportsPage() {
   const [workroomFilter, setWorkroomFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [chargebackFilter, setChargebackFilter] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('chargeback') === '1'
+    }
+    return false
+  })
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
@@ -207,6 +213,11 @@ export default function JobsReportsPage() {
   const filtered = useMemo(() => {
     let list = records
     if (statusFilter) list = list.filter(r => r.orderStatusDescription === statusFilter)
+    if (chargebackFilter) list = list.filter(r =>
+      (r.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
+      r.jobType === 'chargeback' ||
+      (r.laborCategoryDescription || '').toLowerCase().includes('chargeback')
+    )
     if (laborFilter) list = list.filter(r => r.laborCategoryDescription === laborFilter)
     if (workroomFilter !== 'all') list = list.filter(r => r.workroom === workroomFilter)
     if (dateFrom || dateTo) {
@@ -258,7 +269,7 @@ export default function JobsReportsPage() {
       })
     }
     return list.sort((a, b) => b.orderNumber - a.orderNumber)
-  }, [records, search, statusFilter, laborFilter, workroomFilter, dateFrom, dateTo])
+  }, [records, search, statusFilter, laborFilter, workroomFilter, dateFrom, dateTo, chargebackFilter])
 
   const openDetail = async (record: CilioJobRecord) => {
     setDetailRecord(record)
@@ -415,15 +426,20 @@ export default function JobsReportsPage() {
                 <span className="text-sm font-semibold text-slate-700">
                   {filtered.length.toLocaleString()} {filtered.length === 1 ? 'job' : 'jobs'} matching
                 </span>
-                {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search) && (
+                {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search || chargebackFilter) && (
                   <span className="text-xs text-slate-400">
                     (filtered from {records.length.toLocaleString()} total)
                   </span>
                 )}
+                {chargebackFilter && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                    <span className="w-1 h-1 rounded-full bg-red-500" /> Chargebacks
+                  </span>
+                )}
               </div>
-              {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search) && (
+              {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search || chargebackFilter) && (
                 <button
-                  onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch('') }}
+                  onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch(''); setChargebackFilter(false) }}
                   className="text-xs font-semibold text-brand-green hover:text-brand-green-dark transition-colors flex items-center gap-1"
                 >
                   <X className="w-3 h-3" /> Clear all filters
@@ -448,7 +464,7 @@ export default function JobsReportsPage() {
                 <p className="text-slate-500 font-semibold">No jobs match your filters</p>
                 <p className="text-sm text-slate-400 mt-1">Try adjusting your search or filter criteria.</p>
                 <button
-                  onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch('') }}
+                  onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch(''); setChargebackFilter(false) }}
                   className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"
                 >
                   <X className="w-4 h-4" /> Clear filters
