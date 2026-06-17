@@ -965,28 +965,29 @@ export default function JobsAnalyticsPage() {
                                               <span className={`absolute top-0.5 right-1 text-2xl font-black w-8 h-8 flex items-center justify-center rounded-lg leading-none
                                                 ${isToday ? 'bg-brand-green text-white shadow-md' : 'text-brand-green-dark'}
                                               `}>{day}</span>
-                                              {/* Job count — center */}
-                                              <div className="absolute inset-0 flex items-center justify-center">
+                                              {/* Job count + labor categories — centered */}
+                                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 px-0.5 pt-1 pb-1">
                                                 {isScheduled ? (
-                                                  <span className={`inline-flex items-center justify-center text-sm font-bold rounded-lg px-1.5 py-0.5 leading-tight
-                                                    ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/20 text-brand-green-dark'}
-                                                  `}>
-                                                    {count} {count === 1 ? 'job' : 'jobs'}
-                                                  </span>
+                                                  <>
+                                                    <span className={`inline-flex items-center justify-center text-sm font-bold rounded-lg px-1.5 py-0.5 leading-tight
+                                                      ${isToday ? 'bg-white text-brand-green-dark shadow-sm' : 'bg-brand-green/20 text-brand-green-dark'}
+                                                    `}>
+                                                      {count} {count === 1 ? 'job' : 'jobs'}
+                                                    </span>
+                                                    {topLabor.length > 0 && (
+                                                      <div className="flex items-center justify-center gap-0.5 flex-wrap max-w-full">
+                                                        {topLabor.map(([cat]) => (
+                                                          <span key={cat} className="text-[8px] font-medium text-brand-green-dark/60 bg-brand-green/[0.08] px-1 py-0.5 rounded leading-tight">
+                                                            {cat.length > 10 ? cat.slice(0, 9) + '…' : cat}
+                                                          </span>
+                                                        ))}
+                                                      </div>
+                                                    )}
+                                                  </>
                                                 ) : (
                                                   <span className="text-[10px] text-slate-200/50">—</span>
                                                 )}
                                               </div>
-                                              {/* Labor categories — bottom of cell */}
-                                              {isScheduled && topLabor.length > 0 && (
-                                                <div className="absolute bottom-0.5 left-0 right-0 flex items-center justify-center gap-0.5 flex-wrap">
-                                                  {topLabor.map(([cat, n]) => (
-                                                    <span key={cat} className="text-[8px] font-medium text-brand-green-dark/50 bg-brand-green/5 px-1 py-px rounded leading-tight">
-                                                      {cat.length > 8 ? cat.slice(0, 7) + '…' : cat}
-                                                    </span>
-                                                  ))}
-                                                </div>
-                                              )}
                                               {/* Tooltip */}
                                               {isScheduled && (
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
