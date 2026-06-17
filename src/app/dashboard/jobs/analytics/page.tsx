@@ -945,11 +945,10 @@ export default function JobsAnalyticsPage() {
                                           const count = dateData
                                             ? (calendarWorkroom === 'all' ? dateData.total : (dateData.byWorkroom[calendarWorkroom] || 0))
                                             : 0
-                                          // Top labor categories for this date (sorted by count desc)
-                                          const topLabor = dateData?.byLaborCategory
+                                          // All labor categories for this date (all of them, not just top 2)
+                                          const laborCategories = dateData?.byLaborCategory
                                             ? Object.entries(dateData.byLaborCategory)
                                                 .sort((a, b) => b[1] - a[1])
-                                                .slice(0, 2)
                                             : []
                                           const isToday = dateKey === todayKey
                                           const isWeekend = di === 0 || di === 6
@@ -974,11 +973,11 @@ export default function JobsAnalyticsPage() {
                                                     `}>
                                                       {count} {count === 1 ? 'job' : 'jobs'}
                                                     </span>
-                                                    {topLabor.length > 0 && (
-                                                      <div className="flex items-center justify-center gap-0.5 flex-wrap max-w-full">
-                                                        {topLabor.map(([cat]) => (
-                                                          <span key={cat} className="text-[8px] font-medium text-brand-green-dark/60 bg-brand-green/[0.08] px-1 py-0.5 rounded leading-tight">
-                                                            {cat.length > 10 ? cat.slice(0, 9) + '…' : cat}
+                                                    {laborCategories.length > 0 && (
+                                                      <div className="flex flex-col items-center gap-px max-w-full">
+                                                        {laborCategories.map(([cat]) => (
+                                                          <span key={cat} className="text-[8px] font-medium text-brand-green-dark/60 bg-brand-green/[0.08] px-1 py-0.5 rounded leading-tight whitespace-nowrap">
+                                                            {cat}
                                                           </span>
                                                         ))}
                                                       </div>
@@ -993,7 +992,7 @@ export default function JobsAnalyticsPage() {
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
                                                   <span className="inline-block px-2.5 py-1.5 rounded-lg bg-slate-800 text-white text-[11px] font-medium shadow-xl">
                                                     {count} job{count > 1 ? 's' : ''} · {new Date(dateKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                    {topLabor.length > 0 && <span className="block text-[10px] text-slate-300 mt-0.5">{topLabor.map(([cat, n]) => `${cat} (${n})`).join(', ')}</span>}
+                                                    {laborCategories.length > 0 && <span className="block text-[10px] text-slate-300 mt-0.5">{laborCategories.map(([cat, n]) => `${cat} (${n})`).join(', ')}</span>}
                                                   </span>
                                                 </div>
                                               )}
