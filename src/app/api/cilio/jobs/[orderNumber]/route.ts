@@ -56,7 +56,7 @@ export async function GET(
 
     // Cilio sometimes returns 200 with an error string like "Error getting order 123."
     if (typeof detail === 'string') {
-      const isNotFound = detail.toLowerCase().includes('error getting order')
+      const isNotFound = (detail as string).toLowerCase().includes('error getting order')
       return NextResponse.json(
         {
           error: isNotFound ? 'Job not found in Cilio' : 'Cilio returned an unexpected response',
