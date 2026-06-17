@@ -158,12 +158,14 @@ export default function JobsReportsPage() {
   const [workroomFilter, setWorkroomFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [chargebackFilter, setChargebackFilter] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get('chargeback') === '1'
+  const [chargebackFilter, setChargebackFilter] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('chargeback') === '1') {
+      setChargebackFilter(true)
     }
-    return false
-  })
+  }, [])
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
