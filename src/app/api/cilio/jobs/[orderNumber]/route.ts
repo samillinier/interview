@@ -54,6 +54,19 @@ export async function GET(
 
     const detail = await getJobDetail(orderNumber)
 
+    // Cilio sometimes returns 200 with an error string like "Error getting order 123."
+    if (typeof detail === 'string') {
+      const isNotFound = detail.toLowerCase().includes('error getting order')
+      return NextResponse.json(
+        {
+          error: isNotFound ? 'Job not found in Cilio' : 'Cilio returned an unexpected response',
+          code: isNotFound ? 'NOT_FOUND' : 'NO_DETAIL',
+          detail: null,
+        },
+        { status: isNotFound ? 404 : 502 }
+      )
+    }
+
     let installer: { id: string; name: string; companyName: string | null } | null = null
 
     const record = await prisma.cilioJobRecord.findUnique({
@@ -99,10 +112,14 @@ export async function GET(
   } catch (error: any) {
     console.error("Cilio job detail error:", error)
     const errorMsg = error.message || String(error)
-    const status = errorMsg.includes("404") ? 404 : 500
+    const isNotFound = errorMsg.includes("404") || errorMsg.includes("not found")
     return NextResponse.json(
-      { error: status === 404 ? "Job not found" : "Failed to load job detail", details: errorMsg },
-      { status }
+      {
+        error: isNotFound ? "Job not found in Cilio" : "Failed to load job detail",
+        code: isNotFound ? "NOT_FOUND" : "NO_DETAIL",
+        detail: null,
+      },
+      { status: isNotFound ? 404 : 502 }
     )
   }
 }

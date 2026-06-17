@@ -284,10 +284,17 @@ export default function JobsReportsPage() {
         setDetailNotes(notesData.notes || [])
         setJobAttachments(attData.attachments || [])
       } else {
-        setDetailError(detailData.error || 'Failed to load detail')
+        // Show a clearer message based on what went wrong
+        if (detailRes.status === 404 || detailData.code === 'NOT_FOUND') {
+          setDetailError('This job is no longer available in Cilio (may be too old or deleted)')
+        } else if (detailData.code === 'NO_DETAIL') {
+          setDetailError('Cilio returned an empty response for this job — detail unavailable')
+        } else {
+          setDetailError(detailData.error || 'Failed to load detail')
+        }
       }
     } catch {
-      setDetailError('Network error loading detail')
+      setDetailError('Network error — check your connection and try again')
     }
     setLoadingDetail(false)
     setLoadingAttachments(false)
@@ -547,16 +554,22 @@ export default function JobsReportsPage() {
                     <p className="text-brand-green/70 font-medium">Loading full job detail...</p>
                   </div>
                 ) : detailError ? (
-                  <div className="flex flex-col items-center py-24 text-slate-400">
+                  <div className="flex flex-col items-center py-16 text-slate-400">
                     <AlertCircle className="w-14 h-14 mb-4 opacity-40" />
-                    <p className="font-medium text-lg text-slate-500">{detailError}</p>
-                    <button onClick={() => openDetail(detailRecord)} className="mt-4 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/20">Retry</button>
+                    <p className="font-semibold text-lg text-slate-700 mb-2">{detailError}</p>
+                    <p className="text-sm text-slate-400 max-w-md text-center">
+                      {detailError.includes('no longer available') || detailError.includes('NOT_FOUND')
+                        ? 'This order exists in your database but Cilio no longer stores its full details. The summary data (status, labor, dates) is still available in the table.'
+                        : 'Cilio\'s detail API could not return data for this job. This may be a temporary issue — try again in a moment.'}
+                    </p>
+                    <button onClick={() => openDetail(detailRecord)} className="mt-6 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/20">Retry</button>
                   </div>
                 ) : !fullDetail ? (
-                  <div className="flex flex-col items-center py-24 text-slate-400">
+                  <div className="flex flex-col items-center py-16 text-slate-400">
                     <AlertCircle className="w-14 h-14 mb-4 opacity-40" />
-                    <p className="font-medium text-lg text-slate-500">Failed to load job detail</p>
-                    <button onClick={() => openDetail(detailRecord)} className="mt-4 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/20">Retry</button>
+                    <p className="font-semibold text-lg text-slate-700 mb-2">No detail available</p>
+                    <p className="text-sm text-slate-400 max-w-md text-center">Cilio did not return detail data for this job. The table summary is all that's available.</p>
+                    <button onClick={() => openDetail(detailRecord)} className="mt-6 px-6 py-2.5 bg-brand-green text-white rounded-xl text-sm font-semibold hover:bg-brand-green-dark transition-all shadow-lg shadow-brand-green/20">Retry</button>
                   </div>
                 ) : (() => {
                   const d = fullDetail
