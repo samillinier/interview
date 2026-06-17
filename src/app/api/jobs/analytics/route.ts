@@ -199,7 +199,10 @@ export async function GET(request: NextRequest) {
     const withoutInstaller = total - withInstaller
 
     // Chargeback rate
-    const chargebacks = records.filter(r => (r.orderStatusDescription || '').toLowerCase().includes('chargeback')).length
+    const chargebacks = records.filter(r =>
+      (r.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
+      r.jobType === 'chargeback'
+    ).length
     const chargebackRate = total > 0 ? (chargebacks / total * 100).toFixed(1) : '0.0'
 
     // Weekly distribution (jobs by day of week)
