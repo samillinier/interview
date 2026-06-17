@@ -18,11 +18,11 @@ const jobGroups = [
     description: 'Open dedicated workspaces for browsing Realtime jobs and saved reports.',
     cards: [
       {
-        title: 'Realtime',
-        description: 'Browse, search, filter, and manage Realtime jobs — Scheduled, Dispatched, Completed, and more. Sync jobs to reports from here.',
-        href: '/dashboard/jobs/cilio',
-        icon: Briefcase,
-        cta: 'Open Realtime',
+        title: 'Analytics',
+        description: 'Visualize job data with charts and metrics, trends, distributions, PO amounts, and more.',
+        href: '/dashboard/jobs/analytics',
+        icon: BarChart3,
+        cta: 'Open Analytics',
         highlights: [] as string[],
       },
       {
@@ -34,11 +34,11 @@ const jobGroups = [
         highlights: [] as string[],
       },
       {
-        title: 'Analytics',
-        description: 'Visualize job data with charts and metrics, trends, distributions, PO amounts, and more.',
-        href: '/dashboard/jobs/analytics',
-        icon: BarChart3,
-        cta: 'Open Analytics',
+        title: 'Realtime',
+        description: 'Browse, search, filter, and manage Realtime jobs — Scheduled, Dispatched, Completed, and more. Sync jobs to reports from here.',
+        href: '/dashboard/jobs/cilio',
+        icon: Briefcase,
+        cta: 'Open Realtime',
         highlights: [] as string[],
       },
     ],
