@@ -48,33 +48,33 @@ export async function GET(request: NextRequest) {
     // Resolve installerId by name for records without one
     const needsLookup = records.filter(r => !r.installerId && r.installerName)
     if (needsLookup.length > 0) {
-      const installerNames = [...new Set(needsLookup.map(r => r.installerName!.trim()))]
+      const installerNames = Array.from(new Set(needsLookup.map(r => r.installerName!.trim())))
       const dbInstallers = await prisma.installer.findMany({
         where: { status: { not: 'rejected' } },
         select: { id: true, firstName: true, lastName: true },
       })
       const nameToId = new Map<string, string>()
-      for (const name of installerNames) {
+      installerNames.forEach(name => {
         const lower = name.toLowerCase()
-        for (const i of dbInstallers) {
+        const match = dbInstallers.find(i => {
           const full = `${i.firstName} ${i.lastName}`.trim().toLowerCase()
           const rev = `${i.lastName} ${i.firstName}`.trim().toLowerCase()
-          if (lower === full || lower === rev || full.includes(lower) || lower.includes(full)) {
-            nameToId.set(lower, i.id)
-            // Also persist the match for future requests
-            prisma.cilioJobRecord.updateMany({
-              where: { installerName: name, installerId: null },
-              data: { installerId: i.id },
-            }).catch(() => {}) // fire-and-forget
-            break
-          }
+          return lower === full || lower === rev || full.includes(lower) || lower.includes(full)
+        })
+        if (match) {
+          nameToId.set(lower, match.id)
+          // Also persist the match for future requests
+          prisma.cilioJobRecord.updateMany({
+            where: { installerName: name, installerId: null },
+            data: { installerId: match.id },
+          }).catch(() => {}) // fire-and-forget
         }
-      }
+      })
       // Augment records with resolved installerId
-      for (const r of needsLookup) {
+      needsLookup.forEach(r => {
         const id = nameToId.get(r.installerName!.trim().toLowerCase())
         if (id) (r as any).installerId = id
-      }
+      })
     }
 
     return NextResponse.json({ records })
