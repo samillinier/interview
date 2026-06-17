@@ -226,17 +226,32 @@ export default function JobsReportsPage() {
       const tokens = search.trim().toLowerCase().split(/\s+/)
       list = list.filter(r => {
         // Build a single searchable string from all relevant fields
+        const p = r.cilioPayload
         const haystack = [
           String(r.orderNumber),
           r.storeName || '',
           r.storeNumber || '',
           r.installerName || '',
           r.laborCategoryDescription || '',
-          r.cilioPayload?.customerFirstName || '',
-          r.cilioPayload?.customerLastName || '',
-          r.cilioPayload?.customerFirstLast || '',
-          r.cilioPayload?.customerInformation?.customerName || '',
-          r.cilioPayload?.customerInformation?.customerFullName || '',
+          r.workroom || '',
+          // Cilio payload — customer fields
+          p?.customerFirstName || '',
+          p?.customerLastName || '',
+          p?.customerFirstLast || '',
+          p?.customerInformation?.customerName || '',
+          p?.customerInformation?.customerFullName || '',
+          // Cilio payload — order/PO/financial fields
+          p?.jobNumber ? String(p.jobNumber) : '',
+          p?.projectNumber ? String(p.projectNumber) : '',
+          p?.purchaserPO || '',
+          p?.orderStorePO || '',
+          p?.invoiceNumber || '',
+          p?.salesOrderNumber ? String(p.salesOrderNumber) : '',
+          p?.permitNumber || '',
+          p?.salesAssociate || '',
+          p?.storeDistrict || '',
+          p?.enterpriseGroupNumber ? String(p.enterpriseGroupNumber) : '',
+          p?.scopeOfWorkNotes || '',
         ].join(' ').toLowerCase()
         // ALL tokens must be found somewhere in the combined fields
         return tokens.every(token => haystack.includes(token))
@@ -321,7 +336,7 @@ export default function JobsReportsPage() {
                 <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
                 <input
                   type="text"
-                  placeholder="Search by name, store, project #, installer..."
+                  placeholder="Search by name, PO#, job#, invoice, store..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
