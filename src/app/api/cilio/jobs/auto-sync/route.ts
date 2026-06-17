@@ -136,17 +136,24 @@ async function runAutoSync(request: NextRequest) {
     }
   }
 
-  // Phase 2: Enrich records from the full detail API (dates + installer name)
+  // Phase 2: Enrich records from the full detail API (dates + installer name + installerId)
   let enriched = 0
   try {
+    // Pre-fetch all installer names for ID resolution
+    const dbInstallers = await prisma.installer.findMany({
+      where: { status: { not: 'rejected' } },
+      select: { id: true, firstName: true, lastName: true },
+    })
+
     const needsEnrichment = await prisma.cilioJobRecord.findMany({
       where: {
         OR: [
           { scheduledInstallDate: null },
           { installerName: null },
+          { installerId: null },
         ],
       },
-      select: { orderNumber: true, scheduledInstallDate: true, installerName: true },
+      select: { orderNumber: true, scheduledInstallDate: true, installerName: true, installerId: true },
       orderBy: { orderNumber: "asc" },
       take: 500,
     })
@@ -183,6 +190,26 @@ async function runAutoSync(request: NextRequest) {
           }
           if (!record.installerName && installerName) {
             updateData.installerName = installerName
+          }
+
+          // Resolve installerId by matching installerName against our DB
+          const nameToResolve = installerName || record.installerName
+          if (!record.installerId && nameToResolve) {
+            const lower = nameToResolve.toLowerCase()
+            const cilioParts = lower.split(/\s+/)
+            const cilioFirst = cilioParts[0]
+            const cilioLast = cilioParts[cilioParts.length - 1]
+            const match = dbInstallers.find(i => {
+              const full = `${i.firstName} ${i.lastName}`.trim().toLowerCase()
+              const rev = `${i.lastName} ${i.firstName}`.trim().toLowerCase()
+              if (lower === full || lower === rev) return true
+              if (full.includes(lower) || lower.includes(full)) return true
+              const dbFirst = i.firstName.toLowerCase()
+              const dbLast = i.lastName.toLowerCase()
+              if (cilioFirst === dbFirst && cilioLast === dbLast) return true
+              return false
+            })
+            if (match) updateData.installerId = match.id
           }
 
           if (Object.keys(updateData).length > 0) {

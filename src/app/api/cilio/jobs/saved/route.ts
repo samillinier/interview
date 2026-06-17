@@ -56,10 +56,21 @@ export async function GET(request: NextRequest) {
       const nameToId = new Map<string, string>()
       installerNames.forEach(name => {
         const lower = name.toLowerCase()
+        const cilioParts = lower.split(/\s+/)
+        const cilioFirst = cilioParts[0]
+        const cilioLast = cilioParts[cilioParts.length - 1]
         const match = dbInstallers.find(i => {
           const full = `${i.firstName} ${i.lastName}`.trim().toLowerCase()
           const rev = `${i.lastName} ${i.firstName}`.trim().toLowerCase()
-          return lower === full || lower === rev || full.includes(lower) || lower.includes(full)
+          // Exact full name match (either order)
+          if (lower === full || lower === rev) return true
+          // One name contains the other
+          if (full.includes(lower) || lower.includes(full)) return true
+          // First + last name parts match (handles middle names)
+          const dbFirst = i.firstName.toLowerCase()
+          const dbLast = i.lastName.toLowerCase()
+          if (cilioFirst === dbFirst && cilioLast === dbLast) return true
+          return false
         })
         if (match) {
           nameToId.set(lower, match.id)
