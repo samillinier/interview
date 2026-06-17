@@ -198,10 +198,11 @@ export async function GET(request: NextRequest) {
     const withInstaller = records.filter(r => r.installerId).length
     const withoutInstaller = total - withInstaller
 
-    // Chargeback rate
+    // Chargeback rate - check status, jobType, AND labor category
     const chargebacks = records.filter(r =>
       (r.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
-      r.jobType === 'chargeback'
+      r.jobType === 'chargeback' ||
+      (r.laborCategoryDescription || '').toLowerCase().includes('chargeback')
     ).length
     const chargebackRate = total > 0 ? (chargebacks / total * 100).toFixed(1) : '0.0'
 
