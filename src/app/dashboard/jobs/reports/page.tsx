@@ -207,12 +207,10 @@ export default function JobsReportsPage() {
       const from = new Date(effectiveFrom + 'T00:00:00')
       const to = new Date(effectiveTo + 'T23:59:59')
       list = list.filter(r => {
+        // Only use scheduled-type dates (same as what's displayed in the table)
         const d = r.scheduledInstallDate
           || r.cilioPayload?.dateInformation?.desiredInstallDate
           || r.cilioPayload?.schedulingInformation?.scheduleDate
-          || r.measureDate
-          || r.bookingDate
-          || r.createdAt
         if (!d) return false
         const date = new Date(d)
         return date >= from && date <= to
