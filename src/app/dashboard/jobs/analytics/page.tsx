@@ -923,12 +923,6 @@ export default function JobsAnalyticsPage() {
                                   if (week.length === 7) { weeks.push(week); week = [] }
                                 }
                                 if (week.length > 0) { while (week.length < 7) { week.push({ day: overflowDay, current: false }); overflowDay++; } weeks.push(week) }
-                                // Always show 6 full weeks (standard calendar)
-                                while (weeks.length < 6) {
-                                  week = []
-                                  while (week.length < 7) { week.push({ day: overflowDay, current: false }); overflowDay++; }
-                                  weeks.push(week)
-                                }
                                 const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
                                 return (
                                   <div className="rounded-2xl overflow-hidden border border-brand-green/20 bg-brand-green/[0.03] shadow-md">
