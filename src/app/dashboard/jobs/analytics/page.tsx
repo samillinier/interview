@@ -697,8 +697,8 @@ export default function JobsAnalyticsPage() {
                                     <div className="absolute inset-x-0 top-0 h-8 rounded-t-2xl bg-white/15" />
                                   </div>
                                 </div>
-                                <div className="h-8 flex flex-col justify-start">
-                                  <div className="text-[10px] font-medium leading-tight text-slate-700 group-hover:text-slate-900 text-center px-0.5" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.workroom}</div>
+                                <div className="h-12 flex flex-col justify-start gap-0.5">
+                                  <div className="text-[10px] font-medium text-slate-700 group-hover:text-slate-900 text-center leading-tight">{item.workroom}</div>
                                   <div className="text-[11px] text-slate-500">{percentage.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -849,8 +849,8 @@ export default function JobsAnalyticsPage() {
                                     <div className="absolute inset-x-0 top-0 h-8 rounded-t-2xl bg-white/15" />
                                   </div>
                                 </div>
-                                <div className="h-9 flex flex-col justify-start">
-                                  <div className="text-[10px] font-medium capitalize text-slate-700 group-hover:text-slate-900 text-center px-0.5" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.status}</div>
+                                <div className="h-12 flex flex-col justify-start gap-0.5">
+                                  <div className="text-[10px] font-medium capitalize text-slate-700 group-hover:text-slate-900 text-center leading-tight">{item.status}</div>
                                   <div className="text-[11px] text-slate-500">{percentage.toFixed(1)}%</div>
                                 </div>
                               </div>
