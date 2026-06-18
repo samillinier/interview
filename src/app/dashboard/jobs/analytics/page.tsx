@@ -688,16 +688,16 @@ export default function JobsAnalyticsPage() {
                             const isLeader = item.workroom === leading.workroom && item.count === leading.count
 
                             return (
-                              <div key={`${item.workroom}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col rounded-xl px-1 text-center">
-                                <div className="h-5 relative">
-                                  <span className="absolute bottom-0 inset-x-0 text-sm font-semibold text-slate-900">{item.count}</span>
-                                </div>
-                                <div className="flex-1 relative mb-1.5">
+                              <div key={`${item.workroom}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-xl px-1 text-center">
+                                <div className="flex-1 relative">
+                                  <span className="absolute inset-x-0 text-center text-sm font-semibold text-slate-900 leading-none pointer-events-none"
+                                    style={{ bottom: `calc(${barHeight}% + 2px)` }}
+                                  >{item.count}</span>
                                   <div className={`absolute bottom-0 inset-x-0 rounded-t-2xl transition-all duration-300 group-hover:opacity-90 ${isLeader ? 'bg-brand-green shadow-[0_14px_30px_-18px_rgba(101,163,13,0.9)]' : 'bg-brand-green/80'}`} style={{ height: `${barHeight}%` }}>
                                     <div className="absolute inset-x-0 top-0 h-8 rounded-t-2xl bg-white/15" />
                                   </div>
                                 </div>
-                                <div className="h-12 flex flex-col justify-start gap-0.5">
+                                <div className="h-11 flex flex-col justify-start gap-0.5 mt-1">
                                   <div className="text-[10px] font-medium text-slate-700 group-hover:text-slate-900 text-center leading-tight">{item.workroom}</div>
                                   <div className="text-[11px] text-slate-500">{percentage.toFixed(1)}%</div>
                                 </div>
