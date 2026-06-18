@@ -922,15 +922,24 @@ export default function JobsAnalyticsPage() {
                                 const todayKey = today.toISOString().split('T')[0]
                                 const firstDay = new Date(calendarMonth.year, calendarMonth.month, 1).getDay()
                                 const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate()
+                                const daysInPrevMonth = new Date(calendarMonth.year, calendarMonth.month, 0).getDate()
                                 let overflowDay = 1
-                                const weeks: ({ day: number; current: boolean } | null)[][] = []
-                                let week: ({ day: number; current: boolean } | null)[] = []
-                                for (let i = 0; i < firstDay; i++) week.push(null)
+                                const weeks: { day: number; current: boolean }[][] = []
+                                let week: { day: number; current: boolean }[] = []
+                                for (let i = firstDay - 1; i >= 0; i--) {
+                                  week.push({ day: daysInPrevMonth - i, current: false })
+                                }
                                 for (let d = 1; d <= daysInMonth; d++) {
                                   week.push({ day: d, current: true })
                                   if (week.length === 7) { weeks.push(week); week = [] }
                                 }
-                                if (week.length > 0) { while (week.length < 7) { week.push({ day: overflowDay, current: false }); overflowDay++; } weeks.push(week) }
+                                if (week.length > 0) {
+                                  while (week.length < 7) {
+                                    week.push({ day: overflowDay, current: false })
+                                    overflowDay++
+                                  }
+                                  weeks.push(week)
+                                }
                                 const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
                                 return (
                                   <div className="rounded-2xl overflow-hidden border border-brand-green/20 bg-brand-green/[0.03] shadow-md">
@@ -946,13 +955,10 @@ export default function JobsAnalyticsPage() {
                                     {weeks.map((w, wi) => (
                                       <div key={wi} className="grid grid-cols-7 border-b border-brand-green/10 last:border-b-0">
                                         {w.map((cell, di) => {
-                                          if (cell === null) return (
-                                            <div key={di} className="aspect-square bg-brand-green/[0.03] border-r border-brand-green/10 last:border-r-0 p-1" />
-                                          )
                                           if (!cell.current) return (
-                                            // Next-month overflow day — dimmed, no job data
-                                            <div key={di} className="aspect-square border-r border-brand-green/10 last:border-r-0 p-1 bg-brand-green/[0.02]">
-                                              <span className="absolute top-0.5 right-1 text-2xl font-black w-8 h-8 flex items-center justify-center rounded-lg leading-none text-brand-green-dark/25">{cell.day}</span>
+                                            // Adjacent-month day — dimmed, no job data
+                                            <div key={di} className="aspect-square border-r border-brand-green/10 last:border-r-0 p-1 bg-brand-green/[0.02] relative">
+                                              <span className="absolute top-0.5 right-1 text-2xl font-black w-8 h-8 flex items-center justify-center rounded-lg leading-none text-brand-green-dark/35">{cell.day}</span>
                                             </div>
                                           )
                                           const day = cell.day

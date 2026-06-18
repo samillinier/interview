@@ -6,6 +6,23 @@ import prisma from "@/lib/db"
 export const dynamic = "force-dynamic"
 export const maxDuration = 600
 
+/** Heuristic to detect test/sandbox jobs from Cilio that should not be stored. */
+function isTestJob(job: any): boolean {
+  const fields = [
+    job.customerLastName,
+    job.customerFirstName,
+    job.customerEmail,
+    job.poJobNumber,
+    job.storeName,
+  ]
+  for (const val of fields) {
+    if (typeof val === "string" && /\btest\b/i.test(val)) return true
+  }
+  // Also catch "Test_Project" style scope notes
+  if (typeof job.scopeOfWorkNotes === "string" && /test[_\s]project/i.test(job.scopeOfWorkNotes)) return true
+  return false
+}
+
 /**
  * GET  /api/cilio/jobs/auto-sync  ← Vercel Cron Job (every 5 min)
  * POST /api/cilio/jobs/auto-sync  ← manual trigger (requires auth)
@@ -64,12 +81,20 @@ async function runAutoSync(request: NextRequest) {
     return [] as any[]
   })
 
-  if (allJobs.length === 0) {
+  // Filter out test jobs before upserting
+  const testFiltered = allJobs.filter(j => !isTestJob(j))
+  const removed = allJobs.length - testFiltered.length
+  if (removed > 0) {
+    console.log(`[AutoSync] Filtered out ${removed} test jobs`)
+  }
+
+  if (testFiltered.length === 0) {
     return NextResponse.json({
       synced: 0,
       total: 0,
-      message: "No jobs fetched from Cilio",
-      diagnostic: fetchError ? `Cilio fetch error: ${fetchError}` : "Cilio returned no jobs for the date windows",
+      removed,
+      message: "No real jobs fetched from Cilio",
+      diagnostic: fetchError ? `Cilio fetch error: ${fetchError}` : "Cilio returned no jobs for the date windows (all were test jobs)",
       env: { keyConfigured: cilioKey.length > 0, url: cilioUrl },
       durationMs: Date.now() - startTime,
     })
@@ -79,7 +104,7 @@ async function runAutoSync(request: NextRequest) {
   let synced = 0
   let skipped = 0
 
-  for (const job of allJobs) {
+  for (const job of testFiltered) {
     const statusDesc = job.orderStatusDescription || ""
     const isChargeback = statusDesc.toLowerCase().includes("chargeback") ||
       statusDesc.toLowerCase().includes("charge back")
@@ -235,8 +260,9 @@ async function runAutoSync(request: NextRequest) {
     synced,
     skipped,
     enriched,
-    total: allJobs.length,
-    message: `Synced ${synced} jobs, enriched ${enriched} with dates (${skipped} skipped) in ${(durationMs / 1000).toFixed(1)}s`,
+    total: testFiltered.length,
+    removed,
+    message: `Synced ${synced} jobs, enriched ${enriched} with dates (${skipped} skipped, ${removed} test jobs filtered) in ${(durationMs / 1000).toFixed(1)}s`,
     durationMs,
   })
 }
