@@ -798,7 +798,7 @@ export default function JobsAnalyticsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Top Status</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900 capitalize truncate">{leadingStatus.status}</div>
+                        <div className="mt-1 text-lg font-bold text-slate-900 capitalize">{leadingStatus.status}</div>
                         <div className="text-sm text-slate-500">{leadingStatus.count} jobs</div>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -814,7 +814,7 @@ export default function JobsAnalyticsPage() {
                         <span>Max {maxVal}</span>
                       </div>
 
-                      <div className="relative h-72">
+                      <div className="relative h-80">
                         <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
                           {[1, 2, 3, 4].map((line) => (
                             <div key={line} className="border-t border-dashed border-slate-200" />
@@ -841,8 +841,8 @@ export default function JobsAnalyticsPage() {
                                 >
                                   <div className="absolute inset-x-0 top-0 h-8 rounded-t-2xl bg-white/15" />
                                 </div>
-                                <div className="mt-3 space-y-1">
-                                  <div className="text-xs font-medium capitalize leading-tight text-slate-700 group-hover:text-slate-900 truncate">{item.status}</div>
+                                <div className="mt-1.5 space-y-0.5">
+                                  <div className="text-[10px] font-medium capitalize text-slate-700 group-hover:text-slate-900 text-center px-0.5" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.status}</div>
                                   <div className="text-[11px] text-slate-500">{percentage.toFixed(1)}%</div>
                                 </div>
                               </div>
