@@ -290,64 +290,49 @@ export default function JobsAnalyticsPage() {
           {/* Weekly Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             {/* Weekly Revenue */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-700">Revenue</h3>
-                  <p className="text-xs text-slate-400">Last 7 days</p>
-                </div>
-                <div className="w-10 h-10 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center"><DollarSign className="w-5 h-5 text-brand-green" /></div>
-              </div>
-              <div className="text-3xl font-black text-slate-900 mb-1">{fmtNumber(data.weeklyRevenue)}</div>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span>{data.weeklyRevenueCount} jobs with PO</span>
-                <span className="text-slate-300">·</span>
-                <span>Avg {fmtNumber(data.weeklyAvgRevenue)}</span>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
+              <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
+              <div className="flex items-start justify-between gap-4">
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Revenue</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.weeklyRevenue)}</h3><p className="text-sm text-slate-500">{data.weeklyRevenueCount} jobs · Avg {fmtNumber(data.weeklyAvgRevenue)}</p></div>
+                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><DollarSign className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
 
             {/* Weekly Jobs */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-700">Weekly Jobs</h3>
-                  <p className="text-xs text-slate-400">Last 7 days</p>
-                </div>
-                <div className="w-10 h-10 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center"><Briefcase className="w-5 h-5 text-brand-green" /></div>
-              </div>
-              <div className="text-3xl font-black text-slate-900 mb-1">{data.weeklyJobs.toLocaleString()}</div>
-              <div className="text-xs text-slate-500">
-                Avg {Math.round(data.weeklyJobs / 7)} per day
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
+              <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
+              <div className="flex items-start justify-between gap-4">
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Jobs</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.weeklyJobs.toLocaleString()}</h3><p className="text-sm text-slate-500">Avg {Math.round(data.weeklyJobs / 7)} per day</p></div>
+                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><Briefcase className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
 
             {/* Pipeline */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-700">Pipeline</h3>
-                  <p className="text-xs text-slate-400">Active jobs by category</p>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
+              <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Pipeline</p>
+                  <div className="space-y-2.5">
+                    {data.pipeline.length > 0 ? (
+                      data.pipeline.slice(0, 5).map((item) => {
+                        const maxCount = Math.max(...data.pipeline.map(p => p.count), 1)
+                        const pct = (item.count / maxCount) * 100
+                        return (
+                          <div key={item.label} className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-700 w-20 truncate">{item.label}</span>
+                            <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-brand-green/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-bold text-slate-500 w-8 text-right tabular-nums">{item.count}</span>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <p className="text-xs text-slate-400">No active pipeline data</p>
+                    )}
+                  </div>
                 </div>
-                <div className="w-10 h-10 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center"><BarChart3 className="w-5 h-5 text-brand-green" /></div>
-              </div>
-              <div className="space-y-2">
-                {data.pipeline.length > 0 ? (
-                  data.pipeline.slice(0, 5).map((item) => {
-                    const maxCount = Math.max(...data.pipeline.map(p => p.count), 1)
-                    const pct = (item.count / maxCount) * 100
-                    return (
-                      <div key={item.label} className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-slate-700 w-16 truncate">{item.label}</span>
-                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-brand-green/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-xs font-semibold text-slate-600 w-8 text-right">{item.count}</span>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <p className="text-xs text-slate-400">No active pipeline data</p>
-                )}
+                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0"><BarChart3 className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
           </div>
