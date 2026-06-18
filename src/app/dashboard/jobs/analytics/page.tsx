@@ -45,6 +45,11 @@ interface JobsAnalytics {
   lastMonthTotal: number
   previousMonthTotal: number
   salesTrend: number
+  weeklyRevenue: number
+  weeklyRevenueCount: number
+  weeklyAvgRevenue: number
+  weeklyJobs: number
+  pipeline: { label: string; count: number; revenue: number }[]
   topStores: { name: string; count: number }[]
   topInstallers: { name: string; count: number }[]
   poAmount: { total: number; average: number; min: number; max: number; count: number }
@@ -278,6 +283,71 @@ export default function JobsAnalyticsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Chargebacks</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.chargebacks.toLocaleString()}</h3><p className="text-sm text-slate-500">{data.chargebackRate} of total</p></div>
                 <div className="w-14 h-14 bg-red-50 rounded-2xl border border-red-100 flex items-center justify-center shadow-sm"><AlertCircle className="w-6 h-6 text-red-500" /></div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Weekly Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            {/* Weekly Revenue */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-700">Revenue</h3>
+                  <p className="text-xs text-slate-400">Last 7 days</p>
+                </div>
+                <div className="w-10 h-10 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center"><DollarSign className="w-5 h-5 text-brand-green" /></div>
+              </div>
+              <div className="text-3xl font-black text-slate-900 mb-1">{fmtNumber(data.weeklyRevenue)}</div>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span>{data.weeklyRevenueCount} jobs with PO</span>
+                <span className="text-slate-300">·</span>
+                <span>Avg {fmtNumber(data.weeklyAvgRevenue)}</span>
+              </div>
+            </motion.div>
+
+            {/* Weekly Jobs */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-700">Weekly Jobs</h3>
+                  <p className="text-xs text-slate-400">Last 7 days</p>
+                </div>
+                <div className="w-10 h-10 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center"><Briefcase className="w-5 h-5 text-brand-green" /></div>
+              </div>
+              <div className="text-3xl font-black text-slate-900 mb-1">{data.weeklyJobs.toLocaleString()}</div>
+              <div className="text-xs text-slate-500">
+                Avg {Math.round(data.weeklyJobs / 7)} per day
+              </div>
+            </motion.div>
+
+            {/* Pipeline */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-700">Pipeline</h3>
+                  <p className="text-xs text-slate-400">Active jobs by category</p>
+                </div>
+                <div className="w-10 h-10 bg-brand-green/10 rounded-xl border border-brand-green/20 flex items-center justify-center"><BarChart3 className="w-5 h-5 text-brand-green" /></div>
+              </div>
+              <div className="space-y-2">
+                {data.pipeline.length > 0 ? (
+                  data.pipeline.slice(0, 5).map((item) => {
+                    const maxCount = Math.max(...data.pipeline.map(p => p.count), 1)
+                    const pct = (item.count / maxCount) * 100
+                    return (
+                      <div key={item.label} className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-slate-700 w-16 truncate">{item.label}</span>
+                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-brand-green/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-600 w-8 text-right">{item.count}</span>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <p className="text-xs text-slate-400">No active pipeline data</p>
+                )}
               </div>
             </motion.div>
           </div>

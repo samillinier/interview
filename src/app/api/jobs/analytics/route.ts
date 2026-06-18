@@ -147,6 +147,52 @@ export async function GET(request: NextRequest) {
       ? Math.round(((lastMonthTotal - previousMonthTotal) / previousMonthTotal) * 100)
       : 0
 
+    // Weekly revenue and jobs — last 7 days
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+    let weeklyRevenue = 0
+    let weeklyRevenueCount = 0
+    let weeklyJobs = 0
+    records.forEach(r => {
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= sevenDaysAgo) {
+        weeklyJobs++
+        const po = (r.cilioPayload as any)?.poAmount
+        if (po != null && !isNaN(Number(po))) {
+          weeklyRevenue += Number(po)
+          weeklyRevenueCount++
+        }
+      }
+    })
+    const weeklyAvgRevenue = weeklyRevenueCount > 0 ? Math.round(weeklyRevenue / weeklyRevenueCount) : 0
+
+    // Pipeline — top labor categories with counts (active: not canceled/complete)
+    const pipelineCategories = ['Carpet Install', 'Tile', 'Hardwood', 'Laminate', 'Vinyl', 'Measure', 'Payment Request']
+    const pipeline: { label: string; count: number; revenue: number }[] = []
+    pipelineCategories.forEach(cat => {
+      let count = 0
+      let revenue = 0
+      records.forEach(r => {
+        if ((r.laborCategoryDescription || '').toLowerCase().includes(cat.toLowerCase())) {
+          const status = (r.orderStatusDescription || '').toLowerCase()
+          if (status.includes('scheduled') || status.includes('dispatched') || status.includes('progress') || status.includes('tentative')) {
+            count++
+            const po = (r.cilioPayload as any)?.poAmount
+            if (po != null && !isNaN(Number(po))) revenue += Number(po)
+          }
+        }
+      })
+      if (count > 0) pipeline.push({ label: cat.replace(' Install', ''), count, revenue })
+    })
+
     // Top stores (by job count — kept for backward compatibility)
     const storeCounts: Record<string, { name: string; count: number }> = {}
     records.forEach(r => {
@@ -316,6 +362,11 @@ export async function GET(request: NextRequest) {
       lastMonthTotal,
       previousMonthTotal,
       salesTrend,
+      weeklyRevenue,
+      weeklyRevenueCount,
+      weeklyAvgRevenue,
+      weeklyJobs,
+      pipeline,
       poAmount: {
         total: totalPO,
         average: Math.round(poAvg * 100) / 100,
