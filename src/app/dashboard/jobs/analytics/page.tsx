@@ -291,7 +291,7 @@ export default function JobsAnalyticsPage() {
           </div>
 
           {/* Weekly Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
             {/* Weekly Revenue */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
@@ -338,40 +338,40 @@ export default function JobsAnalyticsPage() {
                 <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0"><BarChart3 className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
-          </div>
 
-          {/* Measure-to-Install Conversion */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mt-6 bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Measure-to-Install</h2>
-                <p className="mt-1 text-sm text-slate-500">What percentage of measures convert to installs</p>
-              </div>
-              <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><CheckCircle2 className="w-6 h-6 text-brand-green" /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-6">
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">Total Measures</div>
-                <div className="text-4xl font-black text-slate-900">{data.totalMeasures.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">Converted</div>
-                <div className="text-4xl font-black text-brand-green">{data.measureConversions.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">Conversion Rate</div>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-4xl font-black text-slate-900">{data.measureConversionRate}%</div>
-                  <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-green rounded-full transition-all duration-700" style={{ width: `${Math.min(data.measureConversionRate, 100)}%` }} />
+            {/* Measure-to-Install */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
+              <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Measure → Install</p>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-end gap-2 mb-2">
+                        <span className="text-4xl font-black text-brand-green">{data.measureConversionRate}%</span>
+                      </div>
+                      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-brand-green rounded-full transition-all duration-700" style={{ width: `${Math.min(data.measureConversionRate, 100)}%` }} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-0.5">Measures</div>
+                        <div className="text-lg font-bold text-slate-800">{data.totalMeasures.toLocaleString()}</div>
+                      </div>
+                      <div className="rounded-xl bg-brand-green/5 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-brand-green/60 mb-0.5">Converted</div>
+                        <div className="text-lg font-bold text-brand-green">{data.measureConversions.toLocaleString()}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0"><CheckCircle2 className="w-6 h-6 text-brand-green" /></div>
               </div>
-            </div>
-            <div className="mt-4 text-xs text-slate-400">
-              Matched by customer last name + store number · {data.measureConversions} of {data.totalMeasures} measures have a matching install
-            </div>
-          </motion.div>
+              <div className="mt-3 text-[10px] text-slate-400">
+                Matched by customer last name + store
+              </div>
+            </motion.div>
+          </div>
 
           {/* Trends */}
 
