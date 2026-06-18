@@ -39,6 +39,8 @@ interface JobsAnalytics {
   statusDistribution: { status: string; count: number }[]
   laborDistribution: { category: string; count: number }[]
   workroomDistribution: { workroom: string; count: number }[]
+  lastMonthSales: { name: string; total: number; count: number }[]
+  prevMonthLabel: string
   topStores: { name: string; count: number }[]
   topInstallers: { name: string; count: number }[]
   poAmount: { total: number; average: number; min: number; max: number; count: number }
@@ -718,65 +720,62 @@ export default function JobsAnalyticsPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Top Stores</h2>
-                  <p className="mt-1 text-sm text-slate-500">Stores by job volume</p>
+                  <h2 className="text-xl font-bold text-slate-900">Last Month Sales</h2>
+                  <p className="mt-1 text-sm text-slate-500">{data.prevMonthLabel} · revenue by store</p>
                 </div>
-                <Building2 className="w-5 h-5 text-slate-400" />
+                <DollarSign className="w-5 h-5 text-brand-green" />
               </div>
-              {data.topStores.length > 0 ? (
+              {data.lastMonthSales.length > 0 ? (
                 (() => {
-                  const top7 = data.topStores.slice(0, 7)
-                  const maxVal = Math.max(1, ...top7.map(s => s.count))
-                  const leading = top7.reduce((best, s) => (s.count > best.count ? s : best), top7[0] || { name: '-', count: 0 })
-                  const totalShown = top7.reduce((sum, s) => sum + s.count, 0)
+                  const top7 = data.lastMonthSales.slice(0, 7)
+                  const maxVal = Math.max(1, ...top7.map(s => s.total))
+                  const leading = top7.reduce((best, s) => (s.total > best.total ? s : best), top7[0] || { name: '-', total: 0, count: 0 })
+                  const totalSales = data.lastMonthSales.reduce((sum, s) => sum + s.total, 0)
+                  const formatCurrency = (val: number) => val >= 1000 ? `$${(val / 1000).toFixed(1)}k` : `$${Math.round(val)}`
                   return (
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
                           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Top Store</div>
                           <div className="mt-1 text-lg font-bold text-slate-900 truncate">{leading.name}</div>
-                          <div className="text-sm text-slate-500">{leading.count} jobs</div>
+                          <div className="text-sm text-slate-500">{formatCurrency(leading.total)}</div>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Unique Stores</div>
-                          <div className="mt-1 text-lg font-bold text-slate-900">{data.topStores.length}</div>
-                          <div className="text-sm text-slate-500">{totalShown} jobs shown</div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total Revenue</div>
+                          <div className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(totalSales)}</div>
+                          <div className="text-sm text-slate-500">{data.lastMonthSales.length} stores</div>
                         </div>
                       </div>
                       <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
                         <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
                           <span>Stores</span>
-                          <span>Max {maxVal}</span>
+                          <span>Max {formatCurrency(maxVal)}</span>
                         </div>
                         <div className="space-y-2.5">
-                          {(() => {
-                            // Find longest name to size the label gutter evenly
-                            const maxLabelLen = Math.max(...top7.map(s => s.name.length), 1)
-                            return top7.map((s, i) => {
-                              const barWidth = s.count === 0 ? 4 : Math.max((s.count / maxVal) * 100, 8)
-                              const isLeader = s.name === leading.name && s.count === leading.count
-                              return (
-                                <div key={s.name} className="group flex items-center gap-0">
-                                  <div
-                                    className={`h-10 rounded-xl transition-all duration-300 group-hover:opacity-90 flex items-center justify-between pr-2.5 min-w-[32px] flex-1
-                                      ${isLeader ? 'bg-brand-green shadow-[0_4px_12px_-6px_rgba(101,163,13,0.6)]' : 'bg-brand-green/70'}
-                                    `}
-                                    style={{ maxWidth: `${barWidth}%` }}
-                                  >
-                                    <span className="text-xs font-semibold text-white truncate pl-3 leading-tight max-w-[calc(100%-32px)]" title={s.name}>{s.name}</span>
-                                    <span className="text-xs font-bold text-white flex-shrink-0">{s.count}</span>
-                                  </div>
+                          {top7.map((s) => {
+                            const barWidth = s.total === 0 ? 4 : Math.max((s.total / maxVal) * 100, 8)
+                            const isLeader = s.name === leading.name && s.total === leading.total
+                            return (
+                              <div key={s.name} className="group flex items-center gap-0">
+                                <div
+                                  className={`h-10 rounded-xl transition-all duration-300 group-hover:opacity-90 flex items-center justify-between pr-2.5 min-w-[32px] flex-1
+                                    ${isLeader ? 'bg-brand-green shadow-[0_4px_12px_-6px_rgba(101,163,13,0.6)]' : 'bg-brand-green/70'}
+                                  `}
+                                  style={{ maxWidth: `${barWidth}%` }}
+                                >
+                                  <span className="text-xs font-semibold text-white truncate pl-3 leading-tight max-w-[calc(100%-40px)]" title={s.name}>{s.name}</span>
+                                  <span className="text-xs font-bold text-white flex-shrink-0">{formatCurrency(s.total)}</span>
                                 </div>
-                              )
-                            })
-                          })()}
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     </div>
                   )
                 })()
               ) : (
-                <p className="text-sm text-slate-400 py-6 text-center">No store data available</p>
+                <p className="text-sm text-slate-400 py-6 text-center">No sales data for {data.prevMonthLabel}</p>
               )}
             </motion.div>
 

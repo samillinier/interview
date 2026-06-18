@@ -94,7 +94,37 @@ export async function GET(request: NextRequest) {
       .map(([workroom, count]) => ({ workroom, count }))
       .sort((a, b) => b.count - a.count)
 
-    // Top stores
+    // Last month store sales — aggregate poAmount by store for previous calendar month
+    const now = new Date()
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+    const prevMonthLabel = prevMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
+    const storeSales: Record<string, { name: string; total: number; count: number }> = {}
+    records.forEach(r => {
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= prevMonth && d <= prevMonthEnd) {
+        const key = r.storeNumber || r.storeName || 'unknown'
+        const name = r.storeName || key
+        if (!storeSales[key]) storeSales[key] = { name, total: 0, count: 0 }
+        const po = (r.cilioPayload as any)?.poAmount
+        if (po != null && !isNaN(Number(po))) {
+          storeSales[key].total += Number(po)
+          storeSales[key].count++
+        }
+      }
+    })
+    const lastMonthSales = Object.values(storeSales)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10)
+
+    // Top stores (by job count — kept for backward compatibility)
     const storeCounts: Record<string, { name: string; count: number }> = {}
     records.forEach(r => {
       const key = r.storeNumber || 'unknown'
@@ -125,7 +155,6 @@ export async function GET(request: NextRequest) {
     // Monthly trend (last 12 months)
     const monthlyCounts: Record<string, number> = {}
     const monthlyPO: Record<string, number> = {}
-    const now = new Date()
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -259,6 +288,8 @@ export async function GET(request: NextRequest) {
       workroomDistribution,
       topStores,
       topInstallers,
+      lastMonthSales,
+      prevMonthLabel,
       poAmount: {
         total: totalPO,
         average: Math.round(poAvg * 100) / 100,
