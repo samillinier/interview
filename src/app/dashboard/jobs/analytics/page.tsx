@@ -50,6 +50,9 @@ interface JobsAnalytics {
   weeklyAvgRevenue: number
   weeklyJobs: number
   pipeline: { label: string; count: number; revenue: number }[]
+  measureConversions: number
+  totalMeasures: number
+  measureConversionRate: number
   topStores: { name: string; count: number }[]
   topInstallers: { name: string; count: number }[]
   poAmount: { total: number; average: number; min: number; max: number; count: number }
@@ -336,6 +339,39 @@ export default function JobsAnalyticsPage() {
               </div>
             </motion.div>
           </div>
+
+          {/* Measure-to-Install Conversion */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mt-6 bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Measure-to-Install</h2>
+                <p className="mt-1 text-sm text-slate-500">What percentage of measures convert to installs</p>
+              </div>
+              <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><CheckCircle2 className="w-6 h-6 text-brand-green" /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">Total Measures</div>
+                <div className="text-4xl font-black text-slate-900">{data.totalMeasures.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">Converted</div>
+                <div className="text-4xl font-black text-brand-green">{data.measureConversions.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">Conversion Rate</div>
+                <div className="flex items-baseline gap-2">
+                  <div className="text-4xl font-black text-slate-900">{data.measureConversionRate}%</div>
+                  <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-green rounded-full transition-all duration-700" style={{ width: `${Math.min(data.measureConversionRate, 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 text-xs text-slate-400">
+              Matched by customer last name + store number · {data.measureConversions} of {data.totalMeasures} measures have a matching install
+            </div>
+          </motion.div>
 
           {/* Trends */}
 

@@ -193,6 +193,39 @@ export async function GET(request: NextRequest) {
       if (count > 0) pipeline.push({ label: cat.replace(' Install', ''), count, revenue })
     })
 
+    // Measure-to-Install conversion — cross-reference by customer name + store
+    const measureJobs: { lastName: string; storeNumber: string; orderNumber: number }[] = []
+    const installJobs: { lastName: string; storeNumber: string; orderNumber: number }[] = []
+    records.forEach(r => {
+      const p = r.cilioPayload as any
+      const lastName = (p?.customerLastName || '').trim().toLowerCase()
+      const storeNum = (r.storeNumber || '').trim()
+      if (!lastName) return
+      const labor = (r.laborCategoryDescription || '').toLowerCase()
+      if (labor.includes('measure')) {
+        measureJobs.push({ lastName, storeNumber: storeNum, orderNumber: r.orderNumber })
+      } else if (labor && !labor.includes('chargeback') && !labor.includes('payment') && !labor.includes('rapid')) {
+        installJobs.push({ lastName, storeNumber: storeNum, orderNumber: r.orderNumber })
+      }
+    })
+    // Build index: "lastname|store" → set of measure orderNumbers
+    const measureIndex: Record<string, Set<number>> = {}
+    measureJobs.forEach(m => {
+      const key = `${m.lastName}|${m.storeNumber}`
+      if (!measureIndex[key]) measureIndex[key] = new Set()
+      measureIndex[key].add(m.orderNumber)
+    })
+    // Count measures that converted (same lastName + storeNumber has an install)
+    const convertedMeasures = new Set<number>()
+    installJobs.forEach(i => {
+      const key = `${i.lastName}|${i.storeNumber}`
+      const matches = measureIndex[key]
+      if (matches) matches.forEach(on => convertedMeasures.add(on))
+    })
+    const totalMeasures = measureJobs.length
+    const measureConversions = convertedMeasures.size
+    const measureConversionRate = totalMeasures > 0 ? Math.round((measureConversions / totalMeasures) * 100) : 0
+
     // Top stores (by job count — kept for backward compatibility)
     const storeCounts: Record<string, { name: string; count: number }> = {}
     records.forEach(r => {
@@ -367,6 +400,9 @@ export async function GET(request: NextRequest) {
       weeklyAvgRevenue,
       weeklyJobs,
       pipeline,
+      measureConversions,
+      totalMeasures,
+      measureConversionRate,
       poAmount: {
         total: totalPO,
         average: Math.round(poAvg * 100) / 100,
