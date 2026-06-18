@@ -329,7 +329,7 @@ export default function JobsAnalyticsPage() {
                             />
                             <text
                               x={dailyPad - 6} y={dailyH - dailyPad - ((v / maxDaily) * (dailyH - dailyPad * 2)) + 3}
-                              textAnchor="end" className="text-[9px]" fill="#94a3b8">{v}</text>
+                              textAnchor="end" fontSize="9" fill="#94a3b8">{v}</text>
                           </g>
                         ))}
                         {/* Area fill */}
@@ -345,7 +345,7 @@ export default function JobsAnalyticsPage() {
                             <g key={i}>
                               <circle cx={p.x} cy={p.y} r={isPeak ? 5 : 2.5} fill="white" stroke="#8CB63C" strokeWidth={isPeak ? 2.5 : 1.5} />
                               <circle cx={p.x} cy={p.y} r={isPeak ? 2 : 1} fill="#8CB63C" />
-                              <text x={p.x} y={p.y - 7} textAnchor="middle" className="text-[7px] font-medium" fill="#94a3b8">{data.dailyTrend[i].count}</text>
+                              <text x={p.x} y={p.y - 7} textAnchor="middle" fontSize="7" fontWeight="500" fill="#94a3b8">{data.dailyTrend[i].count}</text>
                             </g>
                           )
                         })}
@@ -1136,7 +1136,7 @@ export default function JobsAnalyticsPage() {
                               />
                               <text
                                 x={chartPad - 6} y={chartH - chartPad - ((v / maxMonthly) * (chartH - chartPad * 2)) + 3}
-                                textAnchor="end" className="text-[9px]" fill="#94a3b8">{v}</text>
+                                textAnchor="end" fontSize="9" fill="#94a3b8">{v}</text>
                             </g>
                           ))}
                           {/* Area fill */}
@@ -1149,7 +1149,7 @@ export default function JobsAnalyticsPage() {
                             <g key={i}>
                               <circle cx={p.x} cy={p.y} r="6" fill="white" stroke="#8CB63C" strokeWidth="2.5" />
                               <circle cx={p.x} cy={p.y} r="2.5" fill="#8CB63C" />
-                              {data.monthlyTrend[i].count > 0 && <text x={p.x} y={p.y - 13} textAnchor="middle" className="text-[10px] font-bold" fill="#1e293b">{data.monthlyTrend[i].count}</text>}
+                              {data.monthlyTrend[i].count > 0 && <text x={p.x} y={p.y - 13} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#1e293b">{data.monthlyTrend[i].count}</text>}
                             </g>
                           ))}
                         </svg>
