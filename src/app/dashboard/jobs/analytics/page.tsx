@@ -684,7 +684,7 @@ export default function JobsAnalyticsPage() {
                         <div className="absolute inset-0 flex items-end gap-2">
                           {wrk.slice(0, 8).map((item, index) => {
                             const percentage = data.totalJobs > 0 ? (item.count / data.totalJobs) * 100 : 0
-                            const barHeight = item.count === 0 ? 6 : Math.max((item.count / maxVal) * 100, 8)
+                            const barHeight = item.count === 0 ? 6 : Math.min(Math.max((item.count / maxVal) * 100, 8), 85)
                             const isLeader = item.workroom === leading.workroom && item.count === leading.count
 
                             return (
@@ -800,15 +800,15 @@ export default function JobsAnalyticsPage() {
                 return (
                   <div className="space-y-5">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                      <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 pt-4 pb-4">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Top Status</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900 capitalize">{leadingStatus.status}</div>
-                        <div className="text-sm text-slate-500">{leadingStatus.count} jobs</div>
+                        <div className="mt-2.5 text-lg font-bold text-slate-900 capitalize leading-snug">{leadingStatus.status}</div>
+                        <div className="mt-1.5 text-sm text-slate-500">{leadingStatus.count} jobs</div>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 pt-4 pb-4">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900">{data.totalJobs}</div>
-                        <div className="text-sm text-slate-500">Across all statuses</div>
+                        <div className="mt-2.5 text-lg font-bold text-slate-900">{data.totalJobs}</div>
+                        <div className="mt-1.5 text-sm text-slate-500">Across all statuses</div>
                       </div>
                     </div>
 
@@ -828,7 +828,7 @@ export default function JobsAnalyticsPage() {
                         <div className="absolute inset-0 flex items-end gap-2">
                           {statusData.slice(0, 8).map((item, index) => {
                             const percentage = data.totalJobs > 0 ? (item.count / data.totalJobs) * 100 : 0
-                            const barHeight = item.count === 0 ? 6 : Math.max((item.count / maxVal) * 100, 8)
+                            const barHeight = item.count === 0 ? 6 : Math.min(Math.max((item.count / maxVal) * 100, 8), 85)
                             const isLeader = item.status === leadingStatus.status && item.count === leadingStatus.count
 
                             return (
