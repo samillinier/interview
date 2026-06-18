@@ -123,6 +123,29 @@ export async function GET(request: NextRequest) {
     const lastMonthSales = Object.values(storeSales)
       .sort((a, b) => b.total - a.total)
       .slice(0, 10)
+    const lastMonthTotal = Object.values(storeSales).reduce((sum, s) => sum + s.total, 0)
+
+    // Two months ago — for trend comparison
+    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+    const twoMonthsAgoEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0)
+    let previousMonthTotal = 0
+    records.forEach(r => {
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= twoMonthsAgo && d <= twoMonthsAgoEnd) {
+        const po = (r.cilioPayload as any)?.poAmount
+        if (po != null && !isNaN(Number(po))) previousMonthTotal += Number(po)
+      }
+    })
+    const salesTrend = previousMonthTotal > 0
+      ? Math.round(((lastMonthTotal - previousMonthTotal) / previousMonthTotal) * 100)
+      : 0
 
     // Top stores (by job count — kept for backward compatibility)
     const storeCounts: Record<string, { name: string; count: number }> = {}
@@ -290,6 +313,9 @@ export async function GET(request: NextRequest) {
       topInstallers,
       lastMonthSales,
       prevMonthLabel,
+      lastMonthTotal,
+      previousMonthTotal,
+      salesTrend,
       poAmount: {
         total: totalPO,
         average: Math.round(poAvg * 100) / 100,
