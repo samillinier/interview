@@ -255,7 +255,7 @@ export default function JobsAnalyticsPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Stores</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.topStores.length.toLocaleString()}</h3><p className="text-sm text-slate-500">Unique stores with jobs</p></div>
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">{data.prevMonthLabel} Sales</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.lastMonthSales.reduce((sum, s) => sum + s.total, 0))}</h3><p className="text-sm text-slate-500">{data.lastMonthSales.length} stores · {data.lastMonthSales.reduce((sum, s) => sum + s.count, 0)} jobs</p></div>
                 <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><Building2 className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
@@ -720,41 +720,40 @@ export default function JobsAnalyticsPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-md border border-slate-200/70 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Last Month Sales</h2>
-                  <p className="mt-1 text-sm text-slate-500">{data.prevMonthLabel} · revenue by store</p>
+                  <h2 className="text-xl font-bold text-slate-900">Top Stores</h2>
+                  <p className="mt-1 text-sm text-slate-500">Stores by job volume</p>
                 </div>
-                <DollarSign className="w-5 h-5 text-brand-green" />
+                <Building2 className="w-5 h-5 text-slate-400" />
               </div>
-              {data.lastMonthSales.length > 0 ? (
+              {data.topStores.length > 0 ? (
                 (() => {
-                  const top7 = data.lastMonthSales.slice(0, 7)
-                  const maxVal = Math.max(1, ...top7.map(s => s.total))
-                  const leading = top7.reduce((best, s) => (s.total > best.total ? s : best), top7[0] || { name: '-', total: 0, count: 0 })
-                  const totalSales = data.lastMonthSales.reduce((sum, s) => sum + s.total, 0)
-                  const formatCurrency = (val: number) => val >= 1000 ? `$${(val / 1000).toFixed(1)}k` : `$${Math.round(val)}`
+                  const top7 = data.topStores.slice(0, 7)
+                  const maxVal = Math.max(1, ...top7.map(s => s.count))
+                  const leading = top7.reduce((best, s) => (s.count > best.count ? s : best), top7[0] || { name: '-', count: 0 })
+                  const totalShown = top7.reduce((sum, s) => sum + s.count, 0)
                   return (
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
                           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Top Store</div>
                           <div className="mt-1 text-lg font-bold text-slate-900 truncate">{leading.name}</div>
-                          <div className="text-sm text-slate-500">{formatCurrency(leading.total)}</div>
+                          <div className="text-sm text-slate-500">{leading.count} jobs</div>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total Revenue</div>
-                          <div className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(totalSales)}</div>
-                          <div className="text-sm text-slate-500">{data.lastMonthSales.length} stores</div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Unique Stores</div>
+                          <div className="mt-1 text-lg font-bold text-slate-900">{data.topStores.length}</div>
+                          <div className="text-sm text-slate-500">{totalShown} jobs shown</div>
                         </div>
                       </div>
                       <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
                         <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
                           <span>Stores</span>
-                          <span>Max {formatCurrency(maxVal)}</span>
+                          <span>Max {maxVal}</span>
                         </div>
                         <div className="space-y-2.5">
                           {top7.map((s) => {
-                            const barWidth = s.total === 0 ? 4 : Math.max((s.total / maxVal) * 100, 8)
-                            const isLeader = s.name === leading.name && s.total === leading.total
+                            const barWidth = s.count === 0 ? 4 : Math.max((s.count / maxVal) * 100, 8)
+                            const isLeader = s.name === leading.name && s.count === leading.count
                             return (
                               <div key={s.name} className="group flex items-center gap-0">
                                 <div
@@ -763,8 +762,8 @@ export default function JobsAnalyticsPage() {
                                   `}
                                   style={{ maxWidth: `${barWidth}%` }}
                                 >
-                                  <span className="text-xs font-semibold text-white truncate pl-3 leading-tight max-w-[calc(100%-40px)]" title={s.name}>{s.name}</span>
-                                  <span className="text-xs font-bold text-white flex-shrink-0">{formatCurrency(s.total)}</span>
+                                  <span className="text-xs font-semibold text-white truncate pl-3 leading-tight max-w-[calc(100%-32px)]" title={s.name}>{s.name}</span>
+                                  <span className="text-xs font-bold text-white flex-shrink-0">{s.count}</span>
                                 </div>
                               </div>
                             )
@@ -775,7 +774,7 @@ export default function JobsAnalyticsPage() {
                   )
                 })()
               ) : (
-                <p className="text-sm text-slate-400 py-6 text-center">No sales data for {data.prevMonthLabel}</p>
+                <p className="text-sm text-slate-400 py-6 text-center">No store data available</p>
               )}
             </motion.div>
 
