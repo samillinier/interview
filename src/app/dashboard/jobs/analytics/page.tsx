@@ -296,7 +296,7 @@ export default function JobsAnalyticsPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Revenue</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.weeklyRevenue)}</h3><p className="text-sm text-slate-500">{data.weeklyRevenueCount} jobs · Avg {fmtNumber(data.weeklyAvgRevenue)}</p></div>
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Revenue</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.weeklyRevenue)}</h3><p className="text-sm text-slate-500">{data.weeklyRevenueCount} jobs · Avg {fmtNumber(data.weeklyAvgRevenue)}</p></div>
                 <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><DollarSign className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
