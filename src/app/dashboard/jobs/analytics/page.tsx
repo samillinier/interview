@@ -48,7 +48,9 @@ interface JobsAnalytics {
   weeklyRevenue: number
   weeklyRevenueCount: number
   weeklyAvgRevenue: number
+  weeklyRevenueTrend: number
   weeklyJobs: number
+  weeklyJobsTrend: number
   pipeline: { label: string; count: number; revenue: number }[]
   measureConversions: number
   totalMeasures: number
@@ -299,6 +301,15 @@ export default function JobsAnalyticsPage() {
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Revenue</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.weeklyRevenue)}</h3><p className="text-sm text-slate-500">{data.weeklyRevenueCount} jobs · Avg {fmtNumber(data.weeklyAvgRevenue)}</p></div>
                 <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><DollarSign className="w-6 h-6 text-brand-green" /></div>
               </div>
+              <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                {data.weeklyRevenueTrend > 0 ? (
+                  <><TrendingUp className="w-3.5 h-3.5 text-green-600" /><span className="font-semibold text-green-600">+{data.weeklyRevenueTrend}%</span><span className="text-slate-400 ml-1">vs prev. week</span></>
+                ) : data.weeklyRevenueTrend < 0 ? (
+                  <><TrendingDown className="w-3.5 h-3.5 text-red-500" /><span className="font-semibold text-red-500">{data.weeklyRevenueTrend}%</span><span className="text-slate-400 ml-1">vs prev. week</span></>
+                ) : (
+                  <span className="text-slate-400">No change vs prev. week</span>
+                )}
+              </div>
             </motion.div>
 
             {/* Weekly Jobs */}
@@ -307,6 +318,15 @@ export default function JobsAnalyticsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Jobs</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.weeklyJobs.toLocaleString()}</h3><p className="text-sm text-slate-500">Avg {Math.round(data.weeklyJobs / 7)} per day</p></div>
                 <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><Briefcase className="w-6 h-6 text-brand-green" /></div>
+              </div>
+              <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                {data.weeklyJobsTrend > 0 ? (
+                  <><TrendingUp className="w-3.5 h-3.5 text-green-600" /><span className="font-semibold text-green-600">+{data.weeklyJobsTrend}%</span><span className="text-slate-400 ml-1">vs prev. week</span></>
+                ) : data.weeklyJobsTrend < 0 ? (
+                  <><TrendingDown className="w-3.5 h-3.5 text-red-500" /><span className="font-semibold text-red-500">{data.weeklyJobsTrend}%</span><span className="text-slate-400 ml-1">vs prev. week</span></>
+                ) : (
+                  <span className="text-slate-400">No change vs prev. week</span>
+                )}
               </div>
             </motion.div>
 

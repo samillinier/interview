@@ -147,13 +147,18 @@ export async function GET(request: NextRequest) {
       ? Math.round(((lastMonthTotal - previousMonthTotal) / previousMonthTotal) * 100)
       : 0
 
-    // Weekly revenue and jobs — last 7 days
+    // Weekly revenue and jobs — last 7 days + previous 7 days comparison
     const sevenDaysAgo = new Date(now)
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     sevenDaysAgo.setHours(0, 0, 0, 0)
+    const fourteenDaysAgo = new Date(now)
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+    fourteenDaysAgo.setHours(0, 0, 0, 0)
     let weeklyRevenue = 0
     let weeklyRevenueCount = 0
     let weeklyJobs = 0
+    let prevWeekRevenue = 0
+    let prevWeekJobs = 0
     records.forEach(r => {
       const p = r.cilioPayload as any
       const di = p?.dateInformation || {}
@@ -170,9 +175,19 @@ export async function GET(request: NextRequest) {
           weeklyRevenue += Number(po)
           weeklyRevenueCount++
         }
+      } else if (d && d >= fourteenDaysAgo && d < sevenDaysAgo) {
+        prevWeekJobs++
+        const po = (r.cilioPayload as any)?.poAmount
+        if (po != null && !isNaN(Number(po))) prevWeekRevenue += Number(po)
       }
     })
     const weeklyAvgRevenue = weeklyRevenueCount > 0 ? Math.round(weeklyRevenue / weeklyRevenueCount) : 0
+    const weeklyRevenueTrend = prevWeekRevenue > 0
+      ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
+      : 0
+    const weeklyJobsTrend = prevWeekJobs > 0
+      ? Math.round(((weeklyJobs - prevWeekJobs) / prevWeekJobs) * 100)
+      : 0
 
     // Pipeline — top labor categories with counts (active: not canceled/complete)
     const pipelineCategories = ['Carpet Install', 'Tile', 'Hardwood', 'Laminate', 'Vinyl', 'Measure', 'Payment Request']
@@ -398,7 +413,9 @@ export async function GET(request: NextRequest) {
       weeklyRevenue,
       weeklyRevenueCount,
       weeklyAvgRevenue,
+      weeklyRevenueTrend,
       weeklyJobs,
+      weeklyJobsTrend,
       pipeline,
       measureConversions,
       totalMeasures,
