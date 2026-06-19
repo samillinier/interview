@@ -21,7 +21,7 @@ function getHeaders(): HeadersInit {
   }
 }
 
-async function cilioFetch<T>(path: string, options?: RequestInit): Promise<T> {
+async function cilioFetch<T>(path: string, options?: RequestInit, retriesRemaining: number = 3): Promise<T> {
   const url = `${CILIO_BASE_URL}${path}`
   const headers = getHeaders()
 
@@ -39,6 +39,22 @@ async function cilioFetch<T>(path: string, options?: RequestInit): Promise<T> {
     })
 
     const text = await res.text()
+
+    if (res.status === 429 && retriesRemaining > 0) {
+      // Rate limited — extract Retry-After or use exponential backoff
+      let waitSec = 5 // default backoff
+      try {
+        const parsed = JSON.parse(text)
+        // Cilio returns "Rate limit is exceeded. Try again in X seconds."
+        const match = (parsed.message || "").match(/(\d+)\s*seconds?/i)
+        if (match) waitSec = parseInt(match[1], 10)
+      } catch {
+        // use default backoff
+      }
+      console.log(`[cilio] 429 rate-limited. Retrying in ${waitSec}s (${retriesRemaining} retries left)`)
+      await new Promise(resolve => setTimeout(resolve, waitSec * 1000))
+      return cilioFetch<T>(path, options, retriesRemaining - 1)
+    }
 
     if (!res.ok) {
       let errorDetail = text
@@ -448,7 +464,10 @@ export async function searchAllJobs(
     const batch = await searchJobs({
       orderModifiedDateStart: toISO(start),
       orderModifiedDateEnd: toISO(end),
-    }).catch(() => [] as CilioJob[])
+    }).catch((e) => {
+      console.error(`[searchAllJobs] Error for window ${label}:`, e?.message || String(e))
+      return [] as CilioJob[]
+    })
 
     if (batch.length >= MAX_PER_REQUEST && ms > 3600000 && depth < 4) {
       // Split in half — window is full and large enough to split further
@@ -466,6 +485,8 @@ export async function searchAllJobs(
 
   for (const win of windows) {
     await fetchWindow(win.start, win.end)
+    // Small delay between windows to avoid hammering Cilio's rate limiter
+    await new Promise(resolve => setTimeout(resolve, 300))
   }
 
   return Array.from(allJobs.values())

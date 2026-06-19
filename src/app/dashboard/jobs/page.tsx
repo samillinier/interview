@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, BarChart3, Briefcase, ClipboardList, Hammer } from 'lucide-react'
+import { AlertCircle, ArrowRight, BarChart3, Briefcase, Building2, ClipboardList, DollarSign, Hammer } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -39,6 +39,14 @@ const jobGroups = [
         href: '/dashboard/jobs/cilio',
         icon: Briefcase,
         cta: 'Open Realtime',
+        highlights: [] as string[],
+      },
+      {
+        title: 'Enterprise',
+        description: 'Track crew pay data, labor costs vs PO revenue, profit margins, and crew pay trends across workrooms and installers.',
+        href: '/dashboard/jobs/enterprise',
+        icon: DollarSign,
+        cta: 'Open Enterprise',
         highlights: [] as string[],
       },
     ],
@@ -100,7 +108,7 @@ export default function JobsHubPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Job Hub</h1>
               <p className="text-sm text-slate-500">Fast access to Realtime jobs, saved reports, and postings.</p>
             </div>
-          </div>
+                  </div>
         </header>
 
         <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
@@ -109,28 +117,28 @@ export default function JobsHubPage() {
               <motion.section
                 key={group.title}
                 initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: groupIndex * 0.06 }}
                 className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/60"
               >
                 <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-r from-brand-green/10 via-lime-50/80 to-white p-5 sm:p-7">
                   <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-green/10 blur-3xl" />
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="relative">
+                        <div className="relative">
                       <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-green">Available workspaces</p>
                       <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">{group.title}</h2>
                       <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">{group.description}</p>
                     </div>
                     <span className="relative inline-flex w-fit items-center rounded-full border border-brand-green/20 bg-white px-4 py-2 text-xs font-extrabold text-brand-green shadow-sm">
                       {group.cards.length} active tools
-                    </span>
-                  </div>
-                </div>
+                                </span>
+                              </div>
+                            </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 sm:p-7">
                   {group.cards.map((card) => {
                     const Icon = card.icon
-                    return (
-                      <Link
+                              return (
+                                      <Link
                         key={card.title}
                         href={card.href}
                         className="group relative min-h-[260px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-white via-white to-brand-green/5 p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-green/40 hover:shadow-2xl hover:shadow-brand-green/10"
@@ -141,33 +149,33 @@ export default function JobsHubPage() {
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-3xl border border-brand-green/15 bg-white shadow-lg shadow-slate-200/70 ring-8 ring-brand-green/5">
                               <Icon className="h-8 w-8 text-brand-green" />
-                            </div>
+                                  </div>
                             <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-slate-500 shadow-sm transition-colors group-hover:border-brand-green/30 group-hover:text-brand-green">
                               Workspace
                             </span>
-                          </div>
+                </div>
 
                           <div className="mt-5 flex-1">
-                            <div>
+                  <div>
                               <h3 className="text-2xl font-black text-slate-900">{card.title}</h3>
                               <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">{card.description}</p>
-                            </div>
+                  </div>
                             <div className="mt-5 flex flex-wrap gap-2">
+                </div>
                             </div>
-                          </div>
 
                           <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
                             {card.cta}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                           </span>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
+                  </div>
+                                          </Link>
+                                )
+                              })}
+                            </div>
               </motion.section>
-            ))}
-          </div>
+                              ))}
+                        </div>
         </main>
       </div>
     </div>

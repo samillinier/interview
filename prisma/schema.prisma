@@ -59,6 +59,7 @@ model CilioJobRecord {
   bookingDate              DateTime?
   installerId              String?
   installerName            String?
+  crewPayTotal             Decimal?   @db.Decimal(12, 2)
   cilioPayload             Json
   Installer                Installer? @relation(fields: [installerId], references: [id], onDelete: Cascade)
 

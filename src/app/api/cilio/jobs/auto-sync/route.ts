@@ -72,6 +72,7 @@ async function runAutoSync(request: NextRequest) {
 
   let fetchError: string | null = null
   const allJobs = await cilio.searchAllJobs({
+    monthsBack: 24, // Full historical pull — lots of old jobs still to fetch
     onProgress: (fetched, window) => {
       console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
     },
@@ -176,9 +177,10 @@ async function runAutoSync(request: NextRequest) {
           { scheduledInstallDate: null },
           { installerName: null },
           { installerId: null },
+          { crewPayTotal: null },
         ],
       },
-      select: { orderNumber: true, scheduledInstallDate: true, installerName: true, installerId: true },
+      select: { orderNumber: true, scheduledInstallDate: true, installerName: true, installerId: true, crewPayTotal: true },
       orderBy: { orderNumber: "asc" },
       take: 500,
     })
@@ -207,6 +209,12 @@ async function runAutoSync(request: NextRequest) {
           const firmName = si.scheduledUserFirmName?.trim() || null
           const installerName = scheduledResources || taskResources || scheduledUser || firmName || null
 
+          // Crew pay data
+          const crewInfo = (detail as any).crewPayInformation || {}
+          const crewPay = crewInfo.crewPayJobTotal != null ? Number(crewInfo.crewPayJobTotal) : null
+          const crewPayDaily = crewInfo.crewPayDailyTotal != null ? Number(crewInfo.crewPayDailyTotal) : null
+          const crewPayValue = crewPay ?? crewPayDaily ?? null
+
           const updateData: any = {}
           if (!record.scheduledInstallDate && (sched || meas || book)) {
             if (sched) updateData.scheduledInstallDate = new Date(sched)
@@ -215,6 +223,9 @@ async function runAutoSync(request: NextRequest) {
           }
           if (!record.installerName && installerName) {
             updateData.installerName = installerName
+          }
+          if (record.crewPayTotal == null && crewPayValue != null) {
+            updateData.crewPayTotal = crewPayValue
           }
 
           // Resolve installerId by matching installerName against our DB
