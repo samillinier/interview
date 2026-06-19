@@ -334,7 +334,7 @@ export default function JobsAnalyticsPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Pipeline</p>
+                <div className="flex-1 min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Realtime Pipeline</p>
                   <div className="space-y-2.5">
                     {data.pipeline.length > 0 ? (
                       data.pipeline.slice(0, 5).map((item) => {
