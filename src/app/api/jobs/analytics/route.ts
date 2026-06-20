@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         cilioPayload: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 10000,
+      take: 100000,
     })
 
     const total = records.length

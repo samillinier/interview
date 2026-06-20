@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         cilioPayload: true,
       },
       orderBy: { updatedAt: 'desc' },
-      take: 10000,
+      take: 100000,
     })
 
     // Resolve installerId by name for records without one
