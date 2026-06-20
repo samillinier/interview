@@ -462,8 +462,8 @@ export async function searchAllJobs(
     const ms = end.getTime() - start.getTime()
     const label = `${start.toISOString().slice(0, 16)} → ${end.toISOString().slice(0, 16)}`
     const batch = await searchJobs({
-      orderModifiedDateStart: toISO(start),
-      orderModifiedDateEnd: toISO(end),
+      orderCreatedDateStart: toISO(start),
+      orderCreatedDateEnd: toISO(end),
     }).catch((e) => {
       console.error(`[searchAllJobs] Error for window ${label}:`, e?.message || String(e))
       return [] as CilioJob[]
