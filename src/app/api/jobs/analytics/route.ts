@@ -11,60 +11,289 @@ const noStoreHeaders = {
 
 export async function GET(request: NextRequest) {
   try {
-    const records = await prisma.cilioJobRecord.findMany({
-      select: {
-        id: true,
-        orderNumber: true,
-        orderStatusDescription: true,
-        jobType: true,
-        storeNumber: true,
-        storeName: true,
-        laborCategoryDescription: true,
-        workroom: true,
-        scheduledInstallDate: true,
-        measureDate: true,
-        bookingDate: true,
-        installerName: true,
-        installerId: true,
-        createdAt: true,
-        updatedAt: true,
-        cilioPayload: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100000,
+    const now = new Date()
+
+    // ── All DB queries in parallel ──────────────────────────────
+    const [
+      totalResult,
+      typeRows,
+      statusRows,
+      laborRows,
+      workroomRows,
+      poAgg,
+      chargebackCount,
+      withInstallerCount,
+      installerRows,
+      storeRows,
+      weeklyThis,
+      weeklyPrev,
+      monthlyTrendRows,
+      dailyTrendRows,
+      lastMonthSalesRows,
+      twoMonthSalesRows,
+      monthlyPORows,
+      completionAgg,
+      completionByWorkroomRows,
+      scheduledDateRows,
+      workroomListRows,
+      pipelineRows,
+      measureRows,
+      installRows,
+    ] = await Promise.all([
+      // Total jobs
+      prisma.cilioJobRecord.count(),
+
+      // Type distribution
+      prisma.$queryRawUnsafe<Array<{ type: string; count: string }>>(
+        `SELECT COALESCE("jobType", 'unknown') as type, COUNT(*)::text as count FROM "CilioJobRecord" GROUP BY 1 ORDER BY 2 DESC`
+      ),
+
+      // Status distribution
+      prisma.$queryRawUnsafe<Array<{ status: string; count: string }>>(
+        `SELECT COALESCE("orderStatusDescription", 'Unknown') as status, COUNT(*)::text as count FROM "CilioJobRecord" GROUP BY 1 ORDER BY 2 DESC`
+      ),
+
+      // Labor category distribution
+      prisma.$queryRawUnsafe<Array<{ category: string; count: string }>>(
+        `SELECT COALESCE("laborCategoryDescription", 'Unspecified') as category, COUNT(*)::text as count FROM "CilioJobRecord" GROUP BY 1 ORDER BY 2 DESC`
+      ),
+
+      // Workroom distribution
+      prisma.$queryRawUnsafe<Array<{ workroom: string; count: string }>>(
+        `SELECT COALESCE("workroom", 'Unassigned') as workroom, COUNT(*)::text as count FROM "CilioJobRecord" GROUP BY 1 ORDER BY 2 DESC`
+      ),
+
+      // PO amount aggregate
+      prisma.$queryRawUnsafe<Array<{ total_po: string; po_count: string; min_po: string; max_po: string }>>(
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as total_po, COUNT(*)::text as po_count, COALESCE(MIN(("cilioPayload"->>'poAmount')::numeric), 0)::text as min_po, COALESCE(MAX(("cilioPayload"->>'poAmount')::numeric), 0)::text as max_po FROM "CilioJobRecord" WHERE "cilioPayload"->>'poAmount' IS NOT NULL`
+      ),
+
+      // Chargeback count
+      prisma.cilioJobRecord.count({
+        where: {
+          OR: [
+            { orderStatusDescription: { contains: 'chargeback', mode: 'insensitive' } },
+            { jobType: 'chargeback' },
+            { laborCategoryDescription: { contains: 'chargeback', mode: 'insensitive' } },
+          ],
+        },
+      }),
+
+      // With installer
+      prisma.cilioJobRecord.count({ where: { installerId: { not: null } } }),
+
+      // Top installers
+      prisma.$queryRawUnsafe<Array<{ name: string; count: string }>>(
+        `SELECT COALESCE("installerName", 'Unassigned') as name, COUNT(*)::text as count FROM "CilioJobRecord" WHERE "installerName" IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10`
+      ),
+
+      // Top stores
+      prisma.$queryRawUnsafe<Array<{ name: string; count: string }>>(
+        `SELECT COALESCE("storeName", "storeNumber", 'unknown') as name, COUNT(*)::text as count FROM "CilioJobRecord" GROUP BY 1 ORDER BY 2 DESC LIMIT 10`
+      ),
+
+      // Weekly revenue/jobs — this week (last 7 days)
+      prisma.$queryRawUnsafe<Array<{ revenue: string; jobs: string; revenue_count: string }>>(
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as revenue, COUNT(*)::text as jobs, COUNT(("cilioPayload"->>'poAmount')::numeric)::text as revenue_count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date`,
+        (() => { const d = new Date(now); d.setDate(d.getDate() - 7); d.setHours(0,0,0,0); return d; })()
+      ),
+
+      // Weekly revenue/jobs — previous week
+      prisma.$queryRawUnsafe<Array<{ revenue: string; jobs: string }>>(
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as revenue, COUNT(*)::text as jobs FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND COALESCE("scheduledInstallDate", "createdAt") < $2::date`,
+        (() => { const d = new Date(now); d.setDate(d.getDate() - 14); d.setHours(0,0,0,0); return d; })(),
+        (() => { const d = new Date(now); d.setDate(d.getDate() - 7); d.setHours(0,0,0,0); return d; })()
+      ),
+
+      // Monthly trend (last 12 months)
+      prisma.$queryRawUnsafe<Array<{ month: string; count: string }>>(
+        `SELECT to_char(date_trunc('month', COALESCE("scheduledInstallDate", "createdAt")), 'YYYY-MM') as month, COUNT(*)::text as count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date GROUP BY 1 ORDER BY 1`,
+        new Date(now.getFullYear(), now.getMonth() - 11, 1)
+      ),
+
+      // Daily trend (last 30 days)
+      prisma.$queryRawUnsafe<Array<{ date: string; count: string }>>(
+        `SELECT to_char(COALESCE("scheduledInstallDate", "createdAt")::date, 'YYYY-MM-DD') as date, COUNT(*)::text as count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date GROUP BY 1 ORDER BY 1`,
+        (() => { const d = new Date(now); d.setDate(d.getDate() - 30); return d; })()
+      ),
+
+      // Last month store sales
+      prisma.$queryRawUnsafe<Array<{ name: string; total: string; count: string }>>(
+        `SELECT COALESCE("storeName", "storeNumber", 'unknown') as name, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as total, COUNT(*)::text as count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND COALESCE("scheduledInstallDate", "createdAt") <= $2::date AND "cilioPayload"->>'poAmount' IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10`,
+        new Date(now.getFullYear(), now.getMonth() - 1, 1),
+        new Date(now.getFullYear(), now.getMonth(), 0)
+      ),
+
+      // Two months ago total
+      prisma.$queryRawUnsafe<Array<{ total: string }>>(
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0) as total FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND COALESCE("scheduledInstallDate", "createdAt") <= $2::date AND "cilioPayload"->>'poAmount' IS NOT NULL`,
+        new Date(now.getFullYear(), now.getMonth() - 2, 1),
+        new Date(now.getFullYear(), now.getMonth() - 1, 0)
+      ),
+
+      // Monthly PO totals
+      prisma.$queryRawUnsafe<Array<{ month: string; total: string }>>(
+        `SELECT to_char(date_trunc('month', COALESCE("scheduledInstallDate", "createdAt")), 'YYYY-MM') as month, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0) as total FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND "cilioPayload"->>'poAmount' IS NOT NULL GROUP BY 1 ORDER BY 1`,
+        new Date(now.getFullYear(), now.getMonth() - 11, 1)
+      ),
+
+      // Completion breakdown
+      prisma.$queryRawUnsafe<Array<{ status: string; count: string }>>(
+        `SELECT "orderStatusDescription" as status, COUNT(*)::text as count FROM "CilioJobRecord" WHERE "orderStatusDescription" IS NOT NULL GROUP BY 1`
+      ),
+
+      // Completion by workroom
+      prisma.$queryRawUnsafe<Array<{ workroom: string; status: string; count: string }>>(
+        `SELECT COALESCE("workroom", 'Unassigned') as workroom, "orderStatusDescription" as status, COUNT(*)::text as count FROM "CilioJobRecord" WHERE "orderStatusDescription" IS NOT NULL GROUP BY 1, 2`
+      ),
+
+      // Scheduled install dates
+      prisma.$queryRawUnsafe<Array<{ date: string; workroom: string; labor: string; count: string }>>(
+        `SELECT to_char("scheduledInstallDate"::date, 'YYYY-MM-DD') as date, COALESCE("workroom", 'Unassigned') as workroom, COALESCE("laborCategoryDescription", 'Unspecified') as labor, COUNT(*)::text as count FROM "CilioJobRecord" WHERE "scheduledInstallDate" IS NOT NULL GROUP BY 1, 2, 3 ORDER BY 1`
+      ),
+
+      // Workroom list
+      prisma.$queryRawUnsafe<Array<{ workroom: string }>>(
+        `SELECT DISTINCT COALESCE("workroom", 'Unassigned') as workroom FROM "CilioJobRecord" WHERE "workroom" IS NOT NULL`
+      ),
+
+      // Pipeline (active jobs by labor category)
+      prisma.$queryRawUnsafe<Array<{ category: string; count: string; revenue: string }>>(
+        `SELECT COALESCE("laborCategoryDescription", 'Unspecified') as category, COUNT(*)::text as count, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0) as revenue FROM "CilioJobRecord" WHERE LOWER(COALESCE("orderStatusDescription", '')) ~ '(scheduled|dispatched|progress|tentative)' AND "laborCategoryDescription" IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10`
+      ),
+
+      // Measure jobs
+      prisma.$queryRawUnsafe<Array<{ last_name: string; store_number: string; order_number: string }>>(
+        `SELECT LOWER(TRIM(COALESCE("cilioPayload"->>'customerLastName', ''))) as last_name, COALESCE("storeNumber", '') as store_number, "orderNumber"::text as order_number FROM "CilioJobRecord" WHERE LOWER(COALESCE("laborCategoryDescription", '')) LIKE '%measure%' AND "cilioPayload"->>'customerLastName' IS NOT NULL AND TRIM(COALESCE("cilioPayload"->>'customerLastName', '')) != ''`
+      ),
+
+      // Install jobs (for measure conversion)
+      prisma.$queryRawUnsafe<Array<{ last_name: string; store_number: string; order_number: string }>>(
+        `SELECT LOWER(TRIM(COALESCE("cilioPayload"->>'customerLastName', ''))) as last_name, COALESCE("storeNumber", '') as store_number, "orderNumber"::text as order_number FROM "CilioJobRecord" WHERE LOWER(COALESCE("laborCategoryDescription", '')) NOT LIKE '%measure%' AND LOWER(COALESCE("laborCategoryDescription", '')) NOT LIKE '%chargeback%' AND LOWER(COALESCE("laborCategoryDescription", '')) NOT LIKE '%payment%' AND LOWER(COALESCE("laborCategoryDescription", '')) NOT LIKE '%rapid%' AND "cilioPayload"->>'customerLastName' IS NOT NULL AND TRIM(COALESCE("cilioPayload"->>'customerLastName', '')) != ''`
+      ),
+    ])
+
+    // ── Build response from query results ─────────────────────────
+
+    const totalJobs = totalResult
+
+    const chargebacks = chargebackCount
+    const chargebackRate = totalJobs > 0 ? (chargebacks / totalJobs * 100).toFixed(1) : '0.0'
+    const withInstaller = withInstallerCount
+    const withoutInstaller = totalJobs - withInstaller
+
+    const typeDistribution = typeRows.map(r => ({ type: r.type, count: parseInt(r.count) }))
+    const statusDistribution = statusRows.map(r => ({ status: r.status, count: parseInt(r.count) }))
+    const laborDistribution = laborRows.map(r => ({ category: r.category, count: parseInt(r.count) }))
+    const workroomDistribution = workroomRows.map(r => ({ workroom: r.workroom, count: parseInt(r.count) }))
+
+    const poAmount = {
+      total: parseFloat(poAgg[0]?.total_po || '0'),
+      average: poAgg[0]?.po_count && parseInt(poAgg[0].po_count) > 0
+        ? Math.round(parseFloat(poAgg[0].total_po) / parseInt(poAgg[0].po_count) * 100) / 100
+        : 0,
+      min: parseFloat(poAgg[0]?.min_po || '0'),
+      max: parseFloat(poAgg[0]?.max_po || '0'),
+      count: parseInt(poAgg[0]?.po_count || '0'),
+    }
+
+    const topInstallers = installerRows.map(r => ({ name: r.name, count: parseInt(r.count) }))
+    const topStores = storeRows.map(r => ({ name: r.name, count: parseInt(r.count) }))
+
+    // Weekly revenue/jobs
+    const weeklyRevenue = parseFloat(weeklyThis[0]?.revenue || '0')
+    const weeklyRevenueCount = parseInt(weeklyThis[0]?.revenue_count || '0')
+    const weeklyJobs = parseInt(weeklyThis[0]?.jobs || '0')
+    const prevWeekRevenue = parseFloat(weeklyPrev[0]?.revenue || '0')
+    const prevWeekJobs = parseInt(weeklyPrev[0]?.jobs || '0')
+
+    const weeklyAvgRevenue = weeklyRevenueCount > 0 ? Math.round(weeklyRevenue / weeklyRevenueCount) : 0
+    const weeklyRevenueTrend = prevWeekRevenue > 0 ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : 0
+    const weeklyJobsTrend = prevWeekJobs > 0 ? Math.round(((weeklyJobs - prevWeekJobs) / prevWeekJobs) * 100) : 0
+
+    // Last month sales
+    const prevMonthLabel = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' })
+    const lastMonthSales = lastMonthSalesRows.map(r => ({ name: r.name, total: parseFloat(r.total), count: parseInt(r.count) }))
+    const lastMonthTotal = lastMonthSales.reduce((sum, s) => sum + s.total, 0)
+    const previousMonthTotal = parseFloat(twoMonthSalesRows[0]?.total || '0')
+    const salesTrend = previousMonthTotal > 0 ? Math.round(((lastMonthTotal - previousMonthTotal) / previousMonthTotal) * 100) : 0
+
+    // Monthly trend
+    const monthlyPO: Record<string, number> = {}
+    monthlyPORows.forEach(r => { monthlyPO[r.month] = parseFloat(r.total) })
+
+    const monthlyCounts: Record<string, number> = {}
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      monthlyCounts[key] = 0
+    }
+    monthlyTrendRows.forEach(r => { monthlyCounts[r.month] = parseInt(r.count) })
+
+    const monthlyTrend = Object.entries(monthlyCounts).map(([month, count]) => ({
+      month,
+      count,
+      poTotal: monthlyPO[month] || 0,
+    }))
+
+    // Daily trend
+    const dailyCounts: Record<string, number> = {}
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      dailyCounts[d.toISOString().split('T')[0]] = 0
+    }
+    dailyTrendRows.forEach(r => { dailyCounts[r.date] = parseInt(r.count) })
+    const dailyTrend = Object.entries(dailyCounts).map(([date, count]) => ({ date, count }))
+
+    // Weekly distribution
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const dowCounts: Record<string, number> = {}
+    dayNames.forEach(d => { dowCounts[d] = 0 })
+    // Use daily trend data aggregated by day-of-week via DB
+    dailyTrend.forEach(d => {
+      const date = new Date(d.date + 'T12:00:00Z')
+      const day = dayNames[date.getDay()]
+      dowCounts[day] += d.count
     })
+    const weeklyDistribution = dayNames.map(day => ({ day, count: dowCounts[day] || 0 }))
 
-    const total = records.length
-
-    // Type distribution
-    const typeCounts: Record<string, number> = {}
-    records.forEach(r => {
-      const t = r.jobType || 'unknown'
-      typeCounts[t] = (typeCounts[t] || 0) + 1
+    // Scheduled install dates
+    const scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number>; byLaborCategory: Record<string, number> }> = {}
+    const allWorkrooms = new Set(workroomListRows.map(r => r.workroom))
+    let scheduledCount = 0
+    scheduledDateRows.forEach(r => {
+      if (!scheduledDates[r.date]) scheduledDates[r.date] = { total: 0, byWorkroom: {}, byLaborCategory: {} }
+      const c = parseInt(r.count)
+      scheduledDates[r.date].total += c
+      scheduledDates[r.date].byWorkroom[r.workroom] = (scheduledDates[r.date].byWorkroom[r.workroom] || 0) + c
+      scheduledDates[r.date].byLaborCategory[r.labor] = (scheduledDates[r.date].byLaborCategory[r.labor] || 0) + c
+      scheduledCount += c
     })
-    const typeDistribution = Object.entries(typeCounts).map(([type, count]) => ({ type, count }))
+    const hasInstallDates = scheduledCount > 0
 
-    // Status distribution (from orderStatusDescription)
-    const statusCounts: Record<string, number> = {}
-    records.forEach(r => {
-      const s = r.orderStatusDescription || 'Unknown'
-      statusCounts[s] = (statusCounts[s] || 0) + 1
-    })
-    const statusDistribution = Object.entries(statusCounts)
-      .map(([status, count]) => ({ status, count }))
-      .sort((a, b) => b.count - a.count)
-
-    // Completion breakdown — group statuses into categories, per-workroom
+    // Completion breakdown
     const completed = { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
     const completedByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }> = {}
-    records.forEach(r => {
-      const s = (r.orderStatusDescription || '').toLowerCase()
+    completionAgg.forEach(r => {
+      const s = (r.status || '').toLowerCase()
+      const c = parseInt(r.count)
+      // Categorize by status
+      let cat: 'completed' | 'inProgress' | 'canceled' | 'pending' = 'pending'
+      if (s.includes('complet')) cat = 'completed'
+      else if (s.includes('cancel') || s.includes('chargeback')) cat = 'canceled'
+      else if (s.includes('scheduled') || s.includes('dispatched') || s.includes('tentative') || s.includes('sched')) cat = 'inProgress'
+      completed[cat] += c
+    })
+    completionByWorkroomRows.forEach(r => {
       const wr = r.workroom || 'Unassigned'
       if (!completedByWorkroom[wr]) completedByWorkroom[wr] = { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
-      if (s.includes('complet')) { completed.completed++; completedByWorkroom[wr].completed++ }
-      else if (s.includes('cancel') || s.includes('chargeback')) { completed.canceled++; completedByWorkroom[wr].canceled++ }
-      else if (s.includes('scheduled') || s.includes('dispatched') || s.includes('tentative') || s.includes('sched')) { completed.inProgress++; completedByWorkroom[wr].inProgress++ }
-      else { completed.pending++; completedByWorkroom[wr].pending++ }
+      const s = (r.status || '').toLowerCase()
+      const c = parseInt(r.count)
+      if (s.includes('complet')) completedByWorkroom[wr].completed += c
+      else if (s.includes('cancel') || s.includes('chargeback')) completedByWorkroom[wr].canceled += c
+      else if (s.includes('scheduled') || s.includes('dispatched') || s.includes('tentative') || s.includes('sched')) completedByWorkroom[wr].inProgress += c
+      else completedByWorkroom[wr].pending += c
     })
     const completionBreakdown = [
       { label: 'Completed', count: completed.completed, color: '#7ab82e' },
@@ -72,329 +301,41 @@ export async function GET(request: NextRequest) {
       { label: 'Pending', count: completed.pending, color: '#c5e88f' },
       { label: 'Canceled', count: completed.canceled, color: '#4a6a1e' },
     ].filter(c => c.count > 0)
-    const completionByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }> = completedByWorkroom
 
-    // Labor category distribution
-    const laborCounts: Record<string, number> = {}
-    records.forEach(r => {
-      const l = r.laborCategoryDescription || 'Unspecified'
-      laborCounts[l] = (laborCounts[l] || 0) + 1
-    })
-    const laborDistribution = Object.entries(laborCounts)
-      .map(([category, count]) => ({ category, count }))
-      .sort((a, b) => b.count - a.count)
+    // Pipeline
+    const pipeline = pipelineRows
+      .filter(r => parseInt(r.count) > 0)
+      .map(r => ({
+        label: r.category.replace(/ Install$/i, ''),
+        count: parseInt(r.count),
+        revenue: parseFloat(r.revenue),
+      }))
 
-    // Workroom distribution
-    const workroomCounts: Record<string, number> = {}
-    records.forEach(r => {
-      const w = r.workroom || 'Unassigned'
-      workroomCounts[w] = (workroomCounts[w] || 0) + 1
-    })
-    const workroomDistribution = Object.entries(workroomCounts)
-      .map(([workroom, count]) => ({ workroom, count }))
-      .sort((a, b) => b.count - a.count)
-
-    // Last month store sales — aggregate poAmount by store for previous calendar month
-    const now = new Date()
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-    const prevMonthLabel = prevMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
-    const storeSales: Record<string, { name: string; total: number; count: number }> = {}
-    records.forEach(r => {
-      const p = r.cilioPayload as any
-      const di = p?.dateInformation || {}
-      const jobDate = r.scheduledInstallDate
-        || p?.currentOrderStatusDate
-        || di?.desiredInstallDate
-        || di?.currentDate
-        || r.createdAt
-      const d = jobDate ? new Date(jobDate) : null
-      if (d && d >= prevMonth && d <= prevMonthEnd) {
-        const key = r.storeNumber || r.storeName || 'unknown'
-        const name = r.storeName || key
-        if (!storeSales[key]) storeSales[key] = { name, total: 0, count: 0 }
-        const po = (r.cilioPayload as any)?.poAmount
-        if (po != null && !isNaN(Number(po))) {
-          storeSales[key].total += Number(po)
-          storeSales[key].count++
-        }
-      }
-    })
-    const lastMonthSales = Object.values(storeSales)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10)
-    const lastMonthTotal = Object.values(storeSales).reduce((sum, s) => sum + s.total, 0)
-
-    // Two months ago — for trend comparison
-    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
-    const twoMonthsAgoEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0)
-    let previousMonthTotal = 0
-    records.forEach(r => {
-      const p = r.cilioPayload as any
-      const di = p?.dateInformation || {}
-      const jobDate = r.scheduledInstallDate
-        || p?.currentOrderStatusDate
-        || di?.desiredInstallDate
-        || di?.currentDate
-        || r.createdAt
-      const d = jobDate ? new Date(jobDate) : null
-      if (d && d >= twoMonthsAgo && d <= twoMonthsAgoEnd) {
-        const po = (r.cilioPayload as any)?.poAmount
-        if (po != null && !isNaN(Number(po))) previousMonthTotal += Number(po)
-      }
-    })
-    const salesTrend = previousMonthTotal > 0
-      ? Math.round(((lastMonthTotal - previousMonthTotal) / previousMonthTotal) * 100)
-      : 0
-
-    // Weekly revenue and jobs — last 7 days + previous 7 days comparison
-    const sevenDaysAgo = new Date(now)
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    sevenDaysAgo.setHours(0, 0, 0, 0)
-    const fourteenDaysAgo = new Date(now)
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
-    fourteenDaysAgo.setHours(0, 0, 0, 0)
-    let weeklyRevenue = 0
-    let weeklyRevenueCount = 0
-    let weeklyJobs = 0
-    let prevWeekRevenue = 0
-    let prevWeekJobs = 0
-    records.forEach(r => {
-      const p = r.cilioPayload as any
-      const di = p?.dateInformation || {}
-      const jobDate = r.scheduledInstallDate
-        || p?.currentOrderStatusDate
-        || di?.desiredInstallDate
-        || di?.currentDate
-        || r.createdAt
-      const d = jobDate ? new Date(jobDate) : null
-      if (d && d >= sevenDaysAgo) {
-        weeklyJobs++
-        const po = (r.cilioPayload as any)?.poAmount
-        if (po != null && !isNaN(Number(po))) {
-          weeklyRevenue += Number(po)
-          weeklyRevenueCount++
-        }
-      } else if (d && d >= fourteenDaysAgo && d < sevenDaysAgo) {
-        prevWeekJobs++
-        const po = (r.cilioPayload as any)?.poAmount
-        if (po != null && !isNaN(Number(po))) prevWeekRevenue += Number(po)
-      }
-    })
-    const weeklyAvgRevenue = weeklyRevenueCount > 0 ? Math.round(weeklyRevenue / weeklyRevenueCount) : 0
-    const weeklyRevenueTrend = prevWeekRevenue > 0
-      ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
-      : 0
-    const weeklyJobsTrend = prevWeekJobs > 0
-      ? Math.round(((weeklyJobs - prevWeekJobs) / prevWeekJobs) * 100)
-      : 0
-
-    // Pipeline — top labor categories with counts (active: not canceled/complete)
-    const pipelineCategories = ['Carpet Install', 'Tile', 'Hardwood', 'Laminate', 'Vinyl', 'Measure', 'Payment Request']
-    const pipeline: { label: string; count: number; revenue: number }[] = []
-    pipelineCategories.forEach(cat => {
-      let count = 0
-      let revenue = 0
-      records.forEach(r => {
-        if ((r.laborCategoryDescription || '').toLowerCase().includes(cat.toLowerCase())) {
-          const status = (r.orderStatusDescription || '').toLowerCase()
-          if (status.includes('scheduled') || status.includes('dispatched') || status.includes('progress') || status.includes('tentative')) {
-            count++
-            const po = (r.cilioPayload as any)?.poAmount
-            if (po != null && !isNaN(Number(po))) revenue += Number(po)
-          }
-        }
-      })
-      if (count > 0) pipeline.push({ label: cat.replace(' Install', ''), count, revenue })
-    })
-
-    // Measure-to-Install conversion — cross-reference by customer name + store
-    const measureJobs: { lastName: string; storeNumber: string; orderNumber: number }[] = []
-    const installJobs: { lastName: string; storeNumber: string; orderNumber: number }[] = []
-    records.forEach(r => {
-      const p = r.cilioPayload as any
-      const lastName = (p?.customerLastName || '').trim().toLowerCase()
-      const storeNum = (r.storeNumber || '').trim()
-      if (!lastName) return
-      const labor = (r.laborCategoryDescription || '').toLowerCase()
-      if (labor.includes('measure')) {
-        measureJobs.push({ lastName, storeNumber: storeNum, orderNumber: r.orderNumber })
-      } else if (labor && !labor.includes('chargeback') && !labor.includes('payment') && !labor.includes('rapid')) {
-        installJobs.push({ lastName, storeNumber: storeNum, orderNumber: r.orderNumber })
-      }
-    })
-    // Build index: "lastname|store" → set of measure orderNumbers
+    // Measure-to-Install conversion
     const measureIndex: Record<string, Set<number>> = {}
-    measureJobs.forEach(m => {
-      const key = `${m.lastName}|${m.storeNumber}`
+    measureRows.forEach(m => {
+      const lastName = m.last_name.trim()
+      const storeNum = (m.store_number || '').trim()
+      if (!lastName) return
+      const key = `${lastName}|${storeNum}`
       if (!measureIndex[key]) measureIndex[key] = new Set()
-      measureIndex[key].add(m.orderNumber)
+      measureIndex[key].add(parseInt(m.order_number))
     })
-    // Count measures that converted (same lastName + storeNumber has an install)
     const convertedMeasures = new Set<number>()
-    installJobs.forEach(i => {
-      const key = `${i.lastName}|${i.storeNumber}`
+    installRows.forEach(i => {
+      const lastName = i.last_name.trim()
+      const storeNum = (i.store_number || '').trim()
+      if (!lastName) return
+      const key = `${lastName}|${storeNum}`
       const matches = measureIndex[key]
       if (matches) matches.forEach(on => convertedMeasures.add(on))
     })
-    const totalMeasures = measureJobs.length
+    const totalMeasures = measureRows.length
     const measureConversions = convertedMeasures.size
     const measureConversionRate = totalMeasures > 0 ? Math.round((measureConversions / totalMeasures) * 100) : 0
 
-    // Top stores (by job count — kept for backward compatibility)
-    const storeCounts: Record<string, { name: string; count: number }> = {}
-    records.forEach(r => {
-      const key = r.storeNumber || 'unknown'
-      if (!storeCounts[key]) storeCounts[key] = { name: r.storeName || key, count: 0 }
-      storeCounts[key].count++
-    })
-    const topStores = Object.values(storeCounts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10)
-
-    // PO Amount metrics
-    let totalPO = 0
-    let poCount = 0
-    let poMin = Infinity
-    let poMax = 0
-    records.forEach(r => {
-      const po = (r.cilioPayload as any)?.poAmount
-      if (po != null && !isNaN(Number(po))) {
-        const val = Number(po)
-        totalPO += val
-        poCount++
-        if (val < poMin) poMin = val
-        if (val > poMax) poMax = val
-      }
-    })
-    const poAvg = poCount > 0 ? totalPO / poCount : 0
-
-    // Monthly trend (last 12 months)
-    const monthlyCounts: Record<string, number> = {}
-    const monthlyPO: Record<string, number> = {}
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      monthlyCounts[key] = 0
-      monthlyPO[key] = 0
-    }
-    records.forEach(r => {
-      const p = r.cilioPayload as any
-      const di = p?.dateInformation || {}
-      const jobDate = r.scheduledInstallDate
-        || p?.currentOrderStatusDate
-        || di?.desiredInstallDate
-        || di?.currentDate
-        || r.createdAt
-      const d = jobDate ? new Date(jobDate) : null
-      if (d) {
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-        if (monthlyCounts[key] !== undefined) {
-          monthlyCounts[key]++
-          const po = (r.cilioPayload as any)?.poAmount
-          if (po != null && !isNaN(Number(po))) monthlyPO[key] += Number(po)
-        }
-      }
-    })
-    const monthlyTrend = Object.entries(monthlyCounts).map(([month, count]) => ({
-      month,
-      count,
-      poTotal: monthlyPO[month] || 0,
-    }))
-
-    // Daily trend (last 30 days) — by actual job date, not DB save date
-    const dailyCounts: Record<string, number> = {}
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().split('T')[0]
-      dailyCounts[key] = 0
-    }
-    records.forEach(r => {
-      // Use the best available date: scheduledInstallDate, then cilioPayload date, then createdAt
-      const p = r.cilioPayload as any
-      const di = p?.dateInformation || {}
-      const jobDate = r.scheduledInstallDate
-        || p?.currentOrderStatusDate
-        || di?.desiredInstallDate
-        || di?.currentDate
-        || r.createdAt
-      const d = jobDate ? new Date(jobDate) : null
-      if (d) {
-        const key = d.toISOString().split('T')[0]
-        if (dailyCounts[key] !== undefined) dailyCounts[key]++
-      }
-    })
-    const dailyTrend = Object.entries(dailyCounts).map(([date, count]) => ({ date, count }))
-
-    // Top installers by job count
-    const installerCounts: Record<string, { name: string; count: number }> = {}
-    records.forEach(r => {
-      if (r.installerName) {
-        const key = r.installerId || r.installerName
-        if (!installerCounts[key]) installerCounts[key] = { name: r.installerName, count: 0 }
-        installerCounts[key].count++
-      }
-    })
-    const topInstallers = Object.values(installerCounts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10)
-
-    // Jobs with/without installer assigned
-    const withInstaller = records.filter(r => r.installerId).length
-    const withoutInstaller = total - withInstaller
-
-    // Chargeback rate - check status, jobType, AND labor category
-    const chargebacks = records.filter(r =>
-      (r.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
-      r.jobType === 'chargeback' ||
-      (r.laborCategoryDescription || '').toLowerCase().includes('chargeback')
-    ).length
-    const chargebackRate = total > 0 ? (chargebacks / total * 100).toFixed(1) : '0.0'
-
-    // Weekly distribution (jobs by day of week)
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const weeklyCounts: Record<string, number> = {}
-    dayNames.forEach(d => { weeklyCounts[d] = 0 })
-    records.forEach(r => {
-      const p = r.cilioPayload as any
-      const di = p?.dateInformation || {}
-      const jobDate = r.scheduledInstallDate
-        || p?.currentOrderStatusDate
-        || di?.desiredInstallDate
-        || di?.currentDate
-        || r.createdAt
-      const d = jobDate ? new Date(jobDate) : null
-      if (d) {
-        const day = dayNames[d.getDay()]
-        weeklyCounts[day] = (weeklyCounts[day] || 0) + 1
-      }
-    })
-    const weeklyDistribution = dayNames.map(day => ({ day, count: weeklyCounts[day] || 0 }))
-
-    // Scheduled install dates — individual dates for calendar with workroom + labor breakdown
-    const scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number>; byLaborCategory: Record<string, number> }> = {}
-    const allWorkrooms = new Set<string>()
-    let hasInstallDates = false
-    let scheduledCount = 0
-    records.forEach(r => {
-      const d = r.scheduledInstallDate ? new Date(r.scheduledInstallDate) : null
-      if (d) {
-        scheduledCount++
-        hasInstallDates = true
-        const key = d.toISOString().split('T')[0] // YYYY-MM-DD
-        const wr = r.workroom || 'Unassigned'
-        const labor = r.laborCategoryDescription || 'Unspecified'
-        allWorkrooms.add(wr)
-        if (!scheduledDates[key]) scheduledDates[key] = { total: 0, byWorkroom: {}, byLaborCategory: {} }
-        scheduledDates[key].total++
-        scheduledDates[key].byWorkroom[wr] = (scheduledDates[key].byWorkroom[wr] || 0) + 1
-        scheduledDates[key].byLaborCategory[labor] = (scheduledDates[key].byLaborCategory[labor] || 0) + 1
-      }
-    })
-
     return NextResponse.json({
-      totalJobs: total,
+      totalJobs,
       chargebacks,
       chargebackRate: `${chargebackRate}%`,
       withInstaller,
@@ -420,13 +361,7 @@ export async function GET(request: NextRequest) {
       measureConversions,
       totalMeasures,
       measureConversionRate,
-      poAmount: {
-        total: totalPO,
-        average: Math.round(poAvg * 100) / 100,
-        min: poMin === Infinity ? 0 : poMin,
-        max: poMax,
-        count: poCount,
-      },
+      poAmount,
       monthlyTrend,
       dailyTrend,
       weeklyDistribution,
@@ -435,7 +370,7 @@ export async function GET(request: NextRequest) {
       hasInstallDates,
       workrooms: Array.from(allWorkrooms).sort(),
       completionBreakdown,
-      completionByWorkroom,
+      completionByWorkroom: completedByWorkroom,
     }, { headers: noStoreHeaders })
   } catch (error) {
     console.error('Jobs analytics error:', error)
