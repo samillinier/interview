@@ -94,46 +94,46 @@ export async function GET(request: NextRequest) {
 
       // Weekly revenue/jobs — this week (last 7 days)
       prisma.$queryRawUnsafe<Array<{ revenue: string; jobs: string; revenue_count: string }>>(
-        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as revenue, COUNT(*)::text as jobs, COUNT(("cilioPayload"->>'poAmount')::numeric)::text as revenue_count FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date`,
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as revenue, COUNT(*)::text as jobs, COUNT(("cilioPayload"->>'poAmount')::numeric)::text as revenue_count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date`,
         (() => { const d = new Date(now); d.setDate(d.getDate() - 7); d.setHours(0,0,0,0); return d; })()
       ),
 
       // Weekly revenue/jobs — previous week
       prisma.$queryRawUnsafe<Array<{ revenue: string; jobs: string }>>(
-        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as revenue, COUNT(*)::text as jobs FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date AND (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) < $2::date`,
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as revenue, COUNT(*)::text as jobs FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND COALESCE("scheduledInstallDate", "createdAt") < $2::date`,
         (() => { const d = new Date(now); d.setDate(d.getDate() - 14); d.setHours(0,0,0,0); return d; })(),
         (() => { const d = new Date(now); d.setDate(d.getDate() - 7); d.setHours(0,0,0,0); return d; })()
       ),
 
       // Monthly trend (last 12 months)
       prisma.$queryRawUnsafe<Array<{ month: string; count: string }>>(
-        `SELECT to_char(date_trunc('month', (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt"))), 'YYYY-MM') as month, COUNT(*)::text as count FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date GROUP BY 1 ORDER BY 1`,
+        `SELECT to_char(date_trunc('month', COALESCE("scheduledInstallDate", "createdAt")), 'YYYY-MM') as month, COUNT(*)::text as count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date GROUP BY 1 ORDER BY 1`,
         new Date(now.getFullYear(), now.getMonth() - 11, 1)
       ),
 
       // Daily trend (last 30 days)
       prisma.$queryRawUnsafe<Array<{ date: string; count: string }>>(
-        `SELECT to_char((COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt"))::date, 'YYYY-MM-DD') as date, COUNT(*)::text as count FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date GROUP BY 1 ORDER BY 1`,
+        `SELECT to_char(COALESCE("scheduledInstallDate", "createdAt")::date, 'YYYY-MM-DD') as date, COUNT(*)::text as count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date GROUP BY 1 ORDER BY 1`,
         (() => { const d = new Date(now); d.setDate(d.getDate() - 30); return d; })()
       ),
 
       // Last month store sales
       prisma.$queryRawUnsafe<Array<{ name: string; total: string; count: string }>>(
-        `SELECT COALESCE("storeName", "storeNumber", 'unknown') as name, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as total, COUNT(*)::text as count FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date AND (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) <= $2::date AND "cilioPayload"->>'poAmount' IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10`,
+        `SELECT COALESCE("storeName", "storeNumber", 'unknown') as name, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as total, COUNT(*)::text as count FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND COALESCE("scheduledInstallDate", "createdAt") <= $2::date AND "cilioPayload"->>'poAmount' IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10`,
         new Date(now.getFullYear(), now.getMonth() - 1, 1),
         new Date(now.getFullYear(), now.getMonth(), 0)
       ),
 
       // Two months ago total
       prisma.$queryRawUnsafe<Array<{ total: string }>>(
-        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0)::text as total FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date AND (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) <= $2::date AND "cilioPayload"->>'poAmount' IS NOT NULL`,
+        `SELECT COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0) as total FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND COALESCE("scheduledInstallDate", "createdAt") <= $2::date AND "cilioPayload"->>'poAmount' IS NOT NULL`,
         new Date(now.getFullYear(), now.getMonth() - 2, 1),
         new Date(now.getFullYear(), now.getMonth() - 1, 0)
       ),
 
       // Monthly PO totals
       prisma.$queryRawUnsafe<Array<{ month: string; total: string }>>(
-        `SELECT to_char(date_trunc('month', (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt"))), 'YYYY-MM') as month, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0) as total FROM "CilioJobRecord" WHERE (COALESCE("scheduledInstallDate", ("cilioPayload"->>'currentOrderStatusDate')::timestamptz, "createdAt")) >= $1::date AND "cilioPayload"->>'poAmount' IS NOT NULL GROUP BY 1 ORDER BY 1`,
+        `SELECT to_char(date_trunc('month', COALESCE("scheduledInstallDate", "createdAt")), 'YYYY-MM') as month, COALESCE(SUM(("cilioPayload"->>'poAmount')::numeric), 0) as total FROM "CilioJobRecord" WHERE COALESCE("scheduledInstallDate", "createdAt") >= $1::date AND "cilioPayload"->>'poAmount' IS NOT NULL GROUP BY 1 ORDER BY 1`,
         new Date(now.getFullYear(), now.getMonth() - 11, 1)
       ),
 
