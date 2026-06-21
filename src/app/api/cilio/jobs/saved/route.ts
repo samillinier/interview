@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic"
 /**
  * GET /api/cilio/jobs/saved
  * Returns all CilioJobRecord rows — the permanent saved-job report archive.
+ * Uses PostgreSQL jsonb_build_object to send only the fields the frontend needs,
+ * instead of the full cilioPayload blob (saves ~20MB per response).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -21,29 +23,97 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
-    const records = await prisma.cilioJobRecord.findMany({
-      select: {
-        id: true,
-        orderNumber: true,
-        orderStatusDescription: true,
-        jobType: true,
-        storeNumber: true,
-        storeName: true,
-        laborCategoryDescription: true,
-        workroom: true,
-        scheduledInstallDate: true,
-        measureDate: true,
-        bookingDate: true,
-        statusChangedAt: true,
-        installerId: true,
-        installerName: true,
-        createdAt: true,
-        updatedAt: true,
-        cilioPayload: true,
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 100000,
-    })
+    const rows = await prisma.$queryRawUnsafe<Array<{
+      id: string
+      orderNumber: number
+      orderStatusDescription: string | null
+      jobType: string
+      storeNumber: string | null
+      storeName: string | null
+      laborCategoryDescription: string | null
+      workroom: string | null
+      scheduledInstallDate: Date | null
+      measureDate: Date | null
+      bookingDate: Date | null
+      statusChangedAt: Date | null
+      installerId: string | null
+      installerName: string | null
+      createdAt: Date
+      updatedAt: Date
+      slimPayload: any
+    }>>(
+      `SELECT
+        id,
+        "orderNumber",
+        "orderStatusDescription",
+        "jobType",
+        "storeNumber",
+        "storeName",
+        "laborCategoryDescription",
+        "workroom",
+        "scheduledInstallDate",
+        "measureDate",
+        "bookingDate",
+        "statusChangedAt",
+        "installerId",
+        "installerName",
+        "createdAt",
+        "updatedAt",
+        jsonb_build_object(
+          'poAmount', "cilioPayload"->'poAmount',
+          'customerFirstName', "cilioPayload"->'customerFirstName',
+          'customerLastName', "cilioPayload"->'customerLastName',
+          'customerFirstLast', "cilioPayload"->'customerFirstLast',
+          'customerInformation', jsonb_build_object(
+            'customerName', "cilioPayload"->'customerInformation'->'customerName',
+            'customerFullName', "cilioPayload"->'customerInformation'->'customerFullName'
+          ),
+          'dateInformation', jsonb_build_object(
+            'desiredInstallDate', "cilioPayload"->'dateInformation'->'desiredInstallDate',
+            'currentDate', "cilioPayload"->'dateInformation'->'currentDate',
+            'leadCreationDate', "cilioPayload"->'dateInformation'->'leadCreationDate'
+          ),
+          'schedulingInformation', jsonb_build_object(
+            'scheduleDate', "cilioPayload"->'schedulingInformation'->'scheduleDate'
+          ),
+          'currentOrderStatusDate', "cilioPayload"->'currentOrderStatusDate',
+          'jobNumber', "cilioPayload"->'jobNumber',
+          'projectNumber', "cilioPayload"->'projectNumber',
+          'purchaserPO', "cilioPayload"->'purchaserPO',
+          'orderStorePO', "cilioPayload"->'orderStorePO',
+          'invoiceNumber', "cilioPayload"->'invoiceNumber',
+          'salesOrderNumber', "cilioPayload"->'salesOrderNumber',
+          'permitNumber', "cilioPayload"->'permitNumber',
+          'salesAssociate', "cilioPayload"->'salesAssociate',
+          'storeDistrict', "cilioPayload"->'storeDistrict',
+          'enterpriseGroupNumber', "cilioPayload"->'enterpriseGroupNumber',
+          'scopeOfWorkNotes', "cilioPayload"->'scopeOfWorkNotes'
+        ) as "slimPayload"
+      FROM "CilioJobRecord"
+      ORDER BY "updatedAt" DESC
+      LIMIT 100000`
+    )
+
+    // Convert to frontend-expected shape with cilioPayload = slimPayload
+    const records = rows.map(r => ({
+      id: r.id,
+      orderNumber: r.orderNumber,
+      orderStatusDescription: r.orderStatusDescription,
+      jobType: r.jobType,
+      storeNumber: r.storeNumber,
+      storeName: r.storeName,
+      laborCategoryDescription: r.laborCategoryDescription,
+      workroom: r.workroom,
+      scheduledInstallDate: r.scheduledInstallDate ? r.scheduledInstallDate.toISOString() : null,
+      measureDate: r.measureDate ? r.measureDate.toISOString() : null,
+      bookingDate: r.bookingDate ? r.bookingDate.toISOString() : null,
+      statusChangedAt: r.statusChangedAt ? r.statusChangedAt.toISOString() : null,
+      installerId: r.installerId,
+      installerName: r.installerName,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      cilioPayload: r.slimPayload,
+    }))
 
     // Resolve installerId by name for records without one
     const needsLookup = records.filter(r => !r.installerId && r.installerName)
@@ -62,11 +132,8 @@ export async function GET(request: NextRequest) {
         const match = dbInstallers.find(i => {
           const full = `${i.firstName} ${i.lastName}`.trim().toLowerCase()
           const rev = `${i.lastName} ${i.firstName}`.trim().toLowerCase()
-          // Exact full name match (either order)
           if (lower === full || lower === rev) return true
-          // One name contains the other
           if (full.includes(lower) || lower.includes(full)) return true
-          // First + last name parts match (handles middle names)
           const dbFirst = i.firstName.toLowerCase()
           const dbLast = i.lastName.toLowerCase()
           if (cilioFirst === dbFirst && cilioLast === dbLast) return true
@@ -74,17 +141,15 @@ export async function GET(request: NextRequest) {
         })
         if (match) {
           nameToId.set(lower, match.id)
-          // Also persist the match for future requests
           prisma.cilioJobRecord.updateMany({
             where: { installerName: name, installerId: null },
             data: { installerId: match.id },
-          }).catch(() => {}) // fire-and-forget
+          }).catch(() => {})
         }
       })
-      // Augment records with resolved installerId
       needsLookup.forEach(r => {
         const id = nameToId.get(r.installerName!.trim().toLowerCase())
-        if (id) (r as any).installerId = id
+        if (id) r.installerId = id
       })
     }
 
