@@ -1,7 +1,6 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import { User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,18 +27,12 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
       {/* Avatar */}
       <div
         className={cn(
-          'relative w-10 h-10 rounded-full flex-shrink-0 overflow-hidden',
-          isAssistant ? 'ring-2 ring-brand-green/20' : 'bg-brand-green/20 ring-2 ring-brand-green/30 flex items-center justify-center'
+          'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
+          isAssistant ? 'bg-brand-green ring-2 ring-brand-green/20' : 'bg-brand-green/20 ring-2 ring-brand-green/30'
         )}
       >
         {isAssistant ? (
-          <Image
-            src="/alice-interviewer.png"
-            alt="Alice, AI interviewer"
-            fill
-            sizes="40px"
-            className="object-cover [object-position:75%_24%]"
-          />
+          <User className="w-5 h-5 text-white" />
         ) : (
           <User className="w-5 h-5 text-brand-green" />
         )}
