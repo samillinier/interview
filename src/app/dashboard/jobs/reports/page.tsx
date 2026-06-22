@@ -575,22 +575,36 @@ export default function JobsReportsPage() {
                       </button>
 
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => {
-                          const pageNum = i + 1
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => goToPage(pageNum)}
-                              className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${
-                                pageNum === page
-                                  ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
-                                  : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
+                        {(() => {
+                          const windowSize = 20
+                          const half = Math.floor(windowSize / 2)
+                          let start = Math.max(1, page - half)
+                          let end = Math.min(totalPages, start + windowSize - 1)
+                          if (end - start < windowSize - 1) start = Math.max(1, end - windowSize + 1)
+                          
+                          const pages: (number | string)[] = []
+                          if (start > 1) { pages.push(1); if (start > 2) pages.push('...') }
+                          for (let i = start; i <= end; i++) pages.push(i)
+                          if (end < totalPages) { if (end < totalPages - 1) pages.push('...'); pages.push(totalPages) }
+                          
+                          return pages.map((p, i) => 
+                            p === '...' ? (
+                              <span key={`dots-${i}`} className="px-1 text-slate-300 text-sm">…</span>
+                            ) : (
+                              <button
+                                key={p}
+                                onClick={() => goToPage(p as number)}
+                                className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${
+                                  p === page
+                                    ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
+                                    : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            )
                           )
-                        })}
+                        })()}
                       </div>
 
                       <button
