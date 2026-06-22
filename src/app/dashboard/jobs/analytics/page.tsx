@@ -254,7 +254,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green/90 mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Jobs</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.totalJobs.toLocaleString()}</h3><p className="text-sm text-slate-500">Saved job records</p></div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/10 flex items-center justify-center shadow-sm"><Briefcase className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
 
@@ -262,7 +261,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">PO Value</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.poAmount.total)}</h3><p className="text-sm text-slate-500">Avg {fmtNumber(data.poAmount.average)}</p></div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><DollarSign className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
 
@@ -270,7 +268,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">{data.prevMonthLabel} Sales</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.lastMonthTotal)}</h3><p className="text-sm text-slate-500">{data.lastMonthSales.length} stores · {data.lastMonthSales.reduce((sum, s) => sum + s.count, 0)} jobs</p></div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><Building2 className="w-6 h-6 text-brand-green" /></div>
               </div>
               <div className="mt-3 flex items-center justify-end gap-1 text-xs">
                 {data.salesTrend > 0 ? (
@@ -287,7 +284,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-red-400 mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Chargebacks</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.chargebacks.toLocaleString()}</h3><p className="text-sm text-slate-500">{data.chargebackRate} of total</p></div>
-                <div className="w-14 h-14 bg-red-50 rounded-2xl border border-red-100 flex items-center justify-center shadow-sm"><AlertCircle className="w-6 h-6 text-red-500" /></div>
               </div>
             </motion.div>
           </div>
@@ -299,7 +295,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Revenue</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.weeklyRevenue)}</h3><p className="text-sm text-slate-500">{data.weeklyRevenueCount} jobs · Avg {fmtNumber(data.weeklyAvgRevenue)}</p></div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><DollarSign className="w-6 h-6 text-brand-green" /></div>
               </div>
               <div className="mt-3 flex items-center justify-end gap-1 text-xs">
                 {data.weeklyRevenueTrend > 0 ? (
@@ -317,7 +312,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Jobs</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.weeklyJobs.toLocaleString()}</h3><p className="text-sm text-slate-500">Avg {Math.round(data.weeklyJobs / 7)} per day</p></div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><Briefcase className="w-6 h-6 text-brand-green" /></div>
               </div>
               <div className="mt-3 flex items-center justify-end gap-1 text-xs">
                 {data.weeklyJobsTrend > 0 ? (
@@ -355,7 +349,6 @@ export default function JobsAnalyticsPage() {
                     )}
                   </div>
                 </div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm flex-shrink-0"><BarChart3 className="w-6 h-6 text-brand-green" /></div>
               </div>
             </motion.div>
 
@@ -364,7 +357,6 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Measure → Install</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.measureConversionRate}%</h3><p className="text-sm text-slate-500">{data.measureConversions} of {data.totalMeasures} measures converted</p></div>
-                <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm"><CheckCircle2 className="w-6 h-6 text-brand-green" /></div>
               </div>
               <div className="mt-3 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-brand-green rounded-full transition-all duration-700" style={{ width: `${Math.min(data.measureConversionRate, 100)}%` }} />
