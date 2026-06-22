@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, Fragment } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -10,11 +10,12 @@ import {
   Briefcase,
   Building2,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock,
   DollarSign,
   Download,
-  ExternalLink,
   Hammer,
   Loader2,
   MapPin,
@@ -70,6 +71,12 @@ interface JobNote {
   createdOn: string
   noteSource: string | null
   orderNoteTypeDescription: string
+}
+
+interface FilterOptions {
+  statuses: string[]
+  laborCategories: string[]
+  workrooms: string[]
 }
 
 function stripHtml(html: string) {
@@ -134,6 +141,8 @@ function SectionCard({ icon: Icon, title, children }: { icon: any; title: string
 }
 
 // ── Main Component ─────────────────────────────────────────
+const PAGE_SIZE = 100
+
 export default function JobsReportsPage() {
   const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
@@ -143,9 +152,24 @@ export default function JobsReportsPage() {
     String((session?.user as any)?.role || '').toUpperCase()
   )
 
+  // Pagination + data state
   const [records, setRecords] = useState<CilioJobRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [page, setPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ statuses: [], laborCategories: [], workrooms: [] })
+
+  // Filter state
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [laborFilter, setLaborFilter] = useState('')
+  const [workroomFilter, setWorkroomFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [chargebackFilter, setChargebackFilter] = useState(false)
+
+  // Detail modal state
   const [detailRecord, setDetailRecord] = useState<CilioJobRecord | null>(null)
   const [fullDetail, setFullDetail] = useState<CilioJobFullDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -153,12 +177,9 @@ export default function JobsReportsPage() {
   const [detailNotes, setDetailNotes] = useState<JobNote[]>([])
   const [jobAttachments, setJobAttachments] = useState<JobAttachment[]>([])
   const [loadingAttachments, setLoadingAttachments] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [laborFilter, setLaborFilter] = useState('')
-  const [workroomFilter, setWorkroomFilter] = useState('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [chargebackFilter, setChargebackFilter] = useState(false)
+
+  // Debounce search
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -172,20 +193,69 @@ export default function JobsReportsPage() {
     if (sessionStatus === 'authenticated' && !canAccess) router.push('/dashboard')
   }, [sessionStatus, router, canAccess])
 
-  const fetchReports = async () => {
+  // Fetch records from paginated API
+  const fetchRecords = useCallback(async (p: number) => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/cilio/jobs/saved')
-      if (res.ok) setRecords((await res.json()).records || [])
+      const params = new URLSearchParams()
+      params.set('page', String(p))
+      params.set('pageSize', String(PAGE_SIZE))
+      if (search.trim()) params.set('search', search.trim())
+      if (statusFilter) params.set('status', statusFilter)
+      if (laborFilter) params.set('labor', laborFilter)
+      if (workroomFilter !== 'all') params.set('workroom', workroomFilter)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
+      if (chargebackFilter) params.set('chargeback', '1')
+
+      const res = await fetch(`/api/cilio/jobs/saved?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setRecords(data.records || [])
+        setTotal(data.total || 0)
+        setTotalPages(data.totalPages || 0)
+        if (data.filterOptions) setFilterOptions(data.filterOptions)
+      }
     } catch { /* ignore */ }
     setIsLoading(false)
+  }, [search, statusFilter, laborFilter, workroomFilter, dateFrom, dateTo, chargebackFilter])
+
+  // Initial load
+  useEffect(() => {
+    if (sessionStatus === 'authenticated' && canAccess) {
+      setPage(1)
+      fetchRecords(1)
+    }
+  }, [sessionStatus, canAccess]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch when filters change (reset to page 1)
+  useEffect(() => {
+    if (sessionStatus === 'authenticated' && canAccess) {
+      setPage(1)
+      fetchRecords(1)
+    }
+  }, [statusFilter, laborFilter, workroomFilter, dateFrom, dateTo, chargebackFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced search
+  useEffect(() => {
+    if (sessionStatus !== 'authenticated' || !canAccess) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setPage(1)
+      fetchRecords(1)
+    }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Page change
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages || p === page) return
+    setPage(p)
+    fetchRecords(p)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  useEffect(() => {
-    if (sessionStatus === 'authenticated' && canAccess) fetchReports()
-  }, [sessionStatus, canAccess])
-
-  // Shared date extraction — MUST match what the table's "Scheduled" column displays
+  // Shared date extraction — MUST match API's date resolution
   const getDisplayDate = (r: CilioJobRecord): string | null => {
     return r.scheduledInstallDate
       || r.cilioPayload?.dateInformation?.desiredInstallDate
@@ -193,85 +263,6 @@ export default function JobsReportsPage() {
       || r.cilioPayload?.currentOrderStatusDate
       || null
   }
-
-  const workrooms = useMemo(() => {
-    const set = new Set<string>()
-    records.forEach(r => { if (r.workroom) set.add(r.workroom) })
-    return Array.from(set).sort()
-  }, [records])
-
-  const statuses = useMemo(() => {
-    const set = new Set<string>()
-    records.forEach(r => { if (r.orderStatusDescription) set.add(r.orderStatusDescription) })
-    return Array.from(set).sort()
-  }, [records])
-
-  const laborCategories = useMemo(() => {
-    const set = new Set<string>()
-    records.forEach(r => { if (r.laborCategoryDescription) set.add(r.laborCategoryDescription) })
-    return Array.from(set).sort()
-  }, [records])
-
-  const filtered = useMemo(() => {
-    let list = records
-    if (statusFilter) list = list.filter(r => r.orderStatusDescription === statusFilter)
-    if (chargebackFilter) list = list.filter(r =>
-      (r.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
-      r.jobType === 'chargeback' ||
-      (r.laborCategoryDescription || '').toLowerCase().includes('chargeback')
-    )
-    if (laborFilter) list = list.filter(r => r.laborCategoryDescription === laborFilter)
-    if (workroomFilter !== 'all') list = list.filter(r => r.workroom === workroomFilter)
-    if (dateFrom || dateTo) {
-      // If only one date is set, filter to that exact date
-      const effectiveFrom = dateFrom || dateTo
-      const effectiveTo = dateTo || dateFrom
-      const from = new Date(effectiveFrom + 'T00:00:00')
-      const to = new Date(effectiveTo + 'T23:59:59')
-      list = list.filter(r => {
-        const d = getDisplayDate(r)
-        if (!d) return false
-        const date = new Date(d)
-        return date >= from && date <= to
-      })
-    }
-    if (search.trim()) {
-      const tokens = search.trim().toLowerCase().split(/\s+/)
-      list = list.filter(r => {
-        // Build a single searchable string from all relevant fields
-        const p = r.cilioPayload
-        const haystack = [
-          String(r.orderNumber),
-          r.storeName || '',
-          r.storeNumber || '',
-          r.installerName || '',
-          r.laborCategoryDescription || '',
-          r.workroom || '',
-          // Cilio payload — customer fields
-          p?.customerFirstName || '',
-          p?.customerLastName || '',
-          p?.customerFirstLast || '',
-          p?.customerInformation?.customerName || '',
-          p?.customerInformation?.customerFullName || '',
-          // Cilio payload — order/PO/financial fields
-          p?.jobNumber ? String(p.jobNumber) : '',
-          p?.projectNumber ? String(p.projectNumber) : '',
-          p?.purchaserPO || '',
-          p?.orderStorePO || '',
-          p?.invoiceNumber || '',
-          p?.salesOrderNumber ? String(p.salesOrderNumber) : '',
-          p?.permitNumber || '',
-          p?.salesAssociate || '',
-          p?.storeDistrict || '',
-          p?.enterpriseGroupNumber ? String(p.enterpriseGroupNumber) : '',
-          p?.scopeOfWorkNotes || '',
-        ].join(' ').toLowerCase()
-        // ALL tokens must be found somewhere in the combined fields
-        return tokens.every(token => haystack.includes(token))
-      })
-    }
-    return list.sort((a, b) => b.orderNumber - a.orderNumber)
-  }, [records, search, statusFilter, laborFilter, workroomFilter, dateFrom, dateTo, chargebackFilter])
 
   const openDetail = async (record: CilioJobRecord) => {
     setDetailRecord(record)
@@ -297,7 +288,6 @@ export default function JobsReportsPage() {
         setDetailNotes(notesData.notes || [])
         setJobAttachments(attData.attachments || [])
       } else {
-        // Show a clearer message based on what went wrong
         if (detailRes.status === 404 || detailData.code === 'NOT_FOUND') {
           setDetailError('This job is no longer available in Cilio (may be too old or deleted)')
         } else if (detailData.code === 'NO_DETAIL') {
@@ -324,6 +314,8 @@ export default function JobsReportsPage() {
     return [p?.customerFirstName, p?.customerLastName].filter(Boolean).join(' ') || null
   }
 
+  const hasActiveFilters = statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search || chargebackFilter
+
   if (sessionStatus === 'loading') return <div className="min-h-screen flex items-center justify-center"><LogoHeartbeatLoader /></div>
   if (!session || !canAccess) return null
 
@@ -342,7 +334,7 @@ export default function JobsReportsPage() {
                   <span className="text-xs font-medium text-brand-green">Cilio Jobs</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Cilio Jobs</h1>
-                <p className="text-sm text-slate-500">{records.length} jobs saved · Click any row for full detail</p>
+                <p className="text-sm text-slate-500">{total.toLocaleString()} jobs saved · Click any row for full detail</p>
               </div>
             </div>
           </div>
@@ -369,7 +361,7 @@ export default function JobsReportsPage() {
                   className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[140px]"
                 >
                   <option value="">All Statuses</option>
-                  {statuses.map(s => (
+                  {filterOptions.statuses.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -379,7 +371,7 @@ export default function JobsReportsPage() {
                   className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[160px]"
                 >
                   <option value="">All Labor Categories</option>
-                  {laborCategories.map(c => (
+                  {filterOptions.laborCategories.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -389,7 +381,7 @@ export default function JobsReportsPage() {
                   className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[155px]"
                 >
                   <option value="all">All Workrooms</option>
-                  {workrooms.map(w => (
+                  {filterOptions.workrooms.map(w => (
                     <option key={w} value={w}>{w}</option>
                   ))}
                 </select>
@@ -426,11 +418,11 @@ export default function JobsReportsPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-slate-700">
-                  {filtered.length.toLocaleString()} {filtered.length === 1 ? 'job' : 'jobs'} matching
+                  {total.toLocaleString()} {total === 1 ? 'job' : 'jobs'} matching
                 </span>
-                {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search || chargebackFilter) && (
+                {hasActiveFilters && (
                   <span className="text-xs text-slate-400">
-                    (filtered from {records.length.toLocaleString()} total)
+                    (filtered)
                   </span>
                 )}
                 {chargebackFilter && (
@@ -439,7 +431,7 @@ export default function JobsReportsPage() {
                   </span>
                 )}
               </div>
-              {(statusFilter || laborFilter || workroomFilter !== 'all' || dateFrom || dateTo || search || chargebackFilter) && (
+              {hasActiveFilters && (
                 <button
                   onClick={() => { setStatusFilter(''); setLaborFilter(''); setWorkroomFilter('all'); setDateFrom(''); setDateTo(''); setSearch(''); setChargebackFilter(false) }}
                   className="text-xs font-semibold text-brand-green hover:text-brand-green-dark transition-colors flex items-center gap-1"
@@ -452,15 +444,8 @@ export default function JobsReportsPage() {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-green" /></div>
-          ) : filtered.length === 0 ? (
-            records.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
-                <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-semibold">No saved Cilio jobs</p>
-                <p className="text-sm text-slate-400 mt-1">Save jobs from Realtime to see them here.</p>
-                <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Realtime</Link>
-              </div>
-            ) : (
+          ) : total === 0 ? (
+            hasActiveFilters ? (
               <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
                 <Search className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-500 font-semibold">No jobs match your filters</p>
@@ -472,94 +457,147 @@ export default function JobsReportsPage() {
                   <X className="w-4 h-4" /> Clear filters
                 </button>
               </div>
+            ) : (
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+                <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500 font-semibold">No saved Cilio jobs</p>
+                <p className="text-sm text-slate-400 mt-1">Save jobs from Realtime to see them here.</p>
+                <Link href="/dashboard/jobs/cilio" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-brand-green text-white font-semibold text-sm hover:bg-brand-green-dark transition-colors"><Hammer className="w-4 h-4" /> Go to Realtime</Link>
+              </div>
             )
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/80">
-                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Job Name / Order #</th>
-                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Workroom</th>
-                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Labor</th>
-                      <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
-                      <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map(record => {
-                      const poAmount = record.cilioPayload?.poAmount ?? null
-                      const statusClass = getStatusPill(record.orderStatusDescription)
-                      const customerName = getCustomerName(record)
-                      const p = record.cilioPayload
-                      const di = p?.dateInformation || {}
-                      const si = p?.schedulingInformation || {}
-                      const schedDate = getDisplayDate(record)
-                      const measureDate = record.measureDate || di?.currentDate || null
-                      const bookingDate = record.bookingDate || di?.leadCreationDate || null
-                      const isChargeback =
-                        (record.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
-                        record.jobType === 'chargeback' ||
-                        (record.laborCategoryDescription || '').toLowerCase().includes('chargeback')
-                      return (
-                        <tr key={record.id} onClick={() => openDetail(record)} className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center"><Building2 className="w-4 h-4 text-brand-green" /></div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{customerName || record.storeName || `Order #${record.orderNumber}`}</p>
-                                <p className="text-xs text-slate-400">#{record.orderNumber}{record.storeName && <> · {record.storeName}</>}{record.installerName && (record.installerId ? <> · <Link href={`/dashboard/installers/${record.installerId}`} onClick={e => e.stopPropagation()} className="text-brand-green underline underline-offset-2 decoration-brand-green/30 hover:decoration-brand-green/60 font-medium transition-colors">{record.installerName}</Link></> : <> · {record.installerName}</>)}</p>
-                                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
-                                  {schedDate && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(schedDate)}</span>}
-                                  {measureDate && <span className="flex items-center gap-1">· Measure {formatDate(measureDate)}</span>}
-                                  {bookingDate && <span className="flex items-center gap-1">· Booked {formatDate(bookingDate)}</span>}
+            <>
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/80">
+                        <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Job Name / Order #</th>
+                        <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Workroom</th>
+                        <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Labor</th>
+                        <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
+                        <th className="text-right text-xs font-bold text-slate-500 uppercase tracking-wider px-4 py-3">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.map(record => {
+                        const poAmount = record.cilioPayload?.poAmount ?? null
+                        const statusClass = getStatusPill(record.orderStatusDescription)
+                        const customerName = getCustomerName(record)
+                        const p = record.cilioPayload
+                        const di = p?.dateInformation || {}
+                        const schedDate = getDisplayDate(record)
+                        const measureDate = record.measureDate || di?.currentDate || null
+                        const bookingDate = record.bookingDate || di?.leadCreationDate || null
+                        const isChargeback =
+                          (record.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
+                          record.jobType === 'chargeback' ||
+                          (record.laborCategoryDescription || '').toLowerCase().includes('chargeback')
+                        return (
+                          <tr key={record.id} onClick={() => openDetail(record)} className="border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-green/10 flex items-center justify-center"><Building2 className="w-4 h-4 text-brand-green" /></div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">{customerName || record.storeName || `Order #${record.orderNumber}`}</p>
+                                  <p className="text-xs text-slate-400">#{record.orderNumber}{record.storeName && <> · {record.storeName}</>}{record.installerName && (record.installerId ? <> · <Link href={`/dashboard/installers/${record.installerId}`} onClick={e => e.stopPropagation()} className="text-brand-green underline underline-offset-2 decoration-brand-green/30 hover:decoration-brand-green/60 font-medium transition-colors">{record.installerName}</Link></> : <> · {record.installerName}</>)}</p>
+                                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-400">
+                                    {schedDate && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(schedDate)}</span>}
+                                    {measureDate && <span className="flex items-center gap-1">· Measure {formatDate(measureDate)}</span>}
+                                    {bookingDate && <span className="flex items-center gap-1">· Booked {formatDate(bookingDate)}</span>}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-sm text-slate-700">
-                              {record.workroom || <span className="text-xs italic text-slate-300">No data</span>}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {record.laborCategoryDescription ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
-                                <Wrench className="w-3 h-3" />
-                                {record.laborCategoryDescription}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm text-slate-700">
+                                {record.workroom || <span className="text-xs italic text-slate-300">No data</span>}
                               </span>
-                            ) : <span className="text-xs italic text-slate-300">No data</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>{record.orderStatusDescription || 'Unknown'}</span>
-                              {isChargeback && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
-                                  <span className="w-1 h-1 rounded-full bg-red-500" />
-                                  Chargeback
+                            </td>
+                            <td className="px-4 py-3">
+                              {record.laborCategoryDescription ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
+                                  <Wrench className="w-3 h-3" />
+                                  {record.laborCategoryDescription}
                                 </span>
-                              )}
-                              {record.statusChangedAt && (() => {
-                                const changed = new Date(record.statusChangedAt)
-                                const daysAgo = Math.floor((Date.now() - changed.getTime()) / 86400000)
-                                if (daysAgo <= 7) return (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title={`Status changed ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`}`}>
-                                    <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
-                                    {daysAgo === 0 ? 'Today' : `${daysAgo}d`}
+                              ) : <span className="text-xs italic text-slate-300">No data</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${statusClass}`}>{record.orderStatusDescription || 'Unknown'}</span>
+                                {isChargeback && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                                    <span className="w-1 h-1 rounded-full bg-red-500" />
+                                    Chargeback
                                   </span>
-                                )
-                                return null
-                              })()}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right"><span className="text-sm font-semibold text-slate-900">{formatCurrency(poAmount) ?? <span className="text-xs italic text-slate-300">No data</span>}</span></td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                                )}
+                                {record.statusChangedAt && (() => {
+                                  const changed = new Date(record.statusChangedAt)
+                                  const daysAgo = Math.floor((Date.now() - changed.getTime()) / 86400000)
+                                  if (daysAgo <= 7) return (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title={`Status changed ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`}`}>
+                                      <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                                      {daysAgo === 0 ? 'Today' : `${daysAgo}d`}
+                                    </span>
+                                  )
+                                  return null
+                                })()}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right"><span className="text-sm font-semibold text-slate-900">{formatCurrency(poAmount) ?? <span className="text-xs italic text-slate-300">No data</span>}</span></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 px-1">
+                  <p className="text-xs text-slate-400">
+                    Page {page} of {totalPages} · {total.toLocaleString()} total jobs
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => goToPage(page - 1)}
+                      disabled={page <= 1}
+                      className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {/* Show up to 7 page buttons */}
+                    {(() => {
+                      const buttons: number[] = []
+                      let start = Math.max(1, page - 3)
+                      let end = Math.min(totalPages, page + 3)
+                      if (end - start < 6) {
+                        if (start === 1) end = Math.min(totalPages, start + 6)
+                        else start = Math.max(1, end - 6)
+                      }
+                      for (let i = start; i <= end; i++) buttons.push(i)
+                      return buttons.map(p => (
+                        <button
+                          key={p}
+                          onClick={() => goToPage(p)}
+                          className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors ${p === page ? 'bg-brand-green text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          {p}
+                        </button>
+                      ))
+                    })()}
+                    <button
+                      onClick={() => goToPage(page + 1)}
+                      disabled={page >= totalPages}
+                      className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
@@ -721,7 +759,6 @@ export default function JobsReportsPage() {
                             <Field label="Year Built" value={gi.yearBuilt} />
                             <Field label="Lead-Safe" value={gi.leadSafeJob === 'True' ? 'Yes' : gi.leadSafeJob} />
                           </div>
-                          {/* Payment */}
                           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                             <Field label="Paid in Full" value={gi.paidInFull} />
                             <Field label="Total Paid" value={gi.paymentsTotalPaid} accent />
@@ -730,7 +767,6 @@ export default function JobsReportsPage() {
                             <Field label="Last Trans Status" value={gi.paymentsLastTransStatus} />
                             <Field label="COD" value={gi.cod} />
                           </div>
-                          {/* Sales */}
                           <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                             <Field label="Sales Associate" value={gi.salesAssociate} />
                             <div className="col-span-2"><Field label="SA Email" value={gi.salesAssociateEmail} noTruncate /></div>
@@ -738,7 +774,6 @@ export default function JobsReportsPage() {
                             <Field label="Invoice Comment" value={gi.invoiceComment} />
                             <Field label="Reason Changed" value={gi.reasonChanged} />
                           </div>
-                          {/* Notes */}
                           {(gi.scopeOfWorkNotes || gi.deliveryInfoSchedulingNotes) && (
                             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                               {gi.scopeOfWorkNotes && (
@@ -789,7 +824,6 @@ export default function JobsReportsPage() {
                             <Field label="Renovator" value={si.scheduledUserRenovatorName} />
                             <Field label="Avg Time to Seller" value={si.siteDetailsAvgTimeToSeller} />
                           </div>
-                          {/* Tasks */}
                           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                             {[1, 2, 3].map(n => {
                               const res = (si as any)[`task${['One', 'Two', 'Three'][n - 1]}Resource`]
