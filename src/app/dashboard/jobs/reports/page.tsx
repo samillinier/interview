@@ -555,8 +555,8 @@ export default function JobsReportsPage() {
 
               {/* Pagination — matches installer page style */}
               {totalPages > 1 && (
-                <div className="grid grid-cols-1 gap-3 mt-4 px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white lg:grid-cols-[1fr_auto_1fr] lg:items-center rounded-b-2xl">
-                  <div className="text-sm text-slate-600">
+                <div className="grid grid-cols-1 gap-3 mt-4 px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white lg:flex lg:items-center lg:justify-between rounded-b-2xl">
+                  <div className="text-sm text-slate-600 lg:flex-shrink-0">
                     Showing <span className="font-semibold text-slate-900">{(page - 1) * PAGE_SIZE + 1}</span> to{' '}
                     <span className="font-semibold text-slate-900">
                       {Math.min(page * PAGE_SIZE, total)}
@@ -564,12 +564,12 @@ export default function JobsReportsPage() {
                     of <span className="font-semibold text-slate-900">{total.toLocaleString()}</span> jobs
                   </div>
 
-                  <div className="flex w-full justify-center overflow-x-auto lg:col-start-2">
-                    <div className="flex min-w-max items-center gap-2 px-2">
+                  <div className="flex justify-center overflow-x-auto lg:justify-end">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => goToPage(page - 1)}
                         disabled={page <= 1}
-                        className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
+                        className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200 flex-shrink-0"
                       >
                         <ChevronLeft className="w-5 h-5 text-slate-600" />
                       </button>
@@ -589,12 +589,12 @@ export default function JobsReportsPage() {
                           
                           return pages.map((p, i) => 
                             p === '...' ? (
-                              <span key={`dots-${i}`} className="px-1 text-slate-300 text-sm">…</span>
+                              <span key={`dots-${i}`} className="px-1 text-slate-300 text-sm flex-shrink-0">…</span>
                             ) : (
                               <button
                                 key={p}
                                 onClick={() => goToPage(p as number)}
-                                className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${
+                                className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all flex-shrink-0 ${
                                   p === page
                                     ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
                                     : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
@@ -610,14 +610,12 @@ export default function JobsReportsPage() {
                       <button
                         onClick={() => goToPage(page + 1)}
                         disabled={page >= totalPages}
-                        className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
+                        className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200 flex-shrink-0"
                       >
                         <ChevronRight className="w-5 h-5 text-slate-600" />
                       </button>
                     </div>
                   </div>
-
-                  <div className="hidden lg:block" />
                 </div>
               )}
             </>
