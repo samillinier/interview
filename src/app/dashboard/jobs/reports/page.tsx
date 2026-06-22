@@ -576,7 +576,7 @@ export default function JobsReportsPage() {
 
                       <div className="flex items-center gap-1">
                         {(() => {
-                          const windowSize = 20
+                          const windowSize = 24
                           const half = Math.floor(windowSize / 2)
                           let start = Math.max(1, page - half)
                           let end = Math.min(totalPages, start + windowSize - 1)
