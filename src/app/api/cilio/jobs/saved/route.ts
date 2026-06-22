@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         "cilioPayload"
       FROM "CilioJobRecord"
       ${whereClause}
-      ORDER BY "updatedAt" DESC
+      ORDER BY "orderNumber" DESC
       LIMIT ${p()} OFFSET ${p()}
     `
     params.push(pageSize, offset)
