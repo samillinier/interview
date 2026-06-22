@@ -553,48 +553,64 @@ export default function JobsReportsPage() {
                 </div>
               </div>
 
-              {/* Pagination */}
+              {/* Pagination — matches installer page style */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 px-1">
-                  <p className="text-xs text-slate-400">
-                    Page {page} of {totalPages} · {total.toLocaleString()} total jobs
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => goToPage(page - 1)}
-                      disabled={page <= 1}
-                      className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    {/* Show up to 7 page buttons */}
-                    {(() => {
-                      const buttons: number[] = []
-                      let start = Math.max(1, page - 3)
-                      let end = Math.min(totalPages, page + 3)
-                      if (end - start < 6) {
-                        if (start === 1) end = Math.min(totalPages, start + 6)
-                        else start = Math.max(1, end - 6)
-                      }
-                      for (let i = start; i <= end; i++) buttons.push(i)
-                      return buttons.map(p => (
-                        <button
-                          key={p}
-                          onClick={() => goToPage(p)}
-                          className={`min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors ${p === page ? 'bg-brand-green text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          {p}
-                        </button>
-                      ))
-                    })()}
-                    <button
-                      onClick={() => goToPage(page + 1)}
-                      disabled={page >= totalPages}
-                      className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                <div className="grid grid-cols-1 gap-3 mt-4 px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white lg:grid-cols-[1fr_auto_1fr] lg:items-center rounded-b-2xl">
+                  <div className="text-sm text-slate-600">
+                    Showing <span className="font-semibold text-slate-900">{(page - 1) * PAGE_SIZE + 1}</span> to{' '}
+                    <span className="font-semibold text-slate-900">
+                      {Math.min(page * PAGE_SIZE, total)}
+                    </span>{' '}
+                    of <span className="font-semibold text-slate-900">{total.toLocaleString()}</span> jobs
                   </div>
+
+                  <div className="flex w-full justify-center overflow-x-auto lg:col-start-2">
+                    <div className="flex min-w-max items-center gap-2 px-2">
+                      <button
+                        onClick={() => goToPage(page - 1)}
+                        disabled={page <= 1}
+                        className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
+                      >
+                        <ChevronLeft className="w-5 h-5 text-slate-600" />
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const buttons: number[] = []
+                          let start = Math.max(1, page - 3)
+                          let end = Math.min(totalPages, page + 3)
+                          if (end - start < 6) {
+                            if (start === 1) end = Math.min(totalPages, start + 6)
+                            else start = Math.max(1, end - 6)
+                          }
+                          for (let i = start; i <= end; i++) buttons.push(i)
+                          return buttons.map(p => (
+                            <button
+                              key={p}
+                              onClick={() => goToPage(p)}
+                              className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${
+                                p === page
+                                  ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
+                                  : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))
+                        })()}
+                      </div>
+
+                      <button
+                        onClick={() => goToPage(page + 1)}
+                        disabled={page >= totalPages}
+                        className="p-2 border-2 border-slate-200 rounded-xl hover:bg-brand-green/10 hover:border-brand-green/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-slate-200"
+                      >
+                        <ChevronRight className="w-5 h-5 text-slate-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:block" />
                 </div>
               )}
             </>
