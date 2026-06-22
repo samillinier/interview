@@ -575,29 +575,22 @@ export default function JobsReportsPage() {
                       </button>
 
                       <div className="flex items-center gap-1">
-                        {(() => {
-                          const buttons: number[] = []
-                          let start = Math.max(1, page - 3)
-                          let end = Math.min(totalPages, page + 3)
-                          if (end - start < 6) {
-                            if (start === 1) end = Math.min(totalPages, start + 6)
-                            else start = Math.max(1, end - 6)
-                          }
-                          for (let i = start; i <= end; i++) buttons.push(i)
-                          return buttons.map(p => (
+                        {Array.from({ length: totalPages }, (_, i) => {
+                          const pageNum = i + 1
+                          return (
                             <button
-                              key={p}
-                              onClick={() => goToPage(p)}
+                              key={pageNum}
+                              onClick={() => goToPage(pageNum)}
                               className={`min-w-10 px-3 py-2 text-sm font-semibold rounded-xl transition-all ${
-                                p === page
+                                pageNum === page
                                   ? 'bg-gradient-to-r from-brand-green to-emerald-600 text-white shadow-lg shadow-brand-green/30'
                                   : 'text-slate-700 hover:bg-brand-green/10 hover:text-brand-green border-2 border-transparent hover:border-brand-green/20'
                               }`}
                             >
-                              {p}
+                              {pageNum}
                             </button>
-                          ))
-                        })()}
+                          )
+                        })}
                       </div>
 
                       <button
