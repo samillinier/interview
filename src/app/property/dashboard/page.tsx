@@ -16,7 +16,9 @@ import {
   Layers,
   BarChart3,
   Shield,
-  ClipboardCheck
+  ClipboardCheck,
+  Car,
+  Armchair,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'

@@ -32,6 +32,7 @@ import {
   Upload,
   ChevronRight,
   ZoomIn,
+  Armchair,
   ArrowLeft,
   Archive
 } from 'lucide-react'

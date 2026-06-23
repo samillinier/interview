@@ -9,7 +9,6 @@ import {
   Building2,
   Car,
   ClipboardCheck,
-  HelpCircle,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -47,7 +46,6 @@ export function PropertySidebar({
       { href: '/property/fleet', label: 'Fleet', icon: Car },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck },
-      { href: '/property/help', label: 'Help', icon: HelpCircle },
       { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
     []

@@ -22,6 +22,7 @@ import {
   Package,
   Image as ImageIcon,
   Upload,
+  Car,
   ArrowLeft
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'

@@ -12,7 +12,6 @@ import {
   Menu,
   User,
   X,
-  HelpCircle,
   Building2,
   Car,
   Armchair,
@@ -42,7 +41,6 @@ export function PropertyMobileMenu({ pathname, notificationCount = 0, onLogout }
       { href: '/property/fleet', label: 'Fleet', icon: Car },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck },
-      { href: '/property/help', label: 'Help', icon: HelpCircle },
       { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
     []
