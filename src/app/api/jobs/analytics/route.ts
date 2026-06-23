@@ -141,6 +141,35 @@ export async function GET(request: NextRequest) {
       .slice(0, 10)
     const lastMonthTotal = Object.values(storeSales).reduce((sum, s) => sum + s.total, 0)
 
+    // Last month split — installation vs measurement PO
+    let lastMonthNonMeasurePO = 0
+    let lastMonthNonMeasureJobs = 0
+    let lastMonthMeasurePO = 0
+    let lastMonthMeasureJobs = 0
+    records.forEach(r => {
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= prevMonth && d <= prevMonthEnd) {
+        const po = (r.cilioPayload as any)?.poAmount
+        if (po != null && !isNaN(Number(po))) {
+          const labor = (r.laborCategoryDescription || '').toLowerCase()
+          if (labor.includes('measure')) {
+            lastMonthMeasurePO += Number(po)
+            lastMonthMeasureJobs++
+          } else {
+            lastMonthNonMeasurePO += Number(po)
+            lastMonthNonMeasureJobs++
+          }
+        }
+      }
+    })
+
     // Two months ago — for trend comparison
     const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
     const twoMonthsAgoEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0)
@@ -448,6 +477,10 @@ export async function GET(request: NextRequest) {
       lastMonthSales,
       prevMonthLabel,
       lastMonthTotal,
+      lastMonthNonMeasurePO,
+      lastMonthNonMeasureJobs,
+      lastMonthMeasurePO,
+      lastMonthMeasureJobs,
       previousMonthTotal,
       salesTrend,
       weeklyRevenue,

@@ -46,6 +46,10 @@ interface JobsAnalytics {
   lastMonthSales: { name: string; total: number; count: number }[]
   prevMonthLabel: string
   lastMonthTotal: number
+  lastMonthNonMeasurePO: number
+  lastMonthNonMeasureJobs: number
+  lastMonthMeasurePO: number
+  lastMonthMeasureJobs: number
   previousMonthTotal: number
   salesTrend: number
   weeklyRevenue: number
@@ -284,8 +288,15 @@ export default function JobsAnalyticsPage() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
-              <div className="flex items-start justify-between gap-4">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">{data.prevMonthLabel} Sales</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.lastMonthTotal)}</h3><p className="text-sm text-slate-500">{data.lastMonthSales.length} stores · {data.lastMonthSales.reduce((sum, s) => sum + s.count, 0)} jobs</p></div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">{data.prevMonthLabel} Sales</p>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.lastMonthTotal)}</h3>
+                <p className="text-sm text-slate-500">{data.lastMonthSales.length} stores · {data.lastMonthSales.reduce((sum, s) => sum + s.count, 0)} jobs</p>
+                <div className="mt-3 flex items-center justify-end gap-2 text-xs flex-wrap">
+                  <span className="text-slate-400">Install {fmtNumber(data.lastMonthNonMeasurePO)}</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-400"><Wrench className="w-3 h-3 inline mr-0.5 -mt-0.5" />{fmtNumber(data.lastMonthMeasurePO)} measure</span>
+                </div>
               </div>
               <div className="mt-3 flex items-center justify-end gap-1 text-xs">
                 {data.salesTrend > 0 ? (
