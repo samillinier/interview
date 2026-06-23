@@ -84,6 +84,22 @@ export async function GET(request: NextRequest) {
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count)
 
+    // Split measurement vs non-measurement breakdowns
+    const nonMeasureLaborCounts: Record<string, number> = {}
+    let measurementCount = 0
+    records.forEach(r => {
+      const l = r.laborCategoryDescription || 'Unspecified'
+      if (l.toLowerCase().includes('measure')) {
+        measurementCount++
+      } else {
+        nonMeasureLaborCounts[l] = (nonMeasureLaborCounts[l] || 0) + 1
+      }
+    })
+    const nonMeasureTotal = total - measurementCount
+    const nonMeasureLaborBreakdown = Object.entries(nonMeasureLaborCounts)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+
     // Workroom distribution
     const workroomCounts: Record<string, number> = {}
     records.forEach(r => {
@@ -395,6 +411,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalJobs: total,
+      nonMeasureTotal,
+      measurementCount,
+      nonMeasureLaborBreakdown,
       chargebacks,
       chargebackRate: `${chargebackRate}%`,
       withInstaller,

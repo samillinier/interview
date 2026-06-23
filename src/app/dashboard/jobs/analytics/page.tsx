@@ -32,6 +32,9 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface JobsAnalytics {
   totalJobs: number
+  nonMeasureTotal: number
+  measurementCount: number
+  nonMeasureLaborBreakdown: { category: string; count: number }[]
   chargebacks: number
   chargebackRate: string
   withInstaller: number
@@ -252,8 +255,23 @@ export default function JobsAnalyticsPage() {
           <div id="overview" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 scroll-mt-24">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green/90 mb-6" />
-              <div className="flex items-start justify-between gap-4">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Jobs</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{data.totalJobs.toLocaleString()}</h3><p className="text-sm text-slate-500">Saved job records</p></div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Jobs</p>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{data.nonMeasureTotal.toLocaleString()}</h3>
+                <p className="text-sm text-slate-500">Installation jobs</p>
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {data.nonMeasureLaborBreakdown.slice(0, 4).map((cat) => (
+                      <span key={cat.category} className="text-xs text-slate-500">
+                        <span className="font-semibold text-slate-700">{cat.count.toLocaleString()}</span> {cat.category}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                    <Wrench className="w-3 h-3" />
+                    <span><span className="font-semibold text-slate-500">{data.measurementCount.toLocaleString()}</span> measurement jobs</span>
+                  </div>
+                </div>
               </div>
             </motion.div>
 
