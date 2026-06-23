@@ -285,6 +285,27 @@ export async function GET(request: NextRequest) {
     })
     const poAvg = poCount > 0 ? totalPO / poCount : 0
 
+    // PO Amount split — installation vs measurement
+    let nonMeasurePO = 0
+    let nonMeasurePOCount = 0
+    let measurementPO = 0
+    let measurementPOCount = 0
+    records.forEach(r => {
+      const po = (r.cilioPayload as any)?.poAmount
+      if (po != null && !isNaN(Number(po))) {
+        const val = Number(po)
+        const labor = (r.laborCategoryDescription || '').toLowerCase()
+        if (labor.includes('measure')) {
+          measurementPO += val
+          measurementPOCount++
+        } else {
+          nonMeasurePO += val
+          nonMeasurePOCount++
+        }
+      }
+    })
+    const nonMeasurePOAvg = nonMeasurePOCount > 0 ? Math.round((nonMeasurePO / nonMeasurePOCount) * 100) / 100 : 0
+
     // Monthly trend (last 12 months)
     const monthlyCounts: Record<string, number> = {}
     const monthlyPO: Record<string, number> = {}
@@ -445,6 +466,15 @@ export async function GET(request: NextRequest) {
         min: poMin === Infinity ? 0 : poMin,
         max: poMax,
         count: poCount,
+      },
+      nonMeasurePOAmount: {
+        total: nonMeasurePO,
+        average: nonMeasurePOAvg,
+        count: nonMeasurePOCount,
+      },
+      measurementPOAmount: {
+        total: measurementPO,
+        count: measurementPOCount,
       },
       monthlyTrend,
       dailyTrend,

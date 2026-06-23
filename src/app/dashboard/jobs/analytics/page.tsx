@@ -61,6 +61,8 @@ interface JobsAnalytics {
   topStores: { name: string; count: number }[]
   topInstallers: { name: string; count: number }[]
   poAmount: { total: number; average: number; min: number; max: number; count: number }
+  nonMeasurePOAmount: { total: number; average: number; count: number }
+  measurementPOAmount: { total: number; count: number }
   monthlyTrend: { month: string; count: number; poTotal: number }[]
   dailyTrend: { date: string; count: number }[]
   weeklyDistribution: { day: string; count: number }[]
@@ -268,8 +270,14 @@ export default function JobsAnalyticsPage() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
-              <div className="flex items-start justify-between gap-4">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">PO Value</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.poAmount.total)}</h3><p className="text-sm text-slate-500">Avg {fmtNumber(data.poAmount.average)}</p></div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">PO Value</p>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.nonMeasurePOAmount.total)}</h3>
+                <p className="text-sm text-slate-500">Avg {fmtNumber(data.nonMeasurePOAmount.average)} · {data.nonMeasurePOAmount.count} jobs</p>
+                <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                  <Wrench className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400">{fmtNumber(data.measurementPOAmount.total)} measurement PO</span>
+                </div>
               </div>
             </motion.div>
 
