@@ -259,11 +259,9 @@ export default function JobsAnalyticsPage() {
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Jobs</p>
                 <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{data.nonMeasureTotal.toLocaleString()}</h3>
                 <p className="text-sm text-slate-500">Installation jobs</p>
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <div className="text-xs text-slate-400 flex items-center gap-1">
-                    <Wrench className="w-3 h-3" />
-                    <span><span className="font-semibold text-slate-500">{data.measurementCount.toLocaleString()}</span> measurement jobs</span>
-                  </div>
+                <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                  <Wrench className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400">{data.measurementCount.toLocaleString()} measurement jobs</span>
                 </div>
               </div>
             </motion.div>
