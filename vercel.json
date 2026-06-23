@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cilio/jobs/auto-sync",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }
