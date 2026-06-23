@@ -276,13 +276,12 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">PO Value</p>
-                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.poAmount.total)}</h3>
-                <div className="flex items-center gap-2 text-sm mb-1">
-                  <span className="font-semibold text-slate-700">Install {fmtNumber(data.nonMeasurePOAmount.total)}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-slate-500"><Wrench className="w-3.5 h-3.5 inline mr-0.5 -mt-0.5" />{fmtNumber(data.measurementPOAmount.total)} measure</span>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.nonMeasurePOAmount.total)}</h3>
+                <p className="text-sm text-slate-500">All-time · {data.nonMeasurePOAmount.count} install jobs</p>
+                <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                  <Wrench className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400">{fmtNumber(data.measurementPOAmount.total)} measurement PO</span>
                 </div>
-                <p className="text-xs text-slate-400">All-time · {data.poAmount.count} jobs</p>
               </div>
             </motion.div>
 
@@ -290,13 +289,12 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">{data.prevMonthLabel} Sales</p>
-                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.lastMonthTotal)}</h3>
-                <div className="flex items-center gap-2 text-sm mb-1">
-                  <span className="font-semibold text-slate-700">Install {fmtNumber(data.lastMonthNonMeasurePO)}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-slate-500"><Wrench className="w-3.5 h-3.5 inline mr-0.5 -mt-0.5" />{fmtNumber(data.lastMonthMeasurePO)} measure</span>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.lastMonthNonMeasurePO)}</h3>
+                <p className="text-sm text-slate-500">{data.lastMonthSales.length} stores · {data.lastMonthSales.reduce((sum, s) => sum + s.count, 0)} jobs</p>
+                <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                  <Wrench className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400">{fmtNumber(data.lastMonthMeasurePO)} measurement PO</span>
                 </div>
-                <p className="text-xs text-slate-400">{data.lastMonthSales.length} stores · {data.lastMonthSales.reduce((sum, s) => sum + s.count, 0)} jobs</p>
               </div>
               <div className="mt-3 flex items-center justify-end gap-1 text-xs">
                 {data.salesTrend > 0 ? (
