@@ -24,7 +24,7 @@ type Props = {
   pathname: string
   subtitle?: string
   userName?: string
-  userEmail?: string
+  userEmail?: string | null
   userImage?: string | null
   onLogout?: () => void
 }
