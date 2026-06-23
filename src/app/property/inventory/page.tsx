@@ -37,7 +37,6 @@ import {
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'

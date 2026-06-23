@@ -19,7 +19,6 @@ import {
   Shield,
   Building2,
 } from 'lucide-react'
-import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
