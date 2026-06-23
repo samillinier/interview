@@ -1009,6 +1009,7 @@ export default function FacilitiesPage() {
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Location</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Property Address</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Phone</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Landlord</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Rent Amount</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Status</th>
@@ -1056,6 +1057,12 @@ export default function FacilitiesPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-primary-600">
                           {location.propertyAddress || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-primary-600">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-slate-400" />
+                            {location.landlordPhone || 'N/A'}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-primary-600">
                           <div className="flex items-center gap-2">
