@@ -54,6 +54,9 @@ interface JobsAnalytics {
   salesTrend: number
   weeklyRevenue: number
   weeklyRevenueCount: number
+  weeklyNonMeasurePO: number
+  weeklyNonMeasurePOCount: number
+  weeklyMeasurePO: number
   weeklyAvgRevenue: number
   weeklyRevenueTrend: number
   weeklyJobs: number
@@ -311,17 +314,14 @@ export default function JobsAnalyticsPage() {
             {/* Weekly Revenue */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
-              <div className="flex items-start justify-between gap-4">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Revenue</p><h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{fmtNumber(data.weeklyRevenue)}</h3><p className="text-sm text-slate-500">{data.weeklyRevenueCount} jobs · Avg {fmtNumber(data.weeklyAvgRevenue)}</p></div>
-              </div>
-              <div className="mt-3 flex items-center justify-end gap-1 text-xs">
-                {data.weeklyRevenueTrend > 0 ? (
-                  <><TrendingUp className="w-3.5 h-3.5 text-green-600" /><span className="font-semibold text-green-600">+{data.weeklyRevenueTrend}%</span><span className="text-slate-400 ml-1">vs prev. week</span></>
-                ) : data.weeklyRevenueTrend < 0 ? (
-                  <><TrendingDown className="w-3.5 h-3.5 text-red-500" /><span className="font-semibold text-red-500">{data.weeklyRevenueTrend}%</span><span className="text-slate-400 ml-1">vs prev. week</span></>
-                ) : (
-                  <span className="text-slate-400">No change vs prev. week</span>
-                )}
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Weekly Revenue</p>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.weeklyNonMeasurePO)}</h3>
+                <p className="text-sm text-slate-500">{data.weeklyNonMeasurePOCount} install jobs</p>
+                <div className="mt-3 flex items-center justify-end gap-1 text-xs">
+                  <Wrench className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400">{fmtNumber(data.weeklyMeasurePO)} measurement PO</span>
+                </div>
               </div>
             </motion.div>
 

@@ -230,6 +230,33 @@ export async function GET(request: NextRequest) {
     const weeklyRevenueTrend = prevWeekRevenue > 0
       ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
       : 0
+
+    // Weekly revenue split — installation vs measurement
+    let weeklyNonMeasurePO = 0
+    let weeklyNonMeasurePOCount = 0
+    let weeklyMeasurePO = 0
+    records.forEach(r => {
+      const p = r.cilioPayload as any
+      const di = p?.dateInformation || {}
+      const jobDate = r.scheduledInstallDate
+        || p?.currentOrderStatusDate
+        || di?.desiredInstallDate
+        || di?.currentDate
+        || r.createdAt
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= sevenDaysAgo) {
+        const po = (r.cilioPayload as any)?.poAmount
+        if (po != null && !isNaN(Number(po))) {
+          const labor = (r.laborCategoryDescription || '').toLowerCase()
+          if (labor.includes('measure')) {
+            weeklyMeasurePO += Number(po)
+          } else {
+            weeklyNonMeasurePO += Number(po)
+            weeklyNonMeasurePOCount++
+          }
+        }
+      }
+    })
     const weeklyJobsTrend = prevWeekJobs > 0
       ? Math.round(((weeklyJobs - prevWeekJobs) / prevWeekJobs) * 100)
       : 0
@@ -485,6 +512,9 @@ export async function GET(request: NextRequest) {
       salesTrend,
       weeklyRevenue,
       weeklyRevenueCount,
+      weeklyNonMeasurePO,
+      weeklyNonMeasurePOCount,
+      weeklyMeasurePO,
       weeklyAvgRevenue,
       weeklyRevenueTrend,
       weeklyJobs,
