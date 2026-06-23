@@ -260,14 +260,7 @@ export default function JobsAnalyticsPage() {
                 <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{data.nonMeasureTotal.toLocaleString()}</h3>
                 <p className="text-sm text-slate-500">Installation jobs</p>
                 <div className="mt-3 pt-3 border-t border-slate-100">
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {data.nonMeasureLaborBreakdown.slice(0, 4).map((cat) => (
-                      <span key={cat.category} className="text-xs text-slate-500">
-                        <span className="font-semibold text-slate-700">{cat.count.toLocaleString()}</span> {cat.category}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                  <div className="text-xs text-slate-400 flex items-center gap-1">
                     <Wrench className="w-3 h-3" />
                     <span><span className="font-semibold text-slate-500">{data.measurementCount.toLocaleString()}</span> measurement jobs</span>
                   </div>
