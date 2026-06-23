@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
+  X,
   Loader2,
   AlertCircle,
   Building2,

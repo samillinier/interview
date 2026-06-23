@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
 import { motion } from 'framer-motion'
 import { 
+  X,
   Loader2,
   AlertCircle,
   Building2,
@@ -14,6 +15,7 @@ import {
   Calendar,
   Phone,
   Users,
+  User,
   Shield,
   Hash,
   CreditCard,
