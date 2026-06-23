@@ -296,15 +296,6 @@ export default function JobsAnalyticsPage() {
                   <span className="text-slate-400">{fmtNumber(data.lastMonthMeasurePO)} measurement PO</span>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-end gap-1 text-xs">
-                {data.salesTrend > 0 ? (
-                  <><TrendingUp className="w-3.5 h-3.5 text-green-600" /><span className="font-semibold text-green-600">+{data.salesTrend}%</span><span className="text-slate-400 ml-1">vs prev. month</span></>
-                ) : data.salesTrend < 0 ? (
-                  <><TrendingDown className="w-3.5 h-3.5 text-red-500" /><span className="font-semibold text-red-500">{data.salesTrend}%</span><span className="text-slate-400 ml-1">vs prev. month</span></>
-                ) : (
-                  <span className="text-slate-400">No change vs prev. month</span>
-                )}
-              </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} onClick={() => router.push('/dashboard/jobs/reports?chargeback=1')} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5 cursor-pointer">
