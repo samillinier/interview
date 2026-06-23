@@ -1009,7 +1009,6 @@ export default function FacilitiesPage() {
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Location</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Property Address</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Phone</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Landlord</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Rent Amount</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Status</th>
@@ -1057,12 +1056,6 @@ export default function FacilitiesPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-primary-600">
                           {location.propertyAddress || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-primary-600">
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-slate-400" />
-                            {location.landlordPhone || 'N/A'}
-                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-primary-600">
                           <div className="flex items-center gap-2">
@@ -1304,7 +1297,6 @@ export default function FacilitiesPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="md:col-span-2"
                   >
                     <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
@@ -1315,6 +1307,23 @@ export default function FacilitiesPage() {
                       value={formData.propertyAddress}
                       onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
                       placeholder="Enter full property address"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                  >
+                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <Phone className="w-4 h-4 text-brand-green" />
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.landlordPhone}
+                      onChange={(e) => setFormData({ ...formData, landlordPhone: e.target.value })}
+                      placeholder="Enter phone number"
                       className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
                     />
                   </motion.div>
