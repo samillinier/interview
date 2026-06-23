@@ -272,11 +272,12 @@ export default function JobsAnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">PO Value</p>
-                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.nonMeasurePOAmount.total)}</h3>
-                <p className="text-sm text-slate-500">Avg {fmtNumber(data.nonMeasurePOAmount.average)} · {data.nonMeasurePOAmount.count} jobs</p>
-                <div className="mt-3 flex items-center justify-end gap-1 text-xs">
-                  <Wrench className="w-3 h-3 text-slate-400" />
-                  <span className="text-slate-400">{fmtNumber(data.measurementPOAmount.total)} measurement PO</span>
+                <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{fmtNumber(data.poAmount.total)}</h3>
+                <p className="text-sm text-slate-500">All-time · {data.poAmount.count} jobs</p>
+                <div className="mt-3 flex items-center justify-end gap-2 text-xs flex-wrap">
+                  <span className="text-slate-400">Install {fmtNumber(data.nonMeasurePOAmount.total)}</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-400"><Wrench className="w-3 h-3 inline mr-0.5 -mt-0.5" />{fmtNumber(data.measurementPOAmount.total)} measure</span>
                 </div>
               </div>
             </motion.div>
