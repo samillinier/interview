@@ -73,8 +73,9 @@ async function runAutoSync(request: NextRequest) {
   let fetchError: string | null = null
   const allJobs = await cilio.searchAllJobs({
     monthsBack: 3, // 3-month window, runs every 5 min with 300s maxDuration
-    onProgress: (fetched, window) => {
-      console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
+    pageSize: 200,
+    onProgress: (fetched, page) => {
+      console.log(`[AutoSync] Progress: ${fetched} jobs (page ${page})`)
     },
   }).catch((e: any) => {
     fetchError = e?.message || String(e)

@@ -404,10 +404,12 @@ export interface CilioJobSearchParams {
   orderCreatedDateEnd?: string    // RFC3339 date-time
   orderModifiedDateStart?: string // RFC3339 date-time
   orderModifiedDateEnd?: string   // RFC3339 date-time
+  page?: number
+  pageSize?: number
 }
 
 /** Search jobs using the documented Cilio Gateway API parameters.
- *  Call with no params to fetch ALL jobs. */
+ *  Call with no params to fetch ALL jobs (capped at API default, typically 50). */
 export async function searchJobs(params: CilioJobSearchParams = {}): Promise<CilioJob[]> {
   const q = new URLSearchParams()
   if (params.orderStatusId?.length) params.orderStatusId.forEach(id => q.append("OrderStatusId", String(id)))
@@ -420,73 +422,55 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
   if (params.orderCreatedDateEnd) q.set("OrderCreatedDateEnd", params.orderCreatedDateEnd)
   if (params.orderModifiedDateStart) q.set("OrderModifiedDateStart", params.orderModifiedDateStart)
   if (params.orderModifiedDateEnd) q.set("OrderModifiedDateEnd", params.orderModifiedDateEnd)
+  if (params.page != null) q.set("Page", String(params.page))
+  if (params.pageSize != null) q.set("PageSize", String(params.pageSize))
   // Cilio API does NOT handle %3A-encoded colons in date params.
   // URLSearchParams encodes ":" → "%3A", so we decode them back.
   const query = q.toString().replace(/%3A/g, ":")
   return cilioFetch<CilioJob[]>(`/job/search${query ? `?${query}` : ""}`)
 }
 
-/** Fetch ALL jobs by date-range pagination. The Cilio API hard-caps at 50 results per request
- *  with no server-side pagination, so we walk backward in weekly windows (split to daily
- *  if a week looks full) and deduplicate.
- *  @param monthsBack How many months of history to fetch (default 6) */
+/** Fetch ALL jobs using the Cilio API's built-in pagination.
+ *  Loops through pages until an empty/partial page is returned.
+ *  @param pageSize Number of results per page (default 100, max likely 500) */
 export async function searchAllJobs(
-  options?: { monthsBack?: number; onProgress?: (fetched: number, window: string) => void }
+  options?: { monthsBack?: number; pageSize?: number; onProgress?: (fetched: number, page: number) => void }
 ): Promise<CilioJob[]> {
-  const MAX_PER_REQUEST = 50
+  const pageSize = options?.pageSize ?? 100
   const monthsBack = options?.monthsBack ?? 6
   const onProgress = options?.onProgress
   const now = new Date()
-  const allJobs = new Map<number, CilioJob>()
-
-  const endDate = new Date(now)
-  endDate.setDate(endDate.getDate() + 1) // include today
   const startDate = new Date(now)
   startDate.setMonth(startDate.getMonth() - monthsBack)
 
-  const windows: { start: Date; end: Date }[] = []
-  let cursor = new Date(startDate)
-  while (cursor < endDate) {
-    const wEnd = new Date(cursor)
-    wEnd.setDate(wEnd.getDate() + 7)
-    if (wEnd > endDate) wEnd.setTime(endDate.getTime())
-    windows.push({ start: new Date(cursor), end: new Date(wEnd) })
-    cursor = wEnd
-  }
-
   const toISO = (d: Date) => d.toISOString()
+  const allJobs = new Map<number, CilioJob>()
 
-  /** Recursively fetch a time window, splitting in half when the 50-job cap is hit.
-   *  Stops splitting at 1-hour granularity to avoid infinite recursion. */
-  async function fetchWindow(start: Date, end: Date, depth: number = 0): Promise<void> {
-    const ms = end.getTime() - start.getTime()
-    const label = `${start.toISOString().slice(0, 16)} → ${end.toISOString().slice(0, 16)}`
+  let page = 1
+  let hasMore = true
+
+  while (hasMore) {
     const batch = await searchJobs({
-      orderCreatedDateStart: toISO(start),
-      orderCreatedDateEnd: toISO(end),
+      orderCreatedDateStart: toISO(startDate),
+      orderCreatedDateEnd: toISO(now),
+      pageSize,
+      page,
     }).catch((e) => {
-      console.error(`[searchAllJobs] Error for window ${label}:`, e?.message || String(e))
+      console.error(`[searchAllJobs] Error on page ${page}:`, e?.message || String(e))
       return [] as CilioJob[]
     })
 
-    if (batch.length >= MAX_PER_REQUEST && ms > 3600000 && depth < 4) {
-      // Split in half — window is full and large enough to split further
-      const mid = new Date(start.getTime() + ms / 2)
-      await fetchWindow(start, mid, depth + 1)
-      await fetchWindow(mid, end, depth + 1)
-      onProgress?.(allJobs.size, `${label} (split d${depth + 1})`)
+    if (batch.length === 0) {
+      hasMore = false
     } else {
       for (const j of batch) {
         if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
       }
-      onProgress?.(allJobs.size, label)
+      onProgress?.(allJobs.size, page)
+      // If we got fewer than pageSize, we're on the last page
+      if (batch.length < pageSize) hasMore = false
+      else page++
     }
-  }
-
-  for (const win of windows) {
-    await fetchWindow(win.start, win.end)
-    // Small delay between windows to avoid hammering Cilio's rate limiter
-    await new Promise(resolve => setTimeout(resolve, 300))
   }
 
   return Array.from(allJobs.values())
