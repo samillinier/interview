@@ -38,6 +38,34 @@ export async function GET(request: NextRequest) {
     orderModifiedDateEnd: end.toISOString(),
   }).catch((e: any) => ({ error: e?.message || String(e) }))
 
+  // Test 5: Raw calls to test different pagination param formats
+  async function rawSearch(extraParams: Record<string, string>): Promise<number> {
+    const url = new URL(`${baseUrl}/job/search`)
+    url.searchParams.set("OrderModifiedDateStart", start3m.toISOString())
+    url.searchParams.set("OrderModifiedDateEnd", end.toISOString())
+    for (const [k, v] of Object.entries(extraParams)) {
+      url.searchParams.set(k, v)
+    }
+    // URLSearchParams encodes : → %3A, Cilio doesn't like that
+    const query = url.searchParams.toString().replace(/%3A/g, ":")
+    const res = await fetch(`${baseUrl}/job/search?${query}`, {
+      headers: {
+        "Ocp-Apim-Subscription-Key": key,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    const json = await res.json()
+    return Array.isArray(json) ? json.length : 0
+  }
+
+  const skipTakeCount = await rawSearch({ Skip: "0", Take: "100" }).catch(() => -1)
+  const offsetLimitCount = await rawSearch({ Offset: "0", Limit: "100" }).catch(() => -1)
+  const camelSkipTake = await rawSearch({ skip: "0", take: "100" }).catch(() => -1)
+  const camelOffsetLimit = await rawSearch({ offset: "0", limit: "100" }).catch(() => -1)
+  const perPage = await rawSearch({ Page: "1", PerPage: "100" }).catch(() => -1)
+  const pageSizeAlt = await rawSearch({ Page: "1", PageSize: "200" }).catch(() => -1)
+
   return NextResponse.json({
     env: {
       keyPrefix: key.slice(0, 6) + "...",
@@ -56,5 +84,13 @@ export async function GET(request: NextRequest) {
     wideNoPage: Array.isArray(wideNoPage)
       ? { count: wideNoPage.length, sample1: wideNoPage[0]?.orderNumber, sample2: wideNoPage[1]?.orderNumber, dateRange: `${start3m.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}` }
       : wideNoPage,
+    paginationTests: {
+      skipTake: skipTakeCount,
+      offsetLimit: offsetLimitCount,
+      camelSkipTake,
+      camelOffsetLimit,
+      perPage,
+      pageSize200: pageSizeAlt,
+    },
   })
 }
