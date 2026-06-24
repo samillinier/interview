@@ -422,8 +422,8 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
   if (params.orderCreatedDateEnd) q.set("OrderCreatedDateEnd", params.orderCreatedDateEnd)
   if (params.orderModifiedDateStart) q.set("OrderModifiedDateStart", params.orderModifiedDateStart)
   if (params.orderModifiedDateEnd) q.set("OrderModifiedDateEnd", params.orderModifiedDateEnd)
-  if (params.page != null) q.set("Page", String(params.page))
-  if (params.pageSize != null) q.set("PageSize", String(params.pageSize))
+  if (params.page != null) q.set("page", String(params.page))
+  if (params.pageSize != null) q.set("pageSize", String(params.pageSize))
   // Cilio API does NOT handle %3A-encoded colons in date params.
   // URLSearchParams encodes ":" → "%3A", so we decode them back.
   const query = q.toString().replace(/%3A/g, ":")
@@ -451,8 +451,8 @@ export async function searchAllJobs(
 
   while (hasMore) {
     const batch = await searchJobs({
-      orderCreatedDateStart: toISO(startDate),
-      orderCreatedDateEnd: toISO(now),
+      orderModifiedDateStart: toISO(startDate),
+      orderModifiedDateEnd: toISO(now),
       pageSize,
       page,
     }).catch((e) => {
