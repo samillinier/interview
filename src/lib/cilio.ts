@@ -430,13 +430,16 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
   return cilioFetch<CilioJob[]>(`/job/search${query ? `?${query}` : ""}`)
 }
 
-/** Fetch ALL jobs using the Cilio API's built-in pagination.
- *  Loops through pages until an empty/partial page is returned.
- *  @param pageSize Number of results per page (default 100, max likely 500) */
+/** Fetch ALL jobs. Tries API pagination first; if the API still caps at its
+ *  default page size (ignoring pagination params), falls back to time-window
+ *  splitting to ensure we don't miss jobs.
+ *  @param monthsBack How many months of history to fetch (default 6)
+ *  @param pageSize Requested page size (default 100) */
 export async function searchAllJobs(
-  options?: { monthsBack?: number; pageSize?: number; onProgress?: (fetched: number, page: number) => void }
+  options?: { monthsBack?: number; pageSize?: number; onProgress?: (fetched: number, detail: string) => void }
 ): Promise<CilioJob[]> {
-  const pageSize = options?.pageSize ?? 100
+  const REQUESTED_PAGE_SIZE = options?.pageSize ?? 100
+  const API_DEFAULT_CAP = 50 // Cilio hard-caps results at 50 without functional pagination
   const monthsBack = options?.monthsBack ?? 6
   const onProgress = options?.onProgress
   const now = new Date()
@@ -446,31 +449,86 @@ export async function searchAllJobs(
   const toISO = (d: Date) => d.toISOString()
   const allJobs = new Map<number, CilioJob>()
 
-  let page = 1
-  let hasMore = true
+  // First try: paginated approach
+  const page1 = await searchJobs({
+    orderModifiedDateStart: toISO(startDate),
+    orderModifiedDateEnd: toISO(now),
+    pageSize: REQUESTED_PAGE_SIZE,
+    page: 1,
+  }).catch(() => [] as CilioJob[])
 
-  while (hasMore) {
+  // If pagination works (we get > API_DEFAULT_CAP), loop through pages
+  if (page1.length > API_DEFAULT_CAP || page1.length === REQUESTED_PAGE_SIZE) {
+    for (const j of page1) allJobs.set(j.orderNumber, j)
+    onProgress?.(allJobs.size, `page 1 (paginated)`)
+
+    let page = 2
+    let hasMore = page1.length === REQUESTED_PAGE_SIZE
+    while (hasMore) {
+      const batch = await searchJobs({
+        orderModifiedDateStart: toISO(startDate),
+        orderModifiedDateEnd: toISO(now),
+        pageSize: REQUESTED_PAGE_SIZE,
+        page,
+      }).catch(() => [] as CilioJob[])
+
+      if (batch.length === 0) {
+        hasMore = false
+      } else {
+        for (const j of batch) {
+          if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
+        }
+        onProgress?.(allJobs.size, `page ${page} (paginated)`)
+        if (batch.length < REQUESTED_PAGE_SIZE) hasMore = false
+        else page++
+      }
+    }
+    return Array.from(allJobs.values())
+  }
+
+  // Pagination didn't work — fall back to time-window splitting
+  console.log(`[searchAllJobs] Pagination not supported (got ${page1.length}, expected >${API_DEFAULT_CAP}). Falling back to date-window splitting.`)
+  for (const j of page1) allJobs.set(j.orderNumber, j)
+  onProgress?.(allJobs.size, `window: initial fetch`)
+
+  // Generate weekly windows
+  const windows: { start: Date; end: Date }[] = []
+  let cursor = new Date(startDate)
+  while (cursor < now) {
+    const wEnd = new Date(cursor)
+    wEnd.setDate(wEnd.getDate() + 7)
+    if (wEnd > now) wEnd.setTime(now.getTime())
+    windows.push({ start: new Date(cursor), end: new Date(wEnd) })
+    cursor = wEnd
+  }
+
+  async function fetchWindow(start: Date, end: Date, depth: number = 0): Promise<void> {
+    const ms = end.getTime() - start.getTime()
+    const label = `${start.toISOString().slice(0, 16)} → ${end.toISOString().slice(0, 16)}`
     const batch = await searchJobs({
-      orderModifiedDateStart: toISO(startDate),
-      orderModifiedDateEnd: toISO(now),
-      pageSize,
-      page,
+      orderModifiedDateStart: toISO(start),
+      orderModifiedDateEnd: toISO(end),
     }).catch((e) => {
-      console.error(`[searchAllJobs] Error on page ${page}:`, e?.message || String(e))
+      console.error(`[searchAllJobs] Error for window ${label}:`, e?.message || String(e))
       return [] as CilioJob[]
     })
 
-    if (batch.length === 0) {
-      hasMore = false
+    if (batch.length >= API_DEFAULT_CAP && ms > 3600000 && depth < 4) {
+      const mid = new Date(start.getTime() + ms / 2)
+      await fetchWindow(start, mid, depth + 1)
+      await fetchWindow(mid, end, depth + 1)
+      onProgress?.(allJobs.size, `${label} (split d${depth + 1})`)
     } else {
       for (const j of batch) {
         if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
       }
-      onProgress?.(allJobs.size, page)
-      // If we got fewer than pageSize, we're on the last page
-      if (batch.length < pageSize) hasMore = false
-      else page++
+      onProgress?.(allJobs.size, label)
     }
+  }
+
+  for (const win of windows) {
+    await fetchWindow(win.start, win.end)
+    await new Promise(resolve => setTimeout(resolve, 300))
   }
 
   return Array.from(allJobs.values())
