@@ -78,7 +78,47 @@ export async function GET(request: NextRequest) {
   const pageSize500 = await rawSearch({ page: "1", pageSize: "500" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
   const cursorToken = await rawSearch({ continuationToken: "0" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
   // No date filter at all — just pagination params
-  const noFilterPage100 = await rawSearchArray({ page: "1", pageSize: "100" }).catch(() => -1)
+  const noFilterPage100 = await searchJobs({ page: 1, pageSize: 100 }).catch(() => []).then((arr: any[]) => arr.length)
+  // Test 6: The definitive pagination check — page 1 vs page 2 with same pageSize
+  async function rawSearchPage(page: number, pageSize: number): Promise<{ count: number; orderNumbers: number[]; allHeaders: Record<string, string> }> {
+    const url = new URL(`${baseUrl}/job/search`)
+    url.searchParams.set("OrderModifiedDateStart", start3m.toISOString())
+    url.searchParams.set("OrderModifiedDateEnd", end.toISOString())
+    url.searchParams.set("page", String(page))
+    url.searchParams.set("pageSize", String(pageSize))
+    const query = url.searchParams.toString().replace(/%3A/g, ":")
+    const res = await fetch(`${baseUrl}/job/search?${query}`, {
+      headers: {
+        "Ocp-Apim-Subscription-Key": key,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    const json = await res.json()
+    const arr = Array.isArray(json) ? json : []
+    const allHeaders: Record<string, string> = {}
+    res.headers.forEach((v, k) => { allHeaders[k] = v })
+    return {
+      count: arr.length,
+      orderNumbers: arr.map((j: any) => j.orderNumber),
+      allHeaders,
+    }
+  }
+
+  // Test with pageSize=25: if pagination works, page1 and page2 should have different jobs
+  const page1v25 = await rawSearchPage(1, 25).catch(() => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const page2v25 = await rawSearchPage(2, 25).catch(() => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const overlap25 = page1v25.orderNumbers.filter((n: number) => page2v25.orderNumbers.includes(n)).length
+
+  // Also test pageSize=50
+  const page1v50 = await rawSearchPage(1, 50).catch(() => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const page2v50 = await rawSearchPage(2, 50).catch(() => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const overlap50 = page1v50.orderNumbers.filter((n: number) => page2v50.orderNumbers.includes(n)).length
+
+  // Test pageSize=10
+  const page1v10 = await rawSearchPage(1, 10).catch(() => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const page2v10 = await rawSearchPage(2, 10).catch(() => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const overlap10 = page1v10.orderNumbers.filter((n: number) => page2v10.orderNumbers.includes(n)).length
 
   return NextResponse.json({
     env: {
@@ -107,6 +147,27 @@ export async function GET(request: NextRequest) {
       pageSize500,
       cursorToken,
       noFilter_pageSize100: noFilterPage100,
+    },
+    pageVsPage: {
+      pageSize25: {
+        page1: { count: page1v25.count, first3: page1v25.orderNumbers.slice(0, 3) },
+        page2: { count: page2v25.count, first3: page2v25.orderNumbers.slice(0, 3) },
+        overlap: overlap25,
+        working: overlap25 === 0 && page1v25.count > 0 && page2v25.count > 0,
+      },
+      pageSize50: {
+        page1: { count: page1v50.count, first3: page1v50.orderNumbers.slice(0, 3) },
+        page2: { count: page2v50.count, first3: page2v50.orderNumbers.slice(0, 3) },
+        overlap: overlap50,
+        working: overlap50 === 0 && page1v50.count > 0 && page2v50.count > 0,
+      },
+      pageSize10: {
+        page1: { count: page1v10.count, first3: page1v10.orderNumbers.slice(0, 3) },
+        page2: { count: page2v10.count, first3: page2v10.orderNumbers.slice(0, 3) },
+        overlap: overlap10,
+        working: overlap10 === 0 && page1v10.count > 0 && page2v10.count > 0,
+      },
+      page1Headers: page1v25.allHeaders,
     },
   })
 }
