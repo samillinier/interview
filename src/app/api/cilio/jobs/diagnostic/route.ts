@@ -22,6 +22,22 @@ export async function GET(request: NextRequest) {
     orderModifiedDateEnd: end.toISOString(),
   }).catch((e: any) => ({ error: e?.message || String(e) }))
 
+  // Test 3: Same as searchAllJobs — 3-month window with page/pageSize
+  const start3m = new Date(end)
+  start3m.setMonth(start3m.getMonth() - 3)
+  const paginated = await cilio.searchJobs({
+    orderModifiedDateStart: start3m.toISOString(),
+    orderModifiedDateEnd: end.toISOString(),
+    page: 1,
+    pageSize: 100,
+  }).catch((e: any) => ({ error: e?.message || String(e) }))
+
+  // Test 4: 3-month window WITHOUT pagination params
+  const wideNoPage = await cilio.searchJobs({
+    orderModifiedDateStart: start3m.toISOString(),
+    orderModifiedDateEnd: end.toISOString(),
+  }).catch((e: any) => ({ error: e?.message || String(e) }))
+
   return NextResponse.json({
     env: {
       keyPrefix: key.slice(0, 6) + "...",
@@ -34,5 +50,11 @@ export async function GET(request: NextRequest) {
     withDates: Array.isArray(withDates)
       ? { count: withDates.length, sample1: withDates[0]?.orderNumber, sample2: withDates[1]?.orderNumber, dateRange: `${start.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}` }
       : withDates,
+    paginated: Array.isArray(paginated)
+      ? { count: paginated.length, sample1: paginated[0]?.orderNumber, sample2: paginated[1]?.orderNumber, dateRange: `${start3m.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}` }
+      : paginated,
+    wideNoPage: Array.isArray(wideNoPage)
+      ? { count: wideNoPage.length, sample1: wideNoPage[0]?.orderNumber, sample2: wideNoPage[1]?.orderNumber, dateRange: `${start3m.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}` }
+      : wideNoPage,
   })
 }
