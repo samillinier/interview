@@ -3,10 +3,8 @@ import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 import prisma from "@/lib/db"
 
-export const maxDuration = 300
-
 export const dynamic = "force-dynamic"
-export const maxDuration = 600
+export const maxDuration = 300
 
 /** Heuristic to detect test/sandbox jobs from Cilio that should not be stored. */
 function isTestJob(job: any): boolean {
