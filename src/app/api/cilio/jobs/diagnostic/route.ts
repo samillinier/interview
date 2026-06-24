@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
   const pageSize500 = await rawSearch({ page: "1", pageSize: "500" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
   const cursorToken = await rawSearch({ continuationToken: "0" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
   // No date filter at all — just pagination params
-  const noFilterPage100 = await searchJobs({ page: 1, pageSize: 100 }).catch(() => []).then((arr: any[]) => arr.length)
+  const noFilterPage100 = await cilio.searchJobs({ page: 1, pageSize: 100 }).catch(() => [] as any[]).then((arr: any[]) => arr.length)
   // Test 6: The definitive pagination check — page 1 vs page 2 with same pageSize
   async function rawSearchPage(page: number, pageSize: number): Promise<{ count: number; orderNumbers: number[]; allHeaders: Record<string, string> }> {
     const url = new URL(`${baseUrl}/job/search`)
