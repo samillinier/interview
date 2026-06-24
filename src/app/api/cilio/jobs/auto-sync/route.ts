@@ -3,6 +3,8 @@ import * as cilio from "@/lib/cilio"
 import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 import prisma from "@/lib/db"
 
+export const maxDuration = 300
+
 export const dynamic = "force-dynamic"
 export const maxDuration = 600
 
@@ -72,7 +74,7 @@ async function runAutoSync(request: NextRequest) {
 
   let fetchError: string | null = null
   const allJobs = await cilio.searchAllJobs({
-    monthsBack: 24, // Full historical pull — lots of old jobs still to fetch
+    monthsBack: 3, // 3-month window, runs every 5 min with 300s maxDuration
     onProgress: (fetched, window) => {
       console.log(`[AutoSync] Progress: ${fetched} jobs (window ${window})`)
     },
@@ -182,7 +184,7 @@ async function runAutoSync(request: NextRequest) {
       },
       select: { orderNumber: true, scheduledInstallDate: true, installerName: true, installerId: true, crewPayTotal: true },
       orderBy: { orderNumber: "asc" },
-      take: 500,
+      take: 100,
     })
 
     if (needsEnrichment.length > 0) {
