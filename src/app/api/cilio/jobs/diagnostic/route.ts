@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(10000),
     })
     const json = await res.json()
-    const arr = Array.isArray(json) ? json : []
+    const arr = Array.isArray(json) ? json : (json?.results ?? [])
     return {
       count: arr.length,
       sample1: arr[0]?.orderNumber ?? null,
@@ -84,8 +84,8 @@ export async function GET(request: NextRequest) {
     const url = new URL(`${baseUrl}/job/search`)
     url.searchParams.set("OrderModifiedDateStart", start3m.toISOString())
     url.searchParams.set("OrderModifiedDateEnd", end.toISOString())
-    url.searchParams.set("page", String(page))
-    url.searchParams.set("pageSize", String(pageSize))
+    url.searchParams.set("PageNumber", String(page))
+    url.searchParams.set("PageSize", String(pageSize))
     const query = url.searchParams.toString().replace(/%3A/g, ":")
     const res = await fetch(`${baseUrl}/job/search?${query}`, {
       headers: {
@@ -95,30 +95,33 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(10000),
     })
     const json = await res.json()
-    const arr = Array.isArray(json) ? json : []
+    const arr = Array.isArray(json) ? json : (json?.results ?? [])
     const allHeaders: Record<string, string> = {}
     res.headers.forEach((v, k) => { allHeaders[k] = v })
     return {
       count: arr.length,
       orderNumbers: arr.map((j: any) => j.orderNumber),
       allHeaders,
+      ...(json && typeof json === "object" && !Array.isArray(json)
+        ? { totalPages: (json as any).totalPages, totalRecords: (json as any).totalRecords }
+        : {}),
     }
   }
 
   // Test with pageSize=25: if pagination works, page1 and page2 should have different jobs
-  const page1v25 = await rawSearchPage(1, 25).catch((): { count: number; orderNumbers: number[]; allHeaders: Record<string, string> } => ({ count: -1, orderNumbers: [], allHeaders: {} }))
-  const page2v25 = await rawSearchPage(2, 25).catch((): { count: number; orderNumbers: number[]; allHeaders: Record<string, string> } => ({ count: -1, orderNumbers: [], allHeaders: {} }))
-  const overlap25 = page1v25.orderNumbers.filter(n => page2v25.orderNumbers.includes(n)).length
+  const page1v25 = await rawSearchPage(1, 25).catch((): any => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const page2v25 = await rawSearchPage(2, 25).catch((): any => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const overlap25 = (page1v25.orderNumbers as number[]).filter(n => (page2v25.orderNumbers as number[]).includes(n)).length
 
   // Also test pageSize=50
-  const page1v50 = await rawSearchPage(1, 50).catch((): { count: number; orderNumbers: number[]; allHeaders: Record<string, string> } => ({ count: -1, orderNumbers: [], allHeaders: {} }))
-  const page2v50 = await rawSearchPage(2, 50).catch((): { count: number; orderNumbers: number[]; allHeaders: Record<string, string> } => ({ count: -1, orderNumbers: [], allHeaders: {} }))
-  const overlap50 = page1v50.orderNumbers.filter(n => page2v50.orderNumbers.includes(n)).length
+  const page1v50 = await rawSearchPage(1, 50).catch((): any => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const page2v50 = await rawSearchPage(2, 50).catch((): any => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const overlap50 = (page1v50.orderNumbers as number[]).filter(n => (page2v50.orderNumbers as number[]).includes(n)).length
 
   // Test pageSize=10
-  const page1v10 = await rawSearchPage(1, 10).catch((): { count: number; orderNumbers: number[]; allHeaders: Record<string, string> } => ({ count: -1, orderNumbers: [], allHeaders: {} }))
-  const page2v10 = await rawSearchPage(2, 10).catch((): { count: number; orderNumbers: number[]; allHeaders: Record<string, string> } => ({ count: -1, orderNumbers: [], allHeaders: {} }))
-  const overlap10 = page1v10.orderNumbers.filter(n => page2v10.orderNumbers.includes(n)).length
+  const page1v10 = await rawSearchPage(1, 10).catch((): any => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const page2v10 = await rawSearchPage(2, 10).catch((): any => ({ count: -1, orderNumbers: [], allHeaders: {} }))
+  const overlap10 = (page1v10.orderNumbers as number[]).filter(n => (page2v10.orderNumbers as number[]).includes(n)).length
 
   return NextResponse.json({
     env: {
@@ -149,6 +152,9 @@ export async function GET(request: NextRequest) {
       noFilter_pageSize100: noFilterPage100,
     },
     pageVsPage: {
+      paginationFormat: page1v25.totalPages ? "NEW (paginated wrapper)" : "OLD (plain array)",
+      totalPages: page1v25.totalPages ?? null,
+      totalRecords: page1v25.totalRecords ?? null,
       pageSize25: {
         page1: { count: page1v25.count, first3: page1v25.orderNumbers.slice(0, 3) },
         page2: { count: page2v25.count, first3: page2v25.orderNumbers.slice(0, 3) },

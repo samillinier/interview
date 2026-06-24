@@ -409,7 +409,8 @@ export interface CilioJobSearchParams {
 }
 
 /** Search jobs using the documented Cilio Gateway API parameters.
- *  Call with no params to fetch ALL jobs (capped at API default, typically 50). */
+ *  Handles both old format (plain array) and new format
+ *  ({ currentPage, pageSize, totalRecords, totalPages, results }). */
 export async function searchJobs(params: CilioJobSearchParams = {}): Promise<CilioJob[]> {
   const q = new URLSearchParams()
   if (params.orderStatusId?.length) params.orderStatusId.forEach(id => q.append("OrderStatusId", String(id)))
@@ -427,69 +428,93 @@ export async function searchJobs(params: CilioJobSearchParams = {}): Promise<Cil
   // Cilio API does NOT handle %3A-encoded colons in date params.
   // URLSearchParams encodes ":" → "%3A", so we decode them back.
   const query = q.toString().replace(/%3A/g, ":")
-  return cilioFetch<CilioJob[]>(`/job/search${query ? `?${query}` : ""}`)
+  const raw = await cilioFetch<unknown>(`/job/search${query ? `?${query}` : ""}`)
+  return extractJobArray(raw)
 }
 
-/** Fetch ALL jobs. Tries API pagination first; if the API still caps at its
- *  default page size (ignoring pagination params), falls back to time-window
- *  splitting to ensure we don't miss jobs.
+/** New QA paginated response format */
+export interface CilioPaginatedResponse {
+  currentPage: number
+  pageSize: number
+  totalRecords: number
+  totalPages: number
+  results: CilioJob[]
+}
+
+/** Detect and extract the jobs array from either response format. */
+function extractJobArray(raw: unknown): CilioJob[] {
+  if (Array.isArray(raw)) return raw as CilioJob[]
+  if (raw && typeof raw === "object" && "results" in raw) {
+    return (raw as CilioPaginatedResponse).results ?? []
+  }
+  return []
+}
+
+/** Fetch ALL jobs. Uses API pagination when available (new QA format with
+ *  totalPages metadata), falls back to date-window splitting for the old
+ *  format (plain array, capped at 50).
  *  @param monthsBack How many months of history to fetch (default 6)
- *  @param pageSize Requested page size (default 100) */
+ *  @param pageSize Requested page size (default 500) */
 export async function searchAllJobs(
   options?: { monthsBack?: number; pageSize?: number; onProgress?: (fetched: number, detail: string) => void }
 ): Promise<CilioJob[]> {
-  const REQUESTED_PAGE_SIZE = options?.pageSize ?? 100
-  const API_DEFAULT_CAP = 50 // Cilio hard-caps results at 50 without functional pagination
+  const pageSize = options?.pageSize ?? 500
   const monthsBack = options?.monthsBack ?? 6
   const onProgress = options?.onProgress
   const now = new Date()
   const startDate = new Date(now)
   startDate.setMonth(startDate.getMonth() - monthsBack)
-
   const toISO = (d: Date) => d.toISOString()
+
   const allJobs = new Map<number, CilioJob>()
 
-  // First try: paginated approach
-  const page1 = await searchJobs({
-    orderModifiedDateStart: toISO(startDate),
-    orderModifiedDateEnd: toISO(now),
-    pageSize: REQUESTED_PAGE_SIZE,
-    page: 1,
-  }).catch(() => [] as CilioJob[])
+  // Build query for the first page
+  const q = new URLSearchParams()
+  q.set("OrderModifiedDateStart", toISO(startDate))
+  q.set("OrderModifiedDateEnd", toISO(now))
+  q.set("PageSize", String(pageSize))
+  q.set("PageNumber", "1")
+  const query = q.toString().replace(/%3A/g, ":")
+  const path = `/job/search?${query}`
 
-  // If pagination works (we get > API_DEFAULT_CAP), loop through pages
-  if (page1.length > API_DEFAULT_CAP || page1.length === REQUESTED_PAGE_SIZE) {
-    for (const j of page1) allJobs.set(j.orderNumber, j)
-    onProgress?.(allJobs.size, `page 1 (paginated)`)
+  let firstRaw: unknown
+  try {
+    firstRaw = await cilioFetch<unknown>(path)
+  } catch (e: any) {
+    console.error(`[searchAllJobs] First page error:`, e?.message || String(e))
+    firstRaw = []
+  }
 
-    let page = 2
-    let hasMore = page1.length === REQUESTED_PAGE_SIZE
-    while (hasMore) {
-      const batch = await searchJobs({
-        orderModifiedDateStart: toISO(startDate),
-        orderModifiedDateEnd: toISO(now),
-        pageSize: REQUESTED_PAGE_SIZE,
-        page,
-      }).catch(() => [] as CilioJob[])
+  // Detect format: new paginated wrapper vs old plain array
+  if (firstRaw && typeof firstRaw === "object" && "totalPages" in firstRaw) {
+    // ── New paginated format ──
+    const paged = firstRaw as CilioPaginatedResponse
+    for (const j of paged.results) allJobs.set(j.orderNumber, j)
+    onProgress?.(allJobs.size, `page 1/${paged.totalPages} (paginated)`)
 
-      if (batch.length === 0) {
-        hasMore = false
-      } else {
-        for (const j of batch) {
+    for (let page = 2; page <= paged.totalPages; page++) {
+      const pageQ = new URLSearchParams(q.toString())
+      pageQ.set("PageNumber", String(page))
+      const pagePath = `/job/search?${pageQ.toString().replace(/%3A/g, ":")}`
+      try {
+        const rawPage = await cilioFetch<CilioPaginatedResponse>(pagePath)
+        for (const j of rawPage.results) {
           if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
         }
-        onProgress?.(allJobs.size, `page ${page} (paginated)`)
-        if (batch.length < REQUESTED_PAGE_SIZE) hasMore = false
-        else page++
+        onProgress?.(allJobs.size, `page ${page}/${paged.totalPages} (paginated)`)
+      } catch (e: any) {
+        console.error(`[searchAllJobs] Page ${page} error:`, e?.message || String(e))
       }
     }
     return Array.from(allJobs.values())
   }
 
-  // Pagination didn't work — fall back to time-window splitting
-  console.log(`[searchAllJobs] Pagination not supported (got ${page1.length}, expected >${API_DEFAULT_CAP}). Falling back to date-window splitting.`)
-  for (const j of page1) allJobs.set(j.orderNumber, j)
-  onProgress?.(allJobs.size, `window: initial fetch`)
+  // ── Old format: fall back to date-window splitting ──
+  const firstBatch = extractJobArray(firstRaw)
+  for (const j of firstBatch) allJobs.set(j.orderNumber, j)
+  onProgress?.(allJobs.size, "initial fetch (date-window mode)")
+
+  const MAX_PER_WINDOW = 50
 
   // Generate weekly windows
   const windows: { start: Date; end: Date }[] = []
@@ -513,7 +538,7 @@ export async function searchAllJobs(
       return [] as CilioJob[]
     })
 
-    if (batch.length >= API_DEFAULT_CAP && ms > 3600000 && depth < 4) {
+    if (batch.length >= MAX_PER_WINDOW && ms > 3600000 && depth < 4) {
       const mid = new Date(start.getTime() + ms / 2)
       await fetchWindow(start, mid, depth + 1)
       await fetchWindow(mid, end, depth + 1)
