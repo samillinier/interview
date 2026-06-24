@@ -39,14 +39,14 @@ export async function GET(request: NextRequest) {
   }).catch((e: any) => ({ error: e?.message || String(e) }))
 
   // Test 5: Raw calls to test different pagination param formats
-  async function rawSearch(extraParams: Record<string, string>): Promise<number> {
+  interface SearchResult { count: number; hasXTotalCount: string | null; xPagination: string | null; linkHeader: string | null; sample1: number | null }
+  async function rawSearch(extraParams: Record<string, string>): Promise<SearchResult> {
     const url = new URL(`${baseUrl}/job/search`)
     url.searchParams.set("OrderModifiedDateStart", start3m.toISOString())
     url.searchParams.set("OrderModifiedDateEnd", end.toISOString())
     for (const [k, v] of Object.entries(extraParams)) {
       url.searchParams.set(k, v)
     }
-    // URLSearchParams encodes : → %3A, Cilio doesn't like that
     const query = url.searchParams.toString().replace(/%3A/g, ":")
     const res = await fetch(`${baseUrl}/job/search?${query}`, {
       headers: {
@@ -56,15 +56,29 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(10000),
     })
     const json = await res.json()
-    return Array.isArray(json) ? json.length : 0
+    const arr = Array.isArray(json) ? json : []
+    return {
+      count: arr.length,
+      sample1: arr[0]?.orderNumber ?? null,
+      hasXTotalCount: res.headers.get("x-total-count") || res.headers.get("X-Total-Count"),
+      xPagination: res.headers.get("x-pagination") || res.headers.get("X-Pagination"),
+      linkHeader: res.headers.get("link") || res.headers.get("Link"),
+    }
   }
 
-  const skipTakeCount = await rawSearch({ Skip: "0", Take: "100" }).catch(() => -1)
-  const offsetLimitCount = await rawSearch({ Offset: "0", Limit: "100" }).catch(() => -1)
-  const camelSkipTake = await rawSearch({ skip: "0", take: "100" }).catch(() => -1)
-  const camelOffsetLimit = await rawSearch({ offset: "0", limit: "100" }).catch(() => -1)
-  const perPage = await rawSearch({ Page: "1", PerPage: "100" }).catch(() => -1)
-  const pageSizeAlt = await rawSearch({ Page: "1", PageSize: "200" }).catch(() => -1)
+  async function rawSearchArray(extraParams: Record<string, string>): Promise<number> {
+    return (await rawSearch(extraParams).catch(() => ({ count: -1 }))).count
+  }
+
+  const skipTake = await rawSearch({ Skip: "0", Take: "100" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  const odataTopSkip = await rawSearch({ "$top": "100", "$skip": "0" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  const odataTopSkipNoDollar = await rawSearch({ top: "100", skip: "0" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  const pageSize100 = await rawSearch({ page: "1", pageSize: "100" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  const pageSize200 = await rawSearch({ page: "1", pageSize: "200" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  const pageSize500 = await rawSearch({ page: "1", pageSize: "500" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  const cursorToken = await rawSearch({ continuationToken: "0" }).catch(() => ({ count: -1, hasXTotalCount: null, xPagination: null, linkHeader: null, sample1: null }))
+  // No date filter at all — just pagination params
+  const noFilterPage100 = await rawSearchArray({ page: "1", pageSize: "100" }).catch(() => -1)
 
   return NextResponse.json({
     env: {
@@ -85,12 +99,14 @@ export async function GET(request: NextRequest) {
       ? { count: wideNoPage.length, sample1: wideNoPage[0]?.orderNumber, sample2: wideNoPage[1]?.orderNumber, dateRange: `${start3m.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}` }
       : wideNoPage,
     paginationTests: {
-      skipTake: skipTakeCount,
-      offsetLimit: offsetLimitCount,
-      camelSkipTake,
-      camelOffsetLimit,
-      perPage,
-      pageSize200: pageSizeAlt,
+      skipTake: skipTake,
+      odataTopSkip,
+      odataTopSkipNoDollar,
+      pageSize100,
+      pageSize200,
+      pageSize500,
+      cursorToken,
+      noFilter_pageSize100: noFilterPage100,
     },
   })
 }
