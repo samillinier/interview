@@ -4519,6 +4519,7 @@ export default function InstallerProfileViewPage() {
           )}
 
           {/* Attachments */}
+          {!isManager && (
           <motion.div
             id="attachments"
             initial={{ opacity: 0, y: 20 }}
@@ -4671,7 +4672,7 @@ export default function InstallerProfileViewPage() {
                                           })()}
                                         </span>
                                       )}
-                                      {doc?.type === 'business_registration' && !doc?.expiryDate && canDelete && (
+                                      {doc?.type === 'business_registration' && !doc?.expiryDate && (
                                         <button
                                           type="button"
                                           onClick={() => parseBtrExpiryForDocument(doc.id)}
@@ -4682,7 +4683,7 @@ export default function InstallerProfileViewPage() {
                                           {btrParseBusyByDocId[doc.id] ? 'Parsing...' : 'Parse expiry'}
                                         </button>
                                       )}
-                                      {doc?.id && canDelete && (
+                                      {doc?.id && (
                                         <>
                                           <div className="relative">
                                             <select
@@ -4760,7 +4761,7 @@ export default function InstallerProfileViewPage() {
                           )}
                           
                           {/* Verification Link Section - Only for specific document types */}
-                          {canDelete && existing?.id && hasVerificationLinkFeature && (
+                          {existing?.id && hasVerificationLinkFeature && (
                             <div className="mt-3 space-y-2">
                               {isEditingLink ? (
                                 <div className="space-y-2">
@@ -4856,7 +4857,6 @@ export default function InstallerProfileViewPage() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {canDelete && (
                         <button
                           type="button"
                           onClick={() => void handleToggleDocTypeNull(docType.id)}
@@ -4872,8 +4872,6 @@ export default function InstallerProfileViewPage() {
                           />
                           NULL
                         </button>
-                        )}
-                        {canDelete && (
                         <label
                           className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
                             isUploading
@@ -4896,7 +4894,7 @@ export default function InstallerProfileViewPage() {
                             }}
                           />
                         </label>
-                        )}
+
 
                         {existing?.id && hasVerificationLinkFeature && verificationLink && (
                           <a
@@ -4932,6 +4930,69 @@ export default function InstallerProfileViewPage() {
               <p className="text-[11px] text-slate-500 mt-3">
                 Allowed: PDF, DOC, DOCX, JPG, PNG (Max 10MB). All document types support multiple uploads.
               </p>
+            </div>
+          </motion.div>
+          )}
+
+          {/* Lead Certificates — visible to all roles */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.325 }}
+            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm scroll-mt-20"
+          >
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Lead Certificates</h2>
+                <p className="text-sm text-slate-500">Lead-related certifications and documents</p>
+              </div>
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-brand-green" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {(() => {
+                const LEAD_DOC_TYPES = [
+                  { id: 'lrrp', name: 'Lead Renovator Certificate (LRRP)' },
+                  { id: 'lead_firm_certificate', name: 'Lead Firm Certificate' },
+                ] as const
+                
+                return LEAD_DOC_TYPES.map((leadType) => {
+                  const realDocs = documents.filter((d: any) => d?.type === leadType.id && !isStatusOnlyDocument(d))
+                  return (
+                    <div key={leadType.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                      <h3 className="font-semibold text-slate-700 mb-3">{leadType.name}</h3>
+                      {realDocs.length === 0 ? (
+                        <p className="text-sm text-slate-400 italic">No document uploaded</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {realDocs.map((doc: any) => {
+                            const docName = doc?.name || doc?.fileName || 'Document'
+                            const docUrl = doc?.url || doc?.fileUrl
+                            return (
+                              <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
+                                <span className="text-xs text-slate-700 truncate flex-1 mr-2">{docName}</span>
+                                {docUrl && (
+                                  <a
+                                    href={docUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex-shrink-0"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    View
+                                  </a>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              })()}
             </div>
           </motion.div>
 
