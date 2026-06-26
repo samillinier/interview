@@ -4934,131 +4934,6 @@ export default function InstallerProfileViewPage() {
           </motion.div>
           )}
 
-          {/* Lead Certificates — visible to all roles */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.325 }}
-            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm scroll-mt-20"
-          >
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Lead Certificates</h2>
-                <p className="text-sm text-slate-500">Lead-related certifications and documents</p>
-              </div>
-              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-brand-green" />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* LRRP */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-                <h3 className="font-semibold text-slate-700 mb-3">Lead Renovator Certificate (LRRP)</h3>
-                {(() => {
-                  const realDocs = documents.filter((d: any) => d?.type === 'lrrp' && !isStatusOnlyDocument(d))
-                  const lrrpFieldDate = llrpExpiry
-                    ? new Date(llrpExpiry + (llrpExpiry.length === 10 ? 'T00:00:00' : ''))
-                    : null
-                  const formattedLrrpDate = lrrpFieldDate && !isNaN(lrrpFieldDate.getTime())
-                    ? lrrpFieldDate.toLocaleDateString()
-                    : null
-
-                  if (realDocs.length === 0 && !formattedLrrpDate) {
-                    return (
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="text-xs text-slate-400 italic">No expiration date set</span>
-                        </div>
-                        <p className="text-xs text-slate-400 italic pl-1">No document uploaded</p>
-                      </div>
-                    )
-                  }
-                  return (
-                    <div className="space-y-2">
-                      {formattedLrrpDate && (
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="text-xs text-slate-700">Expires: {formattedLrrpDate}</span>
-                        </div>
-                      )}
-                      {realDocs.map((doc: any) => {
-                        const docName = doc?.name || doc?.fileName || 'Document'
-                        const docUrl = doc?.url || doc?.fileUrl
-                        return (
-                          <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
-                            <span className="text-xs text-slate-700 truncate flex-1 mr-2">{docName}</span>
-                            {docUrl && (
-                              <a
-                                href={docUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex-shrink-0"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                View
-                              </a>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })()}
-              </div>
-
-              {/* Lead Firm Certificate */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-                <h3 className="font-semibold text-slate-700 mb-3">Lead Firm Certificate</h3>
-                {(() => {
-                  const realDocs = documents.filter((d: any) => d?.type === 'lead_firm_certificate' && !isStatusOnlyDocument(d))
-                  const latestDoc = latestDocForType(documents, 'lead_firm_certificate')
-                  const docExpiry = latestDoc?.expiryDate
-                    ? (() => {
-                        const d = new Date(latestDoc.expiryDate)
-                        return isNaN(d.getTime()) ? null : d.toLocaleDateString()
-                      })()
-                    : null
-
-                  if (realDocs.length === 0 && !docExpiry) {
-                    return <p className="text-sm text-slate-400 italic">No document or date</p>
-                  }
-                  return (
-                    <div className="space-y-2">
-                      {docExpiry && (
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="text-xs text-slate-700">Expires: {docExpiry}</span>
-                        </div>
-                      )}
-                      {realDocs.map((doc: any) => {
-                        const docName = doc?.name || doc?.fileName || 'Document'
-                        const docUrl = doc?.url || doc?.fileUrl
-                        return (
-                          <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
-                            <span className="text-xs text-slate-700 truncate flex-1 mr-2">{docName}</span>
-                            {docUrl && (
-                              <a
-                                href={docUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex-shrink-0"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                View
-                              </a>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-          </motion.div>
-
           {/* Agreements Section */}
           {!isManager && (
           <motion.div
@@ -5827,7 +5702,6 @@ export default function InstallerProfileViewPage() {
           )}
 
           {/* Insurance & Certificate Expiry Dates - Full Width Section */}
-          {!isManager && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -5928,7 +5802,6 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
-          )}
 
           {/* Enterprise Account / Chargeback Status - temporarily hidden */}
           {false && (
