@@ -4519,7 +4519,6 @@ export default function InstallerProfileViewPage() {
           )}
 
           {/* Attachments */}
-          {!isManager && (
           <motion.div
             id="attachments"
             initial={{ opacity: 0, y: 20 }}
@@ -4672,7 +4671,7 @@ export default function InstallerProfileViewPage() {
                                           })()}
                                         </span>
                                       )}
-                                      {doc?.type === 'business_registration' && !doc?.expiryDate && (
+                                      {doc?.type === 'business_registration' && !doc?.expiryDate && canDelete && (
                                         <button
                                           type="button"
                                           onClick={() => parseBtrExpiryForDocument(doc.id)}
@@ -4683,7 +4682,7 @@ export default function InstallerProfileViewPage() {
                                           {btrParseBusyByDocId[doc.id] ? 'Parsing...' : 'Parse expiry'}
                                         </button>
                                       )}
-                                      {doc?.id && (
+                                      {doc?.id && canDelete && (
                                         <>
                                           <div className="relative">
                                             <select
@@ -4761,7 +4760,7 @@ export default function InstallerProfileViewPage() {
                           )}
                           
                           {/* Verification Link Section - Only for specific document types */}
-                          {existing?.id && hasVerificationLinkFeature && (
+                          {canDelete && existing?.id && hasVerificationLinkFeature && (
                             <div className="mt-3 space-y-2">
                               {isEditingLink ? (
                                 <div className="space-y-2">
@@ -4857,6 +4856,7 @@ export default function InstallerProfileViewPage() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {canDelete && (
                         <button
                           type="button"
                           onClick={() => void handleToggleDocTypeNull(docType.id)}
@@ -4872,6 +4872,8 @@ export default function InstallerProfileViewPage() {
                           />
                           NULL
                         </button>
+                        )}
+                        {canDelete && (
                         <label
                           className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
                             isUploading
@@ -4894,7 +4896,7 @@ export default function InstallerProfileViewPage() {
                             }}
                           />
                         </label>
-
+                        )}
 
                         {existing?.id && hasVerificationLinkFeature && verificationLink && (
                           <a
@@ -4932,7 +4934,6 @@ export default function InstallerProfileViewPage() {
               </p>
             </div>
           </motion.div>
-          )}
 
           {/* Agreements Section */}
           {!isManager && (
