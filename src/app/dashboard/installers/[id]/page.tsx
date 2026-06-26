@@ -4965,7 +4965,15 @@ export default function InstallerProfileViewPage() {
                     : null
 
                   if (realDocs.length === 0 && !formattedLrrpDate) {
-                    return <p className="text-sm text-slate-400 italic">No document or date</p>
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="text-xs text-slate-400 italic">No expiration date set</span>
+                        </div>
+                        <p className="text-xs text-slate-400 italic pl-1">No document uploaded</p>
+                      </div>
+                    )
                   }
                   return (
                     <div className="space-y-2">
