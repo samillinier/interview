@@ -5050,7 +5050,6 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
-          </motion.div>
 
           {/* Agreements Section */}
           {!isManager && (
