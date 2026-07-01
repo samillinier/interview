@@ -6,7 +6,7 @@ import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 import prisma from "@/lib/db"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 30
+export const maxDuration = 120
 
 /**
  * GET /api/cilio/jobs
@@ -31,11 +31,20 @@ export async function GET(request: NextRequest) {
     const userTerm = searchTerm.trim()
 
     // If user typed a search term, try POJobNumber search first.
-    // If no term, fetch ALL jobs in a single call.
-    const allJobs = await cilio.searchJobs(
-      userTerm ? { poJobNumber: userTerm } : {}
-    ).catch(() => [] as any[])
-    console.log(`[Cilio API] searchJobs returned ${allJobs.length} jobs`)
+    // If no term, fetch ALL jobs using pagination with proper ordering.
+    let allJobs: any[] = []
+    if (userTerm) {
+      allJobs = await cilio.searchJobs({ poJobNumber: userTerm }).catch(() => [] as any[])
+    } else {
+      allJobs = await cilio.searchAllJobs({
+        monthsBack: 3,
+        pageSize: 500,
+        onProgress: (count, detail) => console.log(`[Cilio API] searchAllJobs: ${count} jobs (${detail})`),
+      }).catch(() => [] as any[])
+    }
+    // Sort by orderNumber descending (newest first)
+    allJobs.sort((a: any, b: any) => b.orderNumber - a.orderNumber)
+    console.log(`[Cilio API] Returning ${allJobs.length} jobs (sorted by orderNumber DESC)`)
 
     let filtered = allJobs
     if (statusFilter) {

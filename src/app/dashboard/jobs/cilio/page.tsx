@@ -304,6 +304,9 @@ export default function JobsPage() {
   const [totalFetched, setTotalFetched] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingAll, setIsSavingAll] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 20
+  const totalPages = Math.max(1, Math.ceil(jobs.length / ITEMS_PER_PAGE))
   const [saveResult, setSaveResult] = useState<{ synced: number } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -847,7 +850,7 @@ export default function JobsPage() {
                   type="text"
                   placeholder="Search by customer name, store, project number..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
                   onKeyDown={(e) => { if (e.key === 'Enter') fetchJobs(e.currentTarget.value, statusFilter, laborCategoryFilter, workroomFilter) }}
                   className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
                 />
@@ -860,7 +863,7 @@ export default function JobsPage() {
               <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
                   className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[140px]"
                 >
                   <option value="">All Statuses</option>
@@ -870,7 +873,7 @@ export default function JobsPage() {
                 </select>
                 <select
                   value={laborCategoryFilter}
-                  onChange={(e) => setLaborCategoryFilter(e.target.value)}
+                  onChange={(e) => { setLaborCategoryFilter(e.target.value); setCurrentPage(1) }}
                   className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[160px]"
                 >
                   <option value="">All Labor Categories</option>
@@ -880,7 +883,7 @@ export default function JobsPage() {
                 </select>
                 <select
                   value={workroomFilter}
-                  onChange={(e) => setWorkroomFilter(e.target.value)}
+                  onChange={(e) => { setWorkroomFilter(e.target.value); setCurrentPage(1) }}
                   className="flex-shrink-0 px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[155px]"
                 >
                   <option value="">All Workrooms</option>
@@ -924,8 +927,14 @@ export default function JobsPage() {
                 {workroomFilter && <> &middot; workroom <span className="font-medium text-brand-green">&ldquo;{workroomFilter}&rdquo;</span></>}
               </div>
 
-              <div className="space-y-3">
-                {jobs.map((job, index) => (
+              {(() => {
+                const startIdx = (currentPage - 1) * ITEMS_PER_PAGE
+                const pageJobs = jobs.slice(startIdx, startIdx + ITEMS_PER_PAGE)
+
+                return (
+                  <>
+                    <div className="space-y-3">
+                      {pageJobs.map((job, index) => (
             <motion.div
                     key={job.orderNumber}
                     initial={{ opacity: 0, y: 10 }}
@@ -1236,6 +1245,66 @@ export default function JobsPage() {
                 ))}
               </div>
             </>
+          )}
+
+          {/* ── Pagination Controls ── */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-200">
+              <p className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center flex-wrap justify-center gap-1 sm:gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  Prev
+                </button>
+                {(() => {
+                  const maxVisible = 5
+                  let start = Math.max(1, currentPage - Math.floor(maxVisible / 2))
+                  let end = Math.min(totalPages, start + maxVisible - 1)
+                  if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1)
+                  const buttons: number[] = []
+                  for (let i = start; i <= end; i++) buttons.push(i)
+                  return buttons.map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`min-w-[1.75rem] h-7 sm:w-8 sm:h-8 text-[10px] sm:text-xs font-medium rounded-lg transition-colors px-1 ${
+                        p === currentPage
+                          ? 'bg-brand-green text-white shadow-sm'
+                          : 'border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))
+                })()}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
           )}
 
           {/* ── Full Job Detail Modal ── */}

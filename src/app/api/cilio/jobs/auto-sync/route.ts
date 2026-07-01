@@ -182,7 +182,7 @@ async function runAutoSync(request: NextRequest) {
       },
       select: { orderNumber: true, scheduledInstallDate: true, installerName: true, installerId: true, crewPayTotal: true },
       orderBy: { orderNumber: "asc" },
-      take: 500,
+      take: 200,
     })
 
     if (needsEnrichment.length > 0) {
