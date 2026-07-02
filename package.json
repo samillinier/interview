@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "prisma generate && next dev --turbo",
-    "build": "prisma migrate deploy && prisma generate && next build",
-    "vercel-build": "prisma migrate deploy && prisma generate && next build",
+    "build": "prisma generate && next build",
+    "vercel-build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
