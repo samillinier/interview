@@ -1,0 +1,924 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model Admin {
+  id                     String    @id @default(cuid())
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime @updatedAt
+  email                  String    @unique
+  name                   String?
+  isActive               Boolean   @default(true)
+  createdBy              String?
+  role                   AdminRole @default(ADMIN)
+  photoUrl               String?
+  reportColumnVisibility String?
+
+  @@index([email])
+  @@index([isActive])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  adminEmail  String
+  adminId     String?
+  action      String
+  targetType  String
+  targetId    String
+  targetLabel String?
+  before      Json?
+  after       Json?
+
+  @@index([action])
+  @@index([adminEmail])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model CilioJobRecord {
+  id                       String     @id @default(cuid())
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime @updatedAt
+  orderNumber              Int        @unique
+  orderStatusDescription   String?
+  jobType                  String     @default("scheduled")
+  statusChangedAt          DateTime?
+  storeNumber              String?
+  storeName                String?
+  laborCategoryDescription String?
+  workroom                 String?
+  scheduledInstallDate     DateTime?
+  measureDate              DateTime?
+  bookingDate              DateTime?
+  installerId              String?
+  installerName            String?
+  crewPayTotal             Decimal?   @db.Decimal(12, 2)
+  cilioPayload             Json
+  Installer                Installer? @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([installerId])
+  @@index([jobType])
+  @@index([orderNumber])
+}
+
+model Claim {
+  id                   String          @id @default(cuid())
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime @updatedAt
+  customer             String?
+  jobNumber            String?
+  workroom             String?
+  installationDate     DateTime?
+  installerId          String?
+  installerName        String?
+  category             String?
+  claimNumber          String?
+  status               String          @default("open")
+  dateOfLoss           DateTime?
+  damage               String?
+  amount               Decimal?        @db.Decimal(12, 2)
+  updateNotes          String?
+  createdBy            String?
+  updatedBy            String?
+  dropdown             String?
+  lowesClaimNumber     String?
+  insuranceCompany     String?
+  adjusterName         String?
+  adjusterPhone        String?
+  adjusterEmail        String?
+  installerCompanyName String?
+  Installer            Installer?      @relation(fields: [installerId], references: [id])
+  ClaimDocument        ClaimDocument[]
+
+  @@index([claimNumber])
+  @@index([installerId])
+  @@index([jobNumber])
+  @@index([lowesClaimNumber])
+  @@index([status])
+  @@index([workroom])
+}
+
+model ClaimDocument {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  claimId   String
+  name      String
+  url       String
+  Claim     Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+model Communication {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  installerId String
+  type        String
+  subject     String?
+  content     String
+  status      String    @default("sent")
+  sentAt      DateTime  @default(now())
+  Installer   Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+}
+
+model DashboardUpdate {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  updateNumber   String?
+  title          String
+  description    String
+  photoUrl       String?
+  createdByEmail String?
+  createdByName  String?
+  isActive       Boolean  @default(true)
+  showNavBadge   Boolean  @default(false)
+  navBadgeCount  Int?
+
+  @@index([createdAt])
+  @@index([isActive])
+  @@index([showNavBadge])
+}
+
+model Document {
+  id                     String    @id @default(cuid())
+  createdAt              DateTime  @default(now())
+  installerId            String
+  type                   String
+  name                   String
+  url                    String
+  verified               Boolean   @default(false)
+  verifiedAt             DateTime?
+  expiryDate             DateTime?
+  verificationLink       String?
+  verificationLinkStatus String?
+  adminRejectionNote     String?
+  adminCorrectionUrl     String?
+  adminCorrectionName    String?
+  Installer              Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+}
+
+model Installer {
+  id                                   String                   @id @default(cuid())
+  createdAt                            DateTime                 @default(now())
+  updatedAt                            DateTime @updatedAt
+  firstName                            String
+  lastName                             String
+  email                                String                   @unique
+  phone                                String?
+  yearsOfExperience                    Int?
+  flooringSpecialties                  String?
+  previousEmployers                    String?
+  hasOwnCrew                           Boolean                  @default(false)
+  crewSize                             Int?
+  hasOwnTools                          Boolean                  @default(false)
+  hasVehicle                           Boolean                  @default(false)
+  toolsDescription                     String?
+  serviceAreas                         String?
+  willingToTravel                      Boolean                  @default(false)
+  maxTravelDistance                    Int?
+  availability                         String?
+  canStartImmediately                  Boolean                  @default(false)
+  preferredStartDate                   DateTime?
+  hasInsurance                         Boolean                  @default(false)
+  insuranceType                        String?
+  hasLicense                           Boolean                  @default(false)
+  licenseNumber                        String?
+  licenseExpiry                        DateTime?
+  hasGeneralLiability                  Boolean                  @default(false)
+  hasCommercialAutoLiability           Boolean                  @default(false)
+  hasWorkersComp                       Boolean                  @default(false)
+  hasWorkersCompExemption              Boolean                  @default(false)
+  isSunbizRegistered                   Boolean                  @default(false)
+  isSunbizActive                       Boolean                  @default(false)
+  hasBusinessLicense                   Boolean                  @default(false)
+  canPassBackgroundCheck               Boolean?
+  backgroundCheckDetails               String?
+  vehicleDescription                   String?
+  flooringSkills                       String?
+  mondayToFridayAvailability           String?
+  saturdayAvailability                 String?
+  openToTravel                         Boolean                  @default(false)
+  travelLocations                      String?
+  status                               String                   @default("pending")
+  passFailReason                       String?
+  overallScore                         Int?
+  notes                                String?
+  followUpDate                         DateTime?
+  followUpReason                       String?
+  companyCity                          String?
+  companyName                          String?
+  companyState                         String?
+  companyStreetAddress                 String?
+  companyTitle                         String?
+  companyZipCode                       String?
+  dailyCeramicTileSqft                 Int?
+  dailyLaminateSqft                    Int?
+  dailyLuxuryVinylPlankSqft            Int?
+  dailyNailDownSolidHardwoodSqft       Int?
+  dailyPorcelainTileSqft               Int?
+  dailyStoneTileSqft                   Int?
+  dailyStretchInCarpetSqft             Int?
+  dailyTileBacksplashSqft              Int?
+  dailyVinylCompositionTileSqft        Int?
+  emailVerificationToken               String?
+  emailVerifiedAt                      DateTime?
+  installsCeramicTile                  Boolean?
+  installsGlueDownCarpet               Boolean?
+  installsLaminateOnStairs             Boolean?
+  installsLuxuryVinylPlank             Boolean?
+  installsLuxuryVinylTile              Boolean?
+  installsNailDownSolidHardwood        Boolean?
+  installsPorcelainTile                Boolean?
+  installsSheetVinyl                   Boolean?
+  installsStapleDownEngineeredHardwood Boolean?
+  installsStoneTile                    Boolean?
+  installsStretchInCarpet              Boolean?
+  installsTileBacksplash               Boolean?
+  installsTrim                         Boolean?
+  installsVinylCompositionTile         Boolean?
+  movesFurniture                       Boolean?
+  ndaAgreedAt                          DateTime?
+  offersTileRemoval                    Boolean?
+  passwordHash                         String?
+  passwordResetToken                   String?
+  paymentAccountName                   String?
+  paymentAccountNumber                 String?
+  paymentAccountType                   String?
+  paymentAuthorizationDate             DateTime?
+  paymentAuthorizationName             String?
+  paymentAuthorizationSignature        String?
+  paymentBankName                      String?
+  paymentBusinessAddress               String?
+  paymentCompanyName                   String?
+  paymentContactPerson                 String?
+  paymentEmailAddress                  String?
+  paymentPhoneNumber                   String?
+  paymentRoutingNumber                 String?
+  photoUrl                             String?
+  serviceAgreementDate                 DateTime?
+  serviceAgreementName                 String?
+  serviceAgreementSignature            String?
+  serviceAgreementSignedAt             DateTime?
+  username                             String?                  @unique
+  wantsToAddCarpet                     Boolean?
+  wantsToAddHardwood                   Boolean?
+  wantsToAddLaminate                   Boolean?
+  wantsToAddTile                       Boolean?
+  wantsToAddVinyl                      Boolean?
+  companyAddress                       String?
+  companyCounty                        String?
+  employerLiabilityPolicyNumber        String?
+  feiEin                               String?
+  automobileLiabilityExpiry            DateTime?
+  btrExpiry                            DateTime?
+  employersLiabilityExpiry             DateTime?
+  generalLiabilityExpiry               DateTime?
+  llrpExpiry                           DateTime?
+  workersCompExemExpiry                DateTime?
+  automobileLiabilityExpiryDates       String?
+  workersCompExemExpiryDates           String?
+  digitalId                            String?
+  workroom                             String?
+  referralCode                         String?                  @unique
+  referredByInstallerId                String?
+  remarks                              String?
+  llrpExpiryDates                      String?
+  trackerStage                         InstallerTrackerStage    @default(PENDING)
+  complianceStatus                     ComplianceStatus?
+  primaryFlooringSurface               String?
+  passedInterviewEmailSentAt           DateTime?
+  managerRemarks                       String?
+  cilioEnterpriseGroupNumber           Int?
+  dateNullFields                       String?
+  CilioJobRecord                       CilioJobRecord[]
+  Claim                                Claim[]
+  Communication                        Communication[]
+  Document                             Document[]
+  Installer                            Installer?               @relation("InstallerToInstaller", fields: [referredByInstallerId], references: [id])
+  other_Installer                      Installer[]              @relation("InstallerToInstaller")
+  InstallerAgreement                   InstallerAgreement[]
+  InstallerChangeRequest               InstallerChangeRequest[]
+  InstallerHistory                     InstallerHistory[]
+  InstallerTracking                    InstallerTracking[]
+  Interview                            Interview[]
+  JobApplication                       JobApplication[]
+  LtrSurveyDelivery                    LtrSurveyDelivery[]
+  Notification                         Notification[]
+  StaffMember                          StaffMember[]
+
+  @@index([referredByInstallerId])
+}
+
+model InstallerAgreement {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime @updatedAt
+  installerId     String
+  type            String
+  status          String    @default("draft")
+  payload         Json
+  signedAt        DateTime?
+  approvedAt      DateTime?
+  approvedBy      String?
+  adminSignature  String?
+  adminSignedDate String?
+  Installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@unique([installerId, type])
+  @@index([installerId])
+  @@index([status])
+  @@index([type])
+}
+
+model InstallerChangeRequest {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime @updatedAt
+  installerId     String
+  status          String    @default("pending")
+  source          String?
+  payload         Json
+  submittedBy     String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  sections        Json?
+  Installer       Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([installerId])
+  @@index([status])
+}
+
+model InstallerHistory {
+  id                                   String    @id @default(cuid())
+  createdAt                            DateTime  @default(now())
+  updatedAt                            DateTime @updatedAt
+  installerId                          String
+  year                                 Int
+  firstName                            String?
+  lastName                             String?
+  phone                                String?
+  yearsOfExperience                    Int?
+  flooringSpecialties                  String?
+  flooringSkills                       String?
+  previousEmployers                    String?
+  hasOwnCrew                           Boolean?
+  crewSize                             Int?
+  hasOwnTools                          Boolean?
+  hasVehicle                           Boolean?
+  toolsDescription                     String?
+  vehicleDescription                   String?
+  serviceAreas                         String?
+  willingToTravel                      Boolean?
+  maxTravelDistance                    Int?
+  availability                         String?
+  canStartImmediately                  Boolean?
+  preferredStartDate                   DateTime?
+  mondayToFridayAvailability           String?
+  saturdayAvailability                 String?
+  hasInsurance                         Boolean?
+  insuranceType                        String?
+  hasLicense                           Boolean?
+  licenseNumber                        String?
+  licenseExpiry                        DateTime?
+  hasGeneralLiability                  Boolean?
+  hasCommercialAutoLiability           Boolean?
+  hasWorkersComp                       Boolean?
+  hasWorkersCompExemption              Boolean?
+  isSunbizRegistered                   Boolean?
+  isSunbizActive                       Boolean?
+  hasBusinessLicense                   Boolean?
+  canPassBackgroundCheck               Boolean?
+  backgroundCheckDetails               String?
+  companyName                          String?
+  companyTitle                         String?
+  companyStreetAddress                 String?
+  companyCity                          String?
+  companyState                         String?
+  companyZipCode                       String?
+  companyCounty                        String?
+  companyAddress                       String?
+  wantsToAddCarpet                     Boolean?
+  installsStretchInCarpet              Boolean?
+  dailyStretchInCarpetSqft             Int?
+  installsGlueDownCarpet               Boolean?
+  wantsToAddHardwood                   Boolean?
+  installsNailDownSolidHardwood        Boolean?
+  dailyNailDownSolidHardwoodSqft       Int?
+  installsStapleDownEngineeredHardwood Boolean?
+  wantsToAddLaminate                   Boolean?
+  dailyLaminateSqft                    Int?
+  installsLaminateOnStairs             Boolean?
+  wantsToAddVinyl                      Boolean?
+  installsSheetVinyl                   Boolean?
+  installsLuxuryVinylPlank             Boolean?
+  dailyLuxuryVinylPlankSqft            Int?
+  installsLuxuryVinylTile              Boolean?
+  installsVinylCompositionTile         Boolean?
+  dailyVinylCompositionTileSqft        Int?
+  wantsToAddTile                       Boolean?
+  installsCeramicTile                  Boolean?
+  dailyCeramicTileSqft                 Int?
+  installsPorcelainTile                Boolean?
+  dailyPorcelainTileSqft               Int?
+  installsStoneTile                    Boolean?
+  dailyStoneTileSqft                   Int?
+  offersTileRemoval                    Boolean?
+  installsTileBacksplash               Boolean?
+  dailyTileBacksplashSqft              Int?
+  movesFurniture                       Boolean?
+  installsTrim                         Boolean?
+  notes                                String?
+  automobileLiabilityExpiryDates       String?
+  workersCompExemExpiryDates           String?
+  digitalId                            String?
+  workroom                             String?
+  Installer                            Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@unique([installerId, year])
+  @@index([installerId])
+  @@index([year])
+}
+
+model InstallerTracking {
+  id                     String     @id @default(cuid())
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime @updatedAt
+  installerId            String?
+  type                   String
+  title                  String
+  description            String?
+  status                 String     @default("pending")
+  priority               String     @default("normal")
+  category               String?
+  metadata               Json?
+  resolvedAt             DateTime?
+  resolvedBy             String?
+  notes                  String?
+  matrixSortOrder        Int        @default(0)
+  matrixCellOverrides    Json?
+  reportColumnVisibility String?
+  Installer              Installer? @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([installerId])
+  @@index([priority])
+  @@index([status])
+  @@index([type])
+  @@index([type, matrixSortOrder])
+}
+
+model Interview {
+  id                       String              @id @default(cuid())
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime @updatedAt
+  installerId              String
+  status                   String              @default("in_progress")
+  startedAt                DateTime            @default(now())
+  completedAt              DateTime?
+  transcript               String?
+  extractedData            String?
+  aiAnalysis               String?
+  incompleteReminderSentAt DateTime?
+  Installer                Installer           @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  InterviewResponse        InterviewResponse[]
+
+  @@index([status, startedAt, incompleteReminderSentAt])
+}
+
+model InterviewResponse {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  interviewId    String
+  questionId     String
+  questionText   String
+  answerText     String?
+  answerAudio    String?
+  extractedValue String?
+  confidence     Float?
+  Interview      Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+}
+
+model Inventory {
+  id                String    @id @default(cuid())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime @updatedAt
+  propertyId        String
+  itemName          String
+  sku               String?
+  category          String?
+  quantity          Float     @default(0)
+  unitOfMeasure     String?   @default("unit")
+  cost              Float?
+  supplier          String?
+  supplierContact   String?
+  location          String?
+  warehouse         String?
+  reorderLevel      Float?
+  minimumStock      Float?
+  maximumStock      Float?
+  status            String    @default("active")
+  brand             String?
+  manufacturer      String?
+  barcode           String?
+  serialNumber      String?
+  lastRestocked     DateTime?
+  notes             String?
+  photoUrl          String?
+  responsiblePerson String?
+  expirationDate    DateTime?
+  purchaseDate      DateTime?
+  warrantyDate      DateTime?
+  condition         String?
+  maintenanceNotes  String?
+  usagePlacement    String?   @default("in_use")
+  Property          Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([barcode])
+  @@index([category])
+  @@index([propertyId])
+  @@index([sku])
+  @@index([status])
+}
+
+model Job {
+  id             String           @id @default(cuid())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime @updatedAt
+  title          String
+  description    String
+  location       String
+  jobType        String
+  requirements   String?
+  skills         String?
+  payRange       String?
+  startDate      DateTime?
+  endDate        DateTime?
+  status         String           @default("active")
+  targetStatus   String?
+  benefits       String?
+  JobApplication JobApplication[]
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model JobApplication {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  jobId       String
+  installerId String
+  status      String    @default("pending")
+  notes       String?
+  Installer   Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  Job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, installerId])
+  @@index([installerId])
+  @@index([jobId])
+  @@index([status])
+}
+
+model Licence {
+  id                          String            @id @default(cuid())
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime @updatedAt
+  county                      String?
+  city                        String?
+  isActive                    Boolean           @default(true)
+  areas                       String?
+  licenceType                 String?
+  licenceNumber               String?
+  licenceExpirationDate       DateTime?
+  lastPaymentDate             DateTime?
+  cost                        Decimal?          @db.Decimal(12, 2)
+  bondRequired                Boolean           @default(false)
+  notes                       String?
+  competenceCardsNotes        String?
+  businessTaxOccLicenceNumber String?
+  taxOccExpirationDate        DateTime?
+  taxOccCost                  Decimal?          @db.Decimal(12, 2)
+  createdBy                   String?
+  updatedBy                   String?
+  businessTaxReceiptNotes     String?
+  category                    String?
+  country                     String?
+  LicenceDocument             LicenceDocument[]
+
+  @@index([category])
+  @@index([city])
+  @@index([county])
+  @@index([isActive])
+  @@index([licenceNumber])
+  @@index([licenceType])
+}
+
+model LicenceDocument {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  licenceId String
+  name      String
+  url       String
+  Licence   Licence  @relation(fields: [licenceId], references: [id], onDelete: Cascade)
+
+  @@index([licenceId])
+}
+
+model Location {
+  id                    String             @id @default(cuid())
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime @updatedAt
+  propertyId            String
+  location              String?
+  aliasLocation         String?
+  propertyAddress       String?
+  leaseStart            DateTime?
+  leaseRenewal          DateTime?
+  landlord              String?
+  landlordPhone         String?
+  propertyMgr           String?
+  rentAmount            Float?
+  depositAmt            Float?
+  depositPayback        Float?
+  status                String?            @default("active")
+  insuranceRequirements String?
+  subBroker             String?
+  sublessee             String?
+  subRent               Float?
+  subDeposit            Float?
+  subContacts           String?
+  subPhone              String?
+  sqFeet                Float?
+  photoUrl              String?
+  depositPaybackDate    DateTime?
+  wifiName              String?
+  garbageProvider       String?
+  propaneProvider       String?
+  internetProvider      String?
+  powerProvider         String?
+  securityLock          String?
+  waterProvider         String?
+  wifiPassword          String?
+  Property              Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  LocationDocument      LocationDocument[]
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+model LocationDocument {
+  id         String                   @id @default(cuid())
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime @updatedAt
+  locationId String
+  category   LocationDocumentCategory
+  name       String
+  url        String
+  Location   Location                 @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([locationId])
+}
+
+model LtrSurveyDelivery {
+  id             String         @id @default(cuid())
+  createdAt      DateTime       @default(now())
+  installerId    String
+  batchId        String
+  workroom       String
+  company        String
+  installer      String
+  sentByEmail    String?
+  LtrUploadBatch LtrUploadBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  Installer      Installer      @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@unique([installerId, batchId, workroom, company, installer])
+  @@index([batchId])
+  @@index([installerId, createdAt])
+}
+
+model LtrSurveyRecord {
+  id                      String         @id @default(cuid())
+  createdAt               DateTime       @default(now())
+  batchId                 String
+  region                  String?
+  laborCategory           String?
+  surveyComment           String?
+  surveyDate              DateTime?
+  poNumber                String?
+  woNumber                String?
+  ltrScore                Int?
+  company                 String?
+  installer               String?
+  customer                String?
+  workroom                String?
+  storeName               String?
+  craftScore              Int?
+  professionalScore       Int?
+  homeImprovementScore    Int?
+  projectValueScore       Int?
+  installerKnowledgeScore Int?
+  timeTaken               String?
+  LtrUploadBatch          LtrUploadBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([workroom, company, installer])
+}
+
+model LtrUploadBatch {
+  id                String              @id @default(cuid())
+  createdAt         DateTime            @default(now())
+  fileName          String?
+  uploadedByEmail   String?
+  rowCount          Int                 @default(0)
+  deletedAt         DateTime?
+  LtrSurveyDelivery LtrSurveyDelivery[]
+  LtrSurveyRecord   LtrSurveyRecord[]
+}
+
+model Notification {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  installerId    String
+  type           String
+  title          String
+  content        String
+  isRead         Boolean   @default(false)
+  readAt         DateTime?
+  priority       String    @default("normal")
+  link           String?
+  senderId       String?
+  senderType     String?
+  attachmentName String?
+  attachmentUrl  String?
+  Installer      Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([installerId])
+  @@index([isRead])
+  @@index([type])
+}
+
+model Property {
+  id                 String               @id @default(cuid())
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime @updatedAt
+  firstName          String
+  lastName           String
+  email              String               @unique
+  phone              String?
+  username           String?              @unique
+  passwordHash       String?
+  passwordResetToken String?
+  status             String               @default("active")
+  photoUrl           String?
+  companyName        String?
+  companyAddress     String?
+  notes              String?
+  Inventory          Inventory[]
+  Location           Location[]
+  PropertySafetyWalk PropertySafetyWalk[]
+  Vehicle            Vehicle[]
+
+  @@index([email])
+  @@index([status])
+  @@index([username])
+}
+
+model PropertySafetyWalk {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  propertyId     String
+  inspectorName  String
+  inspectionDate DateTime
+  startTime      String
+  completionTime String
+  workroom       String
+  comments       String?
+  actionPlan     String?
+  payload        Json
+  analytics      Json?
+  Property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([inspectionDate])
+  @@index([propertyId])
+}
+
+model ScreeningCriteria {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  rules       String
+  weights     String?
+}
+
+model StaffMember {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime @updatedAt
+  installerId    String
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  photoUrl       String?
+  title          String?
+  notes          String?
+  digitalId      String?
+  expirationDate DateTime?
+  status         String    @default("active")
+  Installer      Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([installerId])
+  @@index([status])
+}
+
+model Vehicle {
+  id                    String            @id @default(cuid())
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime @updatedAt
+  propertyId            String
+  vehicleYear           Int?
+  vehicleMake           String?
+  vehicleModel          String?
+  assignedDriver        String?
+  vin                   String?
+  location              String?
+  locationAddress       String?
+  plate                 String?
+  tagRenewal            DateTime?
+  transponderNumber     String?
+  mileageAsOfAugust2025 Float?
+  photoUrl              String?
+  category              String?
+  Property              Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  VehicleDocument       VehicleDocument[]
+
+  @@index([category])
+  @@index([plate])
+  @@index([propertyId])
+  @@index([vin])
+}
+
+model VehicleDocument {
+  id        String                  @id @default(cuid())
+  createdAt DateTime                @default(now())
+  updatedAt DateTime @updatedAt
+  vehicleId String
+  category  VehicleDocumentCategory
+  name      String
+  url       String
+  Vehicle   Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([vehicleId])
+}
+
+enum AdminRole {
+  ADMIN
+  MODERATOR
+  MANAGER
+  SUPER_ADMIN
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  NOT_COMPLIANT
+  IN_PROGRESS
+}
+
+enum InstallerTrackerStage {
+  PENDING
+  QUALIFIED
+  WAITING_FOR_APPROVAL
+  VERIFICATION_IN_PROGRESS
+  BACKGROUND
+  ACTIVE_APPROVED
+}
+
+enum LocationDocumentCategory {
+  lease
+  misc
+}
+
+enum VehicleDocumentCategory {
+  vehicle
+  misc
+}

@@ -1,0 +1,541 @@
+import { NextRequest, NextResponse } from 'next/server'
+import prisma from '@/lib/db'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const noStoreHeaders = {
+  'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+  Pragma: 'no-cache',
+} as const
+
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: noStoreHeaders })
+  }
+  try {
+    // Use raw SQL to extract only the fields analytics needs from cilioPayload.
+    // Raw JSON columns in Prisma select the full blob (20-50KB per row), which
+    // was a major contributor to the 2,661 GB/month Neon egress.
+    const records = await prisma.$queryRawUnsafe<Array<{
+      id: string; orderNumber: number; orderStatusDescription: string | null;
+      jobType: string; storeNumber: string | null; storeName: string | null;
+      laborCategoryDescription: string | null; workroom: string | null;
+      scheduledInstallDate: Date | null; measureDate: Date | null;
+      bookingDate: Date | null; installerName: string | null;
+      installerId: string | null; createdAt: Date; updatedAt: Date;
+      cilioPoAmount: string | null;
+      cilioCustomerLastName: string | null;
+      cilioCurrentOrderStatusDate: string | null;
+      cilioDesiredInstallDate: string | null;
+      cilioDateInfoCurrentDate: string | null;
+      cilioLeadCreationDate: string | null;
+    }>>(
+      `SELECT
+        id, "orderNumber", "orderStatusDescription", "jobType",
+        "storeNumber", "storeName", "laborCategoryDescription",
+        "workroom", "scheduledInstallDate", "measureDate",
+        "bookingDate", "installerName", "installerId",
+        "createdAt", "updatedAt",
+        "cilioPayload"->>'poAmount' as "cilioPoAmount",
+        "cilioPayload"->>'customerLastName' as "cilioCustomerLastName",
+        "cilioPayload"->>'currentOrderStatusDate' as "cilioCurrentOrderStatusDate",
+        "cilioPayload"->'dateInformation'->>'desiredInstallDate' as "cilioDesiredInstallDate",
+        "cilioPayload"->'dateInformation'->>'currentDate' as "cilioDateInfoCurrentDate",
+        "cilioPayload"->'dateInformation'->>'leadCreationDate' as "cilioLeadCreationDate"
+      FROM "CilioJobRecord"
+      ORDER BY "createdAt" DESC
+      LIMIT 100000`
+    )
+
+    // Helper: resolve the best available date for a record (same logic as before,
+    // but using the flat extracted fields instead of parsing cilioPayload JSON)
+    const resolveDate = (r: typeof records[number]): Date | string | null => {
+      if (r.scheduledInstallDate) return r.scheduledInstallDate
+      return r.cilioCurrentOrderStatusDate
+        || r.cilioDesiredInstallDate
+        || r.cilioDateInfoCurrentDate
+        || r.createdAt
+    }
+
+    // Helper: get PO amount from extracted field
+    const getPoAmount = (r: typeof records[number]): number | null => {
+      const v = r.cilioPoAmount
+      if (v == null || isNaN(Number(v))) return null
+      return Number(v)
+    }
+
+    const total = records.length
+
+    // Type distribution
+    const typeCounts: Record<string, number> = {}
+    records.forEach(r => {
+      const t = r.jobType || 'unknown'
+      typeCounts[t] = (typeCounts[t] || 0) + 1
+    })
+    const typeDistribution = Object.entries(typeCounts).map(([type, count]) => ({ type, count }))
+
+    // Status distribution (from orderStatusDescription)
+    const statusCounts: Record<string, number> = {}
+    records.forEach(r => {
+      const s = r.orderStatusDescription || 'Unknown'
+      statusCounts[s] = (statusCounts[s] || 0) + 1
+    })
+    const statusDistribution = Object.entries(statusCounts)
+      .map(([status, count]) => ({ status, count }))
+      .sort((a, b) => b.count - a.count)
+
+    // Completion breakdown — group statuses into categories, per-workroom
+    const completed = { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
+    const completedByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }> = {}
+    records.forEach(r => {
+      const s = (r.orderStatusDescription || '').toLowerCase()
+      const wr = r.workroom || 'Unassigned'
+      if (!completedByWorkroom[wr]) completedByWorkroom[wr] = { completed: 0, inProgress: 0, pending: 0, canceled: 0 }
+      if (s.includes('complet')) { completed.completed++; completedByWorkroom[wr].completed++ }
+      else if (s.includes('cancel') || s.includes('chargeback')) { completed.canceled++; completedByWorkroom[wr].canceled++ }
+      else if (s.includes('scheduled') || s.includes('dispatched') || s.includes('tentative') || s.includes('sched')) { completed.inProgress++; completedByWorkroom[wr].inProgress++ }
+      else { completed.pending++; completedByWorkroom[wr].pending++ }
+    })
+    const completionBreakdown = [
+      { label: 'Completed', count: completed.completed, color: '#7ab82e' },
+      { label: 'In Progress', count: completed.inProgress, color: '#9dcf4a' },
+      { label: 'Pending', count: completed.pending, color: '#c5e88f' },
+      { label: 'Canceled', count: completed.canceled, color: '#4a6a1e' },
+    ].filter(c => c.count > 0)
+    const completionByWorkroom: Record<string, { completed: number; inProgress: number; pending: number; canceled: number }> = completedByWorkroom
+
+    // Labor category distribution
+    const laborCounts: Record<string, number> = {}
+    records.forEach(r => {
+      const l = r.laborCategoryDescription || 'Unspecified'
+      laborCounts[l] = (laborCounts[l] || 0) + 1
+    })
+    const laborDistribution = Object.entries(laborCounts)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+
+    // Split measurement vs non-measurement breakdowns
+    const nonMeasureLaborCounts: Record<string, number> = {}
+    let measurementCount = 0
+    records.forEach(r => {
+      const l = r.laborCategoryDescription || 'Unspecified'
+      if (l.toLowerCase().includes('measure')) {
+        measurementCount++
+      } else {
+        nonMeasureLaborCounts[l] = (nonMeasureLaborCounts[l] || 0) + 1
+      }
+    })
+    const nonMeasureTotal = total - measurementCount
+    const nonMeasureLaborBreakdown = Object.entries(nonMeasureLaborCounts)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+
+    // Workroom distribution
+    const workroomCounts: Record<string, number> = {}
+    records.forEach(r => {
+      const w = r.workroom || 'Unassigned'
+      workroomCounts[w] = (workroomCounts[w] || 0) + 1
+    })
+    const workroomDistribution = Object.entries(workroomCounts)
+      .map(([workroom, count]) => ({ workroom, count }))
+      .sort((a, b) => b.count - a.count)
+
+    // Last month store sales — aggregate poAmount by store for previous calendar month
+    const now = new Date()
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+    const prevMonthLabel = prevMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
+    const storeSales: Record<string, { name: string; total: number; count: number }> = {}
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= prevMonth && d <= prevMonthEnd) {
+        const key = r.storeNumber || r.storeName || 'unknown'
+        const name = r.storeName || key
+        if (!storeSales[key]) storeSales[key] = { name, total: 0, count: 0 }
+        const po = getPoAmount(r)
+        if (po != null && !isNaN(Number(po))) {
+          storeSales[key].total += Number(po)
+          storeSales[key].count++
+        }
+      }
+    })
+    const lastMonthSales = Object.values(storeSales)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10)
+    const lastMonthTotal = Object.values(storeSales).reduce((sum, s) => sum + s.total, 0)
+
+    // Last month split — installation vs measurement PO
+    let lastMonthNonMeasurePO = 0
+    let lastMonthNonMeasureJobs = 0
+    let lastMonthMeasurePO = 0
+    let lastMonthMeasureJobs = 0
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= prevMonth && d <= prevMonthEnd) {
+        const po = getPoAmount(r)
+        if (po != null && !isNaN(Number(po))) {
+          const labor = (r.laborCategoryDescription || '').toLowerCase()
+          if (labor.includes('measure')) {
+            lastMonthMeasurePO += Number(po)
+            lastMonthMeasureJobs++
+          } else {
+            lastMonthNonMeasurePO += Number(po)
+            lastMonthNonMeasureJobs++
+          }
+        }
+      }
+    })
+
+    // Two months ago — for trend comparison
+    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+    const twoMonthsAgoEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0)
+    let previousMonthTotal = 0
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= twoMonthsAgo && d <= twoMonthsAgoEnd) {
+        const po = getPoAmount(r)
+        if (po != null && !isNaN(Number(po))) previousMonthTotal += Number(po)
+      }
+    })
+    const salesTrend = previousMonthTotal > 0
+      ? Math.round(((lastMonthTotal - previousMonthTotal) / previousMonthTotal) * 100)
+      : 0
+
+    // Weekly revenue and jobs — last 7 days + previous 7 days comparison
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+    const fourteenDaysAgo = new Date(now)
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+    fourteenDaysAgo.setHours(0, 0, 0, 0)
+    let weeklyRevenue = 0
+    let weeklyRevenueCount = 0
+    let weeklyJobs = 0
+    let prevWeekRevenue = 0
+    let prevWeekJobs = 0
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= sevenDaysAgo) {
+        weeklyJobs++
+        const po = getPoAmount(r)
+        if (po != null && !isNaN(Number(po))) {
+          weeklyRevenue += Number(po)
+          weeklyRevenueCount++
+        }
+      } else if (d && d >= fourteenDaysAgo && d < sevenDaysAgo) {
+        prevWeekJobs++
+        const po = getPoAmount(r)
+        if (po != null && !isNaN(Number(po))) prevWeekRevenue += Number(po)
+      }
+    })
+    const weeklyAvgRevenue = weeklyRevenueCount > 0 ? Math.round(weeklyRevenue / weeklyRevenueCount) : 0
+    const weeklyRevenueTrend = prevWeekRevenue > 0
+      ? Math.round(((weeklyRevenue - prevWeekRevenue) / prevWeekRevenue) * 100)
+      : 0
+
+    // Weekly revenue split — installation vs measurement
+    let weeklyNonMeasurePO = 0
+    let weeklyNonMeasurePOCount = 0
+    let weeklyMeasurePO = 0
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d && d >= sevenDaysAgo) {
+        const po = getPoAmount(r)
+        if (po != null && !isNaN(Number(po))) {
+          const labor = (r.laborCategoryDescription || '').toLowerCase()
+          if (labor.includes('measure')) {
+            weeklyMeasurePO += Number(po)
+          } else {
+            weeklyNonMeasurePO += Number(po)
+            weeklyNonMeasurePOCount++
+          }
+        }
+      }
+    })
+    const weeklyJobsTrend = prevWeekJobs > 0
+      ? Math.round(((weeklyJobs - prevWeekJobs) / prevWeekJobs) * 100)
+      : 0
+
+    // Pipeline — top labor categories with counts (active: not canceled/complete)
+    const pipelineCategories = ['Carpet Install', 'Tile', 'Hardwood', 'Laminate', 'Vinyl', 'Measure', 'Payment Request']
+    const pipeline: { label: string; count: number; revenue: number }[] = []
+    pipelineCategories.forEach(cat => {
+      let count = 0
+      let revenue = 0
+      records.forEach(r => {
+        if ((r.laborCategoryDescription || '').toLowerCase().includes(cat.toLowerCase())) {
+          const status = (r.orderStatusDescription || '').toLowerCase()
+          if (status.includes('scheduled') || status.includes('dispatched') || status.includes('progress') || status.includes('tentative')) {
+            count++
+            const po = getPoAmount(r)
+            if (po != null && !isNaN(Number(po))) revenue += Number(po)
+          }
+        }
+      })
+      if (count > 0) pipeline.push({ label: cat.replace(' Install', ''), count, revenue })
+    })
+
+    // Measure-to-Install conversion — cross-reference by customer name + store
+    const measureJobs: { lastName: string; storeNumber: string; orderNumber: number }[] = []
+    const installJobs: { lastName: string; storeNumber: string; orderNumber: number }[] = []
+    records.forEach(r => {
+      const lastName = (r.cilioCustomerLastName || '').trim().toLowerCase()
+      const storeNum = (r.storeNumber || '').trim()
+      if (!lastName) return
+      const labor = (r.laborCategoryDescription || '').toLowerCase()
+      if (labor.includes('measure')) {
+        measureJobs.push({ lastName, storeNumber: storeNum, orderNumber: r.orderNumber })
+      } else if (labor && !labor.includes('chargeback') && !labor.includes('payment') && !labor.includes('rapid')) {
+        installJobs.push({ lastName, storeNumber: storeNum, orderNumber: r.orderNumber })
+      }
+    })
+    // Build index: "lastname|store" → set of measure orderNumbers
+    const measureIndex: Record<string, Set<number>> = {}
+    measureJobs.forEach(m => {
+      const key = `${m.lastName}|${m.storeNumber}`
+      if (!measureIndex[key]) measureIndex[key] = new Set()
+      measureIndex[key].add(m.orderNumber)
+    })
+    // Count measures that converted (same lastName + storeNumber has an install)
+    const convertedMeasures = new Set<number>()
+    installJobs.forEach(i => {
+      const key = `${i.lastName}|${i.storeNumber}`
+      const matches = measureIndex[key]
+      if (matches) matches.forEach(on => convertedMeasures.add(on))
+    })
+    const totalMeasures = measureJobs.length
+    const measureConversions = convertedMeasures.size
+    const measureConversionRate = totalMeasures > 0 ? Math.round((measureConversions / totalMeasures) * 100) : 0
+
+    // Top stores (by job count — kept for backward compatibility)
+    const storeCounts: Record<string, { name: string; count: number }> = {}
+    records.forEach(r => {
+      const key = r.storeNumber || 'unknown'
+      if (!storeCounts[key]) storeCounts[key] = { name: r.storeName || key, count: 0 }
+      storeCounts[key].count++
+    })
+    const topStores = Object.values(storeCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    // PO Amount metrics
+    let totalPO = 0
+    let poCount = 0
+    let poMin = Infinity
+    let poMax = 0
+    records.forEach(r => {
+      const po = getPoAmount(r)
+      if (po != null && !isNaN(Number(po))) {
+        const val = Number(po)
+        totalPO += val
+        poCount++
+        if (val < poMin) poMin = val
+        if (val > poMax) poMax = val
+      }
+    })
+    const poAvg = poCount > 0 ? totalPO / poCount : 0
+
+    // PO Amount split — installation vs measurement
+    let nonMeasurePO = 0
+    let nonMeasurePOCount = 0
+    let measurementPO = 0
+    let measurementPOCount = 0
+    records.forEach(r => {
+      const po = getPoAmount(r)
+      if (po != null && !isNaN(Number(po))) {
+        const val = Number(po)
+        const labor = (r.laborCategoryDescription || '').toLowerCase()
+        if (labor.includes('measure')) {
+          measurementPO += val
+          measurementPOCount++
+        } else {
+          nonMeasurePO += val
+          nonMeasurePOCount++
+        }
+      }
+    })
+    const nonMeasurePOAvg = nonMeasurePOCount > 0 ? Math.round((nonMeasurePO / nonMeasurePOCount) * 100) / 100 : 0
+
+    // Monthly trend (last 12 months)
+    const monthlyCounts: Record<string, number> = {}
+    const monthlyPO: Record<string, number> = {}
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      monthlyCounts[key] = 0
+      monthlyPO[key] = 0
+    }
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (monthlyCounts[key] !== undefined) {
+          monthlyCounts[key]++
+          const po = getPoAmount(r)
+          if (po != null && !isNaN(Number(po))) monthlyPO[key] += Number(po)
+        }
+      }
+    })
+    const monthlyTrend = Object.entries(monthlyCounts).map(([month, count]) => ({
+      month,
+      count,
+      poTotal: monthlyPO[month] || 0,
+    }))
+
+    // Daily trend (last 30 days) — by actual job date, not DB save date
+    const dailyCounts: Record<string, number> = {}
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const key = d.toISOString().split('T')[0]
+      dailyCounts[key] = 0
+    }
+    records.forEach(r => {
+      // Use the best available date: scheduledInstallDate, then cilioPayload date, then createdAt
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d) {
+        const key = d.toISOString().split('T')[0]
+        if (dailyCounts[key] !== undefined) dailyCounts[key]++
+      }
+    })
+    const dailyTrend = Object.entries(dailyCounts).map(([date, count]) => ({ date, count }))
+
+    // Top installers by job count
+    const installerCounts: Record<string, { name: string; count: number }> = {}
+    records.forEach(r => {
+      if (r.installerName) {
+        const key = r.installerId || r.installerName
+        if (!installerCounts[key]) installerCounts[key] = { name: r.installerName, count: 0 }
+        installerCounts[key].count++
+      }
+    })
+    const topInstallers = Object.values(installerCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    // Jobs with/without installer assigned
+    const withInstaller = records.filter(r => r.installerId).length
+    const withoutInstaller = total - withInstaller
+
+    // Chargeback rate - check status, jobType, AND labor category
+    const chargebacks = records.filter(r =>
+      (r.orderStatusDescription || '').toLowerCase().includes('chargeback') ||
+      r.jobType === 'chargeback' ||
+      (r.laborCategoryDescription || '').toLowerCase().includes('chargeback')
+    ).length
+    const chargebackRate = total > 0 ? (chargebacks / total * 100).toFixed(1) : '0.0'
+
+    // Weekly distribution (jobs by day of week)
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const weeklyCounts: Record<string, number> = {}
+    dayNames.forEach(d => { weeklyCounts[d] = 0 })
+    records.forEach(r => {
+      const jobDate = resolveDate(r)
+      const d = jobDate ? new Date(jobDate) : null
+      if (d) {
+        const day = dayNames[d.getDay()]
+        weeklyCounts[day] = (weeklyCounts[day] || 0) + 1
+      }
+    })
+    const weeklyDistribution = dayNames.map(day => ({ day, count: weeklyCounts[day] || 0 }))
+
+    // Scheduled install dates — individual dates for calendar with workroom + labor breakdown
+    const scheduledDates: Record<string, { total: number; byWorkroom: Record<string, number>; byLaborCategory: Record<string, number> }> = {}
+    const allWorkrooms = new Set<string>()
+    let hasInstallDates = false
+    let scheduledCount = 0
+    records.forEach(r => {
+      const d = r.scheduledInstallDate ? new Date(r.scheduledInstallDate) : null
+      if (d) {
+        scheduledCount++
+        hasInstallDates = true
+        const key = d.toISOString().split('T')[0] // YYYY-MM-DD
+        const wr = r.workroom || 'Unassigned'
+        const labor = r.laborCategoryDescription || 'Unspecified'
+        allWorkrooms.add(wr)
+        if (!scheduledDates[key]) scheduledDates[key] = { total: 0, byWorkroom: {}, byLaborCategory: {} }
+        scheduledDates[key].total++
+        scheduledDates[key].byWorkroom[wr] = (scheduledDates[key].byWorkroom[wr] || 0) + 1
+        scheduledDates[key].byLaborCategory[labor] = (scheduledDates[key].byLaborCategory[labor] || 0) + 1
+      }
+    })
+
+    return NextResponse.json({
+      totalJobs: total,
+      nonMeasureTotal,
+      measurementCount,
+      nonMeasureLaborBreakdown,
+      chargebacks,
+      chargebackRate: `${chargebackRate}%`,
+      withInstaller,
+      withoutInstaller,
+      typeDistribution,
+      statusDistribution,
+      laborDistribution,
+      workroomDistribution,
+      topStores,
+      topInstallers,
+      lastMonthSales,
+      prevMonthLabel,
+      lastMonthTotal,
+      lastMonthNonMeasurePO,
+      lastMonthNonMeasureJobs,
+      lastMonthMeasurePO,
+      lastMonthMeasureJobs,
+      previousMonthTotal,
+      salesTrend,
+      weeklyRevenue,
+      weeklyRevenueCount,
+      weeklyNonMeasurePO,
+      weeklyNonMeasurePOCount,
+      weeklyMeasurePO,
+      weeklyAvgRevenue,
+      weeklyRevenueTrend,
+      weeklyJobs,
+      weeklyJobsTrend,
+      pipeline,
+      measureConversions,
+      totalMeasures,
+      measureConversionRate,
+      poAmount: {
+        total: totalPO,
+        average: Math.round(poAvg * 100) / 100,
+        min: poMin === Infinity ? 0 : poMin,
+        max: poMax,
+        count: poCount,
+      },
+      nonMeasurePOAmount: {
+        total: nonMeasurePO,
+        average: nonMeasurePOAvg,
+        count: nonMeasurePOCount,
+      },
+      measurementPOAmount: {
+        total: measurementPO,
+        count: measurementPOCount,
+      },
+      monthlyTrend,
+      dailyTrend,
+      weeklyDistribution,
+      scheduledDates,
+      scheduledCount,
+      hasInstallDates,
+      workrooms: Array.from(allWorkrooms).sort(),
+      completionBreakdown,
+      completionByWorkroom,
+    }, { headers: noStoreHeaders })
+  } catch (error) {
+    console.error('Jobs analytics error:', error)
+    return NextResponse.json({ error: 'Failed to fetch job analytics' }, { status: 500, headers: noStoreHeaders })
+  }
+}
