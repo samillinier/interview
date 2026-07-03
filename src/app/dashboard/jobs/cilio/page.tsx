@@ -1238,13 +1238,15 @@ export default function JobsPage() {
                               ) : null}
                             </div>
                           </div>
-                      </motion.div>
-                    ) : null}
-          </motion.div>
-              ))}
+                        ) : null}
+            </motion.div>
+                    )}
+                  </motion.div>
+                ))}
               </div>
             </>
           )}
+
 
           {/* ── Pagination Controls ── */}
           {totalPages > 1 && (
