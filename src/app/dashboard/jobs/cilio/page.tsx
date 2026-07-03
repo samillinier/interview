@@ -1238,11 +1238,10 @@ export default function JobsPage() {
                               ) : null}
                             </div>
                           </div>
-                        ) : null}
-            </motion.div>
-                    )}
-                  </motion.div>
-                ))}
+                      </motion.div>
+                    ) : null}
+          </motion.div>
+              ))}
               </div>
             </>
           )}
