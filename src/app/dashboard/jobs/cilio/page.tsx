@@ -922,7 +922,7 @@ export default function JobsPage() {
                 {totalFetched > 0 && totalFetched !== jobs.length && (
                   <> of <span className="font-medium text-slate-700">{totalFetched}</span> fetched</>
                 )}
-                {statusFilter && <> with status <span className="font-medium text-brand-green">"{statusFilter}"</span></>}
+                {statusFilter && <> with status <span className="font-medium text-brand-green">&ldquo;{statusFilter}&rdquo;</span></>}
                 {laborCategoryFilter && <> &middot; labor <span className="font-medium text-brand-green">&ldquo;{laborCategoryFilter}&rdquo;</span></>}
                 {workroomFilter && <> &middot; workroom <span className="font-medium text-brand-green">&ldquo;{workroomFilter}&rdquo;</span></>}
               </div>
@@ -2085,4 +2085,3 @@ function Field({ label, value, icon: Icon, highlight, noTruncate }: { label: str
     </div>
   )
 }
- 
