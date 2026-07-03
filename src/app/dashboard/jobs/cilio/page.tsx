@@ -778,11 +778,11 @@ export default function JobsPage() {
 
   const stripHtml = (html: string): string => {
     return html
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<div[^>]*>/gi, '\n')
-      .replace(/<\/div>/gi, '')
-      .replace(/<a\s[^>]*>(.*?)<\/a>/gi, '$1')
-      .replace(/<[^>]*>/g, '')
+      .replace(new RegExp('<br\\s*\\/?>', 'gi'), '\n')
+      .replace(new RegExp('<div[^>]*>', 'gi'), '\n')
+      .replace(new RegExp('<\\/div>', 'gi'), '')
+      .replace(new RegExp('<a\\s[^>]*>(.*?)<\\/a>', 'gi'), '$1')
+      .replace(new RegExp('<[^>]*>', 'g'), '')
       .replace(/&nbsp;/g, ' ')
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
@@ -1244,8 +1244,9 @@ export default function JobsPage() {
                   </motion.div>
                 ))}
               </div>
-            </>
-          )}
+                  </>
+                )
+              })()}
 
 
           {/* ── Pagination Controls ── */}
@@ -1306,6 +1307,8 @@ export default function JobsPage() {
                 </button>
               </div>
             </div>
+          )}
+            </>
           )}
 
           {/* ── Full Job Detail Modal ── */}
