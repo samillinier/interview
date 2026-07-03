@@ -147,36 +147,6 @@ async function runAutoSync(request: NextRequest) {
 
     console.log(`[AutoSync] Delta sync fetched ${allJobs.length} jobs modified in the last hour`)
 
-    // ── FULL SYNC (once per hour, on the :00 invocation) ──
-    // Safety net: fetch all jobs from the last 3 months to catch any that
-    // might have been missed by delta sync (API edge cases, missed runs, etc.)
-    if (now.getMinutes() < 15) {
-      console.log("[AutoSync] Running hourly full sync (3-month window)...")
-      try {
-        const fullSyncJobs = await cilio.searchAllJobs({
-          monthsBack: 3,
-          pageSize: 500,
-          onProgress: (fetched, detail) => {
-            console.log(`[AutoSync] Full sync progress: ${fetched} jobs (${detail})`)
-          },
-        })
-
-        // Merge full sync jobs into the set (deduplicated by orderNumber)
-        const existingOrderNumbers = new Set(allJobs.map(j => j.orderNumber))
-        let added = 0
-        for (const j of fullSyncJobs) {
-          if (!existingOrderNumbers.has(j.orderNumber)) {
-            allJobs.push(j)
-            existingOrderNumbers.add(j.orderNumber)
-            added++
-          }
-        }
-        console.log(`[AutoSync] Full sync added ${added} missing jobs, total=${allJobs.length}`)
-      } catch (e: any) {
-        console.error("[AutoSync] Full sync FAILED:", e?.message || String(e))
-      }
-    }
-
     // Filter out test jobs before upserting
     const testFiltered = allJobs.filter(j => !isTestJob(j))
     const removed = allJobs.length - testFiltered.length
@@ -240,13 +210,48 @@ async function runAutoSync(request: NextRequest) {
             orderNumber: job.orderNumber,
             installerId: null,
             installerName: null,
-            cilioPayload: job,
+            // Only store essential fields from the Cilio response, not the full
+            // JSON blob. The full cilioPayload was 20-50 KB per job and was a
+            // major contributor to 2,661 GB/month Neon egress.
+            cilioPayload: {
+              customerFirstName: job.customerFirstName,
+              customerLastName: job.customerLastName,
+              poAmount: job.poAmount,
+              currentOrderStatusDate: job.currentOrderStatusDate,
+              scopeOfWorkNotes: job.scopeOfWorkNotes,
+              jobNumber: job.jobNumber,
+              projectNumber: job.projectNumber,
+              purchaserPO: job.purchaserPO,
+              orderStorePO: job.orderStorePO,
+              invoiceNumber: job.invoiceNumber,
+              salesOrderNumber: job.salesOrderNumber,
+              permitNumber: job.permitNumber,
+              salesAssociate: job.salesAssociate,
+              storeDistrict: job.storeDistrict,
+              enterpriseGroupNumber: job.enterpriseGroupNumber,
+            },
           },
           update: {
             ...data,
             // Only update cilioPayload when status changed — avoids rewriting
             // the large JSON blob on every sync cycle (cuts egress ~50-80%)
-            ...(statusChanged ? { cilioPayload: job } : {}),
+            ...(statusChanged ? { cilioPayload: {
+              customerFirstName: job.customerFirstName,
+              customerLastName: job.customerLastName,
+              poAmount: job.poAmount,
+              currentOrderStatusDate: job.currentOrderStatusDate,
+              scopeOfWorkNotes: job.scopeOfWorkNotes,
+              jobNumber: job.jobNumber,
+              projectNumber: job.projectNumber,
+              purchaserPO: job.purchaserPO,
+              orderStorePO: job.orderStorePO,
+              invoiceNumber: job.invoiceNumber,
+              salesOrderNumber: job.salesOrderNumber,
+              permitNumber: job.permitNumber,
+              salesAssociate: job.salesAssociate,
+              storeDistrict: job.storeDistrict,
+              enterpriseGroupNumber: job.enterpriseGroupNumber,
+            }} : {}),
           },
         })
         synced++
@@ -262,6 +267,7 @@ async function runAutoSync(request: NextRequest) {
       const dbInstallers = await prisma.installer.findMany({
         where: { status: { not: 'rejected' } },
         select: { id: true, firstName: true, lastName: true },
+        take: 500,
       })
 
       const needsEnrichment = await prisma.cilioJobRecord.findMany({

@@ -156,9 +156,9 @@ export async function GET(request: NextRequest) {
 
     const filterSql = `
       SELECT
-        (SELECT json_agg(DISTINCT "orderStatusDescription") FILTER (WHERE "orderStatusDescription" IS NOT NULL) FROM "CilioJobRecord") as statuses,
-        (SELECT json_agg(DISTINCT "laborCategoryDescription") FILTER (WHERE "laborCategoryDescription" IS NOT NULL) FROM "CilioJobRecord") as labor_categories,
-        (SELECT json_agg(DISTINCT "workroom") FILTER (WHERE "workroom" IS NOT NULL) FROM "CilioJobRecord") as workrooms
+        (SELECT json_agg(DISTINCT d.status) FROM (SELECT "orderStatusDescription" as status FROM "CilioJobRecord" WHERE "orderStatusDescription" IS NOT NULL ORDER BY "createdAt" DESC LIMIT 5000) d) as statuses,
+        (SELECT json_agg(DISTINCT d.labor) FROM (SELECT "laborCategoryDescription" as labor FROM "CilioJobRecord" WHERE "laborCategoryDescription" IS NOT NULL ORDER BY "createdAt" DESC LIMIT 5000) d) as labor_categories,
+        (SELECT json_agg(DISTINCT d.wr) FROM (SELECT "workroom" as wr FROM "CilioJobRecord" WHERE "workroom" IS NOT NULL ORDER BY "createdAt" DESC LIMIT 5000) d) as workrooms
     `
 
     const [countResult, rows, filterResult] = await Promise.all([
@@ -227,6 +227,7 @@ export async function GET(request: NextRequest) {
       const dbInstallers = await prisma.installer.findMany({
         where: { status: { not: 'rejected' } },
         select: { id: true, firstName: true, lastName: true },
+        take: 500,
       })
       const nameToId = new Map<string, string>()
       installerNames.forEach(name => {

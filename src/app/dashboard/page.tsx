@@ -681,7 +681,7 @@ function DashboardPageContent() {
   const fetchStats = async () => {
     try {
       // Fetch all installers to calculate stats accurately
-      const allResponse = await fetch('/api/installers?limit=1000')
+      const allResponse = await fetch('/api/installers?limit=500')
       
       if (!allResponse.ok) {
         const errorData = await allResponse.json().catch(() => ({ error: 'Unknown error' }))

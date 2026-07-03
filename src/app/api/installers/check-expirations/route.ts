@@ -304,6 +304,28 @@ export async function GET(request: NextRequest) {
 
     const installerIds = installers.map((i) => i.id)
 
+    // Fetch ALL existing unread expiry notifications for these installers (one query, not N)
+    const existingNotifications = installerIds.length
+      ? await prisma.notification.findMany({
+          where: {
+            installerId: { in: installerIds },
+            type: 'notification',
+            isRead: false,
+            title: {
+              in: ['Certificate/Insurance Expiring Soon', 'Certificate/Insurance Expired or Expiring Soon'],
+            },
+          },
+          select: { id: true, installerId: true, content: true, priority: true, title: true },
+        })
+      : []
+
+    const existingByInstaller = new Map<string, typeof existingNotifications[number]>()
+    for (const n of existingNotifications) {
+      if (!existingByInstaller.has(n.installerId)) {
+        existingByInstaller.set(n.installerId, n)
+      }
+    }
+
     // Fetch all documents for active installers
     const allDocs = installerIds.length
       ? await prisma.document.findMany({
@@ -405,19 +427,8 @@ export async function GET(request: NextRequest) {
         const expiringOnlyItems = expiringItems.filter(item => item.status === 'expiring')
         const allItems = [...expiredItems, ...expiringOnlyItems]
         
-        // De-dupe: keep a single unread notification per installer and update it.
-        const existingUnread = await prisma.notification.findFirst({
-          where: {
-            installerId: installer.id,
-            type: 'notification',
-            isRead: false,
-            title: {
-              in: ['Certificate/Insurance Expiring Soon', 'Certificate/Insurance Expired or Expiring Soon'],
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, content: true, priority: true, title: true },
-        })
+        // De-dupe: use the pre-fetched notification map instead of N separate queries
+        const existingUnread = existingByInstaller.get(installer.id) || null
 
         const expiryList = allItems
           .map((item) => {

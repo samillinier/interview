@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         "cilioPayload"->'dateInformation'->>'leadCreationDate' as "cilioLeadCreationDate"
       FROM "CilioJobRecord"
       ORDER BY "createdAt" DESC
-      LIMIT 100000`
+      LIMIT 5000`
     )
 
     // Helper: resolve the best available date for a record (same logic as before,

@@ -67,17 +67,53 @@ export async function POST(request: NextRequest) {
         ...(statusChanged ? { statusChangedAt: new Date() } : {}),
       }
 
+      // Strip cilioPayload to only essential fields to reduce DB egress.
+      // Full payloads were 20-50 KB each; stripped version is ~1 KB.
+      const rawPayload = job.cilioPayload ?? {}
+      const strippedPayload: Record<string, unknown> = {}
+      const essentialFields = [
+        'customerFirstName', 'customerLastName', 'poAmount',
+        'currentOrderStatusDate', 'scopeOfWorkNotes', 'jobNumber',
+        'projectNumber', 'purchaserPO', 'orderStorePO', 'invoiceNumber',
+        'salesOrderNumber', 'permitNumber', 'salesAssociate', 'storeDistrict',
+        'enterpriseGroupNumber',
+      ]
+      for (const key of essentialFields) {
+        if (rawPayload[key] !== undefined) strippedPayload[key] = rawPayload[key]
+      }
+      // Copy nested fields we extract via ->> in saved-jobs route
+      if (rawPayload.customerInformation) {
+        strippedPayload.customerInformation = {
+          customerName: rawPayload.customerInformation.customerName ?? null,
+          customerFullName: rawPayload.customerInformation.customerFullName ?? null,
+        }
+      }
+      if (rawPayload.dateInformation) {
+        strippedPayload.dateInformation = {
+          desiredInstallDate: rawPayload.dateInformation.desiredInstallDate ?? null,
+          currentDate: rawPayload.dateInformation.currentDate ?? null,
+          leadCreationDate: rawPayload.dateInformation.leadCreationDate ?? null,
+        }
+      }
+      if (rawPayload.schedulingInformation) {
+        strippedPayload.schedulingInformation = {
+          scheduleDate: rawPayload.schedulingInformation.scheduleDate ?? null,
+        }
+      }
+      // Preserve first-last name for search
+      if (rawPayload.customerFirstLast) strippedPayload.customerFirstLast = rawPayload.customerFirstLast
+
       await prisma.cilioJobRecord.upsert({
         where: { orderNumber: job.orderNumber },
         create: {
           ...data,
           orderNumber: job.orderNumber,
-          cilioPayload: job.cilioPayload ?? {},
+          cilioPayload: strippedPayload,
         },
         update: {
           ...data,
-          // Only update cilioPayload when status changed — avoids rewriting large JSON
-          ...(statusChanged ? { cilioPayload: job.cilioPayload ?? {} } : {}),
+          // Only update cilioPayload when status changed — avoids rewriting on every sync
+          ...(statusChanged ? { cilioPayload: strippedPayload } : {}),
         },
       })
       synced++
