@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
     const eligibleInstallers = await prisma.installer.findMany({
       where: whereClause,
       select: { id: true },
+      take: 500,
     })
 
     // Create notifications for all eligible installers

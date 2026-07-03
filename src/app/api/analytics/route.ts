@@ -19,10 +19,11 @@ export async function GET(request: NextRequest) {
   }
   try {
     // Get all installers with their related data
-    // Load all installers but scope relation fields to only what analytics uses.
-    // Loading full Document (with file URLs), Notification (with content),
-    // and other relation records was a major contributor to Neon egress.
+    // Cap at 5000 to prevent unbounded growth. Beyond that, analytics should
+    // use server-side aggregation (COUNT, SUM, etc.) instead of in-memory loops.
     const installers = await prisma.installer.findMany({
+      take: 5000,
+      orderBy: { createdAt: 'desc' },
       include: {
         Interview: {
           orderBy: { createdAt: 'desc' },

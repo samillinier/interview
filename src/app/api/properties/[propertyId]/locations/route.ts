@@ -29,6 +29,7 @@ export async function GET(
       console.log('✅ User is admin, fetching all locations')
       const locations = await prisma.location.findMany({
         orderBy: { createdAt: 'desc' },
+        take: 500,
       })
       console.log('📊 Admin found', locations.length, 'locations')
       return NextResponse.json({ locations })

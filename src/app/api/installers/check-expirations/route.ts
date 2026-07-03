@@ -281,9 +281,10 @@ export async function GET(request: NextRequest) {
       return null
     }
 
-    // Get all installers with expiry dates
+    // Get all installers with expiry dates (capped to prevent unbounded growth)
     const installers = await prisma.installer.findMany({
       where: { status: 'active' },
+      take: 500,
       select: {
         id: true,
         firstName: true,

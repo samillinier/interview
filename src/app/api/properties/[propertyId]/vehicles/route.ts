@@ -34,6 +34,7 @@ export async function GET(
     if (await isAdmin(userEmail)) {
       const vehicles = await prisma.vehicle.findMany({
         orderBy: { createdAt: 'desc' },
+        take: 500,
       })
       return NextResponse.json({ vehicles })
     }

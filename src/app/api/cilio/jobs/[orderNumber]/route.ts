@@ -96,6 +96,7 @@ export async function GET(
         const localInstallers = await prisma.installer.findMany({
           where: { status: { not: "rejected" } },
           select: { id: true, firstName: true, lastName: true, companyName: true },
+          take: 500,
         })
         const match = matchInstallerByName(localInstallers, resourceName)
         if (match) {

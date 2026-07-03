@@ -26,6 +26,7 @@ export async function GET() {
         companyName: true,
       },
       orderBy: { firstName: 'asc' },
+      take: 500,
     })
 
     return NextResponse.json({ installers })

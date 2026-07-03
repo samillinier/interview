@@ -463,6 +463,7 @@ export async function GET(_request: NextRequest) {
         },
         select: installerMatrixSelect,
         orderBy: { firstName: 'asc' },
+        take: 500,
       })
 
       if (autoInstallers.length > 0) {
