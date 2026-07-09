@@ -884,7 +884,6 @@ model PadOrder {
   id              String   @id @default(cuid())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  orderNumber     String?
   workroom        String
   dateReceived    DateTime
   items           Json

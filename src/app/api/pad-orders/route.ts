@@ -59,15 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     const user = session.user as any
-
-    // Generate order number: BOL-YYYYMMDD-XXXX
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const rand = Math.random().toString(36).slice(2, 6).toUpperCase()
-    const orderNumber = `BOL-${dateStr}-${rand}`
-
     const order = await prisma.padOrder.create({
       data: {
-        orderNumber,
         workroom,
         dateReceived: new Date(dateReceived),
         items: items,

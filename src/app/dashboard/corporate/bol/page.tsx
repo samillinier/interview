@@ -45,7 +45,6 @@ interface PadOrder {
   id: string
   createdAt: string
   updatedAt: string
-  orderNumber: string | null
   workroom: string
   dateReceived: string
   items: PadOrderItem[]
@@ -612,8 +611,7 @@ export default function BolPage() {
                       <th className="text-left py-3 px-5 font-semibold">Added By</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
-                      <th className="text-left py-3 px-5 font-semibold">Order #</th>
-                      <th className="text-left py-3 px-5 font-semibold">Line Items</th>
+                      <th className="text-left py-3 px-5 font-semibold">Authorized By</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                       <th className="text-center py-3 px-5 font-semibold w-10"></th>
                     </tr>
@@ -642,20 +640,14 @@ export default function BolPage() {
                             </div>
                           </td>
                           <td className="py-3.5 px-5">
-                            <span className="text-xs font-mono font-semibold text-slate-600">{order.orderNumber || order.id.slice(-8).toUpperCase()}</span>
-                          </td>
-                          <td className="py-3.5 px-5">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
-                              <Package className="w-3 h-3" />
-                              {(order.items as PadOrderItem[]).length}
-                            </span>
+                            <span className="text-sm font-medium text-slate-700">{order.authorizedBy || order.createdByName || order.createdByEmail || '-'}</span>
                           </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-between gap-2">
                               {order.authorized ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold whitespace-nowrap">
                                   <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
-                                  {order.authorizedBy || order.authorizationMethod || 'Authorized'}
+                                  Authorized
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-500 rounded-full text-xs font-semibold whitespace-nowrap">
@@ -688,7 +680,7 @@ export default function BolPage() {
                         </tr>
                         {expandedOrder === order.id && (
                           <tr key={`${order.id}-expanded`}>
-                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div className="bg-white rounded-lg p-3 border border-slate-100">
                                   <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Workroom</p>
