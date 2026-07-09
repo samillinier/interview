@@ -401,7 +401,7 @@ export default function PadTransferPage() {
                       <React.Fragment key={t.id}>
                         <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
                           onClick={() => setExpandedTransfer(expandedTransfer === t.id ? null : t.id)}>
-                          <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700">{t.createdByName || t.createdByEmail || '-'}</span></td>
+                          <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700 whitespace-nowrap">{t.createdByName || t.createdByEmail || '-'}</span></td>
                           <td className="py-3.5 px-5"><div className="flex items-center gap-2 whitespace-nowrap"><Calendar className="w-3.5 h-3.5 text-brand-green flex-shrink-0" /><span className="font-medium text-slate-700">{formatDate(t.dateRequested)}</span></div></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold"><MapPin className="w-3 h-3" />{t.requestorLocation}</span></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{t.receivingWorkroom}</span></td>

@@ -213,7 +213,7 @@ export default function InventoryCyclePage() {
   }
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('en-US', { year: '2-digit', month: 'short', day: 'numeric' })
   }
 
   const renderBarcode = (cycleId: string) => {
@@ -419,7 +419,7 @@ export default function InventoryCyclePage() {
                         <th className="text-left py-2 px-5 font-semibold">Date</th>
                         <th className="text-left py-2 px-3 font-semibold">Type</th>
                         <th className="text-left py-2 px-3 font-semibold">Workroom</th>
-                        <th className="text-left py-2 px-3 font-semibold">Total Linear Ft</th>
+                        <th className="text-left py-2 px-3 font-semibold">Total</th>
                         <th className="text-left py-2 px-5 font-semibold">Status</th>
                       </tr>
                     </thead>
@@ -478,7 +478,7 @@ export default function InventoryCyclePage() {
                         <th className="text-left py-2 px-5 font-semibold">Date</th>
                         <th className="text-left py-2 px-3 font-semibold">Type</th>
                         <th className="text-left py-2 px-3 font-semibold">Workroom</th>
-                        <th className="text-left py-2 px-3 font-semibold">Total Linear Ft</th>
+                        <th className="text-left py-2 px-3 font-semibold">Total</th>
                         <th className="text-left py-2 px-5 font-semibold">Status</th>
                       </tr>
                     </thead>
@@ -553,7 +553,7 @@ export default function InventoryCyclePage() {
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
-                      <th className="text-left py-3 px-5 font-semibold">Total Linear Ft</th>
+                      <th className="text-left py-3 px-5 font-semibold">Total</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -562,7 +562,7 @@ export default function InventoryCyclePage() {
                       <React.Fragment key={c.id}>
                         <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
                           onClick={() => setExpandedCycle(expandedCycle === c.id ? null : c.id)}>
-                          <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700">{c.createdByName || c.createdByEmail || '-'}</span></td>
+                          <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700 whitespace-nowrap">{c.createdByName || c.createdByEmail || '-'}</span></td>
                           <td className="py-3.5 px-5"><div className="flex items-center gap-2 whitespace-nowrap"><Calendar className="w-3.5 h-3.5 text-brand-green flex-shrink-0" /><span className="font-medium text-slate-700">{formatDate(c.cycleCountDate)}</span></div></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{c.workroom}</span></td>
                           <td className="py-3.5 px-5">

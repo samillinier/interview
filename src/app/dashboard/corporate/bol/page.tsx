@@ -624,7 +624,7 @@ export default function BolPage() {
                           onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                         >
                           <td className="py-3.5 px-5">
-                            <span className="text-sm font-medium text-slate-700">{order.createdByName || order.createdByEmail || '-'}</span>
+                            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{order.createdByName || order.createdByEmail || '-'}</span>
                           </td>
                           <td className="py-3.5 px-5">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
