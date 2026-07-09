@@ -108,12 +108,12 @@ export async function POST(request: NextRequest) {
         create: {
           ...data,
           orderNumber: job.orderNumber,
-          cilioPayload: strippedPayload,
+          cilioPayload: strippedPayload as any,
         },
         update: {
           ...data,
           // Only update cilioPayload when status changed — avoids rewriting on every sync
-          ...(statusChanged ? { cilioPayload: strippedPayload } : {}),
+          ...(statusChanged ? { cilioPayload: strippedPayload as any } : {}),
         },
       })
       synced++

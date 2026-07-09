@@ -14,7 +14,7 @@ function verifyToken(token: string): any {
     
     // Verify signature
     const expectedSignature = crypto
-      .createHmac('sha256', TOKEN_SECRET)
+      .createHmac('sha256', TOKEN_SECRET as string)
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest('base64url')
     

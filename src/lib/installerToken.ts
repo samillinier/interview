@@ -24,7 +24,7 @@ export function verifyInstallerToken(token: string): InstallerTokenPayload {
   }
 
   const expectedSignature = crypto
-    .createHmac('sha256', TOKEN_SECRET)
+    .createHmac('sha256', TOKEN_SECRET as string)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64url')
 

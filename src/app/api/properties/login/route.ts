@@ -15,7 +15,7 @@ function generateToken(payload: any): string {
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url')
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const signature = crypto
-    .createHmac('sha256', TOKEN_SECRET)
+    .createHmac('sha256', TOKEN_SECRET as string)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64url')
   
