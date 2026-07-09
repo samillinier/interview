@@ -105,7 +105,7 @@ const formatDate = (d: string | null | undefined) => {
 }
 
 const formatCurrency = (n: number | string | null | undefined) => {
-  if (n == null || n === '' || Number(n) === 0) return null
+  if (n == null || n === '') return null
   const val = typeof n === 'string' ? parseFloat(n) : n
   if (isNaN(val)) return null
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val)
@@ -678,6 +678,9 @@ export default function JobsReportsPage() {
                   const di = d.dateInformation || {}
                   const si = d.schedulingInformation || {}
                   const st = d.storeInformation || {}
+                  const orderStatus = gi.orderStatusEnum || gi.orderStatusDescription || null
+                  const orderType = gi.orderTypeEnum || gi.orderTypeDescription || null
+                  const constructionType = gi.constructionTypeEnum || gi.constructionTypeDescription || null
 
                   return <>
                     {/* Hero Header */}
@@ -689,8 +692,8 @@ export default function JobsReportsPage() {
                           <div className="space-y-2 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold tracking-wide">#{d.orderNumber}</span>
-                              {gi.orderStatusEnum && <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold">{gi.orderStatusEnum}</span>}
-                              {gi.orderTypeEnum && <span className="px-2.5 py-1 bg-white/10 rounded-full text-white/70 text-xs">{gi.orderTypeEnum}</span>}
+                              {orderStatus && <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs font-semibold">{orderStatus}</span>}
+                              {orderType && <span className="px-2.5 py-1 bg-white/10 rounded-full text-white/70 text-xs">{orderType}</span>}
                             </div>
                             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                               {ci.customerFirstLast || [ci.customerFirstName, ci.customerLastName].filter(Boolean).join(' ') || `Order #${d.orderNumber}`}
@@ -773,10 +776,10 @@ export default function JobsReportsPage() {
                             <Field label="PO Amount" value={gi.poAmount != null ? formatCurrency(gi.poAmount) : null} accent />
                             <Field label="Invoice #" value={gi.invoiceNumber} />
                             <Field label="Sales Order" value={gi.salesOrderNumber} />
-                            <Field label="Order Type" value={gi.orderTypeEnum} />
-                            <Field label="Status" value={gi.orderStatusEnum} />
+                            <Field label="Order Type" value={orderType} />
+                            <Field label="Status" value={orderStatus} />
                             <Field label="Status Date" value={formatDate(gi.currentOrderStatusDate)} />
-                            <Field label="Construction" value={gi.constructionTypeEnum} />
+                            <Field label="Construction" value={constructionType} />
                             <Field label="Labor Amount" value={gi.laborAmount} />
                             <Field label="Budgeted Amt" value={gi.budgetedAmount} />
                             <Field label="Budgeted Year" value={gi.budgetedYear} />

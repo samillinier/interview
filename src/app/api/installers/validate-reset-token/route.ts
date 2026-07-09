@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       where: {
         email: { equals: normalizedEmail, mode: 'insensitive' },
         passwordResetToken: token,
+        passwordResetTokenExpiresAt: { gt: new Date() },
       },
     })
 

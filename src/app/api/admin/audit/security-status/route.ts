@@ -16,29 +16,66 @@ export async function GET() {
     if (!admin?.isActive) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (admin.role === 'MODERATOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const auditLogCount = await prismaAny.adminAuditLog.count()
+    const auditLogCount = await prismaAny.adminAuditLog.count({
+      where: { NOT: { targetType: 'cilio_api' } },
+    })
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const recentChangesToday = await prismaAny.adminAuditLog.count({
-      where: { createdAt: { gte: today } },
+      where: { createdAt: { gte: today }, NOT: { targetType: 'cilio_api' } },
     })
 
     const weekStart = new Date()
     weekStart.setDate(weekStart.getDate() - weekStart.getDay())
     weekStart.setHours(0, 0, 0, 0)
     const recentChangesWeek = await prismaAny.adminAuditLog.count({
-      where: { createdAt: { gte: weekStart } },
+      where: { createdAt: { gte: weekStart }, NOT: { targetType: 'cilio_api' } },
     })
 
     const recentActions = await prismaAny.$queryRawUnsafe(`
       SELECT action, COUNT(*)::int as count
       FROM "AdminAuditLog"
       WHERE "createdAt" >= NOW() - INTERVAL '30 days'
+        AND "targetType" <> 'cilio_api'
       GROUP BY action
       ORDER BY count DESC
       LIMIT 10
     `)
+
+    const cilioGeoRows = await prismaAny.$queryRawUnsafe(`
+      SELECT
+        country,
+        region,
+        city,
+        NULLIF(latitude, '') AS latitude,
+        NULLIF(longitude, '') AS longitude,
+        action,
+        count::int AS count,
+        "lastSeen"
+      FROM "CilioGeoMetric"
+      WHERE action IN ('cilio.api_access', 'cilio.api_blocked')
+        AND "lastSeen" >= NOW() - INTERVAL '30 days'
+      ORDER BY count DESC
+      LIMIT 100
+    `)
+
+    const countryMap = new Map<string, { country: string; allowed: number; blocked: number }>()
+    let cilioAllowed = 0
+    let cilioBlocked = 0
+    for (const row of cilioGeoRows as any[]) {
+      const country = String(row.country || 'UNKNOWN').toUpperCase()
+      const count = Number(row.count || 0)
+      const current = countryMap.get(country) || { country, allowed: 0, blocked: 0 }
+      if (row.action === 'cilio.api_blocked') {
+        current.blocked += count
+        cilioBlocked += count
+      } else {
+        current.allowed += count
+        cilioAllowed += count
+      }
+      countryMap.set(country, current)
+    }
 
     const securityMeasures = [
       {
@@ -105,25 +142,32 @@ export async function GET() {
         description: 'No route directly reads CILIO_SUBSCRIPTION_KEY — all go through getCilioAuthHeader().',
       },
       {
+        id: 'cilio-us-geo-guard',
+        category: 'Network',
+        label: 'Cilio API proxy blocks known non-US requests',
+        status: 'secured',
+        description: 'Cilio routes reject requests when Vercel identifies the source country as outside the United States.',
+      },
+      {
         id: 'reset-token-expiry',
-        category: 'Pending',
-        label: 'Password reset tokens have no expiration check',
-        status: 'warning',
-        description: 'Reset tokens are stored but never validated for expiration. Recommended to add a TTL check.',
+        category: 'Authentication',
+        label: 'Password reset tokens expire after 1 hour',
+        status: 'secured',
+        description: 'Installer password reset links store an expiry timestamp and are rejected after the TTL passes.',
       },
       {
         id: 'reset-urls-in-response',
-        category: 'Pending',
-        label: 'Reset/verification URLs returned in API responses',
-        status: 'warning',
-        description: 'When RESEND_API_KEY is missing, reset links are returned in the API response body instead of being emailed.',
+        category: 'Authentication',
+        label: 'Reset/verification URLs are hidden in production responses',
+        status: 'secured',
+        description: 'Tokenized reset and verification links are returned only in local development, never from production API responses.',
       },
       {
         id: 'hardcoded-admin-email',
-        category: 'Pending',
-        label: 'Hardcoded @fiscorponline.com email admin bypass',
-        status: 'warning',
-        description: 'Certain routes grant admin access based on hardcoded email domain matches — consider moving to DB roles.',
+        category: 'Authorization',
+        label: 'Admin access is controlled by database roles',
+        status: 'secured',
+        description: 'Hardcoded fallback admin email allowlists were removed; admin access now requires an active Admin record and role.',
       },
     ]
 
@@ -133,6 +177,24 @@ export async function GET() {
         changesToday: recentChangesToday,
         changesThisWeek: recentChangesWeek,
         recentActions,
+      },
+      cilioGeoStats: {
+        allowed: cilioAllowed,
+        blocked: cilioBlocked,
+        total: cilioAllowed + cilioBlocked,
+        countries: Array.from(countryMap.values()).sort(
+          (a, b) => b.allowed + b.blocked - (a.allowed + a.blocked)
+        ),
+        cities: (cilioGeoRows as any[]).map((row) => ({
+          country: String(row.country || 'UNKNOWN').toUpperCase(),
+          region: row.region || null,
+          city: row.city || 'Unknown',
+          latitude: row.latitude !== null ? Number(row.latitude) : null,
+          longitude: row.longitude !== null ? Number(row.longitude) : null,
+          action: row.action,
+          count: Number(row.count || 0),
+          lastSeen: row.lastSeen,
+        })),
       },
       securityMeasures,
       securedCount: securityMeasures.filter((m) => m.status === 'secured').length,

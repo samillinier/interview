@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { getJobStatuses } from "@/lib/cilio"
+import { requireCilioAccess } from "@/lib/cilioAccess"
 
 export const dynamic = "force-dynamic"
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const access = await requireCilioAccess(request)
+    if (!access.ok) return access.response
 
     const statuses = await getJobStatuses()
     return NextResponse.json({ statuses })

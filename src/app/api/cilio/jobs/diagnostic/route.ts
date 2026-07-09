@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import * as cilio from "@/lib/cilio"
+import { CILIO_DIAGNOSTIC_ROLES, requireCilioAccess } from "@/lib/cilioAccess"
 
 export const dynamic = "force-dynamic"
 
@@ -11,10 +10,8 @@ export const dynamic = "force-dynamic"
  * Requires admin authentication.
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const access = await requireCilioAccess(request, CILIO_DIAGNOSTIC_ROLES)
+  if (!access.ok) return access.response
 
   const baseUrl = process.env.CILIO_API_BASE_URL || ""
 

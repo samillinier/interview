@@ -18,10 +18,14 @@ import {
   Clock,
   Calendar,
   ArrowUpRight,
+  Globe2,
+  MapPin,
+  Ban,
 } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import { CilioGeoMap, type CilioGeoPin } from '@/components/CilioGeoMap'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
@@ -56,6 +60,22 @@ interface SecurityStatus {
     changesThisWeek: number
     recentActions: RecentAction[]
   }
+  cilioGeoStats: {
+    allowed: number
+    blocked: number
+    total: number
+    countries: Array<{ country: string; allowed: number; blocked: number }>
+    cities: Array<{
+      country: string
+      region: string | null
+      city: string
+      latitude: number | null
+      longitude: number | null
+      action: string
+      count: number
+      lastSeen: string
+    }>
+  }
   securityMeasures: SecurityMeasure[]
   securedCount: number
   warningCount: number
@@ -69,6 +89,18 @@ const actionLabels: Record<string, string> = {
   'installer.credentials_update': 'Installer login updated',
   'admin.role_change': 'Admin role changed',
   'admin.create': 'Admin created',
+  'cilio.api_access': 'Cilio API access',
+  'cilio.api_blocked': 'Cilio API blocked',
+}
+
+const countryFallbackCoordinates: Record<string, { lat: number; lng: number }> = {
+  US: { lat: 39.5, lng: -98.35 },
+  CA: { lat: 56.13, lng: -106.35 },
+  MX: { lat: 23.63, lng: -102.55 },
+  GB: { lat: 55.38, lng: -3.44 },
+  IN: { lat: 20.59, lng: 78.96 },
+  PH: { lat: 12.88, lng: 121.77 },
+  AU: { lat: -25.27, lng: 133.78 },
 }
 
 export default function AuditPage() {
@@ -157,6 +189,27 @@ export default function AuditPage() {
 
   const securedPct =
     securityStatus ? Math.round((securityStatus.securedCount / securityStatus.totalCount) * 100) : 0
+  const cilioGeoStats = securityStatus?.cilioGeoStats
+  const topCilioCities = cilioGeoStats?.cities.slice(0, 8) || []
+  const cilioGeoPins: CilioGeoPin[] =
+    cilioGeoStats?.cities
+      .reduce<CilioGeoPin[]>((pins, row) => {
+        const fallback = countryFallbackCoordinates[row.country]
+        const lat = row.latitude ?? fallback?.lat
+        const lng = row.longitude ?? fallback?.lng
+        if (lat === undefined || lng === undefined) return pins
+        pins.push({
+          label: `${row.city}, ${row.region || row.country}`,
+          country: row.country,
+          region: row.region,
+          city: row.city,
+          action: row.action,
+          count: row.count,
+          lat,
+          lng,
+        })
+        return pins
+      }, []) || []
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -366,6 +419,83 @@ export default function AuditPage() {
             )}
           </motion.div>
 
+          {/* Cilio API Geo Activity */}
+          {cilioGeoStats && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <Globe2 className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Cilio API Geo Map</h2>
+                    <p className="text-sm text-slate-500">
+                      Shows where Cilio API access is coming from. Known non-US requests are blocked.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-bold">
+                    <MapPin className="w-4 h-4" />
+                    {cilioGeoStats.allowed} allowed
+                  </span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-bold">
+                    <Ban className="w-4 h-4" />
+                    {cilioGeoStats.blocked} blocked
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-5">
+                <CilioGeoMap pins={cilioGeoPins} />
+
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-slate-900">Top locations</h3>
+                    <span className="text-xs text-slate-500 font-semibold">Last 30 days</span>
+                  </div>
+                  <div className="space-y-2">
+                    {topCilioCities.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        No location data yet. This starts filling after Cilio API routes are used.
+                      </p>
+                    ) : (
+                      topCilioCities.map((row) => (
+                        <div
+                          key={`${row.action}-${row.country}-${row.region}-${row.city}`}
+                          className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white border border-slate-200"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">
+                              {row.city}, {row.region || row.country}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {row.country} / {actionLabels[row.action] || row.action}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                              row.action === 'cilio.api_blocked'
+                                ? 'bg-red-50 text-red-700'
+                                : 'bg-green-50 text-green-700'
+                            }`}
+                          >
+                            {row.count}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Recent Actions Breakdown */}
           {securityStatus && securityStatus.auditStats.recentActions.length > 0 && (
             <motion.div
@@ -531,7 +661,12 @@ export default function AuditPage() {
                               ? `${String(log.before.role)} \u2192 ${String(log.after?.role)}`
                               : log.action === 'admin.create' && log.after?.role
                                 ? `Role: ${String(log.after.role)}`
-                                : ''
+                                : (log.action === 'cilio.api_access' ||
+                                    log.action === 'cilio.api_blocked')
+                                  ? `${String(log.after?.country || 'UNKNOWN')}${
+                                      log.after?.city ? ` / ${String(log.after.city)}` : ''
+                                    }${log.after?.path ? ` / ${String(log.after.path)}` : ''}`
+                                  : ''
                       return (
                         <tr key={log.id} className="hover:bg-slate-50">
                           <td className="py-3 px-4 text-slate-700 whitespace-nowrap">

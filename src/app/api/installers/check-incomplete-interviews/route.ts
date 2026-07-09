@@ -10,7 +10,7 @@ const MAX_REMINDERS_PER_RUN = 50
 
 function isAuthorizedCronRequest(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret) return true
+  if (!cronSecret) return false
 
   const authHeader = request.headers.get('authorization') || ''
   return authHeader === `Bearer ${cronSecret}`

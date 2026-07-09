@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { handleUpload } from '@vercel/blob/client'
+import { requireActiveAdmin, requireInstallerOrAdmin } from '@/lib/installerAccess'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -7,7 +8,7 @@ export const maxDuration = 30
 // Direct-to-Blob upload handler:
 // The browser uploads the file directly to Vercel Blob (bypassing Vercel function body limits),
 // then the client stores the returned URL in our DB via /api/installers/[id]/documents (JSON).
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Some projects store the token under Vercel's system env var name.
     // The Blob client upload handler expects BLOB_READ_WRITE_TOKEN specifically.
@@ -31,6 +32,18 @@ export async function POST(request: Request) {
       body,
       // Called before generating the signed upload token
       onBeforeGenerateToken: async (pathname: string) => {
+        const installerFromDocumentPath = pathname.match(/^documents\/([^_\/]+)_/)?.[1] || null
+        const installerFromAgreementPath = pathname.match(/^installers\/([^/]+)\/agreements\//)?.[1] || null
+        const installerId = installerFromDocumentPath || installerFromAgreementPath
+
+        if (installerId) {
+          const access = await requireInstallerOrAdmin(request, installerId)
+          if (!access.ok) throw new Error('Unauthorized upload')
+        } else {
+          const access = await requireActiveAdmin()
+          if (!access.ok) throw new Error('Unauthorized upload')
+        }
+
         const allowed =
           typeof pathname === 'string' &&
           (pathname.startsWith('documents/') ||

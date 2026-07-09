@@ -223,31 +223,32 @@ Floor Interior Service - Installer Portal
         }
         // Continue - we'll still return success and show URL in dev mode
       }
-    } else {
+    } else if (isDevelopment) {
       // No Resend API key - log for development
-      console.log('⚠️  Resend API Key not configured')
-      console.log('📧 Verification Email (Development Mode):')
+      console.log('Resend API Key not configured')
+      console.log('Verification Email (Development Mode):')
       console.log('   To:', installer.email)
       console.log('   Subject: Verify your email to create your installer account')
       console.log('   Verification Link:', verificationUrl)
-      console.log('💡 To send actual emails:')
+      console.log('To send actual emails:')
       console.log('   1. Get API key from https://resend.com')
       console.log('   2. Add RESEND_API_KEY to your .env.local file (or Vercel environment variables)')
       console.log('   3. Restart your server')
     }
 
-    return NextResponse.json({
+    const responseBody: any = {
       success: true,
       message: emailSent 
         ? 'Verification email sent! Check your inbox.' 
-        : emailError
-        ? `Email sending failed: ${emailError}. Use the verification link below.`
-        : 'Verification link generated. Use the link below to verify your email.',
+        : isDevelopment && emailError
+          ? `Email sending failed: ${emailError}. Use the verification link below.`
+          : 'If the account is eligible, a verification email has been sent.',
       email: installer.email,
       emailSent,
-      emailError: emailError || undefined,
-      verificationUrl, // Always return URL so user can verify even without email
-    })
+      ...(isDevelopment ? { emailError: emailError || undefined, verificationUrl } : {}),
+    }
+
+    return NextResponse.json(responseBody)
   } catch (error: any) {
     console.error('Error sending verification email:', error)
     console.error('Error details:', {

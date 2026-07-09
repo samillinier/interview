@@ -145,7 +145,7 @@ export async function PATCH(request: NextRequest) {
       data: {
         email,
         username: username || null,
-        ...(passwordHash ? { passwordHash, passwordResetToken: null } : {}),
+        ...(passwordHash ? { passwordHash, passwordResetToken: null, passwordResetTokenExpiresAt: null } : {}),
       },
       select: {
         id: true,

@@ -81,40 +81,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Only auto-create the CURRENT USER if they're in fallback list and don't exist
-    // This prevents recreating deleted admins when fetching the list
-    if (session?.user?.email) {
-      const userEmail = session.user.email.toLowerCase()
-      const FALLBACK_EMAILS = [
-        'amunoz@fiscorponline.com',
-        'aclass@fiscorponline.com',
-        'sbiru@fiscorponline.com',
-        'svudaru@fiscorponline.com',
-      ].map(e => e.toLowerCase().trim())
-
-      if (FALLBACK_EMAILS.includes(userEmail)) {
-        try {
-          // Only create if they don't exist - don't update/recreate deleted ones
-          const existingAdmin = await prisma.admin.findUnique({
-            where: { email: userEmail },
-          })
-          
-          if (!existingAdmin) {
-            await prisma.admin.create({
-              data: {
-              email: userEmail,
-              isActive: true,
-              createdBy: 'system_fallback',
-            },
-          })
-            console.log(`Auto-created admin for current user: ${userEmail}`)
-          }
-        } catch (error) {
-          console.error('Failed to auto-create admin:', error)
-        }
-      }
-    }
-
     // Require an authenticated user, and only allow ADMIN/MANAGER role to view/manage users
     const email = session?.user?.email?.toLowerCase()
     if (!email) {
@@ -152,10 +118,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const currentRole = String((currentAdminForRole as any)?.role || '').toUpperCase()
     if (!currentAdminForRole?.isActive) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-    if (currentAdminForRole.role !== 'ADMIN' && currentAdminForRole.role !== 'MANAGER' && currentAdminForRole.role !== 'SUPER_ADMIN') {
+    if (currentRole !== 'ADMIN' && currentRole !== 'MANAGER' && currentRole !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
@@ -229,128 +196,24 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession(request)
     
-    const cookieHeader = request.headers.get('cookie')
     console.log('POST - Session check:', { 
       hasSession: !!session, 
       hasUser: !!session?.user, 
       email: session?.user?.email,
-      hasCookies: !!cookieHeader
     })
     
-    // If no session, try to get email from request body or use fallback
-    let userEmail: string | null = null
-    
-    if (session?.user?.email) {
-      userEmail = session.user.email.toLowerCase()
-    } else {
-      // Try to get email from cookie header if session fails
-      // This is a workaround for session retrieval issues
-      const FALLBACK_EMAILS = [
-        'amunoz@fiscorponline.com',
-        'aclass@fiscorponline.com',
-        'sbiru@fiscorponline.com',
-        'svudaru@fiscorponline.com',
-      ].map(e => e.toLowerCase().trim())
-      
-      // For now, allow creation if cookies are present (user is logged in)
-      // This is a temporary workaround until session is fixed
-      if (cookieHeader && cookieHeader.includes('next-auth')) {
-        // User is logged in but session retrieval failed
-        // Allow them to create admin if they're in fallback list
-        // We'll check the actual email from the request context if possible
-        console.warn('Session not found but cookies present, allowing admin creation')
-        // We'll check admin status after getting the request body
-      } else {
-        return NextResponse.json(
-          { error: 'Unauthorized - Please sign in' },
-          { status: 401 }
-        )
-      }
+    const userEmail = session?.user?.email?.toLowerCase()
+    if (!userEmail) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please sign in' },
+        { status: 401 }
+      )
     }
 
     // Check if current user is an admin
-    let currentAdmin = userEmail ? await prisma.admin.findUnique({
+    const currentAdmin = await prisma.admin.findUnique({
       where: { email: userEmail },
-    }) : null
-
-    // Auto-create from fallback list if needed
-    if (!currentAdmin && userEmail) {
-      const FALLBACK_EMAILS = [
-        'amunoz@fiscorponline.com',
-        'aclass@fiscorponline.com',
-        'sbiru@fiscorponline.com',
-        'svudaru@fiscorponline.com',
-      ].map(e => e.toLowerCase().trim())
-
-      if (FALLBACK_EMAILS.includes(userEmail)) {
-        try {
-          currentAdmin = await prisma.admin.upsert({
-            where: { email: userEmail },
-            update: { isActive: true },
-            create: {
-              email: userEmail,
-              isActive: true,
-              createdBy: 'system_fallback',
-            },
-          })
-        } catch (createError: any) {
-          console.error('Failed to auto-create admin:', createError)
-        }
-      }
-    }
-
-    // If still no admin found but cookies are present, allow creation anyway
-    // This is a workaround for session issues - if user is logged in (has cookies), allow them to create admins
-    if (!currentAdmin && cookieHeader && cookieHeader.includes('next-auth')) {
-      console.warn('Session not found but cookies present - allowing admin creation')
-      
-      // Try to find any existing admin to use as creator
-      const anyAdmin = await prisma.admin.findFirst({
-        where: { isActive: true },
-      })
-      
-      if (anyAdmin) {
-        currentAdmin = anyAdmin
-        console.log('Using existing admin as creator:', anyAdmin.email)
-      } else {
-        // Ensure all fallback admins exist, then use the first one as creator
-        const FALLBACK_EMAILS = [
-          'amunoz@fiscorponline.com',
-          'aclass@fiscorponline.com',
-          'sbiru@fiscorponline.com',
-          'svudaru@fiscorponline.com',
-        ]
-        
-        // Create all fallback admins first
-        for (const email of FALLBACK_EMAILS) {
-          try {
-            await prisma.admin.upsert({
-              where: { email: email.toLowerCase().trim() },
-              update: { isActive: true },
-              create: {
-                email: email.toLowerCase().trim(),
-                isActive: true,
-                createdBy: 'system_fallback',
-              },
-            })
-          } catch (error) {
-            console.error(`Failed to ensure admin exists for ${email}:`, error)
-          }
-        }
-        
-        // Use the first fallback admin as creator
-        currentAdmin = await prisma.admin.findFirst({
-          where: { email: FALLBACK_EMAILS[0].toLowerCase().trim() },
-        })
-        
-        if (!currentAdmin) {
-          return NextResponse.json(
-            { error: 'Unable to verify admin access. Please try again.' },
-            { status: 403 }
-          )
-        }
-      }
-    }
+    })
 
     if (!currentAdmin || !currentAdmin.isActive) {
       return NextResponse.json(
@@ -358,7 +221,7 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+    if (!['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role || '').toUpperCase())) {
       return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 

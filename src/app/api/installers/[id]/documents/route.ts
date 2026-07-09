@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { uploadFile, deleteFile } from '@/lib/storage'
+import { requireInstallerOrAdmin } from '@/lib/installerAccess'
 
 // Increase body size limit for this route (Vercel allows up to 4.5MB)
 export const maxDuration = 30
@@ -21,6 +22,8 @@ export async function GET(
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
+    const access = await requireInstallerOrAdmin(request, installerId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const documents = await prisma.document.findMany({
       where: { installerId },
@@ -45,6 +48,8 @@ export async function POST(
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
+    const access = await requireInstallerOrAdmin(request, installerId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const contentType = request.headers.get('content-type') || ''
     

@@ -157,7 +157,10 @@ export default function AttachmentsPage() {
   })
 
   const refreshDocuments = async (installerId: string): Promise<Document[]> => {
-    const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
+    const token = localStorage.getItem('installerToken')
+    const docsResponse = await fetch(`/api/installers/${installerId}/documents`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
     if (!docsResponse.ok) return []
     const docsContentType = docsResponse.headers.get('content-type')
     if (!docsContentType || !docsContentType.includes('application/json')) return []
@@ -170,9 +173,13 @@ export default function AttachmentsPage() {
   const saveBtrExpiryForDoc = async (installerId: string, docId: string, dateStr: string) => {
     setBtrManualSavingByDocId((prev) => ({ ...prev, [docId]: true }))
     try {
+      const token = localStorage.getItem('installerToken')
       const r = await fetch(`/api/installers/${installerId}/documents/${docId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ expiryDate: dateStr || null }),
       })
       if (!r.ok) throw new Error('Failed to save expiry date')
@@ -208,10 +215,12 @@ export default function AttachmentsPage() {
         return copy
       })
       try {
+        const token = localStorage.getItem('installerToken')
         const controller = new AbortController()
         const timeoutId = window.setTimeout(() => controller.abort(), 22000)
         const r = await fetch(`/api/installers/${installerId}/documents/${d.id}`, {
           method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           signal: controller.signal,
         })
         window.clearTimeout(timeoutId)
@@ -246,10 +255,12 @@ export default function AttachmentsPage() {
       return copy
     })
     try {
+      const token = localStorage.getItem('installerToken')
       const controller = new AbortController()
       const timeoutId = window.setTimeout(() => controller.abort(), 22000)
       const r = await fetch(`/api/installers/${installerId}/documents/${docId}`, {
         method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         signal: controller.signal,
       })
       window.clearTimeout(timeoutId)
@@ -338,7 +349,9 @@ export default function AttachmentsPage() {
       setInstaller(profileData.installer)
       
       // Load documents (then try to auto-fill missing BTR expiry dates)
-      const docsResponse = await fetch(`/api/installers/${installerId}/documents`)
+      const docsResponse = await fetch(`/api/installers/${installerId}/documents`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
       if (docsResponse.ok) {
         const docsContentType = docsResponse.headers.get('content-type')
         if (docsContentType && docsContentType.includes('application/json')) {
@@ -381,6 +394,7 @@ export default function AttachmentsPage() {
     setSuccess('')
 
     try {
+      const token = localStorage.getItem('installerToken')
       // 1) Direct upload to Vercel Blob
       const timestamp = Date.now()
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
@@ -389,12 +403,16 @@ export default function AttachmentsPage() {
       const blob = await upload(blobPath, file, {
         access: 'public',
         handleUploadUrl: '/api/blob/upload',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
 
       // 2) Save URL in DB
       const response = await fetch(`/api/installers/${installer.id}/documents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ url: blob.url, name: file.name, type }),
       })
 
@@ -455,8 +473,10 @@ export default function AttachmentsPage() {
 
     try {
       setIsDeleting(true)
+      const token = localStorage.getItem('installerToken')
       const response = await fetch(`/api/installers/${installer.id}/documents/${deleteConfirm.documentId}`, {
         method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
 
       if (!response.ok) {

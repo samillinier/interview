@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { getJobDetail, updateJobStatus, updateSalesOrderNumber } from "@/lib/cilio"
 import prisma from "@/lib/db"
+import { requireCilioAccess } from "@/lib/cilioAccess"
 
 function extractInstallerResourceName(detail: any): string | null {
   const sched = detail?.schedulingInformation
@@ -37,14 +36,12 @@ function matchInstallerByName(
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ orderNumber: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const access = await requireCilioAccess(request)
+    if (!access.ok) return access.response
 
     const resolvedParams = params instanceof Promise ? await params : params
     const orderNumber = parseInt(resolvedParams.orderNumber, 10)
@@ -130,10 +127,8 @@ export async function PUT(
   { params }: { params: Promise<{ orderNumber: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const access = await requireCilioAccess(request)
+    if (!access.ok) return access.response
 
     const resolvedParams = params instanceof Promise ? await params : params
     const orderNumber = parseInt(resolvedParams.orderNumber, 10)

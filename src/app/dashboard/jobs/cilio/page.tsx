@@ -54,7 +54,7 @@ import {
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { getWorkroomByStoreNumber, allWorkrooms } from '@/lib/workroomMapping'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 interface CilioJob {
   orderNumber: number
@@ -296,8 +296,11 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function JobsPage() {
   const pathname = usePathname()
+  const router = useRouter()
   const { data: session, status: sessionStatus } = useSession()
-  const isManager = (session?.user as any)?.role === 'MANAGER'
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
+  const isManager = normalizedRole === 'MANAGER'
   const { sidebarOpen } = useSidebarOpen()
   const [jobs, setJobs] = useState<CilioJob[]>([])
   const [allJobs, setAllJobs] = useState<CilioJob[]>([]) // unfiltered — used for filter dropdowns
@@ -681,10 +684,15 @@ export default function JobsPage() {
   }, [allJobs])
 
   useEffect(() => {
-    if (sessionStatus === 'authenticated') {
+    if (sessionStatus === 'authenticated' && canAccess) {
       fetchJobs(searchQuery, statusFilter, laborCategoryFilter, workroomFilter)
     }
-  }, [sessionStatus, searchQuery, statusFilter, laborCategoryFilter, workroomFilter, fetchJobs])
+  }, [sessionStatus, canAccess, searchQuery, statusFilter, laborCategoryFilter, workroomFilter, fetchJobs])
+
+  useEffect(() => {
+    if (sessionStatus === 'unauthenticated') router.push('/login')
+    if (sessionStatus === 'authenticated' && !canAccess) router.push('/dashboard')
+  }, [sessionStatus, canAccess, router])
 
   // Fetch installer names once for matching with Cilio's scheduledResources
   useEffect(() => {
@@ -813,6 +821,8 @@ export default function JobsPage() {
       </div>
     )
   }
+
+  if (!canAccess) return null
 
   return (
     <div className="min-h-screen bg-slate-50 flex">

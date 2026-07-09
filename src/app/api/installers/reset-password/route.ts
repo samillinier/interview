@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       where: {
         email: { equals: normalizedEmail, mode: 'insensitive' },
         passwordResetToken: token,
+        passwordResetTokenExpiresAt: { gt: new Date() },
       },
     })
 
@@ -88,8 +89,7 @@ export async function POST(request: NextRequest) {
         username: finalUsername,
         passwordHash,
         passwordResetToken: null,
-        // If you have passwordResetTokenExpiresAt field, clear it here too
-        // passwordResetTokenExpiresAt: null,
+        passwordResetTokenExpiresAt: null,
       },
     })
 
