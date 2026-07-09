@@ -551,8 +551,8 @@ export default function InventoryCyclePage() {
                     <tr className="text-xs text-slate-500 uppercase bg-slate-50/50">
                       <th className="text-left py-3 px-5 font-semibold">Added By</th>
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
-                      <th className="text-left py-3 px-5 font-semibold">Type</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
+                      <th className="text-left py-3 px-5 font-semibold">Items</th>
                       <th className="text-left py-3 px-5 font-semibold">Total Linear Ft</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
@@ -563,9 +563,29 @@ export default function InventoryCyclePage() {
                         <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
                           onClick={() => setExpandedCycle(expandedCycle === c.id ? null : c.id)}>
                           <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700">{c.createdByName || c.createdByEmail || '-'}</span></td>
-                          <td className="py-3.5 px-5"><div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-brand-green" /><span className="font-medium text-slate-700">{formatDate(c.cycleCountDate)}</span></div></td>
-                          <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold">{c.cycleCountType}</span></td>
+                          <td className="py-3.5 px-5"><div className="flex items-center gap-2 whitespace-nowrap"><Calendar className="w-3.5 h-3.5 text-brand-green flex-shrink-0" /><span className="font-medium text-slate-700">{formatDate(c.cycleCountDate)}</span></div></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{c.workroom}</span></td>
+                          <td className="py-3.5 px-5">
+                            <div className="flex flex-wrap gap-1">
+                              {PAD_TYPES.map(pt => {
+                                const rolls = c.rollCounts ? ((c.rollCounts as Record<string, number>)[pt] ?? 0) : 0
+                                const ft = c.linearFeetCounts ? ((c.linearFeetCounts as Record<string, number>)[pt] ?? 0) : 0
+                                if (rolls === 0 && ft === 0) return null
+                                const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
+                                return (
+                                  <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
+                                    <Package className="w-3 h-3" />
+                                    {pt} - {rolls}R / {ft}LF ({totalFt} total)
+                                  </span>
+                                )
+                              })}
+                              {PAD_TYPES.every(pt => {
+                                const rolls = c.rollCounts ? ((c.rollCounts as Record<string, number>)[pt] ?? 0) : 0
+                                const ft = c.linearFeetCounts ? ((c.linearFeetCounts as Record<string, number>)[pt] ?? 0) : 0
+                                return rolls === 0 && ft === 0
+                              }) && <span className="text-xs text-slate-400">-</span>}
+                            </div>
+                          </td>
                           <td className="py-3.5 px-5">
                             <span className="text-sm font-bold text-brand-green">
                               {(() => {

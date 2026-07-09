@@ -610,8 +610,8 @@ export default function BolPage() {
                       <th className="text-left py-3 px-5 font-semibold">Added By</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
-                      <th className="text-left py-3 px-5 font-semibold">Order #</th>
-                      <th className="text-left py-3 px-5 font-semibold">Line Items</th>
+                      <th className="text-left py-3 px-5 font-semibold">Items</th>
+                      <th className="text-left py-3 px-4 font-semibold">Total Qty</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -633,18 +633,25 @@ export default function BolPage() {
                             </span>
                           </td>
                           <td className="py-3.5 px-5">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-3.5 h-3.5 text-brand-green" />
+                            <div className="flex items-center gap-2 whitespace-nowrap">
+                              <Calendar className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
                               <span className="font-medium text-slate-700">{formatDate(order.dateReceived)}</span>
                             </div>
                           </td>
                           <td className="py-3.5 px-5">
-                            <span className="text-xs font-mono font-semibold text-slate-600">{order.orderNumber || order.id.slice(-8).toUpperCase()}</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(order.items as PadOrderItem[]).map((item, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
+                                  <Package className="w-3 h-3" />
+                                  {item.name} x{item.quantity}
+                                </span>
+                              ))}
+                            </div>
                           </td>
-                          <td className="py-3.5 px-5">
+                          <td className="py-3.5 px-4">
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
                               <Package className="w-3 h-3" />
-                              {(order.items as PadOrderItem[]).length}
+                              {(order.items as PadOrderItem[]).reduce((s, i) => s + i.quantity, 0)}
                             </span>
                           </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
