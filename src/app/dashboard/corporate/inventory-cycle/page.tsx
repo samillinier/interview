@@ -15,8 +15,6 @@ import {
   AlertCircle,
   CheckCircle2,
   ClipboardList,
-  ChevronDown,
-  ChevronUp,
   X,
 } from 'lucide-react'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -279,24 +277,27 @@ export default function InventoryCyclePage() {
       return sum + Object.values(c.linearFeetCounts as Record<string, number>).reduce((a, b) => a + b, 0)
     }, 0)
 
-    // Group records by week and month
+    // Group records by week and month, filtered by cycleCountType
     const byWeek: Record<string, { label: string; records: InventoryCycle[] }> = {}
     const byMonth: Record<string, { label: string; records: InventoryCycle[] }> = {}
 
     for (const c of cycles) {
       const d = new Date(c.cycleCountDate)
-      const dayOfWeek = d.getDay()
-      const monday = new Date(d)
-      monday.setDate(d.getDate() - ((dayOfWeek + 6) % 7))
-      const weekKey = monday.toISOString().split('T')[0]
 
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (c.cycleCountType === 'Weekly') {
+        const dayOfWeek = d.getDay()
+        const monday = new Date(d)
+        monday.setDate(d.getDate() - ((dayOfWeek + 6) % 7))
+        const weekKey = monday.toISOString().split('T')[0]
+        if (!byWeek[weekKey]) byWeek[weekKey] = { label: formatWeekLabel(monday.toISOString().split('T')[0]), records: [] }
+        byWeek[weekKey].records.push(c)
+      }
 
-      if (!byWeek[weekKey]) byWeek[weekKey] = { label: formatWeekLabel(monday.toISOString().split('T')[0]), records: [] }
-      byWeek[weekKey].records.push(c)
-
-      if (!byMonth[monthKey]) byMonth[monthKey] = { label: formatMonthLabel(monthKey), records: [] }
-      byMonth[monthKey].records.push(c)
+      if (c.cycleCountType === 'End of Month') {
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (!byMonth[monthKey]) byMonth[monthKey] = { label: formatMonthLabel(monthKey), records: [] }
+        byMonth[monthKey].records.push(c)
+      }
     }
 
     const weekGroups = Object.entries(byWeek)
@@ -392,7 +393,7 @@ export default function InventoryCyclePage() {
 
           {/* Weekly & Monthly Grouped Lists */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Weekly Breakdown */}
+            {/* Weekly Counts */}
             <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
               <div className="p-5 border-b border-slate-100">
                 <div className="flex items-center gap-3">
@@ -400,7 +401,7 @@ export default function InventoryCyclePage() {
                     <Calendar className="w-4 h-4 text-brand-green" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Weekly Breakdown</h2>
+                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Weekly Counts</h2>
                     <p className="text-xs text-slate-400">{analytics.weekGroups.length} week{analytics.weekGroups.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
@@ -411,55 +412,47 @@ export default function InventoryCyclePage() {
                   <p className="text-sm">No weekly data yet</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
-                  {analytics.weekGroups.map((group) => (
-                    <details key={group.key} className="group">
-                      <summary className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-slate-50 transition-colors list-none">
-                        <div className="flex items-center gap-3">
-                          <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
-                          <span className="text-sm font-semibold text-slate-700">{group.label}</span>
-                        </div>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
-                          {group.records.length} record{group.records.length !== 1 ? 's' : ''}
-                        </span>
-                      </summary>
-                      <div className="px-5 pb-3">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-50">
-                              <th className="text-left py-1.5 font-semibold">Date</th>
-                              <th className="text-left py-1.5 font-semibold">Type</th>
-                              <th className="text-left py-1.5 font-semibold">Workroom</th>
-                              <th className="text-left py-1.5 font-semibold">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {group.records.map((c) => (
-                              <tr key={c.id} className="border-b border-slate-50/50 last:border-0">
-                                <td className="py-1.5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
-                                <td className="py-1.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
-                                </td>
-                                <td className="py-1.5 text-slate-600">{c.workroom}</td>
-                                <td className="py-1.5">
-                                  {c.authorized ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-2.5 h-2.5" />Authorized</span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-semibold"><AlertCircle className="w-2.5 h-2.5" />Pending</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </details>
-                  ))}
+                <div className="max-h-[500px] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100 sticky top-0 bg-white">
+                        <th className="text-left py-2 px-5 font-semibold">Date</th>
+                        <th className="text-left py-2 px-3 font-semibold">Type</th>
+                        <th className="text-left py-2 px-3 font-semibold">Workroom</th>
+                        <th className="text-left py-2 px-3 font-semibold">Total Linear Ft</th>
+                        <th className="text-left py-2 px-5 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.weekGroups.flatMap(g => g.records).map((c) => {
+                        const rc = (c.rollCounts || {}) as Record<string, number>
+                        const lf = (c.linearFeetCounts || {}) as Record<string, number>
+                        const totalFt = PAD_TYPES.reduce((sum, pt) => sum + ((rc[pt] || 0) * (PAD_MULTIPLIERS[pt] || 45) + (lf[pt] || 0)), 0)
+                        return (
+                        <tr key={c.id} className="border-b border-slate-50 last:border-0">
+                          <td className="py-2 px-5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
+                          <td className="py-2 px-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
+                          </td>
+                          <td className="py-2 px-3 text-slate-600">{c.workroom}</td>
+                          <td className="py-2 px-3 text-slate-700 font-semibold">{totalFt}</td>
+                          <td className="py-2 px-5">
+                            {c.authorized ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-2.5 h-2.5" />Authorized</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-semibold"><AlertCircle className="w-2.5 h-2.5" />Pending</span>
+                            )}
+                          </td>
+                        </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
 
-            {/* Monthly Breakdown */}
+            {/* End of Month Counts */}
             <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
               <div className="p-5 border-b border-slate-100">
                 <div className="flex items-center gap-3">
@@ -467,7 +460,7 @@ export default function InventoryCyclePage() {
                     <Calendar className="w-4 h-4 text-brand-green" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Monthly Breakdown</h2>
+                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">End of Month Counts</h2>
                     <p className="text-xs text-slate-400">{analytics.monthGroups.length} month{analytics.monthGroups.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
@@ -478,50 +471,42 @@ export default function InventoryCyclePage() {
                   <p className="text-sm">No monthly data yet</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
-                  {analytics.monthGroups.map((group) => (
-                    <details key={group.key} className="group">
-                      <summary className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-slate-50 transition-colors list-none">
-                        <div className="flex items-center gap-3">
-                          <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
-                          <span className="text-sm font-semibold text-slate-700">{group.label}</span>
-                        </div>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
-                          {group.records.length} record{group.records.length !== 1 ? 's' : ''}
-                        </span>
-                      </summary>
-                      <div className="px-5 pb-3">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-50">
-                              <th className="text-left py-1.5 font-semibold">Date</th>
-                              <th className="text-left py-1.5 font-semibold">Type</th>
-                              <th className="text-left py-1.5 font-semibold">Workroom</th>
-                              <th className="text-left py-1.5 font-semibold">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {group.records.map((c) => (
-                              <tr key={c.id} className="border-b border-slate-50/50 last:border-0">
-                                <td className="py-1.5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
-                                <td className="py-1.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
-                                </td>
-                                <td className="py-1.5 text-slate-600">{c.workroom}</td>
-                                <td className="py-1.5">
-                                  {c.authorized ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-2.5 h-2.5" />Authorized</span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-semibold"><AlertCircle className="w-2.5 h-2.5" />Pending</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </details>
-                  ))}
+                <div className="max-h-[500px] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100 sticky top-0 bg-white">
+                        <th className="text-left py-2 px-5 font-semibold">Date</th>
+                        <th className="text-left py-2 px-3 font-semibold">Type</th>
+                        <th className="text-left py-2 px-3 font-semibold">Workroom</th>
+                        <th className="text-left py-2 px-3 font-semibold">Total Linear Ft</th>
+                        <th className="text-left py-2 px-5 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.monthGroups.flatMap(g => g.records).map((c) => {
+                        const rc = (c.rollCounts || {}) as Record<string, number>
+                        const lf = (c.linearFeetCounts || {}) as Record<string, number>
+                        const totalFt = PAD_TYPES.reduce((sum, pt) => sum + ((rc[pt] || 0) * (PAD_MULTIPLIERS[pt] || 45) + (lf[pt] || 0)), 0)
+                        return (
+                        <tr key={c.id} className="border-b border-slate-50 last:border-0">
+                          <td className="py-2 px-5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
+                          <td className="py-2 px-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
+                          </td>
+                          <td className="py-2 px-3 text-slate-600">{c.workroom}</td>
+                          <td className="py-2 px-3 text-slate-700 font-semibold">{totalFt}</td>
+                          <td className="py-2 px-5">
+                            {c.authorized ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-2.5 h-2.5" />Authorized</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-semibold"><AlertCircle className="w-2.5 h-2.5" />Pending</span>
+                            )}
+                          </td>
+                        </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -568,9 +553,8 @@ export default function InventoryCyclePage() {
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Type</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
-                      <th className="text-left py-3 px-5 font-semibold">Authorized By</th>
+                      <th className="text-left py-3 px-5 font-semibold">Total Linear Ft</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
-                      <th className="text-center py-3 px-5 font-semibold w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -582,11 +566,19 @@ export default function InventoryCyclePage() {
                           <td className="py-3.5 px-5"><div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-brand-green" /><span className="font-medium text-slate-700">{formatDate(c.cycleCountDate)}</span></div></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold">{c.cycleCountType}</span></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{c.workroom}</span></td>
-                          <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700">{c.authorized ? (c.authorizedBy || c.authorizationMethod || '-') : '-'}</span></td>
+                          <td className="py-3.5 px-5">
+                            <span className="text-sm font-bold text-brand-green">
+                              {(() => {
+                                const rc = (c.rollCounts || {}) as Record<string, number>
+                                const lf = (c.linearFeetCounts || {}) as Record<string, number>
+                                return PAD_TYPES.reduce((sum, pt) => sum + ((rc[pt] || 0) * (PAD_MULTIPLIERS[pt] || 45) + (lf[pt] || 0)), 0)
+                              })()}
+                            </span>
+                          </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between gap-2">
                               {c.authorized ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold whitespace-nowrap"><CheckCircle2 className="w-3 h-3 flex-shrink-0" />Authorized</span>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold whitespace-nowrap"><CheckCircle2 className="w-3 h-3 flex-shrink-0" />{c.authorizedBy || c.authorizationMethod || 'Authorized'}</span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-semibold whitespace-nowrap"><AlertCircle className="w-3 h-3 flex-shrink-0" />Pending</span>
                               )}
@@ -597,13 +589,10 @@ export default function InventoryCyclePage() {
                               </select>
                             </div>
                           </td>
-                          <td className="py-3.5 px-5 text-center">
-                            {expandedCycle === c.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                          </td>
                         </tr>
                         {expandedCycle === c.id && (
                           <tr>
-                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Card label="Date" value={formatDate(c.cycleCountDate)} />
                                 <Card label="Cycle Type" value={c.cycleCountType} />

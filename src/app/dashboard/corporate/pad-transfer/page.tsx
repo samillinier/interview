@@ -14,8 +14,6 @@ import {
   AlertCircle,
   CheckCircle2,
   ClipboardList,
-  ChevronDown,
-  ChevronUp,
   X,
   Truck,
   MapPin,
@@ -394,9 +392,9 @@ export default function PadTransferPage() {
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">From</th>
                       <th className="text-left py-3 px-5 font-semibold">To</th>
-                      <th className="text-left py-3 px-5 font-semibold">Authorized By</th>
+                      <th className="text-left py-3 px-4 font-semibold">Est. Cost</th>
+                      <th className="text-left py-3 px-4 font-semibold">Rolls</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
-                      <th className="text-center py-3 px-5 font-semibold w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -408,11 +406,12 @@ export default function PadTransferPage() {
                           <td className="py-3.5 px-5"><div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-brand-green" /><span className="font-medium text-slate-700">{formatDate(t.dateRequested)}</span></div></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold"><MapPin className="w-3 h-3" />{t.requestorLocation}</span></td>
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{t.receivingWorkroom}</span></td>
-                          <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700">{t.authorized ? (t.authorizedBy || t.authorizationMethod || '-') : '-'}</span></td>
+                          <td className="py-3.5 px-4"><span className="text-xs font-semibold text-slate-600">{t.estimatedCost || '-'}</span></td>
+                          <td className="py-3.5 px-4"><span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Layers className="w-3 h-3" />{t.rollQuantity != null ? t.rollQuantity : '-'}</span></td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between gap-2">
                               {t.authorized ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold whitespace-nowrap"><CheckCircle2 className="w-3 h-3 flex-shrink-0" />Authorized</span>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold whitespace-nowrap"><CheckCircle2 className="w-3 h-3 flex-shrink-0" />{t.authorizedBy || t.authorizationMethod || 'Authorized'}</span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-semibold whitespace-nowrap"><AlertCircle className="w-3 h-3 flex-shrink-0" />Pending</span>
                               )}
@@ -422,9 +421,6 @@ export default function PadTransferPage() {
                                 <option value="authorized">Authorize</option><option value="denied">Deny</option>
                               </select>
                             </div>
-                          </td>
-                          <td className="py-3.5 px-5 text-center">
-                            {expandedTransfer === t.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                           </td>
                         </tr>
                         {expandedTransfer === t.id && (
