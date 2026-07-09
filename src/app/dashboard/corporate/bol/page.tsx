@@ -16,8 +16,6 @@ import {
   AlertCircle,
   CheckCircle2,
   ClipboardList,
-  ChevronDown,
-  ChevronUp,
   X,
   TrendingUp,
   Camera,
@@ -615,7 +613,6 @@ export default function BolPage() {
                       <th className="text-left py-3 px-5 font-semibold">Order #</th>
                       <th className="text-left py-3 px-5 font-semibold">Line Items</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
-                      <th className="text-center py-3 px-5 font-semibold w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -678,17 +675,10 @@ export default function BolPage() {
                               </select>
                             </div>
                           </td>
-                          <td className="py-3.5 px-5 text-center">
-                            {expandedOrder === order.id ? (
-                              <ChevronUp className="w-4 h-4 text-slate-400" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-slate-400" />
-                            )}
-                          </td>
                         </tr>
                         {expandedOrder === order.id && (
                           <tr key={`${order.id}-expanded`}>
-                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div className="bg-white rounded-lg p-3 border border-slate-100">
                                   <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Workroom</p>
