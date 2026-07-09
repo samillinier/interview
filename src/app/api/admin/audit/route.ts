@@ -43,9 +43,7 @@ export async function GET(request: NextRequest) {
     const range = (searchParams.get('range') || 'week').trim()
     const take = Math.min(Math.max(Number(searchParams.get('take') || 100), 1), 200)
 
-    const where: any = {
-      NOT: { targetType: 'cilio_api' },
-    }
+    const where: any = {}
     if (action) where.action = action
     if (range !== 'all') where.createdAt = { gte: getRangeStart(range) }
     if (q) {

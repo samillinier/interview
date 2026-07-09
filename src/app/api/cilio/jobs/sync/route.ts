@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/db"
-import { Prisma } from "@prisma/client"
-import { requireCilioAccess } from "@/lib/cilioAccess"
 
 export const dynamic = "force-dynamic"
 
@@ -13,8 +13,10 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireCilioAccess(request)
-    if (!access.ok) return access.response
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
     const body = await request.json()
     const jobs: Array<{
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
       // Strip cilioPayload to only essential fields to reduce DB egress.
       // Full payloads were 20-50 KB each; stripped version is ~1 KB.
       const rawPayload = job.cilioPayload ?? {}
-      const strippedPayload: Record<string, Prisma.InputJsonValue | null> = {}
+      const strippedPayload: Record<string, unknown> = {}
       const essentialFields = [
         'customerFirstName', 'customerLastName', 'poAmount',
         'currentOrderStatusDate', 'scopeOfWorkNotes', 'jobNumber',
@@ -106,12 +108,12 @@ export async function POST(request: NextRequest) {
         create: {
           ...data,
           orderNumber: job.orderNumber,
-          cilioPayload: strippedPayload as Prisma.InputJsonObject,
+          cilioPayload: strippedPayload,
         },
         update: {
           ...data,
           // Only update cilioPayload when status changed — avoids rewriting on every sync
-          ...(statusChanged ? { cilioPayload: strippedPayload as Prisma.InputJsonObject } : {}),
+          ...(statusChanged ? { cilioPayload: strippedPayload } : {}),
         },
       })
       synced++

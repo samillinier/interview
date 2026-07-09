@@ -83,74 +83,69 @@ async function runAutoSync(request: NextRequest) {
     }
 
     const cilioUrl = process.env.CILIO_API_BASE_URL || "default-gatewayqa"
-    console.log(`[AutoSync] Starting Cilio delta sync (24h overlap)... (url=${cilioUrl})`)
+    console.log(`[AutoSync] Starting Cilio delta sync (last hour)... (url=${cilioUrl})`)
     const startTime = Date.now()
 
     // ── DELTA SYNC ──
-    // Instead of fetching 3 months of jobs every cycle, catch up from the latest
-    // saved update with a 24-hour overlap. Cilio's date filters are timezone-sensitive,
-    // so the wider overlap keeps recent local-time jobs from being missed.
-    // without going back farther than seven days.
+    // Instead of fetching 3 months of jobs every cycle, only fetch jobs modified
+    // in the last hour. With the cron at */15, this catches all changes with a
+    // 45-minute safety margin. Uses Cilio's paginated searchJobs.
+    // A deeper full sync runs on the first invocation of each hour as a safety net.
     const now = new Date()
-    const latestSaved = await prisma.cilioJobRecord.findFirst({
-      orderBy: { updatedAt: "desc" },
-      select: { updatedAt: true },
-    })
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600000)
-    const since = latestSaved?.updatedAt
-      ? new Date(Math.max(latestSaved.updatedAt.getTime() - 24 * 3600000, sevenDaysAgo.getTime()))
-      : sevenDaysAgo
+    const oneHourAgo = new Date(now.getTime() - 3600000)
     const toISO = (d: Date) => d.toISOString()
 
     let fetchError: string | null = null
     let allJobs: any[] = []
 
-    // Delta sync: fetch recently modified and newly created jobs, handling Cilio pagination.
+    // Delta sync: fetch jobs modified in the last hour, handling Cilio pagination
     try {
       const pageSize = 500
-      const maxPages = 10
+      let page = 1
+      let totalPages = 1
       const seen = new Set<number>()
 
-      const fetchWindow = async (mode: "modified" | "created") => {
-        let page = 1
-        while (page <= maxPages) {
-          const result = await cilio.searchJobs({
-            ...(mode === "modified"
-              ? {
-                  orderModifiedDateStart: toISO(since),
-                  orderModifiedDateEnd: toISO(now),
-                }
-              : {
-                  orderCreatedDateStart: toISO(since),
-                  orderCreatedDateEnd: toISO(now),
-                }),
-            page,
-            pageSize,
-          })
+      while (page <= totalPages) {
+        const result = await cilio.searchJobs({
+          orderModifiedDateStart: toISO(oneHourAgo),
+          orderModifiedDateEnd: toISO(now),
+          page,
+          pageSize,
+        })
 
-          const jobs = Array.isArray(result) ? result : []
-          for (const j of jobs) {
-            if (j?.orderNumber && !seen.has(j.orderNumber)) {
+        if (Array.isArray(result)) {
+          // Old format: plain array, no pagination metadata
+          for (const j of result) {
+            if (!seen.has(j.orderNumber)) {
               seen.add(j.orderNumber)
               allJobs.push(j)
             }
           }
-
-          if (jobs.length < pageSize) break
-          await new Promise(r => setTimeout(r, 100)) // Rate limit buffer between pages
+          break // Old format returns everything in one call
+        } else if (result && typeof result === "object" && "totalPages" in result) {
+          // New paginated format
+          const paged = result as { totalPages: number; results: any[]; currentPage: number }
+          for (const j of paged.results) {
+            if (!seen.has(j.orderNumber)) {
+              seen.add(j.orderNumber)
+              allJobs.push(j)
+            }
+          }
+          totalPages = paged.totalPages
           page++
+          if (paged.totalPages <= 1) break
+          await new Promise(r => setTimeout(r, 100)) // Rate limit buffer between pages
+        } else {
+          break
         }
       }
-
-      await fetchWindow("modified")
-      await fetchWindow("created")
     } catch (e: any) {
       fetchError = e?.message || String(e)
       console.error("[AutoSync] Delta fetch FAILED:", fetchError)
       allJobs = []
     }
 
-    console.log(`[AutoSync] Delta sync fetched ${allJobs.length} jobs since ${toISO(since)}`)
+    console.log(`[AutoSync] Delta sync fetched ${allJobs.length} jobs modified in the last hour`)
 
     // Filter out test jobs before upserting
     const testFiltered = allJobs.filter(j => !isTestJob(j))
@@ -265,15 +260,9 @@ async function runAutoSync(request: NextRequest) {
       }
     }
 
-    // Phase 2: Enrich only the records touched in this sync. Full detail calls
-    // are more expensive than search, so avoid retrying hundreds of older rows
-    // on every cron run when optional fields remain null.
+    // Phase 2: Enrich records from the full detail API (dates + installer name + installerId)
     let enriched = 0
     try {
-      const touchedOrderNumbers = testFiltered
-        .map(j => Number(j.orderNumber))
-        .filter(n => Number.isFinite(n))
-
       // Pre-fetch all installer names for ID resolution
       const dbInstallers = await prisma.installer.findMany({
         where: { status: { not: 'rejected' } },
@@ -283,7 +272,6 @@ async function runAutoSync(request: NextRequest) {
 
       const needsEnrichment = await prisma.cilioJobRecord.findMany({
         where: {
-          orderNumber: { in: touchedOrderNumbers },
           OR: [
             { scheduledInstallDate: null },
             { installerName: null },

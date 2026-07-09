@@ -1,180 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Prisma } from "@prisma/client"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import * as cilio from "@/lib/cilio"
 import prisma from "@/lib/db"
-import { getWorkroomByStoreNumber } from "@/lib/workroomMapping"
 
 export const dynamic = "force-dynamic"
-export const maxDuration = 120
-
-const RECENT_REFRESH_KEY = "cilio-dashboard-recent-refresh"
-const RECENT_REFRESH_TTL_MS = 5 * 60 * 1000
-const RECENT_REFRESH_RUNNING_TIMEOUT_MS = 2 * 60 * 1000
-const RECENT_REFRESH_WINDOW_MS = 24 * 60 * 60 * 1000
-const RECENT_REFRESH_MAX_CATCHUP_MS = 7 * 24 * 60 * 60 * 1000
-
-function isTestJob(job: any): boolean {
-  const fields = [
-    job.customerLastName,
-    job.customerFirstName,
-    job.customerEmail,
-    job.poJobNumber,
-    job.storeName,
-    job.scopeOfWorkNotes,
-  ]
-  return fields.some((val) => typeof val === "string" && (/\btest\b/i.test(val) || /test[_\s]project/i.test(val)))
-}
-
-function strippedCilioPayload(job: any): Prisma.InputJsonObject {
-  return {
-    customerFirstName: job.customerFirstName ?? null,
-    customerLastName: job.customerLastName ?? null,
-    poAmount: job.poAmount ?? null,
-    currentOrderStatusDate: job.currentOrderStatusDate ?? null,
-    scopeOfWorkNotes: job.scopeOfWorkNotes ?? null,
-    jobNumber: job.jobNumber ?? null,
-    projectNumber: job.projectNumber ?? null,
-    purchaserPO: job.purchaserPO ?? null,
-    orderStorePO: job.orderStorePO ?? null,
-    invoiceNumber: job.invoiceNumber ?? null,
-    salesOrderNumber: job.salesOrderNumber ?? null,
-    permitNumber: job.permitNumber ?? null,
-    salesAssociate: job.salesAssociate ?? null,
-    storeDistrict: job.storeDistrict ?? null,
-    enterpriseGroupNumber: job.enterpriseGroupNumber ?? null,
-  }
-}
-
-async function upsertRecentCilioJob(job: any) {
-  if (!job?.orderNumber || isTestJob(job)) return false
-
-  const statusDesc = job.orderStatusDescription || ""
-  const isChargeback = statusDesc.toLowerCase().includes("chargeback") || statusDesc.toLowerCase().includes("charge back")
-  const existing = await prisma.cilioJobRecord.findUnique({
-    where: { orderNumber: job.orderNumber },
-    select: { orderStatusDescription: true },
-  })
-  const statusChanged = existing && existing.orderStatusDescription !== (statusDesc || null)
-  const payload = strippedCilioPayload(job)
-
-  await prisma.cilioJobRecord.upsert({
-    where: { orderNumber: job.orderNumber },
-    create: {
-      orderNumber: job.orderNumber,
-      orderStatusDescription: statusDesc || null,
-      jobType: isChargeback ? "chargeback" : "scheduled",
-      storeNumber: job.storeNumber || null,
-      storeName: job.storeName || null,
-      laborCategoryDescription: job.laborCategoryDescription || null,
-      workroom: getWorkroomByStoreNumber(job.storeNumber || "") || null,
-      scheduledInstallDate: job.scheduledInstallDate ? new Date(job.scheduledInstallDate) : null,
-      measureDate: job.measureDate ? new Date(job.measureDate) : null,
-      bookingDate: job.bookingDate ? new Date(job.bookingDate) : null,
-      statusChangedAt: null,
-      installerId: null,
-      installerName: null,
-      cilioPayload: payload,
-    },
-    update: {
-      orderStatusDescription: statusDesc || null,
-      jobType: isChargeback ? "chargeback" : "scheduled",
-      storeNumber: job.storeNumber || null,
-      storeName: job.storeName || null,
-      laborCategoryDescription: job.laborCategoryDescription || null,
-      workroom: getWorkroomByStoreNumber(job.storeNumber || "") || null,
-      scheduledInstallDate: job.scheduledInstallDate ? new Date(job.scheduledInstallDate) : undefined,
-      measureDate: job.measureDate ? new Date(job.measureDate) : undefined,
-      bookingDate: job.bookingDate ? new Date(job.bookingDate) : undefined,
-      ...(statusChanged ? { statusChangedAt: new Date(), cilioPayload: payload } : {}),
-    },
-  })
-
-  return true
-}
-
-async function refreshRecentCilioJobsIfNeeded() {
-  const now = new Date()
-  const state = await prisma.cilioSyncState.findUnique({ where: { key: RECENT_REFRESH_KEY } })
-
-  if (state?.lastCompletedAt && now.getTime() - state.lastCompletedAt.getTime() < RECENT_REFRESH_TTL_MS) {
-    return { refreshed: false, reason: "cooldown", lastCompletedAt: state.lastCompletedAt }
-  }
-
-  if (
-    state?.status === "running" &&
-    state.lastStartedAt &&
-    now.getTime() - state.lastStartedAt.getTime() < RECENT_REFRESH_RUNNING_TIMEOUT_MS
-  ) {
-    return { refreshed: false, reason: "already-running", lastStartedAt: state.lastStartedAt }
-  }
-
-  await prisma.cilioSyncState.upsert({
-    where: { key: RECENT_REFRESH_KEY },
-    create: { key: RECENT_REFRESH_KEY, lastStartedAt: now, status: "running", message: "Refreshing recent Cilio jobs" },
-    update: { lastStartedAt: now, status: "running", message: "Refreshing recent Cilio jobs" },
-  })
-
-  try {
-    const latestSaved = await prisma.cilioJobRecord.findFirst({
-      orderBy: { updatedAt: "desc" },
-      select: { updatedAt: true },
-    })
-    const defaultSince = new Date(now.getTime() - RECENT_REFRESH_WINDOW_MS)
-    const catchupSince = latestSaved?.updatedAt
-      ? new Date(Math.max(latestSaved.updatedAt.getTime() - RECENT_REFRESH_WINDOW_MS, now.getTime() - RECENT_REFRESH_MAX_CATCHUP_MS))
-      : new Date(now.getTime() - RECENT_REFRESH_MAX_CATCHUP_MS)
-    const since = state?.lastCompletedAt ? defaultSince : catchupSince
-    const pageSize = 500
-    const maxPages = 10
-    let synced = 0
-    const seen = new Set<number>()
-
-    const fetchWindow = async (mode: "modified" | "created") => {
-      let page = 1
-      while (page <= maxPages) {
-        const jobs = await cilio.searchJobs({
-          ...(mode === "modified"
-            ? { orderModifiedDateStart: since.toISOString(), orderModifiedDateEnd: now.toISOString() }
-            : { orderCreatedDateStart: since.toISOString(), orderCreatedDateEnd: now.toISOString() }),
-          page,
-          pageSize,
-        })
-
-        for (const job of jobs) {
-          if (job?.orderNumber && !seen.has(job.orderNumber)) {
-            seen.add(job.orderNumber)
-            if (await upsertRecentCilioJob(job)) synced++
-          }
-        }
-
-        if (jobs.length < pageSize) break
-        page++
-      }
-    }
-
-    await fetchWindow("modified")
-    await fetchWindow("created")
-
-    await prisma.cilioSyncState.update({
-      where: { key: RECENT_REFRESH_KEY },
-      data: {
-        lastCompletedAt: new Date(),
-        status: "completed",
-        message: `Synced ${synced} recent Cilio jobs since ${since.toISOString()}`,
-      },
-    })
-
-    return { refreshed: true, synced, since }
-  } catch (error: any) {
-    await prisma.cilioSyncState.update({
-      where: { key: RECENT_REFRESH_KEY },
-      data: { status: "error", message: error?.message || "Recent Cilio refresh failed" },
-    }).catch(() => {})
-    return { refreshed: false, reason: "error", message: error?.message || "Recent Cilio refresh failed" }
-  }
-}
 
 /**
  * GET /api/cilio/jobs/saved
@@ -215,7 +44,6 @@ export async function GET(request: NextRequest) {
     const chargeback = searchParams.get('chargeback') === '1'
 
     const offset = (page - 1) * pageSize
-    const recentRefresh = await refreshRecentCilioJobsIfNeeded()
 
     // ── Build dynamic WHERE conditions ──────────────────────────
     const conditions: string[] = []
@@ -444,7 +272,6 @@ export async function GET(request: NextRequest) {
         laborCategories: (Array.isArray(f.labor_categories) ? f.labor_categories : []).sort(),
         workrooms: (Array.isArray(f.workrooms) ? f.workrooms : []).sort(),
       },
-      recentRefresh,
     })
   } catch (error: any) {
     console.error("Fetch saved jobs error:", error)

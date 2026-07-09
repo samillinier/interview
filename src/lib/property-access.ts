@@ -7,8 +7,18 @@
 
 import prisma from './db'
 
+export const SUPER_ADMIN_EMAIL = 'sbiru@fiscorponline.com'
+
 function normalizeAdminRole(role: unknown): string {
   return String(role || '').trim().toUpperCase()
+}
+
+/**
+ * Check if the user is the super admin (Sam) - kept for backwards compatibility
+ */
+export function isSuperAdmin(userEmail: string | null | undefined): boolean {
+  if (!userEmail) return false
+  return userEmail.toLowerCase().trim() === SUPER_ADMIN_EMAIL.toLowerCase().trim()
 }
 
 /**

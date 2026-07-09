@@ -21,10 +21,33 @@ export async function DELETE(
 
     const userEmail = session.user.email.toLowerCase()
 
-    // Check if current user is an active admin from the database.
-    const currentAdmin = await prisma.admin.findUnique({
+    // Check if current user is an admin
+    let currentAdmin = await prisma.admin.findUnique({
       where: { email: userEmail },
     })
+
+    // Auto-create from fallback list if needed
+    if (!currentAdmin) {
+      const FALLBACK_EMAILS = [
+        'amunoz@fiscorponline.com',
+        'aclass@fiscorponline.com',
+        'sbiru@fiscorponline.com',
+        'svudaru@fiscorponline.com',
+      ].map(e => e.toLowerCase().trim())
+
+      if (FALLBACK_EMAILS.includes(userEmail)) {
+        try {
+          currentAdmin = await prisma.admin.create({
+            data: {
+              email: userEmail,
+              isActive: true,
+            },
+          })
+        } catch (createError: any) {
+          console.error('Failed to auto-create admin:', createError)
+        }
+      }
+    }
 
     if (!currentAdmin || !currentAdmin.isActive) {
       return NextResponse.json(
@@ -32,7 +55,7 @@ export async function DELETE(
         { status: 403 }
       )
     }
-    if (!['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role || '').toUpperCase())) {
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
       return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
@@ -95,10 +118,33 @@ export async function PATCH(
 
     const userEmail = session.user.email.toLowerCase()
 
-    // Check if current user is an active admin from the database.
-    const currentAdmin = await prisma.admin.findUnique({
+    // Check if current user is an admin
+    let currentAdmin = await prisma.admin.findUnique({
       where: { email: userEmail },
     })
+
+    // Auto-create from fallback list if needed
+    if (!currentAdmin) {
+      const FALLBACK_EMAILS = [
+        'amunoz@fiscorponline.com',
+        'aclass@fiscorponline.com',
+        'sbiru@fiscorponline.com',
+        'svudaru@fiscorponline.com',
+      ].map(e => e.toLowerCase().trim())
+
+      if (FALLBACK_EMAILS.includes(userEmail)) {
+        try {
+          currentAdmin = await prisma.admin.create({
+            data: {
+              email: userEmail,
+              isActive: true,
+            },
+          })
+        } catch (createError: any) {
+          console.error('Failed to auto-create admin:', createError)
+        }
+      }
+    }
 
     if (!currentAdmin || !currentAdmin.isActive) {
       return NextResponse.json(
@@ -106,7 +152,7 @@ export async function PATCH(
         { status: 403 }
       )
     }
-    if (!['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role || '').toUpperCase())) {
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
       return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 

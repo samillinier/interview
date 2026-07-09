@@ -2,7 +2,13 @@ import { NextAuthOptions } from 'next-auth'
 import AzureADProvider from 'next-auth/providers/azure-ad'
 import prisma from '@/lib/db'
 
-const ADMIN_AUTH_ROLES = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR']
+// Fallback allowed email addresses (for initial setup or if database is unavailable)
+const FALLBACK_ALLOWED_EMAILS = [
+  'amunoz@fiscorponline.com',
+  'aclass@fiscorponline.com',
+  'sbiru@fiscorponline.com',
+  'svudaru@fiscorponline.com',
+].map(email => email.toLowerCase().trim())
 
 // Check if Azure AD is properly configured
 const isAzureADConfigured = 
@@ -92,8 +98,8 @@ export const authOptions: NextAuthOptions = {
           where: { email },
         })
 
-        const adminRole = String((admin as any)?.role || '').toUpperCase()
-        if (admin?.isActive && ADMIN_AUTH_ROLES.includes(adminRole)) {
+        // Only allow ADMIN role (not MODERATOR) to access property portal
+        if (admin && admin.isActive && ((admin as any).role === 'ADMIN' || (admin as any).role === 'SUPER_ADMIN')) {
           console.log('✅ Admin authorized (admin database):', email)
           return true
         }
@@ -132,6 +138,30 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Fallback to hardcoded list (for initial setup)
+        if (FALLBACK_ALLOWED_EMAILS.includes(email)) {
+          console.log('✅ User authorized (fallback list):', email)
+          
+          // Auto-create admin in database if they're in fallback list
+          try {
+            await prisma.admin.upsert({
+              where: { email },
+              update: { isActive: true },
+              create: {
+                email,
+                isActive: true,
+                role: 'ADMIN',
+              },
+            })
+            console.log('✅ Auto-created admin in database:', email)
+          } catch (dbError) {
+            console.error('⚠️ Could not auto-create admin:', dbError)
+            // Continue anyway since they're in fallback list
+          }
+          
+          return true
+        }
+
         console.log('❌ User not authorized:', email)
         return false
       } catch (error) {
@@ -150,6 +180,12 @@ export const authOptions: NextAuthOptions = {
           return true
         }
 
+        // Fallback to hardcoded list if database check fails
+        if (FALLBACK_ALLOWED_EMAILS.includes(email)) {
+          console.log('✅ User authorized (fallback due to DB error):', email)
+          return true
+        }
+        
         return false
       }
     },

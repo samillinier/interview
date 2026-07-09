@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { deleteFile } from '@/lib/storage'
 import { extractBtrExpiryFromUploadedFile } from '@/lib/btrExpiry'
-import { requireInstallerOrAdmin } from '@/lib/installerAccess'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -16,8 +15,6 @@ export async function PATCH(
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
     const documentId = resolvedParams.documentId
-    const access = await requireInstallerOrAdmin(request, installerId)
-    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const body = await request.json()
     const { verificationLink, verificationLinkStatus, expiryDate } = body
@@ -91,8 +88,6 @@ export async function POST(
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
     const documentId = resolvedParams.documentId
-    const access = await requireInstallerOrAdmin(request, installerId)
-    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     // Verify document exists, then validate ownership.
     const document = await prisma.document.findUnique({
@@ -153,8 +148,6 @@ export async function DELETE(
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
     const documentId = resolvedParams.documentId
-    const access = await requireInstallerOrAdmin(request, installerId)
-    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     // Verify document belongs to installer
     const document = await prisma.document.findFirst({

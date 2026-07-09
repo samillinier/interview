@@ -1868,7 +1868,7 @@ export default function TrackingPage() {
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      All
+                      Admin Added
                     </button>
                   </div>
                 </div>

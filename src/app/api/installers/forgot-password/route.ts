@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
       where: { id: installer.id },
       data: {
         passwordResetToken: resetToken,
-        passwordResetTokenExpiresAt: resetTokenExpires,
+        // Note: If you have passwordResetTokenExpiresAt field, add it here
+        // passwordResetTokenExpiresAt: resetTokenExpires,
       },
     })
 
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
         })
 
         console.log('Password reset email sent successfully')
-        if (isDevelopment) console.log('Reset URL:', resetUrl)
+        console.log('Reset URL:', resetUrl) // Log URL for debugging
       } catch (emailError: any) {
         console.error('Error sending password reset email:', emailError)
         console.error('Email error details:', {
@@ -134,17 +135,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Only return tokenized links in local development. Production should never
-    // expose reset URLs in API responses, even when email is misconfigured.
-    const shouldReturnUrl = isDevelopment
+    // Always return the reset URL in development mode, or if Resend is not configured
+    // This allows users to test the flow even without email configured
+    const shouldReturnUrl = process.env.NODE_ENV === 'development' || !resendApiKey
     
     if (shouldReturnUrl) {
-      console.log('Password Reset Link (Development Mode):')
+      console.log('📧 Password Reset Link (Development Mode):')
       console.log('   To:', installer.email)
       console.log('   Reset URL:', resetUrl)
       return NextResponse.json({
         success: true,
-        message: 'Password link generated for local development.',
+        message: resendApiKey 
+          ? 'Password link generated. Check your email or use the link below.'
+          : 'Password link generated. Use the link below (email not configured).',
         resetUrl: resetUrl,
       })
     }
