@@ -41,6 +41,14 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { dev }) => {
+    if (!dev) return config
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/node_modules/**', '**/.next/**', '**/.git/**', '**/.cursor/**'],
+    }
+    return config
+  },
 }
 
 module.exports = nextConfig

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -28,6 +28,30 @@ const corporateGroups = [
         icon: FileText,
         cta: 'Open claims',
         highlights: ['Claim queue', 'Loss tracking', 'Status updates'],
+      },
+      {
+        title: 'BOL',
+        description: 'Create pad orders and bill of lading — track items, quantities, and warehouse receipts by workroom.',
+        href: '/dashboard/corporate/bol',
+        icon: Truck,
+        cta: 'Open BOL',
+        highlights: [] as string[],
+      },
+      {
+        title: 'Pad Transfer',
+        description: 'Request pad transfers between workrooms — track requestor, receiving, fulfillment, method, and costs.',
+        href: '/dashboard/corporate/pad-transfer',
+        icon: ArrowLeftRight,
+        cta: 'Open Pad Transfer',
+        highlights: [] as string[],
+      },
+      {
+        title: 'Inventory Cycle',
+        description: 'Track cycle counts — log full roll and linear feet counts by pad type and workroom.',
+        href: '/dashboard/corporate/inventory-cycle',
+        icon: ClipboardList,
+        cta: 'Open Inventory Cycle',
+        highlights: [] as string[],
       },
       ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
         title: section.title,

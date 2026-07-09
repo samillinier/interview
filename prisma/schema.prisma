@@ -42,6 +42,35 @@ model AdminAuditLog {
   @@index([targetType, targetId])
 }
 
+model CilioGeoMetric {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  action    String
+  country   String   @default("UNKNOWN")
+  region    String   @default("")
+  city      String   @default("Unknown")
+  latitude  String   @default("")
+  longitude String   @default("")
+  count     Int      @default(0)
+  lastSeen  DateTime @default(now())
+
+  @@unique([action, country, region, city, latitude, longitude])
+  @@index([action])
+  @@index([country])
+  @@index([lastSeen])
+}
+
+model CilioSyncState {
+  key             String    @id
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastStartedAt   DateTime?
+  lastCompletedAt DateTime?
+  status          String?
+  message         String?
+}
+
 model CilioJobRecord {
   id                       String     @id @default(cuid())
   createdAt                DateTime   @default(now())
@@ -251,6 +280,7 @@ model Installer {
   offersTileRemoval                    Boolean?
   passwordHash                         String?
   passwordResetToken                   String?
+  passwordResetTokenExpiresAt          DateTime?
   paymentAccountName                   String?
   paymentAccountNumber                 String?
   paymentAccountType                   String?
@@ -848,6 +878,76 @@ model StaffMember {
 
   @@index([installerId])
   @@index([status])
+}
+
+model PadOrder {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  workroom        String
+  dateReceived    DateTime
+  items           Json
+  hasAdditionalItems Boolean @default(false)
+  attachmentUrls  Json?
+  createdByEmail  String?
+  createdByName   String?
+  authorizedBy    String?
+  authorized      Boolean  @default(false)
+  authorizationMethod String?
+
+  @@index([createdAt])
+  @@index([workroom])
+  @@index([dateReceived])
+}
+
+model PadTransfer {
+  id                  String   @id @default(cuid())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  dateRequested       DateTime
+  requestorLocation   String
+  receivingWorkroom   String
+  fulfillmentWorkroom String
+  reasonForTransfer   String
+  transferMethod      String?
+  estimatedCost       String?
+  padType             String?
+  rollQuantity        Int?
+  hasAdditionalItems  Boolean  @default(false)
+  additionalItems     Json?
+  attachmentUrls      Json?
+  createdByEmail      String?
+  createdByName       String?
+  authorizedBy        String?
+  authorized          Boolean  @default(false)
+  authorizationMethod String?
+
+  @@index([createdAt])
+  @@index([requestorLocation])
+  @@index([receivingWorkroom])
+  @@index([fulfillmentWorkroom])
+  @@index([dateRequested])
+}
+
+model InventoryCycle {
+  id                  String   @id @default(cuid())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  cycleCountDate      DateTime
+  cycleCountType      String   // "weekly" or "end of month"
+  workroom            String
+  rollCounts          Json?
+  linearFeetCounts    Json?
+  attachmentUrls      Json?
+  createdByEmail      String?
+  createdByName       String?
+  authorizedBy        String?
+  authorized          Boolean  @default(false)
+  authorizationMethod String?
+
+  @@index([createdAt])
+  @@index([cycleCountDate])
+  @@index([workroom])
 }
 
 model Vehicle {
