@@ -607,11 +607,11 @@ export default function BolPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-slate-500 uppercase bg-slate-50/50">
-                      <th className="text-left py-3 px-5 font-semibold">Added By</th>
+                      <th className="text-left py-3 px-5 font-semibold whitespace-nowrap">Added By</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
-                      <th className="text-left py-3 px-4 font-semibold">Total Qty</th>
+                      <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Qty</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -648,7 +648,7 @@ export default function BolPage() {
                               ))}
                             </div>
                           </td>
-                          <td className="py-3.5 px-4">
+                          <td className="py-3.5 px-4 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
                               <Package className="w-3 h-3" />
                               {(order.items as PadOrderItem[]).reduce((s, i) => s + i.quantity, 0)}
