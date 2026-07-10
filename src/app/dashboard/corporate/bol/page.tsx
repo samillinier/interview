@@ -647,7 +647,6 @@ export default function BolPage() {
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
                       <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Qty</th>
-                      <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Linear Ft</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -679,7 +678,7 @@ export default function BolPage() {
                               {(order.items as PadOrderItem[]).map((item, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
                                   <Package className="w-3 h-3" />
-                                  {item.name} x{item.quantity}
+                                  {item.name} x{(PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)}ft
                                 </span>
                               ))}
                             </div>
@@ -688,11 +687,6 @@ export default function BolPage() {
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold">
                               <Package className="w-3 h-3" />
                               {(order.items as PadOrderItem[]).reduce((s, i) => s + i.quantity, 0)}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className="text-xs font-bold text-brand-green">
-                              {(order.items as PadOrderItem[]).reduce((s, i) => s + (PAD_MULTIPLIERS[i.name] || 45) * i.quantity + (i.linearFeet || 0), 0)} ft
                             </span>
                           </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
@@ -730,7 +724,7 @@ export default function BolPage() {
                         </tr>
                         {expandedOrder === order.id && (
                           <tr key={`${order.id}-expanded`}>
-                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div className="bg-white rounded-lg p-3 border border-slate-100">
                                   <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Workroom</p>
