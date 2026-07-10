@@ -139,14 +139,6 @@ export default function BolPage() {
     }))
   }
 
-  const handleItemToggle = (entryId: string, itemName: string) => {
-    setEntries(prev => prev.map(e => {
-      if (e.id !== entryId) return e
-      const cur = e.selectedItems[itemName]
-      return { ...e, selectedItems: { ...e.selectedItems, [itemName]: { checked: !cur.checked, quantity: cur.checked ? 0 : 1, linearFeet: cur.checked ? 0 : cur.linearFeet } } }
-    }))
-  }
-
   const handleItemQuantity = (entryId: string, itemName: string, qty: number) => {
     setEntries(prev => prev.map(e => {
       if (e.id !== entryId) return e
@@ -204,7 +196,7 @@ export default function BolPage() {
     const items: PadOrderItem[] = []
     for (const itemName of PREDEFINED_ITEMS) {
       const item = entry.selectedItems[itemName]
-      if (item.checked && item.quantity > 0) {
+      if (item.quantity > 0) {
         items.push({ id: `pre-${itemName.replace(/\s+/g, '-').toLowerCase()}`, name: itemName, quantity: item.quantity, linearFeet: item.linearFeet || 0, isCustom: false })
       }
     }
@@ -259,7 +251,7 @@ export default function BolPage() {
   const hasAnyItemSelected = () => {
     return entries.some(e => {
       for (const itemName of PREDEFINED_ITEMS) {
-        if (e.selectedItems[itemName].checked && e.selectedItems[itemName].quantity > 0) return true
+        if (e.selectedItems[itemName].quantity > 0) return true
       }
       return false
     })
@@ -894,104 +886,116 @@ export default function BolPage() {
                     <label className="block text-xs font-semibold text-slate-600 mb-2">
                       <span className="flex items-center gap-1">
                         <Package className="w-3.5 h-3.5 text-brand-green" />
-                        Items
+                        Pad Counts
                       </span>
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {PREDEFINED_ITEMS.map((itemName) => (
-                        <div
-                          key={itemName}
-                          className={`flex items-center gap-2 p-2.5 rounded-lg border-2 transition-all ${
-                            entry.selectedItems[itemName].checked
-                              ? 'border-brand-green/30 bg-brand-green/[0.03]'
-                              : 'border-slate-100 bg-slate-50/30 hover:border-slate-200'
-                          }`}
-                        >
-                          <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={entry.selectedItems[itemName].checked}
-                              onChange={() => handleItemToggle(entry.id, itemName)}
-                              className="w-4 h-4 rounded border-slate-300 text-brand-green focus:ring-brand-green/30 accent-brand-green flex-shrink-0"
-                            />
-                            <span className="text-xs font-medium text-slate-700 truncate">{itemName}</span>
-                          </label>
-                          {entry.selectedItems[itemName].checked && (
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <label className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">QTY:</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={entry.selectedItems[itemName].quantity}
-                                onChange={(e) => handleItemQuantity(entry.id, itemName, parseInt(e.target.value) || 0)}
-                                className="w-14 px-1.5 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
-                              />
-                              <label className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">Ft:</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={entry.selectedItems[itemName].linearFeet}
-                                onChange={(e) => handleItemLinearFeet(entry.id, itemName, parseInt(e.target.value) || 0)}
-                                className="w-14 px-1.5 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
-                              />
-                              <span className="text-[10px] font-bold text-brand-green whitespace-nowrap ml-0.5">
-                                = {entry.selectedItems[itemName].quantity * (PAD_MULTIPLIERS[itemName] || 45) + (entry.selectedItems[itemName].linearFeet || 0)} ft
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {/* Add Attachment — sits in the grid */}
-                      <div className="p-2.5 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/30">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <label className="flex items-center gap-1 px-2 py-1 border border-slate-200 rounded-lg bg-white hover:border-brand-green/30 transition-colors cursor-pointer">
-                            {uploading ? (
-                              <Loader2 className="w-3 h-3 text-brand-green animate-spin" />
-                            ) : (
-                              <Camera className="w-3 h-3 text-brand-green" />
-                            )}
-                            <span className="text-[10px] font-medium text-slate-500">
-                              {uploading ? 'Uploading...' : 'Add Attachment'}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={(e) => handleFileUpload(e, entry.id)}
-                              className="hidden"
-                              disabled={uploading}
-                            />
-                          </label>
-                          <span className="text-[9px] text-slate-300">PNG/JPG</span>
-                        </div>
-
-                        {entry.attachmentUrls.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {entry.attachmentUrls.map((att, attIdx) => (
-                              <div key={attIdx} className="relative group">
-                                <img
-                                  src={att.url}
-                                  alt={att.name}
-                                  className="w-10 h-10 object-cover rounded-lg border border-slate-200 shadow-sm"
+                    <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-xs font-semibold text-slate-500 uppercase bg-slate-100/50 border-b border-slate-200">
+                            <th className="text-left py-2 px-3 w-[30%]">Pad Type</th>
+                            <th className="text-center py-2 px-2 w-[22%]">Full Roll Count</th>
+                            <th className="text-center py-2 px-2 w-[24%]">Linear Feet (Partial)</th>
+                            <th className="text-center py-2 px-2 w-[24%]">Total Linear Feet</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {PREDEFINED_ITEMS.map((itemName) => {
+                            const qty = entry.selectedItems[itemName].quantity || 0
+                            const ft = entry.selectedItems[itemName].linearFeet || 0
+                            const totalFt = qty * (PAD_MULTIPLIERS[itemName] || 45) + ft
+                            return (
+                            <tr key={itemName} className="border-b border-slate-100 last:border-0">
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1.5">
+                                  <Package className="w-3 h-3 text-brand-green flex-shrink-0" />
+                                  <span className="text-xs font-medium text-slate-700 truncate">{itemName}</span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={entry.selectedItems[itemName].quantity || ''}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0
+                                    handleItemQuantity(entry.id, itemName, val)
+                                  }}
+                                  placeholder="0"
+                                  className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => removeAttachment(entry.id, attIdx)}
-                                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                                >
-                                  <X className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                              </td>
+                              <td className="py-2 px-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={entry.selectedItems[itemName].linearFeet || ''}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0
+                                    handleItemLinearFeet(entry.id, itemName, val)
+                                  }}
+                                  placeholder="0"
+                                  className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
+                                />
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <span className="text-xs font-semibold text-brand-green">{totalFt}</span>
+                              </td>
+                            </tr>
+                          )})}
+                        </tbody>
+                      </table>
                     </div>
+                  </div>
+
+                  {/* Add Attachment */}
+                  <div className="mt-4 p-3 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/30">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <label className="flex items-center gap-1 px-2 py-1 border border-slate-200 rounded-lg bg-white hover:border-brand-green/30 transition-colors cursor-pointer">
+                        {uploading ? (
+                          <Loader2 className="w-3 h-3 text-brand-green animate-spin" />
+                        ) : (
+                          <Camera className="w-3 h-3 text-brand-green" />
+                        )}
+                        <span className="text-[10px] font-medium text-slate-500">
+                          {uploading ? 'Uploading...' : 'Add Attachment'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleFileUpload(e, entry.id)}
+                          className="hidden"
+                          disabled={uploading}
+                        />
+                      </label>
+                      <span className="text-[9px] text-slate-300">PNG/JPG</span>
+                    </div>
+
+                    {entry.attachmentUrls.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {entry.attachmentUrls.map((att, attIdx) => (
+                          <div key={attIdx} className="relative group">
+                            <img
+                              src={att.url}
+                              alt={att.name}
+                              className="w-10 h-10 object-cover rounded-lg border border-slate-200 shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeAttachment(entry.id, attIdx)}
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                     {/* Divider between entries */}
                     {idx < entries.length - 1 && <hr className="mt-4 border-slate-100" />}
-                  </div>
                 </div>
               ))}
 
