@@ -120,3 +120,22 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to update inventory cycle', details: error.message }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: 'Cycle id is required' }, { status: 400 })
+    }
+    await prisma.inventoryCycle.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Error deleting inventory cycle:', error)
+    return NextResponse.json({ error: 'Failed to delete inventory cycle', details: error.message }, { status: 500 })
+  }
+}
