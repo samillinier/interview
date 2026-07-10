@@ -451,11 +451,11 @@ export default function InventoryCyclePage() {
                         const lf = (c.linearFeetCounts || {}) as Record<string, number>
                         return (
                         <tr key={c.id} className="border-b border-slate-50 last:border-0">
-                          <td className="py-2 px-5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
-                          <td className="py-2 px-3">
+                          <td className="py-2 px-5 text-slate-600 whitespace-nowrap">{formatDate(c.cycleCountDate)}</td>
+                          <td className="py-2 px-3 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
                           </td>
-                          <td className="py-2 px-3 text-slate-600">{c.workroom}</td>
+                          <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{c.workroom}</td>
                           <td className="py-2 px-3">
                             <div className="flex flex-wrap gap-1">
                               {PAD_TYPES.map(pt => {
@@ -515,11 +515,11 @@ export default function InventoryCyclePage() {
                         const lf = (c.linearFeetCounts || {}) as Record<string, number>
                         return (
                         <tr key={c.id} className="border-b border-slate-50 last:border-0">
-                          <td className="py-2 px-5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
-                          <td className="py-2 px-3">
+                          <td className="py-2 px-5 text-slate-600 whitespace-nowrap">{formatDate(c.cycleCountDate)}</td>
+                          <td className="py-2 px-3 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
                           </td>
-                          <td className="py-2 px-3 text-slate-600">{c.workroom}</td>
+                          <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{c.workroom}</td>
                           <td className="py-2 px-3">
                             <div className="flex flex-wrap gap-1">
                               {PAD_TYPES.map(pt => {
