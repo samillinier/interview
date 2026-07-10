@@ -434,7 +434,6 @@ export default function PadTransferPage() {
                       <th className="text-left py-3 px-5 font-semibold">From</th>
                       <th className="text-left py-3 px-5 font-semibold">To</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
-                      <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Linear Ft</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -456,13 +455,6 @@ export default function PadTransferPage() {
                               {!t.padType && (!t.additionalItems || (t.additionalItems as any[]).length === 0) && <span className="text-xs text-slate-400">-</span>}
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className="text-xs font-bold text-brand-green">
-                              {t.padType && t.rollQuantity != null
-                                ? (t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45) + (t.linearFeet || 0)) + ' ft'
-                                : '-'}
-                            </span>
-                          </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between gap-2">
                               {t.authorized ? (
@@ -482,7 +474,7 @@ export default function PadTransferPage() {
                         </tr>
                         {expandedTransfer === t.id && (
                           <tr>
-                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Card label="Date Requested" value={formatDate(t.dateRequested)} />
                                 <Card label="Requestor Workroom" value={t.requestorLocation} />

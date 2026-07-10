@@ -576,7 +576,6 @@ export default function InventoryCyclePage() {
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
-                      <th className="text-left py-3 px-5 font-semibold">Total</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -609,15 +608,6 @@ export default function InventoryCyclePage() {
                               }) && <span className="text-xs text-slate-400">-</span>}
                             </div>
                           </td>
-                          <td className="py-3.5 px-5">
-                            <span className="text-sm font-bold text-brand-green">
-                              {(() => {
-                                const rc = (c.rollCounts || {}) as Record<string, number>
-                                const lf = (c.linearFeetCounts || {}) as Record<string, number>
-                                return PAD_TYPES.reduce((sum, pt) => sum + ((rc[pt] || 0) * (PAD_MULTIPLIERS[pt] || 45) + (lf[pt] || 0)), 0)
-                              })()}
-                            </span>
-                          </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between gap-2">
                               {c.authorized ? (
@@ -637,7 +627,7 @@ export default function InventoryCyclePage() {
                         </tr>
                         {expandedCycle === c.id && (
                           <tr>
-                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={5} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Card label="Date" value={formatDate(c.cycleCountDate)} />
                                 <Card label="Cycle Type" value={c.cycleCountType} />
