@@ -3,10 +3,12 @@ import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
-const TOKEN_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
-
-if (!TOKEN_SECRET) {
-  throw new Error("TOKEN_SECRET: JWT_SECRET and NEXTAUTH_SECRET are both missing — token signing is unsafe")
+function getTokenSecret(): string {
+  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    throw new Error("TOKEN_SECRET: JWT_SECRET and NEXTAUTH_SECRET are both missing — token signing is unsafe")
+  }
+  return secret
 }
 
 // Simple token generation using crypto
@@ -15,7 +17,7 @@ function generateToken(payload: any): string {
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64url')
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
   const signature = crypto
-    .createHmac('sha256', TOKEN_SECRET as string)
+    .createHmac('sha256', getTokenSecret() as string)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64url')
   

@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
 
-const TOKEN_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
-
-if (!TOKEN_SECRET) {
-  throw new Error("TOKEN_SECRET: JWT_SECRET and NEXTAUTH_SECRET are both missing — token signing is unsafe")
+function getTokenSecret(): string {
+  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    throw new Error("TOKEN_SECRET: JWT_SECRET and NEXTAUTH_SECRET are both missing — token signing is unsafe")
+  }
+  return secret
 }
 
 function verifyToken(token: string): any {
@@ -14,7 +16,7 @@ function verifyToken(token: string): any {
     
     // Verify signature
     const expectedSignature = crypto
-      .createHmac('sha256', TOKEN_SECRET as string)
+      .createHmac('sha256', getTokenSecret() as string)
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest('base64url')
     
