@@ -914,6 +914,7 @@ model PadTransfer {
   estimatedCost       String?
   padType             String?
   rollQuantity        Int?
+  linearFeet          Int?
   hasAdditionalItems  Boolean  @default(false)
   additionalItems     Json?
   attachmentUrls      Json?

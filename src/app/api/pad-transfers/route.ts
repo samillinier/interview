@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   }
   try {
     const body = await request.json()
-    const { dateRequested, requestorLocation, receivingWorkroom, fulfillmentWorkroom, reasonForTransfer, transferMethod, estimatedCost, padType, rollQuantity, hasAdditionalItems, additionalItems, attachmentUrls, authorizedBy } = body
+    const { dateRequested, requestorLocation, receivingWorkroom, fulfillmentWorkroom, reasonForTransfer, transferMethod, estimatedCost, padType, rollQuantity, linearFeet, hasAdditionalItems, additionalItems, attachmentUrls, authorizedBy } = body
 
     if (!dateRequested || !requestorLocation || !receivingWorkroom || !fulfillmentWorkroom || !reasonForTransfer) {
       return NextResponse.json({ error: 'Date, requestor location, receiving workroom, fulfillment workroom, and reason are required' }, { status: 400 })
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         estimatedCost: estimatedCost || null,
         padType: padType || null,
         rollQuantity: typeof rollQuantity === 'number' && rollQuantity >= 0 ? rollQuantity : null,
+        linearFeet: typeof linearFeet === 'number' && linearFeet >= 0 ? linearFeet : null,
         hasAdditionalItems: hasAdditionalItems || false,
         additionalItems: additionalItems || null,
         attachmentUrls: attachmentUrls && Array.isArray(attachmentUrls) ? attachmentUrls : [],

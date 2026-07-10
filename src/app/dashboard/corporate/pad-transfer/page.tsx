@@ -42,6 +42,7 @@ interface PadTransfer {
   estimatedCost: string | null
   padType: string | null
   rollQuantity: number | null
+  linearFeet: number | null
   hasAdditionalItems: boolean
   additionalItems: { name: string; quantity: number }[] | null
   attachmentUrls: { url: string; name: string }[] | null
@@ -64,6 +65,7 @@ interface TransferEntry {
   estimatedCost: string
   padType: string
   rollQuantity: string
+  linearFeet: string
 }
 
 const PAD_TYPES = [
@@ -73,6 +75,14 @@ const PAD_TYPES = [
   'Stainmaster Elite',
   'Stainmaster Memory Foam',
 ] as const
+
+const PAD_MULTIPLIERS: Record<string, number> = {
+  'Super 6 LB': 45,
+  'Stainmaster Select': 45,
+  'Odor Ban': 45,
+  'Stainmaster Elite': 45,
+  'Stainmaster Memory Foam': 30,
+}
 
 const REASON_OPTIONS = [
   'Urgent job need (large, unexpected job)',
@@ -101,6 +111,7 @@ export default function PadTransferPage() {
     estimatedCost: '',
     padType: '',
     rollQuantity: '',
+    linearFeet: '',
   })
 
   const [entries, setEntries] = useState<TransferEntry[]>([defaultEntry()])
@@ -167,6 +178,7 @@ export default function PadTransferPage() {
         estimatedCost: e.estimatedCost || null,
         padType: e.padType || null,
         rollQuantity: e.rollQuantity ? parseInt(e.rollQuantity) : null,
+        linearFeet: e.linearFeet ? parseInt(e.linearFeet) : null,
         hasAdditionalItems: entries.length > 1,
       }
     })
@@ -270,11 +282,18 @@ export default function PadTransferPage() {
   const analytics = (() => {
     const totalRollQty = transfers.reduce((sum, t) => sum + (t.rollQuantity || 0), 0)
     const withCost = transfers.filter(t => t.estimatedCost && t.estimatedCost.trim() !== '').length
+    const totalLinearFt = transfers.reduce((sum, t) => {
+      if (t.padType && t.rollQuantity) {
+        return sum + (t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45) + (t.linearFeet || 0))
+      }
+      return sum
+    }, 0)
     return {
       totalTransfers: transfers.length,
       authorizedCount: transfers.filter(t => t.authorized).length,
       totalRollQty,
       withCost,
+      totalLinearFt,
     }
   })()
 
@@ -337,7 +356,7 @@ export default function PadTransferPage() {
                 { label: 'Total Transfers', value: analytics.totalTransfers, desc: 'Pad transfer records' },
                 { label: 'Authorized', value: analytics.authorizedCount, desc: 'Approved transfers' },
                 { label: 'Est. Cost Records', value: analytics.withCost, desc: 'With cost estimates' },
-                { label: 'Total Rolls', value: analytics.totalRollQty, desc: 'Roll quantity across records' },
+                { label: 'Total Linear Ft', value: analytics.totalLinearFt, desc: 'From formula across records' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
                   <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
@@ -393,6 +412,7 @@ export default function PadTransferPage() {
                       <th className="text-left py-3 px-5 font-semibold">From</th>
                       <th className="text-left py-3 px-5 font-semibold">To</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
+                      <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Linear Ft</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -414,6 +434,13 @@ export default function PadTransferPage() {
                               {!t.padType && (!t.additionalItems || (t.additionalItems as any[]).length === 0) && <span className="text-xs text-slate-400">-</span>}
                             </div>
                           </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className="text-xs font-bold text-brand-green">
+                              {t.padType && t.rollQuantity != null
+                                ? (t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45) + (t.linearFeet || 0)) + ' ft'
+                                : '-'}
+                            </span>
+                          </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between gap-2">
                               {t.authorized ? (
@@ -431,7 +458,7 @@ export default function PadTransferPage() {
                         </tr>
                         {expandedTransfer === t.id && (
                           <tr>
-                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Card label="Date Requested" value={formatDate(t.dateRequested)} />
                                 <Card label="Requestor Workroom" value={t.requestorLocation} />
@@ -443,6 +470,10 @@ export default function PadTransferPage() {
                                 <Card label="Est. Cost" value={t.estimatedCost || '-'} />
                                 <Card label="Pad Type" value={t.padType || '-'} />
                                 <Card label="Roll Qty" value={t.rollQuantity != null ? String(t.rollQuantity) : '-'} />
+                                <Card label="Linear Ft (Partial)" value={t.linearFeet != null ? String(t.linearFeet) : '0'} />
+                                <Card label="Total Linear Ft" value={t.padType && t.rollQuantity != null
+                                  ? ((PAD_MULTIPLIERS[t.padType] || 45) * t.rollQuantity + (t.linearFeet || 0)) + ' ft'
+                                  : '-'} />
                               </div>
                               {t.hasAdditionalItems && t.additionalItems && (t.additionalItems as { name: string; quantity: number }[]).length > 0 && (
                                 <div className="mt-3 bg-white rounded-lg p-4 border border-slate-100">
@@ -633,15 +664,31 @@ export default function PadTransferPage() {
                       </div>
                     </div>
 
-                    {/* Roll Quantity */}
-                    <div className="mt-4">
-                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                        <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5 text-brand-green" />Roll Quantity</span>
-                      </label>
-                      <input type="number" min="0" value={entry.rollQuantity}
-                        onChange={(e) => updateEntry(entry.id, 'rollQuantity', e.target.value)}
-                        placeholder="Enter roll quantity..."
-                        className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium" />
+                    {/* Roll Quantity + Linear Feet */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                          <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5 text-brand-green" />Roll Quantity</span>
+                        </label>
+                        <input type="number" min="0" value={entry.rollQuantity}
+                          onChange={(e) => updateEntry(entry.id, 'rollQuantity', e.target.value)}
+                          placeholder="Enter roll quantity..."
+                          className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                          <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5 text-brand-green" />Linear Feet (Partial)</span>
+                        </label>
+                        <input type="number" min="0" value={entry.linearFeet}
+                          onChange={(e) => updateEntry(entry.id, 'linearFeet', e.target.value)}
+                          placeholder="Partial roll ft..."
+                          className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium" />
+                      </div>
+                      <div className="flex items-end pb-1">
+                        <span className="text-sm font-bold text-brand-green">
+                          Total: {(parseInt(entry.rollQuantity) || 0) * (PAD_MULTIPLIERS[entry.padType] || 45) + (parseInt(entry.linearFeet) || 0)} ft
+                        </span>
+                      </div>
                     </div>
 
                     {/* Divider between entries */}
