@@ -32,10 +32,19 @@ const PREDEFINED_ITEMS = [
   'Stainmaster Memory Foam',
 ] as const
 
+const PAD_MULTIPLIERS: Record<string, number> = {
+  'Super 6 LB': 45,
+  'Stainmaster Select': 45,
+  'Odor Ban': 45,
+  'Stainmaster Elite': 45,
+  'Stainmaster Memory Foam': 30,
+}
+
 interface PadOrderItem {
   id: string
   name: string
   quantity: number
+  linearFeet?: number
   isCustom: boolean
 }
 
@@ -60,7 +69,7 @@ interface OrderEntry {
   id: string
   workroom: string
   dateReceived: string
-  selectedItems: Record<string, { checked: boolean; quantity: number }>
+    selectedItems: Record<string, { checked: boolean; quantity: number; linearFeet: number }>
   attachmentUrls: { url: string; name: string }[]
 }
 
@@ -76,7 +85,7 @@ export default function BolPage() {
     id: `entry-${Date.now()}`,
     workroom: '',
     dateReceived: new Date().toISOString().split('T')[0],
-    selectedItems: Object.fromEntries(PREDEFINED_ITEMS.map(item => [item, { checked: false, quantity: 0 }])),
+    selectedItems: Object.fromEntries(PREDEFINED_ITEMS.map(item => [item, { checked: false, quantity: 0, linearFeet: 0 }])),
     attachmentUrls: [],
   })
 
@@ -134,7 +143,7 @@ export default function BolPage() {
     setEntries(prev => prev.map(e => {
       if (e.id !== entryId) return e
       const cur = e.selectedItems[itemName]
-      return { ...e, selectedItems: { ...e.selectedItems, [itemName]: { checked: !cur.checked, quantity: cur.checked ? 0 : 1 } } }
+      return { ...e, selectedItems: { ...e.selectedItems, [itemName]: { checked: !cur.checked, quantity: cur.checked ? 0 : 1, linearFeet: cur.checked ? 0 : cur.linearFeet } } }
     }))
   }
 
@@ -142,6 +151,13 @@ export default function BolPage() {
     setEntries(prev => prev.map(e => {
       if (e.id !== entryId) return e
       return { ...e, selectedItems: { ...e.selectedItems, [itemName]: { ...e.selectedItems[itemName], quantity: Math.max(0, qty) } } }
+    }))
+  }
+
+  const handleItemLinearFeet = (entryId: string, itemName: string, ft: number) => {
+    setEntries(prev => prev.map(e => {
+      if (e.id !== entryId) return e
+      return { ...e, selectedItems: { ...e.selectedItems, [itemName]: { ...e.selectedItems[itemName], linearFeet: Math.max(0, ft) } } }
     }))
   }
 
@@ -189,7 +205,7 @@ export default function BolPage() {
     for (const itemName of PREDEFINED_ITEMS) {
       const item = entry.selectedItems[itemName]
       if (item.checked && item.quantity > 0) {
-        items.push({ id: `pre-${itemName.replace(/\s+/g, '-').toLowerCase()}`, name: itemName, quantity: item.quantity, isCustom: false })
+        items.push({ id: `pre-${itemName.replace(/\s+/g, '-').toLowerCase()}`, name: itemName, quantity: item.quantity, linearFeet: item.linearFeet || 0, isCustom: false })
       }
     }
     return items
@@ -352,13 +368,14 @@ export default function BolPage() {
   const analytics = (() => {
     const items = orders.flatMap(o => (o.items as PadOrderItem[]))
     const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0)
+    const totalLinearFt = items.reduce((sum, i) => sum + (PAD_MULTIPLIERS[i.name] || 45) * i.quantity + (i.linearFeet || 0), 0)
 
-    const byWeek: Record<string, { count: number; totalQty: number }> = {}
-    const byMonth: Record<string, { count: number; totalQty: number }> = {}
-    const byWorkroom: Record<string, { count: number; totalQty: number }> = {}
+    const byWeek: Record<string, { count: number; totalQty: number; totalLinearFt: number }> = {}
+    const byMonth: Record<string, { count: number; totalQty: number; totalLinearFt: number }> = {}
+    const byWorkroom: Record<string, { count: number; totalQty: number; totalLinearFt: number }> = {}
 
     for (const o of orders) {
-      if (!byWorkroom[o.workroom]) byWorkroom[o.workroom] = { count: 0, totalQty: 0 }
+      if (!byWorkroom[o.workroom]) byWorkroom[o.workroom] = { count: 0, totalQty: 0, totalLinearFt: 0 }
       byWorkroom[o.workroom].count++
 
       const d = new Date(o.dateReceived)
@@ -369,16 +386,19 @@ export default function BolPage() {
 
       const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 
-      if (!byWeek[weekKey]) byWeek[weekKey] = { count: 0, totalQty: 0 }
+      if (!byWeek[weekKey]) byWeek[weekKey] = { count: 0, totalQty: 0, totalLinearFt: 0 }
       byWeek[weekKey].count++
 
-      if (!byMonth[monthKey]) byMonth[monthKey] = { count: 0, totalQty: 0 }
+      if (!byMonth[monthKey]) byMonth[monthKey] = { count: 0, totalQty: 0, totalLinearFt: 0 }
       byMonth[monthKey].count++
 
       for (const item of (o.items as PadOrderItem[])) {
         byWorkroom[o.workroom].totalQty += item.quantity
+        byWorkroom[o.workroom].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)
         byWeek[weekKey].totalQty += item.quantity
+        byWeek[weekKey].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)
         byMonth[monthKey].totalQty += item.quantity
+        byMonth[monthKey].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)
       }
     }
 
@@ -434,6 +454,7 @@ export default function BolPage() {
       totalOrders: orders.length,
       totalItems: items.length,
       totalQuantity,
+      totalLinearFt,
       byWorkroom,
       weekEntries,
       monthEntries,
@@ -556,9 +577,9 @@ export default function BolPage() {
               <div className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
                 <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Workrooms</p>
-                  <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{Object.keys(analytics.byWorkroom).length}</h3>
-                  <p className="text-sm text-slate-500">Active from records</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Linear Ft</p>
+                  <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{analytics.totalLinearFt}</h3>
+                  <p className="text-sm text-slate-500">From formula across items</p>
                 </div>
               </div>
             </div>
@@ -612,6 +633,7 @@ export default function BolPage() {
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
                       <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Qty</th>
+                      <th className="text-left py-3 px-4 font-semibold whitespace-nowrap">Total Linear Ft</th>
                       <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                     </tr>
                   </thead>
@@ -654,6 +676,11 @@ export default function BolPage() {
                               {(order.items as PadOrderItem[]).reduce((s, i) => s + i.quantity, 0)}
                             </span>
                           </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className="text-xs font-bold text-brand-green">
+                              {(order.items as PadOrderItem[]).reduce((s, i) => s + (PAD_MULTIPLIERS[i.name] || 45) * i.quantity + (i.linearFeet || 0), 0)} ft
+                            </span>
+                          </td>
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between gap-2">
                               {order.authorized ? (
@@ -685,7 +712,7 @@ export default function BolPage() {
                         </tr>
                         {expandedOrder === order.id && (
                           <tr key={`${order.id}-expanded`}>
-                            <td colSpan={6} className="px-5 py-4 bg-slate-50/30">
+                            <td colSpan={7} className="px-5 py-4 bg-slate-50/30">
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div className="bg-white rounded-lg p-3 border border-slate-100">
                                   <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Workroom</p>
@@ -716,7 +743,15 @@ export default function BolPage() {
                                           <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded font-medium">Custom</span>
                                         )}
                                       </div>
-                                      <span className="text-sm font-semibold text-brand-green">x{item.quantity}</span>
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-sm text-slate-500">QTY: <span className="font-semibold text-brand-green">{item.quantity}</span></span>
+                                        {(item.linearFeet ?? 0) > 0 && (
+                                          <span className="text-sm text-slate-500">Partial Ft: <span className="font-semibold text-brand-green">{item.linearFeet}</span></span>
+                                        )}
+                                        <span className="text-sm font-semibold text-brand-green">
+                                          Total: {(PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)} ft
+                                        </span>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -889,8 +924,19 @@ export default function BolPage() {
                                 min="0"
                                 value={entry.selectedItems[itemName].quantity}
                                 onChange={(e) => handleItemQuantity(entry.id, itemName, parseInt(e.target.value) || 0)}
-                                className="w-16 px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
+                                className="w-14 px-1.5 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
                               />
+                              <label className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">Ft:</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={entry.selectedItems[itemName].linearFeet}
+                                onChange={(e) => handleItemLinearFeet(entry.id, itemName, parseInt(e.target.value) || 0)}
+                                className="w-14 px-1.5 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
+                              />
+                              <span className="text-[10px] font-bold text-brand-green whitespace-nowrap ml-0.5">
+                                = {entry.selectedItems[itemName].quantity * (PAD_MULTIPLIERS[itemName] || 45) + (entry.selectedItems[itemName].linearFeet || 0)} ft
+                              </span>
                             </div>
                           )}
                         </div>
