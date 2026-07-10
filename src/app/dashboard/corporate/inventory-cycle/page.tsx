@@ -442,15 +442,13 @@ export default function InventoryCyclePage() {
                         <th className="text-left py-2 px-5 font-semibold">Date</th>
                         <th className="text-left py-2 px-3 font-semibold">Type</th>
                         <th className="text-left py-2 px-3 font-semibold">Workroom</th>
-                        <th className="text-left py-2 px-3 font-semibold">Total</th>
-                        <th className="text-left py-2 px-5 font-semibold">Status</th>
+                        <th className="text-left py-2 px-3 font-semibold">Items</th>
                       </tr>
                     </thead>
                     <tbody>
                       {analytics.weekGroups.flatMap(g => g.records).map((c) => {
                         const rc = (c.rollCounts || {}) as Record<string, number>
                         const lf = (c.linearFeetCounts || {}) as Record<string, number>
-                        const totalFt = PAD_TYPES.reduce((sum, pt) => sum + ((rc[pt] || 0) * (PAD_MULTIPLIERS[pt] || 45) + (lf[pt] || 0)), 0)
                         return (
                         <tr key={c.id} className="border-b border-slate-50 last:border-0">
                           <td className="py-2 px-5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
@@ -458,13 +456,20 @@ export default function InventoryCyclePage() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
                           </td>
                           <td className="py-2 px-3 text-slate-600">{c.workroom}</td>
-                          <td className="py-2 px-3 text-slate-700 font-semibold">{totalFt}</td>
-                          <td className="py-2 px-5">
-                            {c.authorized ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-2.5 h-2.5" />Authorized</span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-semibold"><AlertCircle className="w-2.5 h-2.5" />Pending</span>
-                            )}
+                          <td className="py-2 px-3">
+                            <div className="flex flex-wrap gap-1">
+                              {PAD_TYPES.map(pt => {
+                                const rolls = (rc[pt] || 0)
+                                const ft = (lf[pt] || 0)
+                                if (rolls === 0 && ft === 0) return null
+                                const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
+                                return (
+                                  <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
+                                    {pt}: {rolls}R/{ft}LF = {totalFt}ft
+                                  </span>
+                                )
+                              })}
+                            </div>
                           </td>
                         </tr>
                         )
@@ -501,15 +506,13 @@ export default function InventoryCyclePage() {
                         <th className="text-left py-2 px-5 font-semibold">Date</th>
                         <th className="text-left py-2 px-3 font-semibold">Type</th>
                         <th className="text-left py-2 px-3 font-semibold">Workroom</th>
-                        <th className="text-left py-2 px-3 font-semibold">Total</th>
-                        <th className="text-left py-2 px-5 font-semibold">Status</th>
+                        <th className="text-left py-2 px-3 font-semibold">Items</th>
                       </tr>
                     </thead>
                     <tbody>
                       {analytics.monthGroups.flatMap(g => g.records).map((c) => {
                         const rc = (c.rollCounts || {}) as Record<string, number>
                         const lf = (c.linearFeetCounts || {}) as Record<string, number>
-                        const totalFt = PAD_TYPES.reduce((sum, pt) => sum + ((rc[pt] || 0) * (PAD_MULTIPLIERS[pt] || 45) + (lf[pt] || 0)), 0)
                         return (
                         <tr key={c.id} className="border-b border-slate-50 last:border-0">
                           <td className="py-2 px-5 text-slate-600">{formatDate(c.cycleCountDate)}</td>
@@ -517,13 +520,20 @@ export default function InventoryCyclePage() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
                           </td>
                           <td className="py-2 px-3 text-slate-600">{c.workroom}</td>
-                          <td className="py-2 px-3 text-slate-700 font-semibold">{totalFt}</td>
-                          <td className="py-2 px-5">
-                            {c.authorized ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-semibold"><CheckCircle2 className="w-2.5 h-2.5" />Authorized</span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-semibold"><AlertCircle className="w-2.5 h-2.5" />Pending</span>
-                            )}
+                          <td className="py-2 px-3">
+                            <div className="flex flex-wrap gap-1">
+                              {PAD_TYPES.map(pt => {
+                                const rolls = (rc[pt] || 0)
+                                const ft = (lf[pt] || 0)
+                                if (rolls === 0 && ft === 0) return null
+                                const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
+                                return (
+                                  <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
+                                    {pt}: {rolls}R/{ft}LF = {totalFt}ft
+                                  </span>
+                                )
+                              })}
+                            </div>
                           </td>
                         </tr>
                         )
@@ -572,7 +582,7 @@ export default function InventoryCyclePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-slate-500 uppercase bg-slate-50/50">
-                      <th className="text-left py-3 px-5 font-semibold">Added By</th>
+                      <th className="text-left py-3 px-5 font-semibold whitespace-nowrap">Added By</th>
                       <th className="text-left py-3 px-5 font-semibold">Date</th>
                       <th className="text-left py-3 px-5 font-semibold">Workroom</th>
                       <th className="text-left py-3 px-5 font-semibold">Items</th>
