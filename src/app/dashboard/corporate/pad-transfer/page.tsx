@@ -766,8 +766,6 @@ export default function PadTransferPage() {
             </motion.div>
           </div>
         )}
-      </div>
-    </div>
 
       {/* Delete Confirmation Modal */}
       {confirmDeleteId && (
@@ -805,6 +803,8 @@ export default function PadTransferPage() {
           </motion.div>
         </div>
       )}
+      </div>
+    </div>
   )
 }
 

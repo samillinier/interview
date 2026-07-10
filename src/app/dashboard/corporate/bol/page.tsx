@@ -1097,10 +1097,6 @@ export default function BolPage() {
           </motion.div>
         </div>
       )}
-      </div>
-    </div>
-    </div>
-    </div>
 
       {/* Delete Confirmation Modal */}
       {confirmDeleteId && (
@@ -1138,5 +1134,9 @@ export default function BolPage() {
           </motion.div>
         </div>
       )}
+      </div>
+    </div>
+    </div>
+    </div>
   )
 }

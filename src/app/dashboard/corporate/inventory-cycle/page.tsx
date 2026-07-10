@@ -867,8 +867,6 @@ export default function InventoryCyclePage() {
             </motion.div>
           </div>
         )}
-      </div>
-    </div>
 
       {/* Delete Confirmation Modal */}
       {confirmDeleteId && (
@@ -906,6 +904,8 @@ export default function InventoryCyclePage() {
           </motion.div>
         </div>
       )}
+      </div>
+    </div>
   )
 }
 
