@@ -465,7 +465,7 @@ export default function InventoryCyclePage() {
                                 const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
                                 return (
                                   <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
-                                    {pt}: {rolls}R/{ft}LF = {totalFt}ft
+                                    {pt}: {rolls}R / {totalFt}ft
                                   </span>
                                 )
                               })}
@@ -529,7 +529,7 @@ export default function InventoryCyclePage() {
                                 const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
                                 return (
                                   <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
-                                    {pt}: {rolls}R/{ft}LF = {totalFt}ft
+                                    {pt}: {rolls}R / {totalFt}ft
                                   </span>
                                 )
                               })}
@@ -607,7 +607,7 @@ export default function InventoryCyclePage() {
                                 return (
                                   <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
                                     <Package className="w-3 h-3" />
-                                    {pt} - {rolls}R / {ft}LF ({totalFt} total)
+                                    {pt} - {rolls}R / {totalFt}ft
                                   </span>
                                 )
                               })}
