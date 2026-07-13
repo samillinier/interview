@@ -677,7 +677,7 @@ export default function BolPage() {
                               {(order.items as PadOrderItem[]).map((item, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
                                   <Package className="w-3 h-3" />
-                                  {item.name} x{(PAD_MULTIPLIERS[item.name] || 45) * item.quantity}LF
+                                  {item.name} x {(PAD_MULTIPLIERS[item.name] || 45) * item.quantity} LF
                                 </span>
                               ))}
                             </div>

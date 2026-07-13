@@ -449,7 +449,7 @@ export default function PadTransferPage() {
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{t.receivingWorkroom}</span></td>
                           <td className="py-3.5 px-5">
                             <div className="flex flex-wrap gap-1">
-                              {t.padType && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold"><Package className="w-3 h-3" />{t.padType}{t.rollQuantity != null ? <> x{(t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45))}LF</> : ''}</span>}
+                              {t.padType && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold"><Package className="w-3 h-3" />{t.padType}{t.rollQuantity != null ? <> x {(t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45))} LF</> : ''}</span>}
                               {t.hasAdditionalItems && t.additionalItems && (t.additionalItems as { name: string; quantity: number }[]).map((item, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[11px] font-semibold">{item.name} x{item.quantity}</span>
                               ))}
