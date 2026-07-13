@@ -307,7 +307,7 @@ export default function PadTransferPage() {
     const withCost = transfers.filter(t => t.estimatedCost && t.estimatedCost.trim() !== '').length
     const totalLinearFt = transfers.reduce((sum, t) => {
       if (t.padType && t.rollQuantity) {
-        return sum + (t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45) + (t.linearFeet || 0))
+        return sum + (t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45))
       }
       return sum
     }, 0)
@@ -379,7 +379,7 @@ export default function PadTransferPage() {
                 { label: 'Total Transfers', value: analytics.totalTransfers, desc: 'Pad transfer records' },
                 { label: 'Authorized', value: analytics.authorizedCount, desc: 'Approved transfers' },
                 { label: 'Est. Cost Records', value: analytics.withCost, desc: 'With cost estimates' },
-                { label: 'Total Linear Ft', value: analytics.totalLinearFt, desc: 'From formula across records' },
+                { label: 'Total LF', value: analytics.totalLinearFt, desc: 'From formula across records' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
                   <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
@@ -487,9 +487,8 @@ export default function PadTransferPage() {
                                 <Card label="Est. Cost" value={t.estimatedCost || '-'} />
                                 <Card label="Pad Type" value={t.padType || '-'} />
                                 <Card label="Roll Qty" value={t.rollQuantity != null ? String(t.rollQuantity) : '-'} />
-                                <Card label="Linear Ft (Partial)" value={t.linearFeet != null ? String(t.linearFeet) : '0'} />
-                                <Card label="Total Linear Ft" value={t.padType && t.rollQuantity != null
-                                  ? ((PAD_MULTIPLIERS[t.padType] || 45) * t.rollQuantity + (t.linearFeet || 0)) + ' ft'
+                                <Card label="Total LF" value={t.padType && t.rollQuantity != null
+                                  ? ((PAD_MULTIPLIERS[t.padType] || 45) * t.rollQuantity) + ' lf'
                                   : '-'} />
                               </div>
                               {t.hasAdditionalItems && t.additionalItems && (t.additionalItems as { name: string; quantity: number }[]).length > 0 && (
@@ -692,18 +691,9 @@ export default function PadTransferPage() {
                           placeholder="Enter roll quantity..."
                           className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium" />
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                          <span className="flex items-center gap-1"><Layers className="w-3.5 h-3.5 text-brand-green" />Linear Feet (Partial)</span>
-                        </label>
-                        <input type="number" min="0" value={entry.linearFeet}
-                          onChange={(e) => updateEntry(entry.id, 'linearFeet', e.target.value)}
-                          placeholder="Partial roll ft..."
-                          className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium" />
-                      </div>
                       <div className="flex items-end pb-1">
                         <span className="text-sm font-bold text-brand-green">
-                          Total: {(parseInt(entry.rollQuantity) || 0) * (PAD_MULTIPLIERS[entry.padType] || 45) + (parseInt(entry.linearFeet) || 0)} ft
+                          Total: {(parseInt(entry.rollQuantity) || 0) * (PAD_MULTIPLIERS[entry.padType] || 45)} lf
                         </span>
                       </div>
                     </div>
