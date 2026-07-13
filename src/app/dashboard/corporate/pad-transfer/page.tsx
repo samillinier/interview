@@ -449,7 +449,7 @@ export default function PadTransferPage() {
                           <td className="py-3.5 px-5"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/10 text-brand-green rounded-full text-xs font-semibold"><Building2 className="w-3 h-3" />{t.receivingWorkroom}</span></td>
                           <td className="py-3.5 px-5">
                             <div className="flex flex-wrap gap-1">
-                              {t.padType && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold"><Package className="w-3 h-3" />{t.padType}{t.rollQuantity != null ? <> x{t.rollQuantity}</> : ''}</span>}
+                              {t.padType && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold"><Package className="w-3 h-3" />{t.padType}{t.rollQuantity != null ? <> x{(t.rollQuantity * (PAD_MULTIPLIERS[t.padType] || 45))}LF</> : ''}</span>}
                               {t.hasAdditionalItems && t.additionalItems && (t.additionalItems as { name: string; quantity: number }[]).map((item, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[11px] font-semibold">{item.name} x{item.quantity}</span>
                               ))}
@@ -488,7 +488,7 @@ export default function PadTransferPage() {
                                 <Card label="Pad Type" value={t.padType || '-'} />
                                 <Card label="Roll Qty" value={t.rollQuantity != null ? String(t.rollQuantity) : '-'} />
                                 <Card label="Total LF" value={t.padType && t.rollQuantity != null
-                                  ? ((PAD_MULTIPLIERS[t.padType] || 45) * t.rollQuantity) + ' lf'
+                                  ? ((PAD_MULTIPLIERS[t.padType] || 45) * t.rollQuantity) + ' LF'
                                   : '-'} />
                               </div>
                               {t.hasAdditionalItems && t.additionalItems && (t.additionalItems as { name: string; quantity: number }[]).length > 0 && (
@@ -693,7 +693,7 @@ export default function PadTransferPage() {
                       </div>
                       <div className="flex items-end pb-1">
                         <span className="text-sm font-bold text-brand-green">
-                          Total: {(parseInt(entry.rollQuantity) || 0) * (PAD_MULTIPLIERS[entry.padType] || 45)} lf
+                          Total: {(parseInt(entry.rollQuantity) || 0) * (PAD_MULTIPLIERS[entry.padType] || 45)} LF
                         </span>
                       </div>
                     </div>
