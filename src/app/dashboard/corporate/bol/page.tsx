@@ -382,7 +382,7 @@ export default function BolPage() {
   const analytics = (() => {
     const items = orders.flatMap(o => (o.items as PadOrderItem[]))
     const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0)
-    const totalLinearFt = items.reduce((sum, i) => sum + (PAD_MULTIPLIERS[i.name] || 45) * i.quantity + (i.linearFeet || 0), 0)
+    const totalLinearFt = items.reduce((sum, i) => sum + (PAD_MULTIPLIERS[i.name] || 45) * i.quantity, 0)
 
     const byWeek: Record<string, { count: number; totalQty: number; totalLinearFt: number }> = {}
     const byMonth: Record<string, { count: number; totalQty: number; totalLinearFt: number }> = {}
@@ -408,11 +408,11 @@ export default function BolPage() {
 
       for (const item of (o.items as PadOrderItem[])) {
         byWorkroom[o.workroom].totalQty += item.quantity
-        byWorkroom[o.workroom].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)
+        byWorkroom[o.workroom].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity
         byWeek[weekKey].totalQty += item.quantity
-        byWeek[weekKey].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)
+        byWeek[weekKey].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity
         byMonth[monthKey].totalQty += item.quantity
-        byMonth[monthKey].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)
+        byMonth[monthKey].totalLinearFt += (PAD_MULTIPLIERS[item.name] || 45) * item.quantity
       }
     }
 
@@ -591,7 +591,7 @@ export default function BolPage() {
               <div className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
                 <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Linear Ft</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total LF</p>
                   <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-1">{analytics.totalLinearFt}</h3>
                   <p className="text-sm text-slate-500">From formula across items</p>
                 </div>
@@ -677,7 +677,7 @@ export default function BolPage() {
                               {(order.items as PadOrderItem[]).map((item, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
                                   <Package className="w-3 h-3" />
-                                  {item.name} x{(PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)}ft
+                                  {item.name} x{(PAD_MULTIPLIERS[item.name] || 45) * item.quantity}lf
                                 </span>
                               ))}
                             </div>
@@ -750,11 +750,8 @@ export default function BolPage() {
                                       </div>
                                       <div className="flex items-center gap-3">
                                         <span className="text-sm text-slate-500">QTY: <span className="font-semibold text-brand-green">{item.quantity}</span></span>
-                                        {(item.linearFeet ?? 0) > 0 && (
-                                          <span className="text-sm text-slate-500">Partial Ft: <span className="font-semibold text-brand-green">{item.linearFeet}</span></span>
-                                        )}
                                         <span className="text-sm font-semibold text-brand-green">
-                                          Total: {(PAD_MULTIPLIERS[item.name] || 45) * item.quantity + (item.linearFeet || 0)} ft
+                                          Total: {(PAD_MULTIPLIERS[item.name] || 45) * item.quantity} lf
                                         </span>
                                       </div>
                                     </div>
@@ -906,17 +903,15 @@ export default function BolPage() {
                       <table className="w-full">
                         <thead>
                           <tr className="text-xs font-semibold text-slate-500 uppercase bg-slate-100/50 border-b border-slate-200">
-                            <th className="text-left py-2 px-3 w-[30%]">Pad Type</th>
-                            <th className="text-center py-2 px-2 w-[22%]">Full Roll Count</th>
-                            <th className="text-center py-2 px-2 w-[24%]">Linear Feet (Partial)</th>
-                            <th className="text-center py-2 px-2 w-[24%]">Total Linear Feet</th>
+                            <th className="text-left py-2 px-3 w-[35%]">Pad Type</th>
+                            <th className="text-center py-2 px-2 w-[35%]">Full Roll Count</th>
+                            <th className="text-center py-2 px-2 w-[30%]">Total LF</th>
                           </tr>
                         </thead>
                         <tbody>
                           {PREDEFINED_ITEMS.map((itemName) => {
                             const qty = entry.selectedItems[itemName].quantity || 0
-                            const ft = entry.selectedItems[itemName].linearFeet || 0
-                            const totalFt = qty * (PAD_MULTIPLIERS[itemName] || 45) + ft
+                            const totalFt = qty * (PAD_MULTIPLIERS[itemName] || 45)
                             return (
                             <tr key={itemName} className="border-b border-slate-100 last:border-0">
                               <td className="py-2 px-3">
@@ -933,19 +928,6 @@ export default function BolPage() {
                                   onChange={(e) => {
                                     const val = parseInt(e.target.value) || 0
                                     handleItemQuantity(entry.id, itemName, val)
-                                  }}
-                                  placeholder="0"
-                                  className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
-                                />
-                              </td>
-                              <td className="py-2 px-2">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={entry.selectedItems[itemName].linearFeet || ''}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 0
-                                    handleItemLinearFeet(entry.id, itemName, val)
                                   }}
                                   placeholder="0"
                                   className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"

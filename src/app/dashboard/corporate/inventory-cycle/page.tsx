@@ -400,7 +400,7 @@ export default function InventoryCyclePage() {
                 { label: 'Total Cycles', value: analytics.totalCycles, desc: 'Cycle count records' },
                 { label: 'Authorized', value: analytics.authorizedCount, desc: 'Approved cycles' },
                 { label: 'Full Rolls', value: analytics.totalFullRolls, desc: 'Total full rolls counted' },
-                { label: 'Linear Feet', value: analytics.totalLinearFeet, desc: 'Total linear feet counted' },
+                { label: 'LF', value: analytics.totalLinearFeet, desc: 'Total linear feet counted' },
               ].map(card => (
                 <div key={card.label} className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5">
                   <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
@@ -465,7 +465,7 @@ export default function InventoryCyclePage() {
                                 const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
                                 return (
                                   <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
-                                    {pt}: {rolls}R / {totalFt}ft
+                                    {pt}: {rolls}R / {totalFt}lf
                                   </span>
                                 )
                               })}
@@ -529,7 +529,7 @@ export default function InventoryCyclePage() {
                                 const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
                                 return (
                                   <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
-                                    {pt}: {rolls}R / {totalFt}ft
+                                    {pt}: {rolls}R / {totalFt}lf
                                   </span>
                                 )
                               })}
@@ -607,7 +607,7 @@ export default function InventoryCyclePage() {
                                 return (
                                   <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
                                     <Package className="w-3 h-3" />
-                                    {pt} - {rolls}R / {totalFt}ft
+                                    {pt} - {rolls}R / {totalFt}lf
                                   </span>
                                 )
                               })}
@@ -655,7 +655,7 @@ export default function InventoryCyclePage() {
                                         <th className="text-left py-2 px-3 font-semibold">Pad Type</th>
                                         <th className="text-center py-2 px-3 font-semibold">Full Rolls</th>
                                         <th className="text-center py-2 px-3 font-semibold">Linear Feet (Partial)</th>
-                                        <th className="text-center py-2 px-3 font-semibold">Total Linear Feet</th>
+                                        <th className="text-center py-2 px-3 font-semibold">Total LF</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -782,7 +782,7 @@ export default function InventoryCyclePage() {
                               <th className="text-left py-2 px-3 w-[30%]">Pad Type</th>
                               <th className="text-center py-2 px-2 w-[22%]">Full Roll Count</th>
                               <th className="text-center py-2 px-2 w-[24%]">Linear Feet (Partial)</th>
-                              <th className="text-center py-2 px-2 w-[24%]">Total Linear Feet</th>
+                              <th className="text-center py-2 px-2 w-[24%]">Total LF</th>
                             </tr>
                           </thead>
                           <tbody>

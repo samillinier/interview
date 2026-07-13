@@ -12,6 +12,7 @@ import {
   Building2,
   Calendar,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   ClipboardList,
   X,
@@ -753,6 +754,12 @@ export default function PadTransferPage() {
                     className="px-5 py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-colors">
                     Cancel
                   </button>
+                </div>
+
+                {/* Warning */}
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  <p className="text-sm font-semibold text-amber-700">Full Rolls Only - Do Not Transfer Partial Rolls</p>
                 </div>
               </div>
             </motion.div>
