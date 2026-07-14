@@ -25,12 +25,6 @@ export const INTERVIEW_QUESTIONS_EN = [
     required: true,
   },
   {
-    id: 'contact',
-    text: "Thank you. What is the best phone number where we can reach you for follow-up communications?",
-    field: 'contact',
-    required: true,
-  },
-  {
     id: 'experience',
     text: 'How many years of professional experience do you have in flooring installation?',
     field: 'yearsOfExperience',
@@ -167,12 +161,6 @@ export const INTERVIEW_QUESTIONS_ES = [
     id: 'intro',
     text: "Hola, soy Alice de Floor Interior Service. Gracias por su interés en convertirse en instalador con nosotros. Realizaré una breve evaluación de calificación para conocer su experiencia, certificaciones, equipo, capacidades de instalación y disponibilidad. Esto tomará solo unos minutos. Comencemos con su nombre y apellido.",
     field: 'name',
-    required: true,
-  },
-  {
-    id: 'contact',
-    text: "Gracias. ¿Cuál es el mejor número de teléfono donde podemos contactarlo para comunicaciones de seguimiento?",
-    field: 'contact',
     required: true,
   },
   {
