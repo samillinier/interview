@@ -496,24 +496,33 @@ export async function searchAllJobs(
   }
 
   // Detect format: new paginated wrapper vs old plain array
-  if (firstRaw && typeof firstRaw === "object" && "totalPages" in firstRaw) {
+  if (firstRaw && typeof firstRaw === "object" && "results" in firstRaw) {
     // ── New paginated format ──
     const paged = firstRaw as CilioPaginatedResponse
     for (const j of paged.results) allJobs.set(j.orderNumber, j)
-    onProgress?.(allJobs.size, `page 1/${paged.totalPages} (paginated)`)
+    const statedPages = (paged as any).totalPages || '?'
+    onProgress?.(allJobs.size, `page 1/${statedPages} (paginated)`)
 
-    for (let page = 2; page <= paged.totalPages; page++) {
+    // Keep fetching until we get fewer than pageSize results (handles
+    // pagination race conditions where totalPages increases mid-fetch).
+    let page = 2
+    while (true) {
       const pageQ = new URLSearchParams(q.toString())
       pageQ.set("PageNumber", String(page))
       const pagePath = `/job/search?${pageQ.toString().replace(/%3A/g, ":")}`
       try {
         const rawPage = await cilioFetch<CilioPaginatedResponse>(pagePath)
+        if (!rawPage.results || rawPage.results.length === 0) break
+        let added = 0
         for (const j of rawPage.results) {
-          if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
+          if (!allJobs.has(j.orderNumber)) { allJobs.set(j.orderNumber, j); added++ }
         }
-        onProgress?.(allJobs.size, `page ${page}/${paged.totalPages} (paginated)`)
+        onProgress?.(allJobs.size, `page ${page} (paginated)`)
+        if (rawPage.results.length < pageSize) break
+        page++
       } catch (e: any) {
         console.error(`[searchAllJobs] Page ${page} error:`, e?.message || String(e))
+        break
       }
     }
     return Array.from(allJobs.values())
