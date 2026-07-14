@@ -8,8 +8,8 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json()
-    const { email, firstName, lastName, language = 'en' } = body
-    console.log('Request body:', { email, firstName, lastName, language })
+    const { email, firstName, lastName, phone, language = 'en' } = body
+    console.log('Request body:', { email, firstName, lastName, phone, language })
 
     // Check if installer already exists
     let installer = await prisma.installer.findUnique({
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
           email,
           firstName: firstName || '',
           lastName: lastName || '',
+          phone: phone || null,
           status: 'pending',
         },
       })

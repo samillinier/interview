@@ -14,6 +14,7 @@ export default function InterviewStartPage() {
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -30,7 +31,7 @@ export default function InterviewStartPage() {
       const response = await fetch('/api/interview/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, firstName, lastName, language }),
+        body: JSON.stringify({ email, firstName, lastName, phone, language }),
       })
 
       const data = await response.json()
@@ -76,6 +77,7 @@ export default function InterviewStartPage() {
       firstName: 'First Name',
       lastName: 'Last Name',
       email: 'Email Address',
+      phone: 'Phone Number',
       beginInterview: 'Begin Interview',
       starting: 'Starting...',
       terms: 'By continuing, you agree to our Terms of Service and Privacy Policy',
@@ -101,6 +103,7 @@ export default function InterviewStartPage() {
       firstName: 'Nombre',
       lastName: 'Apellido',
       email: 'Correo Electrónico',
+      phone: 'Número de Teléfono',
       beginInterview: 'Comenzar Entrevista',
       starting: 'Iniciando...',
       terms: 'Al continuar, acepta nuestros Términos de Servicio y Política de Privacidad',
@@ -342,6 +345,19 @@ export default function InterviewStartPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={language === 'es' ? 'juan@ejemplo.com' : 'john@example.com'}
                     required
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    {t.phone}
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder={language === 'es' ? '+1 (555) 123-4567' : '+1 (555) 123-4567'}
                     className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
                   />
                 </div>
