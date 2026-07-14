@@ -478,10 +478,11 @@ export async function searchAllJobs(
 
   const allJobs = new Map<number, CilioJob>()
 
-  // Build query for the first page
+  // Build query for the first page (use created dates so newly created
+  // but untouched jobs aren't excluded by modified-date filtering)
   const q = new URLSearchParams()
-  q.set("OrderModifiedDateStart", toISO(startDate))
-  q.set("OrderModifiedDateEnd", toISO(now))
+  q.set("OrderCreatedDateStart", toISO(startDate))
+  q.set("OrderCreatedDateEnd", toISO(now))
   q.set("PageSize", String(pageSize))
   q.set("PageNumber", "1")
   const query = q.toString().replace(/%3A/g, ":")
@@ -533,7 +534,7 @@ export async function searchAllJobs(
   for (const j of firstBatch) allJobs.set(j.orderNumber, j)
   onProgress?.(allJobs.size, "initial fetch (date-window mode)")
 
-  const MAX_PER_WINDOW = 50
+  const MAX_PER_WINDOW = pageSize
 
   // Generate weekly windows
   const windows: { start: Date; end: Date }[] = []
@@ -550,14 +551,15 @@ export async function searchAllJobs(
     const ms = end.getTime() - start.getTime()
     const label = `${start.toISOString().slice(0, 16)} → ${end.toISOString().slice(0, 16)}`
     const batch = await searchJobs({
-      orderModifiedDateStart: toISO(start),
-      orderModifiedDateEnd: toISO(end),
+      orderCreatedDateStart: toISO(start),
+      orderCreatedDateEnd: toISO(end),
+      pageSize,
     }).catch((e) => {
       console.error(`[searchAllJobs] Error for window ${label}:`, e?.message || String(e))
       return [] as CilioJob[]
     })
 
-    if (batch.length >= MAX_PER_WINDOW && ms > 3600000 && depth < 4) {
+    if (batch.length >= MAX_PER_WINDOW && ms > 3600000 && depth < 6) {
       const mid = new Date(start.getTime() + ms / 2)
       await fetchWindow(start, mid, depth + 1)
       await fetchWindow(mid, end, depth + 1)
