@@ -127,6 +127,7 @@ export default function RingCentralPage() {
   const [searchPhone, setSearchPhone] = useState("")
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
+  const autoRefreshRef = useRef(true)
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/property/login'); return }
@@ -185,6 +186,42 @@ export default function RingCentralPage() {
   useEffect(() => {
     if (property?.id) fetchCalls()
   }, [property?.id, fetchCalls])
+
+  // Auto-refresh every 30s — pauses when tab is hidden
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
+
+    function startTimer() {
+      timer = setInterval(() => {
+        if (document.visibilityState === "visible" && autoRefreshRef.current) {
+          fetchCalls()
+        }
+      }, 30_000)
+    }
+
+    function stopTimer() {
+      if (timer) { clearInterval(timer); timer = null }
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") {
+        startTimer()
+      } else {
+        stopTimer()
+      }
+    }
+
+    if (property?.id) {
+      startTimer()
+      document.addEventListener("visibilitychange", onVisibility)
+    }
+
+    return () => {
+      stopTimer()
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [property?.id])
 
   // Compute summary from current page
   let inbound = 0, outbound = 0, missed = 0, totalDur = 0, withRec = 0
