@@ -17,6 +17,7 @@ import {
   Armchair,
   Settings,
   ClipboardCheck,
+  PhoneCall,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -41,6 +42,7 @@ export function PropertyMobileMenu({ pathname, notificationCount = 0, onLogout }
       { href: '/property/fleet', label: 'Fleet', icon: Car },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck },
+      { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall },
       { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
     []

@@ -13,6 +13,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  PhoneCall,
   Settings,
   Shield,
   User,
@@ -46,6 +47,7 @@ export function PropertySidebar({
       { href: '/property/fleet', label: 'Fleet', icon: Car },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck },
+      { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall },
       { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
     []
