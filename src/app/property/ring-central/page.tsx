@@ -520,7 +520,27 @@ export default function RingCentralPage() {
                       className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="px-3 py-1 text-sm font-medium text-slate-700">{page}</span>
+                    {(() => {
+                      const buttons: number[] = []
+                      const maxVisible = 7
+                      let start = Math.max(1, page - Math.floor(maxVisible / 2))
+                      let end = Math.min(totalPages, start + maxVisible - 1)
+                      if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1)
+                      for (let i = start; i <= end; i++) buttons.push(i)
+                      return buttons.map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                            p === page
+                              ? 'bg-brand-green text-white'
+                              : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))
+                    })()}
                     <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}
                       className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                       <ChevronRight className="w-4 h-4" />
