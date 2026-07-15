@@ -146,6 +146,20 @@ export async function getCallLogs(params: GetCallLogsParams = {}): Promise<RCCal
   return rcFetch<RCCallLogResponse>("/account/~/call-log", sp)
 }
 
+/** Get account info to verify app type and permissions. */
+export async function getAccountInfo(): Promise<any> {
+  return rcFetch("/account/~/")
+}
+
+/** Get token info to inspect granted scopes. */
+export async function getTokenInfo(): Promise<any> {
+  const token = await getAccessToken()
+  const parts = token.split(".")
+  if (parts.length !== 3) return { error: "not a JWT" }
+  const payload = Buffer.from(parts[1], "base64").toString("utf8")
+  return JSON.parse(payload)
+}
+
 /** Fetch content for a call recording (returns base64 data). */
 export async function getCallRecording(recordingId: string): Promise<RCCallRecordingContent> {
   const token = await getAccessToken()
