@@ -162,7 +162,7 @@ export default function RingCentralPage() {
       const params = new URLSearchParams()
       params.set("dateFrom", new Date(dateFrom).toISOString())
       const toDate = new Date(dateTo)
-      toDate.setHours(23, 59, 59, 999)
+      toDate.setDate(toDate.getDate() + 1)
       params.set("dateTo", toDate.toISOString())
       if (directionFilter !== "all") params.set("direction", directionFilter)
       if (missedFilter) params.set("missedOnly", "true")
