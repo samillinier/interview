@@ -83,7 +83,7 @@ async function runAutoSync(request: NextRequest) {
     }
 
     const cilioUrl = process.env.CILIO_API_BASE_URL || "default-gatewayqa"
-    console.log(`[AutoSync] Starting Cilio delta sync (last hour)... (url=${cilioUrl})`)
+    console.log(`[AutoSync] Starting Cilio sync (last ~1 month via weekly windows)... (url=${cilioUrl})`)
     const startTime = Date.now()
 
     // ── DELTA SYNC ──
