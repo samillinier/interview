@@ -15,10 +15,7 @@ import {
   ChevronRight,
   Play,
   RefreshCw,
-  Voicemail,
   Filter,
-  BarChart3,
-  Timer,
   PhoneCall,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -60,12 +57,6 @@ interface CallLogResponse {
   records: CallRecord[]
   navigation: { firstPage?: { uri: string }; nextPage?: { uri: string } }
   paging: { page: number; perPage: number; totalPages: number; totalElements: number }
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
 function formatPhone(phone?: string): string {
@@ -247,18 +238,15 @@ export default function RingCentralPage() {
   }, [property?.id])
 
   // Compute summary from current page
-  let inbound = 0, outbound = 0, missed = 0, totalDur = 0, withRec = 0
+  let inbound = 0, outbound = 0, missed = 0
   if (callData?.records) {
     for (const r of callData.records) {
       if (r.direction === "Inbound") inbound++; else outbound++
       if (r.result === "Missed") missed++
-      totalDur += r.duration || 0
-      if (r.recording?.id) withRec++
     }
   }
   const totalRecords = callData?.paging?.totalElements || 0
   const totalPages = callData?.paging?.totalPages || 1
-  const pageRecords = callData?.records?.length || 0
 
   const handleLogout = () => signOut({ callbackUrl: '/property/login' })
 
@@ -351,16 +339,6 @@ export default function RingCentralPage() {
               <p className="text-sm font-medium text-red-800">{error}</p>
             </motion.div>
           )}
-
-          {/* Stats cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <StatCard icon={PhoneCall} label="Total Records" value={totalRecords.toLocaleString()} color="blue" />
-            <StatCard icon={PhoneIncoming} label="Inbound" value={inbound} color="green" />
-            <StatCard icon={PhoneOutgoing} label="Outbound" value={outbound} color="purple" />
-            <StatCard icon={PhoneMissed} label="Missed" value={missed} color="red" />
-            <StatCard icon={Timer} label="Duration" value={formatDuration(totalDur)} color="amber" />
-            <StatCard icon={Voicemail} label="Recorded" value={withRec} color="indigo" />
-          </div>
 
           {/* Filters */}
           <AnimatePresence>
@@ -618,27 +596,6 @@ export default function RingCentralPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function StatCard({ icon: Icon, label, value, color }: {
-  icon: any; label: string; value: string | number; color: string
-}) {
-  const colorMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    red: 'bg-red-50 text-red-600',
-    amber: 'bg-amber-50 text-amber-600',
-    slate: 'bg-slate-100 text-slate-600',
-    indigo: 'bg-indigo-50 text-indigo-600',
-  }
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex items-center gap-3">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${colorMap[color] || 'bg-slate-50 text-slate-500'}`}>
-        <Icon className="w-4.5 h-4.5" />
       </div>
     </div>
   )
