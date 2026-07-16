@@ -300,11 +300,11 @@ export default function RingCentralPage() {
           {/* Stats cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             <StatCard icon={PhoneCall} label="Total Records" value={totalRecords.toLocaleString()} color="blue" />
-            <StatCard icon={PhoneIncoming} label="This Page Inbound" value={inbound} color="green" />
-            <StatCard icon={PhoneOutgoing} label="This Page Outbound" value={outbound} color="purple" />
-            <StatCard icon={PhoneMissed} label="This Page Missed" value={missed} color="red" />
-            <StatCard icon={Timer} label="This Page Duration" value={formatDuration(totalDur)} color="amber" />
-            <StatCard icon={Voicemail} label="This Page Recorded" value={withRec} color="indigo" />
+            <StatCard icon={PhoneIncoming} label="Inbound" value={inbound} color="green" />
+            <StatCard icon={PhoneOutgoing} label="Outbound" value={outbound} color="purple" />
+            <StatCard icon={PhoneMissed} label="Missed" value={missed} color="red" />
+            <StatCard icon={Timer} label="Duration" value={formatDuration(totalDur)} color="amber" />
+            <StatCard icon={Voicemail} label="Recorded" value={withRec} color="indigo" />
           </div>
 
           {/* Filters */}
