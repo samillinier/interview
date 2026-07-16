@@ -87,65 +87,25 @@ async function runAutoSync(request: NextRequest) {
     const startTime = Date.now()
 
     // ── DELTA SYNC ──
-    // Instead of fetching 3 months of jobs every cycle, only fetch jobs modified
-    // in the last hour. With the cron at */15, this catches all changes with a
-    // 45-minute safety margin. Uses Cilio's paginated searchJobs.
-    // A deeper full sync runs on the first invocation of each hour as a safety net.
-    const now = new Date()
-    const oneHourAgo = new Date(now.getTime() - 3600000)
-    const toISO = (d: Date) => d.toISOString()
-
+    // Fetch recent jobs via weekly date windows.
+    // Cilio pagination is broken (PageSize=500 returns ~10, totalPages always 1),
+    // so searchAllJobs walks weekly OrderModifiedDate windows with pageSize=50.
     let fetchError: string | null = null
     let allJobs: any[] = []
 
-    // Delta sync: fetch jobs modified in the last hour, handling Cilio pagination
     try {
-      const pageSize = 500
-      let page = 1
-      let totalPages = 1
-      const seen = new Set<number>()
-
-      while (page <= totalPages) {
-        const result = await cilio.searchJobs({
-          orderModifiedDateStart: toISO(oneHourAgo),
-          orderModifiedDateEnd: toISO(now),
-          page,
-          pageSize,
-        })
-
-        if (Array.isArray(result)) {
-          // Old format: plain array, no pagination metadata
-          for (const j of result) {
-            if (!seen.has(j.orderNumber)) {
-              seen.add(j.orderNumber)
-              allJobs.push(j)
-            }
-          }
-          break // Old format returns everything in one call
-        } else if (result && typeof result === "object" && "totalPages" in result) {
-          // New paginated format
-          const paged = result as { totalPages: number; results: any[]; currentPage: number }
-          for (const j of paged.results) {
-            if (!seen.has(j.orderNumber)) {
-              seen.add(j.orderNumber)
-              allJobs.push(j)
-            }
-          }
-          totalPages = paged.totalPages
-          page++
-          if (paged.totalPages <= 1) break
-          await new Promise(r => setTimeout(r, 100)) // Rate limit buffer between pages
-        } else {
-          break
-        }
-      }
+      allJobs = await cilio.searchAllJobs({
+        monthsBack: 1,
+        pageSize: 50,
+        onProgress: (count, detail) => console.log(`[AutoSync] ${count} jobs (${detail})`),
+      })
     } catch (e: any) {
       fetchError = e?.message || String(e)
-      console.error("[AutoSync] Delta fetch FAILED:", fetchError)
+      console.error("[AutoSync] Fetch FAILED:", fetchError)
       allJobs = []
     }
 
-    console.log(`[AutoSync] Delta sync fetched ${allJobs.length} jobs modified in the last hour`)
+    console.log(`[AutoSync] Fetched ${allJobs.length} jobs from last ~1 month`)
 
     // Filter out test jobs before upserting
     const testFiltered = allJobs.filter(j => !isTestJob(j))
