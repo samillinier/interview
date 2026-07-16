@@ -127,6 +127,59 @@ export default function RingCentralPage() {
   const [showFilters, setShowFilters] = useState(false)
   const autoRefreshRef = useRef(true)
 
+  // Filter refs — always read live values in fetchCalls without dependency issues
+  const dateFromRef = useRef(dateFrom)
+  const dateToRef = useRef(dateTo)
+  const directionRef = useRef<"all" | "Inbound" | "Outbound">(directionFilter)
+  const missedRef = useRef(missedFilter)
+  const phoneRef = useRef(searchPhone)
+  const pageRef = useRef(page)
+
+  // Keep refs in sync with state
+  dateFromRef.current = dateFrom
+  dateToRef.current = dateTo
+  directionRef.current = directionFilter
+  missedRef.current = missedFilter
+  phoneRef.current = searchPhone
+  pageRef.current = page
+
+  const fetchCalls = useCallback(async () => {
+    setCallsLoading(true)
+    setCallsError('')
+    try {
+      const params = new URLSearchParams()
+      params.set("dateFrom", new Date(dateFromRef.current).toISOString())
+      const toDate = new Date(dateToRef.current)
+      toDate.setDate(toDate.getDate() + 1)
+      params.set("dateTo", toDate.toISOString())
+      if (directionRef.current !== "all") params.set("direction", directionRef.current)
+      if (missedRef.current) params.set("missedOnly", "true")
+      if (phoneRef.current.trim()) params.set("phoneNumber", phoneRef.current.trim())
+      params.set("page", String(pageRef.current))
+      params.set("perPage", "250")
+
+      const res = await fetch(`/api/ringcentral/call-logs?${params.toString()}`)
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || `Request failed (${res.status})`)
+      }
+      const data: CallLogResponse = await res.json()
+      setCallData(data)
+    } catch (err: any) {
+      setCallsError(err.message || 'Failed to load call logs')
+      setCallData(null)
+    } finally { setCallsLoading(false) }
+  }, []) // Stable: reads everything from refs
+
+  const fetchCallsRef = useRef(fetchCalls)
+  fetchCallsRef.current = fetchCalls
+
+  // Refetch whenever filters or pagination change
+  useEffect(() => {
+    if (property?.id) fetchCallsRef.current()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [property?.id, directionFilter, missedFilter, searchPhone, page, dateFrom, dateTo])
+
   function handleCallTypeChange(type: "all" | "missed" | "inbound" | "outbound") {
     setCallTypeFilter(type)
     setPage(1)
@@ -175,38 +228,6 @@ export default function RingCentralPage() {
     } finally { setIsLoading(false) }
   }
 
-  const fetchCalls = useCallback(async () => {
-    setCallsLoading(true)
-    setCallsError('')
-    try {
-      const params = new URLSearchParams()
-      params.set("dateFrom", new Date(dateFrom).toISOString())
-      const toDate = new Date(dateTo)
-      toDate.setDate(toDate.getDate() + 1)
-      params.set("dateTo", toDate.toISOString())
-      if (directionFilter !== "all") params.set("direction", directionFilter)
-      if (missedFilter) params.set("missedOnly", "true")
-      if (searchPhone.trim()) params.set("phoneNumber", searchPhone.trim())
-      params.set("page", String(page))
-      params.set("perPage", "250")
-
-      const res = await fetch(`/api/ringcentral/call-logs?${params.toString()}`)
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || `Request failed (${res.status})`)
-      }
-      const data: CallLogResponse = await res.json()
-      setCallData(data)
-    } catch (err: any) {
-      setCallsError(err.message || 'Failed to load call logs')
-      setCallData(null)
-    } finally { setCallsLoading(false) }
-  }, [dateFrom, dateTo, directionFilter, missedFilter, searchPhone, page])
-
-  useEffect(() => {
-    if (property?.id) fetchCalls()
-  }, [property?.id, fetchCalls])
-
   // Auto-refresh every 30s — pauses when tab is hidden
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null
@@ -214,7 +235,7 @@ export default function RingCentralPage() {
     function startTimer() {
       timer = setInterval(() => {
         if (document.visibilityState === "visible" && autoRefreshRef.current) {
-          fetchCalls()
+          fetchCallsRef.current()
         }
       }, 30_000)
     }
