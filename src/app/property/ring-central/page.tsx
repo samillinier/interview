@@ -118,7 +118,7 @@ export default function RingCentralPage() {
 
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date()
-    d.setDate(d.getDate() - 30)
+    d.setFullYear(d.getFullYear() - 1)
     return d.toISOString().slice(0, 10)
   })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10))
@@ -168,7 +168,7 @@ export default function RingCentralPage() {
       if (missedFilter) params.set("missedOnly", "true")
       if (searchPhone.trim()) params.set("phoneNumber", searchPhone.trim())
       params.set("page", String(page))
-      params.set("perPage", "50")
+      params.set("perPage", "100")
 
       const res = await fetch(`/api/ringcentral/call-logs?${params.toString()}`)
       if (!res.ok) {
