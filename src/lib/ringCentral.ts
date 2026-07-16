@@ -143,6 +143,9 @@ export async function getCallLogs(params: GetCallLogsParams = {}): Promise<RCCal
   if (params.missedOnly) sp.set("missedCall", "true")
   if (params.withRecording) sp.set("withRecording", "true")
 
+  // Always set type=Voice since we only care about call logs
+  sp.set("type", "Voice")
+
   return rcFetch<RCCallLogResponse>("/account/~/call-log", sp)
 }
 

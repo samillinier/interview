@@ -264,13 +264,16 @@ export default function RingCentralPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property?.id])
 
-  // Compute summary from current page
+  // Compute summary from current page (before any client-side missed filter)
   let inbound = 0, outbound = 0, missed = 0
-  if (callData?.records) {
-    for (const r of callData.records) {
-      if (r.direction === "Inbound") inbound++; else outbound++
-      if (r.result === "Missed") missed++
-    }
+  let rawRecords = callData?.records || []
+  // Apply missed filter client-side if active
+  let displayRecords = missedFilter
+    ? rawRecords.filter(r => r.result === "Missed")
+    : rawRecords
+  for (const r of rawRecords) {
+    if (r.direction === "Inbound") inbound++; else outbound++
+    if (r.result === "Missed") missed++
   }
   const totalRecords = callData?.paging?.totalElements || 0
   const totalPages = callData?.paging?.totalPages || 1
@@ -459,7 +462,7 @@ export default function RingCentralPage() {
                 <Loader2 className="w-6 h-6 text-brand-green animate-spin" />
                 <span className="ml-2 text-slate-500">Loading call logs...</span>
               </div>
-            ) : !callData || callData.records.length === 0 ? (
+            ) : !callData || displayRecords.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <Phone className="w-12 h-12 mb-3" />
                 <p className="text-sm font-medium">No call records found</p>
@@ -482,7 +485,7 @@ export default function RingCentralPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {callData.records.map((call) => {
+                      {displayRecords.map((call) => {
                         const badge = resultBadge(call.result)
                         const isMissed = call.result === "Missed"
                         return (
@@ -537,7 +540,7 @@ export default function RingCentralPage() {
 
                 {/* Mobile cards */}
                 <div className="lg:hidden divide-y divide-slate-100">
-                  {callData.records.map((call) => {
+                  {displayRecords.map((call) => {
                     const badge = resultBadge(call.result)
                     const isMissed = call.result === "Missed"
                     return (
