@@ -124,10 +124,33 @@ export default function RingCentralPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10))
   const [directionFilter, setDirectionFilter] = useState<"all" | "Inbound" | "Outbound">("all")
   const [missedFilter, setMissedFilter] = useState(false)
+  const [callTypeFilter, setCallTypeFilter] = useState<"all" | "missed" | "inbound" | "outbound">("all")
   const [searchPhone, setSearchPhone] = useState("")
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const autoRefreshRef = useRef(true)
+
+  function handleCallTypeChange(type: "all" | "missed" | "inbound" | "outbound") {
+    setCallTypeFilter(type)
+    setPage(1)
+    switch (type) {
+      case "missed":
+        setDirectionFilter("all")
+        setMissedFilter(true)
+        break
+      case "inbound":
+        setDirectionFilter("Inbound")
+        setMissedFilter(false)
+        break
+      case "outbound":
+        setDirectionFilter("Outbound")
+        setMissedFilter(false)
+        break
+      default:
+        setDirectionFilter("all")
+        setMissedFilter(false)
+    }
+  }
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/property/login'); return }
@@ -288,6 +311,34 @@ export default function RingCentralPage() {
             </div>
           </div>
 
+          {/* Quick-filter call type buttons — Installer-style pill bar */}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <CallTypePill
+              active={callTypeFilter === "all"}
+              onClick={() => handleCallTypeChange("all")}
+              icon={PhoneCall}
+              label="All Calls"
+            />
+            <CallTypePill
+              active={callTypeFilter === "missed"}
+              onClick={() => handleCallTypeChange("missed")}
+              icon={PhoneMissed}
+              label="Missed"
+            />
+            <CallTypePill
+              active={callTypeFilter === "inbound"}
+              onClick={() => handleCallTypeChange("inbound")}
+              icon={PhoneIncoming}
+              label="Inbound"
+            />
+            <CallTypePill
+              active={callTypeFilter === "outbound"}
+              onClick={() => handleCallTypeChange("outbound")}
+              icon={PhoneOutgoing}
+              label="Outbound"
+            />
+          </div>
+
           {/* Error */}
           {error && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
@@ -333,7 +384,14 @@ export default function RingCentralPage() {
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Direction</label>
                       <select value={directionFilter}
-                        onChange={(e) => { setDirectionFilter(e.target.value as any); setPage(1) }}
+                        onChange={(e) => {
+                          const v = e.target.value as any
+                          setDirectionFilter(v)
+                          setPage(1)
+                          if (v === "Inbound") { setCallTypeFilter("inbound"); setMissedFilter(false) }
+                          else if (v === "Outbound") { setCallTypeFilter("outbound"); setMissedFilter(false) }
+                          else { setCallTypeFilter("all"); setMissedFilter(false) }
+                        }}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none text-sm">
                         <option value="all">All Calls</option>
                         <option value="Inbound">Inbound</option>
@@ -351,7 +409,12 @@ export default function RingCentralPage() {
                   <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={missedFilter}
-                        onChange={(e) => { setMissedFilter(e.target.checked); setPage(1) }}
+                        onChange={(e) => {
+                          setMissedFilter(e.target.checked)
+                          setPage(1)
+                          if (e.target.checked) { setCallTypeFilter("missed"); setDirectionFilter("all") }
+                          else { setCallTypeFilter("all") }
+                        }}
                         className="w-4 h-4 rounded border-slate-300 text-brand-green focus:ring-brand-green" />
                       <span className="text-sm text-slate-600">Missed calls only</span>
                     </label>
@@ -573,10 +636,27 @@ function StatCard({ icon: Icon, label, value, color }: {
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${colorMap[color] || 'bg-slate-50 text-slate-500'}`}>
         <Icon className="w-4.5 h-4.5" />
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-slate-500 truncate">{label}</p>
-        <p className="text-base sm:text-lg font-bold text-slate-900">{value}</p>
-      </div>
     </div>
+  )
+}
+
+function CallTypePill({ active, onClick, icon: Icon, label }: {
+  active: boolean
+  onClick: () => void
+  icon: any
+  label: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+        active
+          ? 'bg-brand-green text-white shadow-md shadow-brand-green/25'
+          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+      {label}
+    </button>
   )
 }
