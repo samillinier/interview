@@ -460,15 +460,15 @@ function extractJobArray(raw: unknown): CilioJob[] {
   return []
 }
 
-/** Fetch ALL jobs. Uses API pagination when available (new QA format with
- *  totalPages metadata), falls back to date-window splitting for the old
- *  format (plain array, capped at 50).
- *  @param monthsBack How many months of history to fetch (default 6)
- *  @param pageSize Requested page size (default 500) */
+/** Fetch ALL jobs using weekly date-window splitting.
+ *  Cilio's pagination metadata is unreliable (totalPages is always 1,
+ *  PageSize=500 returns only ~10 jobs, page 2 returns the same page 1 data).
+ *  So we ignore pagination and walk weekly modified-date windows instead. */
 export async function searchAllJobs(
   options?: { monthsBack?: number; pageSize?: number; onProgress?: (fetched: number, detail: string) => void }
 ): Promise<CilioJob[]> {
-  const pageSize = options?.pageSize ?? 500
+  // Cilio reliably returns up to ~50-100 per request; larger PageSize returns fewer.
+  const pageSize = Math.min(options?.pageSize ?? 50, 100)
   const monthsBack = options?.monthsBack ?? 6
   const onProgress = options?.onProgress
   const now = new Date()
@@ -477,73 +477,17 @@ export async function searchAllJobs(
   const toISO = (d: Date) => d.toISOString()
 
   const allJobs = new Map<number, CilioJob>()
-
-  // Build query for the first page
-  const q = new URLSearchParams()
-  q.set("OrderModifiedDateStart", toISO(startDate))
-  q.set("OrderModifiedDateEnd", toISO(now))
-  q.set("PageSize", String(pageSize))
-  q.set("PageNumber", "1")
-  const query = q.toString().replace(/%3A/g, ":")
-  const path = `/job/search?${query}`
-
-  let firstRaw: unknown
-  try {
-    firstRaw = await cilioFetch<unknown>(path)
-  } catch (e: any) {
-    console.error(`[searchAllJobs] First page error:`, e?.message || String(e))
-    firstRaw = []
-  }
-
-  // Detect format: new paginated wrapper vs old plain array
-  if (firstRaw && typeof firstRaw === "object" && "results" in firstRaw) {
-    // ── New paginated format ──
-    const paged = firstRaw as CilioPaginatedResponse
-    for (const j of paged.results) allJobs.set(j.orderNumber, j)
-    const statedPages = (paged as any).totalPages || '?'
-    onProgress?.(allJobs.size, `page 1/${statedPages} (paginated)`)
-
-    // Keep fetching until we get fewer than pageSize results (handles
-    // pagination race conditions where totalPages increases mid-fetch).
-    let page = 2
-    while (true) {
-      const pageQ = new URLSearchParams(q.toString())
-      pageQ.set("PageNumber", String(page))
-      const pagePath = `/job/search?${pageQ.toString().replace(/%3A/g, ":")}`
-      try {
-        const rawPage = await cilioFetch<CilioPaginatedResponse>(pagePath)
-        if (!rawPage.results || rawPage.results.length === 0) break
-        let added = 0
-        for (const j of rawPage.results) {
-          if (!allJobs.has(j.orderNumber)) { allJobs.set(j.orderNumber, j); added++ }
-        }
-        onProgress?.(allJobs.size, `page ${page} (paginated)`)
-        if (rawPage.results.length < pageSize) break
-        page++
-      } catch (e: any) {
-        console.error(`[searchAllJobs] Page ${page} error:`, e?.message || String(e))
-        break
-      }
-    }
-    return Array.from(allJobs.values())
-  }
-
-  // ── Old format: fall back to date-window splitting ──
-  const firstBatch = extractJobArray(firstRaw)
-  for (const j of firstBatch) allJobs.set(j.orderNumber, j)
-  onProgress?.(allJobs.size, "initial fetch (date-window mode)")
-
   const MAX_PER_WINDOW = pageSize
 
-  // Generate weekly windows
+  // Generate weekly windows (newest first so recent jobs appear even if we time out)
   const windows: { start: Date; end: Date }[] = []
-  let cursor = new Date(startDate)
-  while (cursor < now) {
-    const wEnd = new Date(cursor)
-    wEnd.setDate(wEnd.getDate() + 7)
-    if (wEnd > now) wEnd.setTime(now.getTime())
-    windows.push({ start: new Date(cursor), end: new Date(wEnd) })
-    cursor = wEnd
+  let cursor = new Date(now)
+  while (cursor > startDate) {
+    const wStart = new Date(cursor)
+    wStart.setDate(wStart.getDate() - 7)
+    if (wStart < startDate) wStart.setTime(startDate.getTime())
+    windows.push({ start: new Date(wStart), end: new Date(cursor) })
+    cursor = wStart
   }
 
   async function fetchWindow(start: Date, end: Date, depth: number = 0): Promise<void> {
@@ -558,6 +502,7 @@ export async function searchAllJobs(
       return [] as CilioJob[]
     })
 
+    // If we hit the cap, split the window and dig deeper
     if (batch.length >= MAX_PER_WINDOW && ms > 3600000 && depth < 6) {
       const mid = new Date(start.getTime() + ms / 2)
       await fetchWindow(start, mid, depth + 1)
@@ -567,13 +512,13 @@ export async function searchAllJobs(
       for (const j of batch) {
         if (!allJobs.has(j.orderNumber)) allJobs.set(j.orderNumber, j)
       }
-      onProgress?.(allJobs.size, label)
+      onProgress?.(allJobs.size, `${label} (+${batch.length})`)
     }
   }
 
   for (const win of windows) {
     await fetchWindow(win.start, win.end)
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise(resolve => setTimeout(resolve, 200))
   }
 
   return Array.from(allJobs.values())
