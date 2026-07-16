@@ -33,10 +33,10 @@ export async function GET(request: NextRequest) {
     if (page) params.page = parseInt(page, 10)
     if (perPage) params.perPage = parseInt(perPage, 10)
 
-    // Default to last 12 months if no date range provided
+    // Default to last 90 days (RingCentral API silently caps wider ranges)
     if (!params.dateFrom) {
       const d = new Date()
-      d.setFullYear(d.getFullYear() - 1)
+      d.setDate(d.getDate() - 90)
       params.dateFrom = d.toISOString()
       params.dateTo = new Date().toISOString()
     }
