@@ -59,6 +59,12 @@ interface CallLogResponse {
   paging: { page: number; perPage: number; totalPages: number; totalElements: number }
 }
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+}
+
 function formatPhone(phone?: string): string {
   if (!phone) return "Unknown"
   const digits = phone.replace(/\D/g, "")
