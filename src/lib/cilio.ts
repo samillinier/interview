@@ -460,31 +460,49 @@ function extractJobArray(raw: unknown): CilioJob[] {
   return []
 }
 
-/** Fetch ALL jobs using weekly date-window splitting.
+/** Fetch jobs using date-window splitting.
  *  Cilio's pagination metadata is unreliable (totalPages is always 1,
  *  PageSize=500 returns only ~10 jobs, page 2 returns the same page 1 data).
- *  So we ignore pagination and walk weekly modified-date windows instead. */
+ *  So we ignore pagination and walk modified-date windows instead.
+ *
+ *  Prefer hoursBack / dateFrom+dateTo for light delta syncs.
+ *  monthsBack is for full backfills only. */
 export async function searchAllJobs(
-  options?: { monthsBack?: number; pageSize?: number; onProgress?: (fetched: number, detail: string) => void }
+  options?: {
+    monthsBack?: number
+    hoursBack?: number
+    dateFrom?: Date
+    dateTo?: Date
+    pageSize?: number
+    onProgress?: (fetched: number, detail: string) => void
+  }
 ): Promise<CilioJob[]> {
   // Cilio reliably returns up to ~50-100 per request; larger PageSize returns fewer.
   const pageSize = Math.min(options?.pageSize ?? 50, 100)
-  const monthsBack = options?.monthsBack ?? 6
   const onProgress = options?.onProgress
-  const now = new Date()
-  const startDate = new Date(now)
-  startDate.setMonth(startDate.getMonth() - monthsBack)
+  const now = options?.dateTo ? new Date(options.dateTo) : new Date()
+  let startDate: Date
+  if (options?.dateFrom) {
+    startDate = new Date(options.dateFrom)
+  } else if (options?.hoursBack != null) {
+    startDate = new Date(now.getTime() - options.hoursBack * 3600000)
+  } else {
+    const monthsBack = options?.monthsBack ?? 6
+    startDate = new Date(now)
+    startDate.setMonth(startDate.getMonth() - monthsBack)
+  }
   const toISO = (d: Date) => d.toISOString()
 
   const allJobs = new Map<number, CilioJob>()
   const MAX_PER_WINDOW = pageSize
+  const rangeMs = now.getTime() - startDate.getTime()
+  // Short ranges: 1-hour windows. Longer ranges: weekly windows.
+  const windowMs = rangeMs <= 48 * 3600000 ? 3600000 : 7 * 24 * 3600000
 
-  // Generate weekly windows (newest first so recent jobs appear even if we time out)
   const windows: { start: Date; end: Date }[] = []
   let cursor = new Date(now)
   while (cursor > startDate) {
-    const wStart = new Date(cursor)
-    wStart.setDate(wStart.getDate() - 7)
+    const wStart = new Date(cursor.getTime() - windowMs)
     if (wStart < startDate) wStart.setTime(startDate.getTime())
     windows.push({ start: new Date(wStart), end: new Date(cursor) })
     cursor = wStart
@@ -503,7 +521,7 @@ export async function searchAllJobs(
     })
 
     // If we hit the cap, split the window and dig deeper
-    if (batch.length >= MAX_PER_WINDOW && ms > 3600000 && depth < 6) {
+    if (batch.length >= MAX_PER_WINDOW && ms > 15 * 60000 && depth < 6) {
       const mid = new Date(start.getTime() + ms / 2)
       await fetchWindow(start, mid, depth + 1)
       await fetchWindow(mid, end, depth + 1)
@@ -518,7 +536,7 @@ export async function searchAllJobs(
 
   for (const win of windows) {
     await fetchWindow(win.start, win.end)
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise(resolve => setTimeout(resolve, 150))
   }
 
   return Array.from(allJobs.values())

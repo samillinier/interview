@@ -32,8 +32,8 @@ function isTestJob(job: any): boolean {
  * GET  /api/cilio/jobs/auto-sync  ← Vercel Cron Job (every 5 min)
  * POST /api/cilio/jobs/auto-sync  ← manual trigger (requires auth)
  *
- * Phase 1: Fetches ALL Cilio jobs (parallel status-term searches) and upserts
- *          each one into CilioJobRecord so the Reports archive stays current.
+ * Phase 1: Delta-fetch jobs modified since last sync watermark (with overlap)
+ *          and upsert only new/changed records into CilioJobRecord.
  * Phase 2: Enriches records that are missing dates by fetching full job detail
  *          from Cilio (scheduledInstallDate, measureDate, bookingDate).
  */
@@ -83,19 +83,31 @@ async function runAutoSync(request: NextRequest) {
     }
 
     const cilioUrl = process.env.CILIO_API_BASE_URL || "default-gatewayqa"
-    console.log(`[AutoSync] Starting Cilio sync (last ~1 month via weekly windows)... (url=${cilioUrl})`)
     const startTime = Date.now()
 
-    // ── DELTA SYNC ──
-    // Fetch recent jobs via weekly date windows.
-    // Cilio pagination is broken (PageSize=500 returns ~10, totalPages always 1),
-    // so searchAllJobs walks weekly OrderModifiedDate windows with pageSize=50.
+    // Delta only: fetch jobs modified since last sync watermark (with 30 min overlap).
+    // Never re-walk months of already-synced history on every cron tick.
+    const latest = await prisma.cilioJobRecord.findFirst({
+      orderBy: { updatedAt: "desc" },
+      select: { updatedAt: true },
+    })
+    const overlapMs = 30 * 60 * 1000
+    const fallbackMs = 2 * 60 * 60 * 1000 // 2 hours if DB empty
+    const dateFrom = latest?.updatedAt
+      ? new Date(latest.updatedAt.getTime() - overlapMs)
+      : new Date(Date.now() - fallbackMs)
+    const dateTo = new Date()
+    const hoursBack = Math.max(1, Math.ceil((dateTo.getTime() - dateFrom.getTime()) / 3600000))
+
+    console.log(`[AutoSync] Delta sync since ${dateFrom.toISOString()} (~${hoursBack}h) url=${cilioUrl}`)
+
     let fetchError: string | null = null
     let allJobs: any[] = []
 
     try {
       allJobs = await cilio.searchAllJobs({
-        monthsBack: 1,
+        dateFrom,
+        dateTo,
         pageSize: 50,
         onProgress: (count, detail) => console.log(`[AutoSync] ${count} jobs (${detail})`),
       })
@@ -105,7 +117,7 @@ async function runAutoSync(request: NextRequest) {
       allJobs = []
     }
 
-    console.log(`[AutoSync] Fetched ${allJobs.length} jobs from last ~1 month`)
+    console.log(`[AutoSync] Fetched ${allJobs.length} recently-modified jobs`)
 
     // Filter out test jobs before upserting
     const testFiltered = allJobs.filter(j => !isTestJob(j))
@@ -145,15 +157,29 @@ async function runAutoSync(request: NextRequest) {
         : {}
 
       try {
-        // Check if status changed before upsert
+        // Skip already-synced jobs that have no status change (no DB write)
         const existing = await prisma.cilioJobRecord.findUnique({
           where: { orderNumber: job.orderNumber },
-          select: { orderStatusDescription: true },
+          select: {
+            orderStatusDescription: true,
+            storeNumber: true,
+            laborCategoryDescription: true,
+          },
         })
-        const statusChanged = existing && existing.orderStatusDescription !== (statusDesc || null)
+        const statusDescNorm = statusDesc || null
+        if (
+          existing &&
+          existing.orderStatusDescription === statusDescNorm &&
+          (existing.storeNumber || null) === (job.storeNumber || null) &&
+          (existing.laborCategoryDescription || null) === (job.laborCategoryDescription || null)
+        ) {
+          skipped++
+          continue
+        }
+        const statusChanged = !!existing && existing.orderStatusDescription !== statusDescNorm
 
         const data = {
-          orderStatusDescription: statusDesc || null,
+          orderStatusDescription: statusDescNorm,
           jobType,
           storeNumber: job.storeNumber || null,
           storeName: job.storeName || null,
