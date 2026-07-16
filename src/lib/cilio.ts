@@ -36,7 +36,7 @@ async function cilioFetch<T>(path: string, options?: RequestInit, retriesRemaini
   const headers = getCilioHeaders()
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10000)
+  const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
     const res = await fetch(url, {
@@ -478,11 +478,10 @@ export async function searchAllJobs(
 
   const allJobs = new Map<number, CilioJob>()
 
-  // Build query for the first page (use created dates so newly created
-  // but untouched jobs aren't excluded by modified-date filtering)
+  // Build query for the first page
   const q = new URLSearchParams()
-  q.set("OrderCreatedDateStart", toISO(startDate))
-  q.set("OrderCreatedDateEnd", toISO(now))
+  q.set("OrderModifiedDateStart", toISO(startDate))
+  q.set("OrderModifiedDateEnd", toISO(now))
   q.set("PageSize", String(pageSize))
   q.set("PageNumber", "1")
   const query = q.toString().replace(/%3A/g, ":")
@@ -551,8 +550,8 @@ export async function searchAllJobs(
     const ms = end.getTime() - start.getTime()
     const label = `${start.toISOString().slice(0, 16)} → ${end.toISOString().slice(0, 16)}`
     const batch = await searchJobs({
-      orderCreatedDateStart: toISO(start),
-      orderCreatedDateEnd: toISO(end),
+      orderModifiedDateStart: toISO(start),
+      orderModifiedDateEnd: toISO(end),
       pageSize,
     }).catch((e) => {
       console.error(`[searchAllJobs] Error for window ${label}:`, e?.message || String(e))

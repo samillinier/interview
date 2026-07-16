@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       allJobs = await cilio.searchJobs({ poJobNumber: userTerm }).catch(() => [] as any[])
     } else {
       allJobs = await cilio.searchAllJobs({
-        monthsBack: 3,
+        monthsBack: 6,
         pageSize: 500,
         onProgress: (count, detail) => console.log(`[Cilio API] searchAllJobs: ${count} jobs (${detail})`),
       }).catch(() => [] as any[])
