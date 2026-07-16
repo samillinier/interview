@@ -318,24 +318,28 @@ export default function RingCentralPage() {
               onClick={() => handleCallTypeChange("all")}
               icon={PhoneCall}
               label="All Calls"
+              count={totalRecords}
             />
             <CallTypePill
               active={callTypeFilter === "missed"}
               onClick={() => handleCallTypeChange("missed")}
               icon={PhoneMissed}
               label="Missed"
+              count={missed}
             />
             <CallTypePill
               active={callTypeFilter === "inbound"}
               onClick={() => handleCallTypeChange("inbound")}
               icon={PhoneIncoming}
               label="Inbound"
+              count={inbound}
             />
             <CallTypePill
               active={callTypeFilter === "outbound"}
               onClick={() => handleCallTypeChange("outbound")}
               icon={PhoneOutgoing}
               label="Outbound"
+              count={outbound}
             />
           </div>
 
@@ -640,12 +644,14 @@ function StatCard({ icon: Icon, label, value, color }: {
   )
 }
 
-function CallTypePill({ active, onClick, icon: Icon, label }: {
+function CallTypePill({ active, onClick, icon: Icon, label, count }: {
   active: boolean
   onClick: () => void
   icon: any
   label: string
+  count?: number
 }) {
+  const showCount = count !== undefined && count > 0
   return (
     <button
       onClick={onClick}
@@ -657,6 +663,15 @@ function CallTypePill({ active, onClick, icon: Icon, label }: {
     >
       <Icon className="w-4 h-4" />
       {label}
+      {showCount && (
+        <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-bold ${
+          active
+            ? 'bg-white/20 text-white'
+            : 'bg-slate-100 text-slate-500'
+        }`}>
+          {count! > 999 ? '999+' : count}
+        </span>
+      )}
     </button>
   )
 }
