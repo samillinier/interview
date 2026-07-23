@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const userEmail = session.user?.email?.toLowerCase()
 
   try {
-    const property = await prisma.property.findUnique({
+    const property = await (prisma as any).property.findUnique({
       where: { email: userEmail },
       include: { Vehicle: true, GpsDevice: true },
     })
