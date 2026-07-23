@@ -147,7 +147,7 @@ export default function BolPage() {
           'RL': item.quantity,
           'LF': (PAD_MULTIPLIERS[item.name] || 45) * item.quantity,
           'Authorized': authStatus,
-          'Authorized By': order.authorizedBy || order.authorizationMethod || '-',
+          'Authorized By': order.authorized ? (order.authorizedBy || order.authorizationMethod || '-') : '-',
           'Created By': order.createdByName || order.createdByEmail || '-',
         })
       }

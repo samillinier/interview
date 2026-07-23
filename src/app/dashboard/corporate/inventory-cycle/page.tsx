@@ -148,7 +148,7 @@ export default function InventoryCyclePage() {
           'LF Count': '-',
           'Total LF': '-',
           'Authorized': authStatus,
-          'Authorized By': c.authorizedBy || c.authorizationMethod || '-',
+          'Authorized By': c.authorized ? (c.authorizedBy || c.authorizationMethod || '-') : '-',
           'Created By': c.createdByName || c.createdByEmail || '-',
         })
       } else {
@@ -165,7 +165,7 @@ export default function InventoryCyclePage() {
             'LF Count': ft,
             'Total LF': totalLF,
             'Authorized': authStatus,
-            'Authorized By': c.authorizedBy || c.authorizationMethod || '-',
+            'Authorized By': c.authorized ? (c.authorizedBy || c.authorizationMethod || '-') : '-',
             'Created By': c.createdByName || c.createdByEmail || '-',
           })
         }

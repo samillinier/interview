@@ -177,7 +177,7 @@ export default function PadTransferPage() {
         'Roll Qty': t.rollQuantity ?? '-',
         'LF': mainLF || '-',
         'Authorized': authStatus,
-        'Authorized By': t.authorizedBy || t.authorizationMethod || '-',
+        'Authorized By': t.authorized ? (t.authorizedBy || t.authorizationMethod || '-') : '-',
         'Created By': t.createdByName || t.createdByEmail || '-',
       })
       if (t.hasAdditionalItems && t.additionalItems) {
@@ -194,7 +194,7 @@ export default function PadTransferPage() {
             'Roll Qty': item.quantity,
             'LF': '-',
             'Authorized': authStatus,
-            'Authorized By': t.authorizedBy || t.authorizationMethod || '-',
+            'Authorized By': t.authorized ? (t.authorizedBy || t.authorizationMethod || '-') : '-',
             'Created By': t.createdByName || t.createdByEmail || '-',
           })
         }
