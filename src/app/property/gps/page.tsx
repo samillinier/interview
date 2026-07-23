@@ -296,6 +296,7 @@ export default function GPSPage() {
               icon={HardDrive}
               label="GPS"
               value={gpsConnected ? 'Connected' : 'Offline'}
+              compact
             />
           </div>
 
@@ -376,7 +377,7 @@ export default function GPSPage() {
                 GPS Integration
               </h2>
               <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                className={`text-[10px] font-medium px-1.5 py-px rounded-full ${
                   gpsConnected
                     ? 'bg-green-100 text-green-700'
                     : 'bg-amber-100 text-amber-700'
@@ -439,10 +440,12 @@ function StatusCard({
   icon: Icon,
   label,
   value,
+  compact,
 }: {
   icon: typeof Car
   label: string
   value: string
+  compact?: boolean
 }) {
   return (
     <motion.div
@@ -454,7 +457,7 @@ function StatusCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-          <p className="text-2xl sm:text-3xl leading-none font-black tracking-tight text-slate-900 mb-0.5">{value}</p>
+          <p className={`leading-none font-black tracking-tight text-slate-900 mb-0.5 ${compact ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl'}`}>{value}</p>
         </div>
         <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/10 flex items-center justify-center shadow-sm flex-shrink-0">
           <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
