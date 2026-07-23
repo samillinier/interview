@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
-  ArrowLeftRight,
   BarChart3,
   Bell,
   Briefcase,
@@ -19,13 +18,11 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
-  Package,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   ShieldAlert,
   StickyNote,
-  Truck,
   Users,
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -80,22 +77,16 @@ export function AdminSidebar({ pathname }: Props) {
   const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
   const [updatesCount, setUpdatesCount] = useState(0)
-  const [pendingBolCount, setPendingBolCount] = useState(0)
-  const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
-  const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, messagesRes, bolRes, padTransferRes, invCycleRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, messagesRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
           fetch('/api/notifications?type=message', { cache: 'no-store' }),
-          fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
-          fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
-          fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
         ])
 
         if (cancelled) return
@@ -126,24 +117,6 @@ export function AdminSidebar({ pathname }: Props) {
             return !message.isRead && isFromInstaller
           }).length
           setUnreadMessagesCount(count)
-        }
-
-        if (bolRes.ok) {
-          const data = await bolRes.json().catch(() => null)
-          const count = Number(data?.count ?? 0)
-          if (Number.isFinite(count)) setPendingBolCount(count)
-        }
-
-        if (padTransferRes.ok) {
-          const data = await padTransferRes.json().catch(() => null)
-          const count = Number(data?.count ?? 0)
-          if (Number.isFinite(count)) setPendingPadTransferCount(count)
-        }
-
-        if (invCycleRes.ok) {
-          const data = await invCycleRes.json().catch(() => null)
-          const count = Number(data?.count ?? 0)
-          if (Number.isFinite(count)) setPendingInventoryCycleCount(count)
         }
       } catch {
         // Badges are helpful, but navigation should still render if a count fails.
@@ -179,13 +152,6 @@ export function AdminSidebar({ pathname }: Props) {
       ...(normalizedRole === 'MANAGER'
         ? [
             { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },
-          ]
-        : []),
-      ...(normalizedRole !== 'MODERATOR'
-        ? [
-            { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, badge: pendingBolCount, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
-            { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, badge: pendingPadTransferCount, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
-            { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
@@ -233,7 +199,7 @@ export function AdminSidebar({ pathname }: Props) {
     if (portalNav.length === 0) return filtered
 
     return [...filtered, ...portalNav]
-  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount])
+  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount])
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 
