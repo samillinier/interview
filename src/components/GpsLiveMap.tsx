@@ -177,15 +177,47 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice }: Props) {
     const map = leafletMapRef.current
     if (!map) return
 
+    const currentIds = new Set<string>()
+    const bounds = L.latLngBounds([])
+
     devices.forEach((d) => {
-      const existing = markersRef.current.get(d.id)
+      currentIds.add(d.id)
       const latlng = L.latLng(d.latitude, d.longitude)
+      const existing = markersRef.current.get(d.id)
+
       if (existing) {
+        // Update position and icon
         existing.setLatLng(latlng)
         existing.setIcon(makeVehicleDivIcon(d))
         existing.setPopupContent(buildPopup(d))
+      } else {
+        // Create new marker for device that arrived after initial mount
+        const marker = L.marker(latlng, { icon: makeVehicleDivIcon(d) })
+          .addTo(map)
+          .bindPopup(buildPopup(d))
+        marker.on('click', () => onSelectDevice(d))
+        markersRef.current.set(d.id, marker)
+      }
+
+      bounds.extend(latlng)
+    })
+
+    // Remove markers for devices that no longer exist
+    markersRef.current.forEach((_marker, id) => {
+      if (!currentIds.has(id)) {
+        markersRef.current.get(id)?.remove()
+        markersRef.current.delete(id)
       }
     })
+
+    // Fit bounds when new devices appear
+    if (bounds.isValid()) {
+      if (devices.length === 1) {
+        map.setView(bounds.getCenter(), 14)
+      } else {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 })
+      }
+    }
   }, [devices])
 
   // Center on selected device when clicked from sidebar
