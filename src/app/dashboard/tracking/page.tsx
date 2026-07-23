@@ -844,9 +844,10 @@ export default function TrackingPage() {
     })
   }
 
-  const openMatrixRowNotePicker = (
+  const openMatrixRowNotePicker = async (
     e: React.MouseEvent<HTMLElement>,
     trackingId: string,
+    installerId: string | null,
     note?: string | null
   ) => {
     const role = String((session?.user as any)?.role || '').toUpperCase()
@@ -854,6 +855,29 @@ export default function TrackingPage() {
     const canReadNote = canEditNote || role === 'MANAGER' || role === 'MODERATOR'
     if (!canReadNote) return
     e.stopPropagation()
+
+    // For virtual rows (auto-populated active installers with no tracking entry yet),
+    // auto-create a tracking entry so the note can be saved
+    let resolvedTrackingId = trackingId
+    if (!resolvedTrackingId && installerId && canEditNote) {
+      setMatrixRowNoteSaving(true)
+      try {
+        const res = await fetch('/api/admin/onboarding-matrix/manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ installerId }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.id) {
+          resolvedTrackingId = data.id
+          await loadOnboardingMatrix()
+        }
+      } catch { /* ignore — fall through to not opening */ }
+      finally { setMatrixRowNoteSaving(false) }
+    }
+
+    if (!resolvedTrackingId) return
+
     const currentNote = typeof note === 'string' ? note : ''
     if (!canEditNote && !currentNote.trim()) return
     const r = e.currentTarget.getBoundingClientRect()
@@ -867,7 +891,7 @@ export default function TrackingPage() {
     setMatrixRowLabelPicker(null)
     setMatrixRowNoteDraft(currentNote)
     setMatrixRowNotePicker({
-      trackingId,
+      trackingId: resolvedTrackingId,
       note: currentNote,
       readOnly: !canEditNote,
       left: Math.max(8, Math.min(r.left, window.innerWidth - menuWidth - 8)),
@@ -1275,7 +1299,7 @@ export default function TrackingPage() {
   const fetchInstallers = async () => {
     try {
       // Used for quick, local filtering and label rendering; not relied upon for full search coverage.
-      const response = await fetch('/api/installers?limit=200')
+      const response = await fetch('/api/installers?limit=500')
       const data = await response.json()
       setInstallers(data.installers || [])
     } catch (err) {
@@ -1299,7 +1323,7 @@ export default function TrackingPage() {
       setLoading(true)
       setErr('')
       const params = new URLSearchParams()
-      params.set('limit', '20')
+      params.set('limit', '100')
       params.set('search', query)
       const res = await fetch(`/api/installers?${params.toString()}`, { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
@@ -1378,14 +1402,14 @@ export default function TrackingPage() {
   }
 
   const filteredInstallers = useMemo(() => {
-    if (!installerSearchQuery.trim()) return installers.slice(0, 10)
+    if (!installerSearchQuery.trim()) return installers.slice(0, 500)
     // Use server-backed results so older installers still appear.
-    return installerSearchResults.slice(0, 10)
+    return installerSearchResults.slice(0, 500)
   }, [installers, installerSearchQuery, installerSearchResults])
 
   const filteredMatrixSearchInstallers = useMemo(() => {
-    if (!matrixInstallerSearchQuery.trim()) return installers.slice(0, 10)
-    return matrixInstallerSearchResults.slice(0, 10)
+    if (!matrixInstallerSearchQuery.trim()) return installers.slice(0, 500)
+    return matrixInstallerSearchResults.slice(0, 500)
   }, [installers, matrixInstallerSearchQuery, matrixInstallerSearchResults])
 
   useEffect(() => {
@@ -2192,15 +2216,15 @@ export default function TrackingPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    disabled={matrixRowNoteSaving || (!canEditRow && !inst.rowNote)}
+                                    disabled={matrixRowNoteSaving || (!canEditRow && !canEdit && !inst.rowNote)}
                                     onClick={
-                                      canEditRow || inst.rowNote
-                                        ? (e) => openMatrixRowNotePicker(e, inst.trackingId, inst.rowNote)
+                                      canEditRow || canEdit || inst.rowNote
+                                        ? (e) => openMatrixRowNotePicker(e, inst.trackingId, isVirtualRow && canEdit ? inst.id : null, inst.rowNote)
                                         : undefined
                                     }
                                     className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
-                                    title={canEditRow ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note'}
-                                    aria-label={canEditRow ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note'}
+                                    title={canEditRow || canEdit ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note (auto-populated)'}
+                                    aria-label={canEditRow || canEdit ? 'Row note' : inst.rowNote ? 'View row note' : 'No row note (auto-populated)'}
                                   >
                                     {inst.rowNote ? (
                                       <span
