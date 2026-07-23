@@ -222,10 +222,12 @@ export function AdminSidebar({ pathname }: Props) {
       })
     }
     if (normalizedRole === 'SUPER_ADMIN') {
+      const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount
       portalNav.push({
         href: '/dashboard/corporate',
         label: 'Corporate',
         icon: FileText,
+        badge: corporatePendingTotal,
         match: (path) => path.startsWith('/dashboard/corporate'),
       })
     }
