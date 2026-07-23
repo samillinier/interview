@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   LayoutDashboard,
   LogOut,
+  MapPin,
   PanelLeftClose,
   PanelLeftOpen,
   PhoneCall,
@@ -45,6 +46,7 @@ export function PropertySidebar({
       { href: '/property/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/property/facilities', label: 'Facilities', icon: Building2 },
       { href: '/property/fleet', label: 'Fleet', icon: Car },
+      { href: '/property/gps', label: 'GPS', icon: MapPin },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck },
       { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall },
@@ -93,7 +95,7 @@ export function PropertySidebar({
         </button>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-2 space-y-0">
         {navItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
@@ -101,7 +103,7 @@ export function PropertySidebar({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
                 active
                   ? 'bg-white/20 text-white font-medium'
                   : 'text-white/90 hover:bg-white/10'
@@ -114,7 +116,7 @@ export function PropertySidebar({
         })}
         <Link
           href="/dashboard"
-          className={`flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2 ${
+          className={`flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2 ${
             !sidebarOpen ? 'justify-center' : ''
           }`}
         >
