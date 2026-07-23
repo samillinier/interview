@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
+  ArrowLeftRight,
   BarChart3,
   Bell,
   Briefcase,
@@ -18,11 +19,13 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
+  Package,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   ShieldAlert,
   StickyNote,
+  Truck,
   Users,
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -176,6 +179,9 @@ export function AdminSidebar({ pathname }: Props) {
       ...(normalizedRole === 'MANAGER'
         ? [
             { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },
+            { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, badge: pendingBolCount, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
+            { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, badge: pendingPadTransferCount, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
+            { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
