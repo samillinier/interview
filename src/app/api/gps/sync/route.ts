@@ -82,13 +82,13 @@ export async function POST(request: NextRequest) {
       }
 
       if (existingId) {
-        await prisma.gpsDevice.update({
+        await (prisma as any).gpsDevice.update({
           where: { id: existingId },
           data,
         })
         updated++
       } else {
-        await prisma.gpsDevice.create({
+        await (prisma as any).gpsDevice.create({
           data: {
             ...data,
             propertyId: property.id,

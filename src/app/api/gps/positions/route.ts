@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Property not found' }, { status: 404 })
   }
 
-  const device = await prisma.gpsDevice.findFirst({
+  const device = await (prisma as any).gpsDevice.findFirst({
     where: { id: deviceId, propertyId: property.id },
   })
 
