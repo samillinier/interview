@@ -1,0 +1,34 @@
+# FIS Installer iOS Podfile
+# 
+# Run 'pod install' after installing CocoaPods:
+#   sudo gem install cocoapods
+#
+# Then open the .xcworkspace (not .xcodeproj) in Xcode.
+
+platform :ios, '15.0'
+use_frameworks!
+
+install! 'cocoapods', :disable_input_output_paths => true
+
+def capacitor_pods
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+
+end
+
+target 'App' do
+  capacitor_pods
+end
+
+post_install do |installer|
+  # Fix for Xcode 26 "Explicitly Built Modules" breaking CocoaPods module resolution
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+  end
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+    end
+  end
+end

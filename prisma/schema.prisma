@@ -817,6 +817,7 @@ model Property {
   companyName        String?
   companyAddress     String?
   notes              String?
+  GpsDevice          GpsDevice[]
   Inventory          Inventory[]
   Location           Location[]
   PropertySafetyWalk PropertySafetyWalk[]
@@ -971,6 +972,7 @@ model Vehicle {
   photoUrl              String?
   category              String?
   Property              Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  GpsDevice             GpsDevice[]
   VehicleDocument       VehicleDocument[]
 
   @@index([category])
@@ -991,6 +993,54 @@ model VehicleDocument {
 
   @@index([category])
   @@index([vehicleId])
+}
+
+model GpsDevice {
+  id            String        @id @default(cuid())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  propertyId    String
+  traccarId     Int?          @unique
+  vehicleId     String?
+  deviceName    String
+  deviceId      String?
+  deviceModel   String?
+  status        String        @default("offline")
+  latitude      Float?
+  longitude     Float?
+  speed         Float         @default(0)
+  heading       Float         @default(0)
+  ignition      Boolean       @default(false)
+  fuelLevel     Float?
+  engineTemp    Float?
+  batteryVoltage Float?
+  odometer      Float         @default(0)
+  lastSeen      DateTime?
+  Property      Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  Vehicle       Vehicle?      @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  GpsPosition   GpsPosition[]
+
+  @@index([deviceId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([traccarId])
+}
+
+model GpsPosition {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  deviceId   String
+  latitude   Float
+  longitude  Float
+  speed      Float    @default(0)
+  heading    Float    @default(0)
+  altitude   Float?
+  accuracy   Float?
+  timestamp  DateTime
+  GpsDevice  GpsDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, timestamp])
+  @@index([timestamp])
 }
 
 enum AdminRole {

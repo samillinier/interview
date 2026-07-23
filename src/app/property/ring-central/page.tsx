@@ -174,7 +174,7 @@ export default function RingCentralPage() {
   const fetchCallsRef = useRef(fetchCalls)
   fetchCallsRef.current = fetchCalls
 
-  // Refetch whenever filters or pagination change
+  // Refetch call logs whenever filters or pagination change
   useEffect(() => {
     if (property?.id) fetchCallsRef.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,13 +264,14 @@ export default function RingCentralPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property?.id])
 
-  // Compute summary from current page (before any client-side missed filter)
-  let inbound = 0, outbound = 0, missed = 0
   let rawRecords = callData?.records || []
   // Apply missed filter client-side if active
   let displayRecords = missedFilter
     ? rawRecords.filter(r => r.result === "Missed")
     : rawRecords
+
+  // Per-page counts — simple and always works
+  let inbound = 0, outbound = 0, missed = 0
   for (const r of rawRecords) {
     if (r.direction === "Inbound") inbound++; else outbound++
     if (r.result === "Missed") missed++

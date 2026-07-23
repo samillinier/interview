@@ -1,0 +1,197 @@
+Vercel CLI 50.17.1
+Retrieving project…
+Deploying floor-interior-services-projects/floor-interior-service
+Uploading [--------------------] (0.0B/477.3KB)
+Uploading [=====---------------] (127.6KB/477.3KB)
+Uploading [==========----------] (240.4KB/477.3KB)
+Uploading [===============-----] (368.4KB/477.3KB)
+Uploading [====================] (477.3KB/477.3KB)
+Inspect: https://vercel.com/floor-interior-services-projects/floor-interior-service/DDhQNMrbZK4eVpD2DDkbzvfAqWxh [4s]
+Production: https://floor-interior-service-80h9vpkar.vercel.app [4s]
+https://floor-interior-service-80h9vpkar.vercel.appBuilding...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 224 deployment files...
+Building: Restored build cache from previous deployment (H5UgQ4MxKabJVammg8U2m2fY8GBt)
+Building: Running "vercel build"
+Building: Vercel CLI 50.15.1
+Building: Running "install" command: `npm install`...
+Building: > floor-interior-service@1.0.0 postinstall
+Building: > prisma generate
+Building: Environment variables loaded from .env
+Building: Prisma schema loaded from prisma/schema.prisma
+Building: ✔ Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 297ms
+Building: Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+Building: Tip: Curious about the SQL queries Prisma ORM generates? Optimize helps you enhance your visibility: https://pris.ly/tip-2-optimize
+Building: up to date, audited 271 packages in 6s
+Building: 63 packages are looking for funding
+Building: run `npm fund` for details
+Building: 2 high severity vulnerabilities
+Building: To address all issues possible (including breaking changes), run:
+Building: npm audit fix --force
+Building: Some issues need review, and may require choosing
+Building: a different dependency.
+Building: Run `npm audit` for details.
+Building: Detected Next.js version: 14.2.35
+Building: Running "prisma generate && next build"
+Building: Environment variables loaded from .env
+Building: Prisma schema loaded from prisma/schema.prisma
+Building: ✔ Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 241ms
+Building: Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+Building: Tip: Want to react to database changes in your app as they happen? Discover how with Pulse: https://pris.ly/tip-1-pulse
+Building: ┌─────────────────────────────────────────────────────────┐
+Building: │  Update available 5.22.0 -> 7.4.0                       │
+Building: │                                                         │
+Building: │  This is a major update - please follow the guide at    │
+Building: │  https://pris.ly/d/major-version-upgrade                │
+Building: │                                                         │
+Building: │  Run the following to update                            │
+Building: │    npm i --save-dev prisma@latest                       │
+Building: │    npm i @prisma/client@latest                          │
+Building: └─────────────────────────────────────────────────────────┘
+Building: ▲ Next.js 14.2.35
+Building: - Environments: .env
+Building: Creating an optimized production build ...
+Building: ✓ Compiled successfully
+Building: Linting and checking validity of types ...
+Building: Collecting page data ...
+Building: Generating static pages (0/51) ...
+Building: Generating static pages (12/51)
+Building: Error validating reset token: B [Error]: Dynamic server usage: Route /api/installers/validate-reset-token couldn't be rendered statically because it used `nextUrl.searchParams`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+Building: at V (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+Building: at Object.get (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29137)
+Building: at u (/vercel/path0/.next/server/app/api/installers/validate-reset-token/route.js:1:538)
+Building: at /vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38417
+Building: at /vercel/path0/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+Building: at NoopContextManager.with (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+Building: at ContextAPI.with (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+Building: at NoopTracer.startActiveSpan (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18093)
+Building: at ProxyTracer.startActiveSpan (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18854)
+Building: at /vercel/path0/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+Building: description: "Route /api/installers/validate-reset-token couldn't be rendered statically because it used `nextUrl.searchParams`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+Building: digest: 'DYNAMIC_SERVER_USAGE'
+Building: }
+Building: Error fetching notification count: B [Error]: Dynamic server usage: Route /api/notifications/count couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+Building: at V (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+Building: at Object.get (/vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
+Building: at c (/vercel/path0/.next/server/app/api/notifications/count/route.js:1:553)
+Building: at /vercel/path0/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38417
+Building: at /vercel/path0/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+Building: at NoopContextManager.with (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+Building: at ContextAPI.with (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+Building: at NoopTracer.startActiveSpan (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18093)
+Building: at ProxyTracer.startActiveSpan (/vercel/path0/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18854)
+Building: at /vercel/path0/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+Building: description: "Route /api/notifications/count couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+Building: digest: 'DYNAMIC_SERVER_USAGE'
+Building: }
+Building: Generating static pages (25/51)
+Building: 🔊 Test voice API called - generating speech with nova voice
+Building: 🔊 ===== GENERATING SPEECH =====
+Building: 🔊 Voice setting: nova
+Building: 🔊 Model: tts-1
+Building: 🔊 Text length: 63
+Building: (node:328) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Building: (Use `node --trace-deprecation ...` to show where the warning was created)
+Building: 🔊 Speech generated successfully with voice: nova
+Building: 🔊 ===== END SPEECH GENERATION =====
+Building: Generating static pages (38/51)
+Building: ✓ Generating static pages (51/51)
+Building: Finalizing page optimization ...
+Building: Collecting build traces ...
+Building: Route (app)                                                   Size     First Load JS
+Building: ┌ ○ /                                                         4.54 kB         149 kB
+Building: ├ ○ /_not-found                                               873 B          88.2 kB
+Building: ├ ƒ /api/admins                                               0 B                0 B
+Building: ├ ƒ /api/admins/[id]                                          0 B                0 B
+Building: ├ ○ /api/analytics                                            0 B                0 B
+Building: ├ ƒ /api/auth/[...nextauth]                                   0 B                0 B
+Building: ├ ○ /api/debug-auth                                           0 B                0 B
+Building: ├ ƒ /api/installers                                           0 B                0 B
+Building: ├ ƒ /api/installers/[id]                                      0 B                0 B
+Building: ├ ƒ /api/installers/[id]/agree-nda                            0 B                0 B
+Building: ├ ƒ /api/installers/[id]/documents                            0 B                0 B
+Building: ├ ƒ /api/installers/[id]/documents/[documentId]               0 B                0 B
+Building: ├ ƒ /api/installers/[id]/history                              0 B                0 B
+Building: ├ ƒ /api/installers/[id]/history/[historyId]                  0 B                0 B
+Building: ├ ƒ /api/installers/[id]/messages                             0 B                0 B
+Building: ├ ƒ /api/installers/[id]/notifications                        0 B                0 B
+Building: ├ ƒ /api/installers/[id]/notifications/[notificationId]       0 B                0 B
+Building: ├ ƒ /api/installers/[id]/notifications/[notificationId]/read  0 B                0 B
+Building: ├ ƒ /api/installers/[id]/notifications/mark-all-read          0 B                0 B
+Building: ├ ƒ /api/installers/[id]/sign-service-agreement               0 B                0 B
+Building: ├ ƒ /api/installers/[id]/staff                                0 B                0 B
+Building: ├ ƒ /api/installers/[id]/staff/[staffId]                      0 B                0 B
+Building: ├ ƒ /api/installers/[id]/staff/upload-photo                   0 B                0 B
+Building: ├ ƒ /api/installers/check-expirations                         0 B                0 B
+Building: ├ ƒ /api/installers/create-account                            0 B                0 B
+Building: ├ ƒ /api/installers/forgot-password                           0 B                0 B
+Building: ├ ƒ /api/installers/login                                     0 B                0 B
+Building: ├ ƒ /api/installers/reset-password                            0 B                0 B
+Building: ├ ƒ /api/installers/send-verification                         0 B                0 B
+Building: ├ ƒ /api/installers/upload-photo                              0 B                0 B
+Building: ├ ƒ /api/installers/validate-reset-token                      0 B                0 B
+Building: ├ ƒ /api/installers/verify                                    0 B                0 B
+Building: ├ ƒ /api/installers/verify-email                              0 B                0 B
+Building: ├ ƒ /api/interview/complete                                   0 B                0 B
+Building: ├ ƒ /api/interview/respond                                    0 B                0 B
+Building: ├ ƒ /api/interview/start                                      0 B                0 B
+Building: ├ ƒ /api/interview/transcribe                                 0 B                0 B
+Building: ├ ƒ /api/jobs                                                 0 B                0 B
+Building: ├ ƒ /api/jobs/[id]                                            0 B                0 B
+Building: ├ ƒ /api/jobs/[id]/applications/[applicationId]               0 B                0 B
+Building: ├ ƒ /api/jobs/[id]/apply                                      0 B                0 B
+Building: ├ ƒ /api/messages/upload                                      0 B                0 B
+Building: ├ ƒ /api/notifications                                        0 B                0 B
+Building: ├ ƒ /api/notifications/count                                  0 B                0 B
+Building: ├ ○ /api/test-callback                                        0 B                0 B
+Building: ├ ○ /api/test-voice                                           0 B                0 B
+Building: ├ ○ /auth/access-denied                                       1.95 kB         136 kB
+Building: ├ ○ /auth/error                                               1.78 kB         136 kB
+Building: ├ ○ /create-account                                           3.02 kB         137 kB
+Building: ├ ○ /dashboard                                                24.6 kB         169 kB
+Building: ├ ○ /dashboard/analytics                                      6.62 kB         151 kB
+Building: ├ ƒ /dashboard/installers/[id]                                31.8 kB         190 kB
+Building: ├ ○ /dashboard/jobs                                           6.54 kB         151 kB
+Building: ├ ƒ /dashboard/jobs/[id]                                      5.61 kB         150 kB
+Building: ├ ○ /dashboard/messages                                       8.88 kB         153 kB
+Building: ├ ○ /dashboard/notifications                                  5.86 kB         150 kB
+Building: ├ ○ /dashboard/settings                                       6.22 kB         150 kB
+Building: ├ ○ /installer                                                2.04 kB         136 kB
+Building: ├ ○ /installer/attachments                                    8.91 kB         143 kB
+Building: ├ ○ /installer/dashboard                                      6.74 kB         141 kB
+Building: ├ ○ /installer/forgot-password                                2.89 kB         137 kB
+Building: ├ ○ /installer/jobs                                           4.94 kB         139 kB
+Building: ├ ƒ /installer/jobs/[id]                                      4.14 kB         138 kB
+Building: ├ ○ /installer/login                                          2.85 kB         128 kB
+Building: ├ ○ /installer/notifications                                  7.79 kB         142 kB
+Building: ├ ○ /installer/payment                                        5.91 kB         140 kB
+Building: ├ ○ /installer/profile                                        29.5 kB         179 kB
+Building: ├ ○ /installer/reset-password                                 3.29 kB         138 kB
+Building: ├ ○ /interview                                                5.22 kB         131 kB
+Building: ├ ƒ /interview/[id]                                           19.5 kB         145 kB
+Building: ├ ○ /login                                                    3.02 kB         147 kB
+Building: ├ ○ /setup-password                                           3.21 kB         129 kB
+Building: └ ○ /verify-email                                             1.75 kB         131 kB
+Building: + First Load JS shared by all                                 87.3 kB
+Building: ├ chunks/117-648129468f8bcd07.js                            31.7 kB
+Building: ├ chunks/fd9d1056-ea949d58b73d551c.js                       53.6 kB
+Building: └ other shared chunks (total)                               1.97 kB
+Building: ○  (Static)   prerendered as static content
+Building: ƒ  (Dynamic)  server-rendered on demand
+Building: Traced Next.js server files in: 32.192ms
+Building: Created all serverless functions in: 596.915ms
+Building: Collected static files (public/, static/, .next/static): 18.185ms
+Building: Build Completed in /vercel/output [44s]
+Building: Deploying outputs...
+Building: Deployment completed
+Building: Creating build cache...
+[2K[1A[2K[GProduction: https://floor-interior-service-80h9vpkar.vercel.app [1m]
+Completing...
+Aliased: https://floor-interior-service.vercel.app [1m]
+
+Common next commands:
+- `vercel inspect floor-interior-service-80h9vpkar.vercel.app --logs`
+- `vercel redeploy floor-interior-service-80h9vpkar.vercel.app`

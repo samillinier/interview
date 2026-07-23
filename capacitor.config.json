@@ -1,0 +1,31 @@
+{
+	"appId": "com.fis.installer",
+	"appName": "FIS Installer",
+	"webDir": "tools/capacitor-web",
+	"server": {
+		"url": "https://job.floorinteriorservices.com/installer/login",
+		"cleartext": false
+	},
+	"ios": {
+		"contentInset": "always",
+		"scheme": "fis-installer",
+		"backgroundColor": "#ffffff",
+		"allowsLinkPreview": false,
+		"scrollEnabled": true,
+		"limitsNavigationsToAppBoundDomains": true
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 0,
+			"launchAutoHide": true,
+			"backgroundColor": "#ffffff",
+			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "LIGHT",
+			"backgroundColor": "#ffffff",
+			"overlaysWebView": false
+		}
+	},
+	"packageClassList": []
+}
