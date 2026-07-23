@@ -390,7 +390,7 @@ export default function GPSPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-xs text-slate-400 uppercase font-medium mb-1">Server</p>
-                    <p className="font-medium text-slate-700">Azure VM</p>
+                    <p className="font-medium text-slate-700">Traccar Server</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 uppercase font-medium mb-1">Device Port</p>
