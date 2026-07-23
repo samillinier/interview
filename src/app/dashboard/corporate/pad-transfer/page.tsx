@@ -23,7 +23,9 @@ import {
   Package,
   Trash2,
   Layers,
+  Download,
 } from 'lucide-react'
+import { downloadExcel } from '@/lib/export-utils'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { allWorkrooms } from '@/lib/workroomMapping'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
@@ -152,6 +154,54 @@ export default function PadTransferPage() {
   useEffect(() => {
     if (canAccess) fetchTransfers()
   }, [canAccess, fetchTransfers])
+
+  const exportToExcel = () => {
+    const rows: Record<string, any>[] = []
+    for (const t of transfers) {
+      const authStatus = t.authorized
+        ? (t.authorizedBy || t.authorizationMethod || 'Authorized')
+        : 'Pending'
+      const mainItemName = t.padType || '-'
+      const mainLF = t.padType && t.rollQuantity != null
+        ? (PAD_MULTIPLIERS[t.padType] || 45) * t.rollQuantity
+        : 0
+      rows.push({
+        'Date Requested': t.dateRequested ? new Date(t.dateRequested).toLocaleDateString() : '-',
+        'Requestor Location': t.requestorLocation,
+        'Receiving Workroom': t.receivingWorkroom,
+        'Fulfillment Workroom': t.fulfillmentWorkroom,
+        'Reason': t.reasonForTransfer || '-',
+        'Method': t.transferMethod || '-',
+        'Est. Cost': t.estimatedCost || '-',
+        'Pad Type': mainItemName,
+        'Roll Qty': t.rollQuantity ?? '-',
+        'LF': mainLF || '-',
+        'Authorized': authStatus,
+        'Authorized By': t.authorizedBy || t.authorizationMethod || '-',
+        'Created By': t.createdByName || t.createdByEmail || '-',
+      })
+      if (t.hasAdditionalItems && t.additionalItems) {
+        for (const item of t.additionalItems as { name: string; quantity: number }[]) {
+          rows.push({
+            'Date Requested': t.dateRequested ? new Date(t.dateRequested).toLocaleDateString() : '-',
+            'Requestor Location': t.requestorLocation,
+            'Receiving Workroom': t.receivingWorkroom,
+            'Fulfillment Workroom': t.fulfillmentWorkroom,
+            'Reason': t.reasonForTransfer || '-',
+            'Method': t.transferMethod || '-',
+            'Est. Cost': t.estimatedCost || '-',
+            'Pad Type': item.name,
+            'Roll Qty': item.quantity,
+            'LF': '-',
+            'Authorized': authStatus,
+            'Authorized By': t.authorizedBy || t.authorizationMethod || '-',
+            'Created By': t.createdByName || t.createdByEmail || '-',
+          })
+        }
+      }
+    }
+    downloadExcel(rows, 'Pad_Transfers')
+  }
 
   const updateEntry = (entryId: string, field: string, value: string) => {
     setEntries(prev => prev.map(e => e.id === entryId ? { ...e, [field]: value } : e))
@@ -406,11 +456,21 @@ export default function PadTransferPage() {
                     <p className="text-xs text-slate-400">{transfers.length} record{transfers.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                <select value={filterWorkroom} onChange={(e) => setFilterWorkroom(e.target.value)}
-                  className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium">
-                  <option value="">All Workrooms</option>
-                  {allWorkrooms().map((w: string) => <option key={w} value={w}>{w}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select value={filterWorkroom} onChange={(e) => setFilterWorkroom(e.target.value)}
+                    className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium">
+                    <option value="">All Workrooms</option>
+                    {allWorkrooms().map((w: string) => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                  <button
+                    onClick={exportToExcel}
+                    disabled={transfers.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-2 border-2 border-brand-green/20 rounded-xl bg-brand-green/5 hover:bg-brand-green/10 text-brand-green text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export
+                  </button>
+                </div>
               </div>
             </div>
 

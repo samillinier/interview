@@ -10,7 +10,16 @@ export async function GET(request: NextRequest) {
   }
   try {
     const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+
+    // Count-only mode for badge notifications
+    if (action === 'count') {
+      const count = await prisma.inventoryCycle.count({ where: { authorized: false } })
+      return NextResponse.json({ success: true, count })
+    }
+
     const workroom = searchParams.get('workroom')
+    const cycleType = searchParams.get('cycleType')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const page = parseInt(searchParams.get('page') || '1')
@@ -18,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
     if (workroom) where.workroom = workroom
+    if (cycleType) where.cycleCountType = cycleType
     if (startDate || endDate) {
       where.cycleCountDate = {}
       if (startDate) where.cycleCountDate.gte = new Date(startDate)

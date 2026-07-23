@@ -10,6 +10,14 @@ export async function GET(request: NextRequest) {
   }
   try {
     const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+
+    // Count-only mode for badge notifications
+    if (action === 'count') {
+      const count = await prisma.padOrder.count({ where: { authorized: false } })
+      return NextResponse.json({ success: true, count })
+    }
+
     const workroom = searchParams.get('workroom')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')

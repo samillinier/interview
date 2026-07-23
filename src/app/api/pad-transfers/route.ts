@@ -10,6 +10,14 @@ export async function GET(request: NextRequest) {
   }
   try {
     const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+
+    // Count-only mode for badge notifications
+    if (action === 'count') {
+      const count = await prisma.padTransfer.count({ where: { authorized: false } })
+      return NextResponse.json({ success: true, count })
+    }
+
     const requestorLocation = searchParams.get('requestorLocation')
     const receivingWorkroom = searchParams.get('receivingWorkroom')
     const fulfillmentWorkroom = searchParams.get('fulfillmentWorkroom')

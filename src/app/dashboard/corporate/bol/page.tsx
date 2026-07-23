@@ -19,7 +19,9 @@ import {
   X,
   TrendingUp,
   Camera,
+  Download,
 } from 'lucide-react'
+import { downloadExcel } from '@/lib/export-utils'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { allWorkrooms } from '@/lib/workroomMapping'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
@@ -130,6 +132,29 @@ export default function BolPage() {
     if (canAccess) fetchOrders()
   }, [canAccess, fetchOrders])
 
+  const exportToExcel = () => {
+    const rows: Record<string, any>[] = []
+    for (const order of orders) {
+      const authStatus = order.authorized
+        ? (order.authorizedBy || order.authorizationMethod || 'Authorized')
+        : 'Pending'
+      for (const item of order.items as PadOrderItem[]) {
+        rows.push({
+          'Order Number': order.orderNumber || '-',
+          'Workroom': order.workroom,
+          'Date Received': order.dateReceived ? new Date(order.dateReceived).toLocaleDateString() : '-',
+          'Item Name': item.name,
+          'RL': item.quantity,
+          'LF': (PAD_MULTIPLIERS[item.name] || 45) * item.quantity,
+          'Authorized': authStatus,
+          'Authorized By': order.authorizedBy || order.authorizationMethod || '-',
+          'Created By': order.createdByName || order.createdByEmail || '-',
+        })
+      }
+    }
+    downloadExcel(rows, 'BOL_Orders')
+  }
+
   const updateEntry = (entryId: string, field: string, value: any) => {
     setEntries(prev => prev.map(e => e.id === entryId ? { ...e, [field]: value } : e))
   }
@@ -222,6 +247,7 @@ export default function BolPage() {
       if (!p.workroom) { setSaveError('All entries must have a workroom'); return }
       if (!p.dateReceived) { setSaveError('All entries must have a date'); return }
       if (!p.items || p.items.length === 0) { setSaveError('Each entry must have at least one item with a quantity'); return }
+      if (!p.attachmentUrls || p.attachmentUrls.length === 0) { setSaveError('Each entry must have at least one attachment image'); return }
     }
 
     setIsSaving(true)
@@ -613,16 +639,26 @@ export default function BolPage() {
                     <p className="text-xs text-slate-400">{orders.length} record{orders.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                <select
-                  value={filterWorkroom}
-                  onChange={(e) => setFilterWorkroom(e.target.value)}
-                  className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
-                >
-                  <option value="">All Workrooms</option>
-                  {allWorkrooms().map(w => (
-                    <option key={w} value={w}>{w}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={filterWorkroom}
+                    onChange={(e) => setFilterWorkroom(e.target.value)}
+                    className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
+                  >
+                    <option value="">All Workrooms</option>
+                    {allWorkrooms().map(w => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={exportToExcel}
+                    disabled={orders.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-2 border-2 border-brand-green/20 rounded-xl bg-brand-green/5 hover:bg-brand-green/10 text-brand-green text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -749,7 +785,7 @@ export default function BolPage() {
                                         )}
                                       </div>
                                       <div className="flex items-center gap-3">
-                                        <span className="text-sm text-slate-500">QTY: <span className="font-semibold text-brand-green">{item.quantity}</span></span>
+                                        <span className="text-sm text-slate-500">RL: <span className="font-semibold text-brand-green">{item.quantity}</span></span>
                                         <span className="text-sm font-semibold text-brand-green">
                                           Total: {(PAD_MULTIPLIERS[item.name] || 45) * item.quantity} LF
                                         </span>
@@ -943,7 +979,7 @@ export default function BolPage() {
                     </div>
                   </div>
 
-                  {/* Add Attachment */}
+                  {/* Add Attachment (Required) */}
                   <div className="mt-4 p-3 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/30">
                     <div className="flex items-center gap-2 mb-1.5">
                       <label className="flex items-center gap-1 px-2 py-1 border border-slate-200 rounded-lg bg-white hover:border-brand-green/30 transition-colors cursor-pointer">
@@ -965,6 +1001,7 @@ export default function BolPage() {
                         />
                       </label>
                       <span className="text-[9px] text-slate-300">PNG/JPG</span>
+                      <span className="text-[9px] text-red-400 font-medium">*Required</span>
                     </div>
 
                     {entry.attachmentUrls.length > 0 && (

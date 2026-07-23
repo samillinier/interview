@@ -17,7 +17,9 @@ import {
   ClipboardList,
   X,
   Trash2,
+  Download,
 } from 'lucide-react'
+import { downloadExcel } from '@/lib/export-utils'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { allWorkrooms } from '@/lib/workroomMapping'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
@@ -98,6 +100,7 @@ export default function InventoryCyclePage() {
   const [isLoadingCycles, setIsLoadingCycles] = useState(true)
   const [expandedCycle, setExpandedCycle] = useState<string | null>(null)
   const [filterWorkroom, setFilterWorkroom] = useState('')
+  const [filterCycleType, setFilterCycleType] = useState('')
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
@@ -109,6 +112,7 @@ export default function InventoryCyclePage() {
     try {
       const params = new URLSearchParams()
       if (filterWorkroom) params.set('workroom', filterWorkroom)
+      if (filterCycleType) params.set('cycleType', filterCycleType)
       const res = await fetch('/api/inventory-cycles?' + params.toString())
       const data = await res.json()
       if (data.success) setCycles(data.cycles || [])
@@ -117,11 +121,58 @@ export default function InventoryCyclePage() {
     } finally {
       setIsLoadingCycles(false)
     }
-  }, [filterWorkroom])
+  }, [filterWorkroom, filterCycleType])
 
   useEffect(() => {
     if (canAccess) fetchCycles()
   }, [canAccess, fetchCycles])
+
+  const exportToExcel = () => {
+    const rows: Record<string, any>[] = []
+    for (const c of cycles) {
+      const authStatus = c.authorized
+        ? (c.authorizedBy || c.authorizationMethod || 'Authorized')
+        : 'Pending'
+      const padsWithData = PAD_TYPES.filter(pt => {
+        const rolls = c.rollCounts ? ((c.rollCounts as Record<string, number>)[pt] ?? 0) : 0
+        const ft = c.linearFeetCounts ? ((c.linearFeetCounts as Record<string, number>)[pt] ?? 0) : 0
+        return rolls > 0 || ft > 0
+      })
+      if (padsWithData.length === 0) {
+        rows.push({
+          'Date': c.cycleCountDate ? new Date(c.cycleCountDate).toLocaleDateString() : '-',
+          'Cycle Type': c.cycleCountType,
+          'Workroom': c.workroom,
+          'Pad Type': '-',
+          'Roll Count': '-',
+          'LF Count': '-',
+          'Total LF': '-',
+          'Authorized': authStatus,
+          'Authorized By': c.authorizedBy || c.authorizationMethod || '-',
+          'Created By': c.createdByName || c.createdByEmail || '-',
+        })
+      } else {
+        for (const pt of padsWithData) {
+          const rolls = c.rollCounts ? ((c.rollCounts as Record<string, number>)[pt] ?? 0) : 0
+          const ft = c.linearFeetCounts ? ((c.linearFeetCounts as Record<string, number>)[pt] ?? 0) : 0
+          const totalLF = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
+          rows.push({
+            'Date': c.cycleCountDate ? new Date(c.cycleCountDate).toLocaleDateString() : '-',
+            'Cycle Type': c.cycleCountType,
+            'Workroom': c.workroom,
+            'Pad Type': pt,
+            'Roll Count': rolls,
+            'LF Count': ft,
+            'Total LF': totalLF,
+            'Authorized': authStatus,
+            'Authorized By': c.authorizedBy || c.authorizationMethod || '-',
+            'Created By': c.createdByName || c.createdByEmail || '-',
+          })
+        }
+      }
+    }
+    downloadExcel(rows, 'Inventory_Cycles')
+  }
 
   const updateEntry = (entryId: string, field: string, value: string) => {
     setEntries(prev => prev.map(e => e.id === entryId ? { ...e, [field]: value } : e))
@@ -278,18 +329,6 @@ export default function InventoryCyclePage() {
     )
   }
 
-  const formatMonthLabel = (monthKey: string) => {
-    const [y, m] = monthKey.split('-')
-    return new Date(+y, +m - 1).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
-  }
-
-  const formatWeekLabel = (dateStr: string) => {
-    const d = new Date(dateStr)
-    const end = new Date(d)
-    end.setDate(end.getDate() + 6)
-    return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-  }
-
   const analytics = (() => {
     const totalFullRolls = cycles.reduce((sum, c) => {
       if (!c.rollCounts) return sum
@@ -300,44 +339,11 @@ export default function InventoryCyclePage() {
       return sum + Object.values(c.linearFeetCounts as Record<string, number>).reduce((a, b) => a + b, 0)
     }, 0)
 
-    // Group records by week and month, filtered by cycleCountType
-    const byWeek: Record<string, { label: string; records: InventoryCycle[] }> = {}
-    const byMonth: Record<string, { label: string; records: InventoryCycle[] }> = {}
-
-    for (const c of cycles) {
-      const d = new Date(c.cycleCountDate)
-
-      if (c.cycleCountType === 'Weekly') {
-        const dayOfWeek = d.getDay()
-        const monday = new Date(d)
-        monday.setDate(d.getDate() - ((dayOfWeek + 6) % 7))
-        const weekKey = monday.toISOString().split('T')[0]
-        if (!byWeek[weekKey]) byWeek[weekKey] = { label: formatWeekLabel(monday.toISOString().split('T')[0]), records: [] }
-        byWeek[weekKey].records.push(c)
-      }
-
-      if (c.cycleCountType === 'End of Month') {
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-        if (!byMonth[monthKey]) byMonth[monthKey] = { label: formatMonthLabel(monthKey), records: [] }
-        byMonth[monthKey].records.push(c)
-      }
-    }
-
-    const weekGroups = Object.entries(byWeek)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([key, val]) => ({ key, label: val.label, records: val.records }))
-
-    const monthGroups = Object.entries(byMonth)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([key, val]) => ({ key, label: val.label, records: val.records }))
-
     return {
       totalCycles: cycles.length,
       authorizedCount: cycles.filter(c => c.authorized).length,
       totalFullRolls,
       totalLinearFeet,
-      weekGroups,
-      monthGroups,
     }
   })()
 
@@ -414,137 +420,6 @@ export default function InventoryCyclePage() {
             </div>
           </div>
 
-          {/* Weekly & Monthly Grouped Lists */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Weekly Counts */}
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
-              <div className="p-5 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
-                    <Calendar className="w-4 h-4 text-brand-green" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Weekly Counts</h2>
-                    <p className="text-xs text-slate-400">{analytics.weekGroups.length} week{analytics.weekGroups.length !== 1 ? 's' : ''}</p>
-                  </div>
-                </div>
-              </div>
-              {analytics.weekGroups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                  <Calendar className="w-8 h-8 mb-2" />
-                  <p className="text-sm">No weekly data yet</p>
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100 sticky top-0 bg-white">
-                        <th className="text-left py-2 px-5 font-semibold">Date</th>
-                        <th className="text-left py-2 px-3 font-semibold">Type</th>
-                        <th className="text-left py-2 px-3 font-semibold">Workroom</th>
-                        <th className="text-left py-2 px-3 font-semibold">Items</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analytics.weekGroups.flatMap(g => g.records).map((c) => {
-                        const rc = (c.rollCounts || {}) as Record<string, number>
-                        const lf = (c.linearFeetCounts || {}) as Record<string, number>
-                        return (
-                        <tr key={c.id} className="border-b border-slate-50 last:border-0">
-                          <td className="py-2 px-5 text-slate-600 whitespace-nowrap">{formatDate(c.cycleCountDate)}</td>
-                          <td className="py-2 px-3 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
-                          </td>
-                          <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{c.workroom}</td>
-                          <td className="py-2 px-3">
-                            <div className="flex flex-wrap gap-1">
-                              {PAD_TYPES.map(pt => {
-                                const rolls = (rc[pt] || 0)
-                                const ft = (lf[pt] || 0)
-                                if (rolls === 0 && ft === 0) return null
-                                const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
-                                return (
-                                  <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
-                                    {pt} / {totalFt} LF
-                                  </span>
-                                )
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* End of Month Counts */}
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
-              <div className="p-5 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
-                    <Calendar className="w-4 h-4 text-brand-green" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">End of Month Counts</h2>
-                    <p className="text-xs text-slate-400">{analytics.monthGroups.length} month{analytics.monthGroups.length !== 1 ? 's' : ''}</p>
-                  </div>
-                </div>
-              </div>
-              {analytics.monthGroups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                  <Calendar className="w-8 h-8 mb-2" />
-                  <p className="text-sm">No monthly data yet</p>
-                </div>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100 sticky top-0 bg-white">
-                        <th className="text-left py-2 px-5 font-semibold">Date</th>
-                        <th className="text-left py-2 px-3 font-semibold">Type</th>
-                        <th className="text-left py-2 px-3 font-semibold">Workroom</th>
-                        <th className="text-left py-2 px-3 font-semibold">Items</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analytics.monthGroups.flatMap(g => g.records).map((c) => {
-                        const rc = (c.rollCounts || {}) as Record<string, number>
-                        const lf = (c.linearFeetCounts || {}) as Record<string, number>
-                        return (
-                        <tr key={c.id} className="border-b border-slate-50 last:border-0">
-                          <td className="py-2 px-5 text-slate-600 whitespace-nowrap">{formatDate(c.cycleCountDate)}</td>
-                          <td className="py-2 px-3 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-semibold">{c.cycleCountType}</span>
-                          </td>
-                          <td className="py-2 px-3 text-slate-600 whitespace-nowrap">{c.workroom}</td>
-                          <td className="py-2 px-3">
-                            <div className="flex flex-wrap gap-1">
-                              {PAD_TYPES.map(pt => {
-                                const rolls = (rc[pt] || 0)
-                                const ft = (lf[pt] || 0)
-                                if (rolls === 0 && ft === 0) return null
-                                const totalFt = rolls * (PAD_MULTIPLIERS[pt] || 45) + ft
-                                return (
-                                  <span key={pt} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[10px] font-semibold">
-                                    {pt} / {totalFt} LF
-                                  </span>
-                                )
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Records Table */}
           <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden">
             <div className="p-5 border-b border-slate-100">
@@ -558,11 +433,26 @@ export default function InventoryCyclePage() {
                     <p className="text-xs text-slate-400">{cycles.length} record{cycles.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                <select value={filterWorkroom} onChange={(e) => setFilterWorkroom(e.target.value)}
-                  className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium">
-                  <option value="">All Workrooms</option>
-                  {allWorkrooms().map((w: string) => <option key={w} value={w}>{w}</option>)}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select value={filterCycleType} onChange={(e) => setFilterCycleType(e.target.value)}
+                    className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium">
+                    <option value="">All Types</option>
+                    {CYCLE_TYPES.map(ct => <option key={ct} value={ct}>{ct}</option>)}
+                  </select>
+                  <select value={filterWorkroom} onChange={(e) => setFilterWorkroom(e.target.value)}
+                    className="px-4 py-2 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium">
+                    <option value="">All Workrooms</option>
+                    {allWorkrooms().map((w: string) => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                  <button
+                    onClick={exportToExcel}
+                    disabled={cycles.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-2 border-2 border-brand-green/20 rounded-xl bg-brand-green/5 hover:bg-brand-green/10 text-brand-green text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export
+                  </button>
+                </div>
               </div>
             </div>
 
