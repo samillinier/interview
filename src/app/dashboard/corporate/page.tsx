@@ -74,6 +74,26 @@ export default function CorporatePage() {
   const isSuperAdmin = normalizedRole === 'SUPER_ADMIN'
   const canAccess = normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR' || isSuperAdmin
 
+  const [pendingBolCount, setPendingBolCount] = useState(0)
+  const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
+  const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        const [bolRes, ptRes, icRes] = await Promise.all([
+          fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
+          fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
+          fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
+        ])
+        if (bolRes.ok) { const d = await bolRes.json(); setPendingBolCount(Number(d?.count ?? 0)) }
+        if (ptRes.ok) { const d = await ptRes.json(); setPendingPadTransferCount(Number(d?.count ?? 0)) }
+        if (icRes.ok) { const d = await icRes.json(); setPendingInventoryCycleCount(Number(d?.count ?? 0)) }
+      } catch {}
+    }
+    loadCounts()
+  }, [])
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
     if (status === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
@@ -184,6 +204,11 @@ export default function CorporatePage() {
 
                           <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
                             {card.cta}
+                            {(card.title === 'BOL' && pendingBolCount > 0) || (card.title === 'Pad Transfer' && pendingPadTransferCount > 0) || (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) ? (
+                              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
+                                {card.title === 'BOL' ? pendingBolCount : card.title === 'Pad Transfer' ? pendingPadTransferCount : pendingInventoryCycleCount}
+                              </span>
+                            ) : null}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                           </span>
                         </div>
