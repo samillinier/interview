@@ -45,7 +45,7 @@ interface PropertyProfile {
   email: string
 }
 
-const POLL_INTERVAL_MS = 10000 // 10 seconds between Traccar position polls
+const POLL_INTERVAL_MS = 10000 // 10 seconds between GPS position polls
 
 export default function GPSPage() {
   const { data: session, status } = useSession()
@@ -61,7 +61,7 @@ export default function GPSPage() {
   const [expandedPanels, setExpandedPanels] = useState<Set<string>>(new Set())
   const [isLive, setIsLive] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(new Date())
-  const [traccarConnected, setTraccarConnected] = useState(false)
+  const [gpsConnected, setGpsConnected] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
 
   // Load property profile
@@ -95,21 +95,21 @@ export default function GPSPage() {
     }
   }
 
-  // Fetch GPS devices from Traccar via our API
+  // Fetch GPS devices via our API
   const fetchDevices = useCallback(async () => {
     try {
       const res = await fetch('/api/gps/devices')
       if (!res.ok) return
       const data = await res.json()
       setDevices(data.devices || [])
-      setTraccarConnected(!!data.traccarConnected)
+      setGpsConnected(!!data.gpsConnected)
       setLastRefresh(new Date())
     } catch {
       // silently fail — keep previous device state
     }
   }, [])
 
-  // Sync Traccar devices to local DB
+  // Sync GPS devices to local DB
   const syncDevices = async () => {
     setIsSyncing(true)
     try {
@@ -130,7 +130,7 @@ export default function GPSPage() {
     }
   }, [status, fetchDevices])
 
-  // Poll Traccar for live positions
+  // Poll for live positions
   useEffect(() => {
     if (!isLive) return
     fetchDevices()
@@ -244,7 +244,7 @@ export default function GPSPage() {
                     onClick={syncDevices}
                     disabled={isSyncing}
                     className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
-                    title="Sync with Traccar"
+                    title="Sync GPS devices"
                   >
                     {isSyncing ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -294,8 +294,8 @@ export default function GPSPage() {
             />
             <StatusCard
               icon={HardDrive}
-              label="Traccar"
-              value={traccarConnected ? 'Connected' : 'Offline'}
+              label="GPS"
+              value={gpsConnected ? 'Connected' : 'Offline'}
             />
           </div>
 
@@ -363,7 +363,7 @@ export default function GPSPage() {
             </div>
           </div>
 
-          {/* Traccar Integration Info */}
+          {/* GPS Integration Info */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -373,24 +373,24 @@ export default function GPSPage() {
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-slate-900 flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-brand-green" />
-                Traccar Integration
+                GPS Integration
               </h2>
               <span
                 className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  traccarConnected
+                  gpsConnected
                     ? 'bg-green-100 text-green-700'
                     : 'bg-amber-100 text-amber-700'
                 }`}
               >
-                {traccarConnected ? 'Connected' : 'Not Connected'}
+                {gpsConnected ? 'Connected' : 'Not Connected'}
               </span>
             </div>
             <div className="p-4">
-              {traccarConnected ? (
+              {gpsConnected ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-xs text-slate-400 uppercase font-medium mb-1">Server</p>
-                    <p className="font-medium text-slate-700">Traccar Server (port 5004)</p>
+                    <p className="font-medium text-slate-700">GPS Server (port 5004)</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 uppercase font-medium mb-1">Device Port</p>
@@ -414,7 +414,7 @@ export default function GPSPage() {
                 <div className="text-center py-4">
                   <WifiOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                   <p className="text-sm text-slate-500 mb-3">
-                    Traccar server is not connected. Set up a Traccar server and add
+                    GPS server is not connected. Set up a GPS server and add
                     the credentials to your environment variables.
                   </p>
                   <div className="inline-flex gap-2 text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 font-mono">

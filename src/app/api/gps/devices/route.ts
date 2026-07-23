@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       devices: enriched.length > 0 ? enriched : [],
-      traccarConnected: traccarReachable,
+      gpsConnected: traccarReachable,
     })
   } catch (error) {
     console.error('Failed to fetch GPS devices:', error)
