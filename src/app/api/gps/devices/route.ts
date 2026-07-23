@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Enrich local devices with Traccar live data
-    const enriched = property.GpsDevice.map((device) => {
+    const enriched = property.GpsDevice.map((device: any) => {
       // Match by deviceId (IMEI/uniqueId) if available
       const traccarDevice = device.deviceId
         ? traccarDeviceByUniqueId.get(device.deviceId)
