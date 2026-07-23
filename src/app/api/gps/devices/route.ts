@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import prisma from '@/lib/db'
+import * as traccar from '@/lib/traccar'
+
+/**
+ * GET /api/gps/devices
+ *
+ * Returns GPS devices for the authenticated property user.
+ * Pulls live position data from Traccar and enriches with local DB metadata.
+ */
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const userType = (session?.user as any)?.userType
+
+  if (!session || userType !== 'property') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const userEmail = session.user?.email?.toLowerCase()
+
+  try {
+    const property = await prisma.property.findUnique({
+      where: { email: userEmail },
+      include: {
+        GpsDevice: {
+          include: { Vehicle: true },
+        },
+      },
+    })
+
+    if (!property) {
+      return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+    }
+
+    // If Traccar is configured, pull live positions
+    const traccarReachable = await traccar.isReachable()
+    let livePositions: traccar.TraccarPosition[] = []
+    let traccarDevices: traccar.TraccarDevice[] = []
+
+    if (traccarReachable) {
+      try {
+        ;[traccarDevices, livePositions] = await Promise.all([
+          traccar.getDevices(),
+          traccar.getPositions(),
+        ])
+      } catch {
+        // Traccar may be reachable but auth fails — degrade gracefully
+      }
+    }
+
+    // Create a position lookup by deviceId
+    const positionByDeviceId = new Map<number, traccar.TraccarPosition>()
+    for (const pos of livePositions) {
+      positionByDeviceId.set(pos.deviceId, pos)
+    }
+
+    // Create a traccar device lookup by uniqueId
+    const traccarDeviceByUniqueId = new Map<string, traccar.TraccarDevice>()
+    for (const td of traccarDevices) {
+      if (td.uniqueId) traccarDeviceByUniqueId.set(td.uniqueId, td)
+    }
+
+    // Enrich local devices with Traccar live data
+    const enriched = property.GpsDevice.map((device) => {
+      // Match by deviceId (IMEI/uniqueId) if available
+      const traccarDevice = device.deviceId
+        ? traccarDeviceByUniqueId.get(device.deviceId)
+        : undefined
+      const livePos =
+        traccarDevice != null
+          ? positionByDeviceId.get(traccarDevice.id)
+          : undefined
+
+      const speed = livePos?.speed != null
+        ? Math.round((livePos.speed * 1.15078) * 10) / 10 // knots → mph
+        : (device.speed ?? 0)
+      const heading = livePos?.course ?? (device.heading ?? 0)
+      const lat = livePos?.latitude ?? (device.latitude ?? 0)
+      const lng = livePos?.longitude ?? (device.longitude ?? 0)
+      const lastSeen = livePos?.deviceTime
+        ? new Date(livePos.deviceTime).toISOString()
+        : (device.lastSeen?.toISOString() ?? null)
+
+      const status: 'online' | 'idle' | 'offline' = livePos
+        ? speed > 0
+          ? 'online'
+          : 'idle'
+        : (lastSeen != null
+            ? Date.now() - new Date(lastSeen).getTime() < 300_000
+              ? 'idle'
+              : 'offline'
+            : 'offline')
+
+      return {
+        id: device.id,
+        vehicleName: device.Vehicle?.vehicleModel
+          ? `${device.Vehicle.vehicleMake ?? ''} ${device.Vehicle.vehicleModel}`.trim()
+          : device.deviceName,
+        vehiclePlate: device.Vehicle?.plate ?? null,
+        deviceId: device.deviceId ?? device.id,
+        deviceModel: device.deviceModel ?? 'Queclink GV500MAP',
+        status,
+        lastSeen,
+        latitude: lat,
+        longitude: lng,
+        speed: speed > 200 ? 0 : speed,
+        heading,
+        ignition: speed > 0,
+        fuelLevel: device.fuelLevel,
+        engineTemp: device.engineTemp,
+        batteryVoltage: device.batteryVoltage,
+        odometer: device.odometer ?? 0,
+        satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
+        signalStrength: livePos?.network
+          ? typeof (livePos.network as any)?.rssi === 'number'
+            ? Math.min(100, Math.max(0, ((livePos.network as any).rssi + 120) * 2))
+            : 100
+          : 100,
+      }
+    })
+
+    return NextResponse.json({
+      devices: enriched.length > 0 ? enriched : [],
+      traccarConnected: traccarReachable,
+    })
+  } catch (error) {
+    console.error('Failed to fetch GPS devices:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch GPS devices' },
+      { status: 500 }
+    )
+  }
+}
