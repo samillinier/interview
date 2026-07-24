@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/traccar'
+import { snapToRoads } from '@/lib/osrm'
 
 /**
  * GET /api/gps/route?deviceId=GV500MAP&period=today|yesterday|week
@@ -88,18 +89,32 @@ export async function GET(request: NextRequest) {
     try {
       positions = await traccar.getRoute(traccarDevice.id, from, to)
     } catch {
-      return NextResponse.json({ positions: [], error: 'Failed to fetch route from Traccar' })
+      return NextResponse.json({ positions: [], roadPath: null, error: 'Failed to fetch route from Traccar' })
     }
 
-    // Convert to simple lat/lng array for the map
-    const coords = positions.map((p) => ({
+    // Convert raw positions to lat/lng for map
+    const rawCoords = positions.map((p) => ({
       latitude: p.latitude,
       longitude: p.longitude,
       speed: p.speed != null ? traccar.convertSpeedToMph(p.speed) : 0,
       time: p.deviceTime || p.fixTime,
     }))
 
-    return NextResponse.json({ positions: coords, gpsConnected: true })
+    // Snap positions to actual roads using OSRM
+    let roadPath: { latitude: number; longitude: number }[] | null = null
+    if (rawCoords.length >= 2) {
+      try {
+        roadPath = await snapToRoads(rawCoords)
+      } catch {
+        // OSRM failed, fall through to return raw positions
+      }
+    }
+
+    return NextResponse.json({
+      positions: rawCoords,
+      roadPath: roadPath,  // null if OSRM failed, frontend falls back to raw
+      gpsConnected: true,
+    })
   } catch {
     return NextResponse.json({ positions: [], gpsConnected: false }, { status: 500 })
   }
