@@ -25,7 +25,7 @@ import {
   Pause,
   Activity,
   Shield,
-  Tool,
+  Wrench,
   RotateCcw,
   MapPin,
   TrendingUp,
@@ -653,7 +653,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
       {device.obdii && Object.keys(device.obdii).length > 0 && (
         <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
           <div className="flex items-center gap-1.5 mb-2">
-            <Tool className="w-3.5 h-3.5 text-blue-500" />
+            <Wrench className="w-3.5 h-3.5 text-blue-500" />
             <p className="text-xs font-semibold text-slate-700">Vehicle Diagnostics</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -747,7 +747,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
                   tow: CarFront,
                   idle: Pause,
                   movement: Play,
-                  maintenance: Tool,
+                  maintenance: Wrench,
                   generic: RotateCcw,
                 }
                 const EventIcon = iconMap[event.icon] || RotateCcw
