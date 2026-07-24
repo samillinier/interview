@@ -129,6 +129,8 @@ export interface TraccarReportSummary {
   maxSpeed: number
   spentFuel: number
   engineHours: number
+  startOdometer?: number
+  endOdometer?: number
 }
 
 // ── OBDII enrichment ─────────────────────────────────────────────────────────
