@@ -63,17 +63,24 @@ type Props = {
 }
 
 function buildPopup(d: VehicleDevice): string {
+  const isOffline = d.status === 'offline'
   let html = '<div style="font-family:system-ui,sans-serif;font-size:12px;line-height:1.5;min-width:180px">'
-  html += '<strong style="font-size:14px;color:#15803d">' + d.vehicleName + '</strong>'
+  html += '<strong style="font-size:14px;color:' + (isOffline ? '#94a3b8' : '#15803d') + '">' + d.vehicleName + '</strong>'
   if (d.location) html += '<br/><span style="font-size:11px;color:#64748b">'+ d.location + '</span>'
   if (d.vehiclePlate) html += '<br/><span style="font-size:10px;color:#94a3b8">' + d.vehiclePlate + '</span>'
+  if (isOffline) {
+    html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
+    html += '<span style="font-size:11px;color:#ef4444;font-weight:600">OFFLINE</span>'
+    html += '<br/><span style="font-size:10px;color:#94a3b8">Last known position shown below</span>'
+    html += '</div>'
+  }
   html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
-  html += '<span style="color:#475569">Speed:</span> <strong>' + d.speed.toFixed(0) + ' mph</strong><br/>'
-  html += '<span style="color:#475569">Ignition:</span> ' + (d.ignition ? 'ON' : 'OFF') + '<br/>'
-  html += '<span style="color:#475569">Satellites:</span> ' + d.satelliteCount + '<br/>'
-  html += '<span style="color:#475569">Signal:</span> ' + d.signalStrength + '%<br/>'
-  if (d.fuelLevel != null) html += '<span style="color:#475569">Fuel:</span> ' + d.fuelLevel.toFixed(0) + '%<br/>'
-  if (d.odometer != null) html += '<span style="color:#475569">Odometer:</span> ' + d.odometer.toFixed(0) + ' mi<br/>'
+  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Speed:</span> <strong style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.speed.toFixed(0) + ' mph</strong><br/>'
+  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Ignition:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + (d.ignition ? 'ON' : 'OFF') + '</span><br/>'
+  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Satellites:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.satelliteCount + '</span><br/>'
+  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Signal:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.signalStrength + '%</span><br/>'
+  if (d.fuelLevel != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Fuel:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.fuelLevel.toFixed(0) + '%</span><br/>'
+  if (d.odometer != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Odometer:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.odometer.toFixed(0) + ' mi</span><br/>'
   html += '</div>'
   html += '<div style="margin-top:4px;font-size:10px;color:#94a3b8">' + d.deviceModel + '</div>'
   html += '<div style="font-size:10px;color:#94a3b8">ID: ' + d.deviceId + '</div>'
