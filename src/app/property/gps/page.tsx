@@ -308,7 +308,7 @@ export default function GPSPage() {
             <StatusCard
               icon={Gauge}
               label="Moving"
-              value={devices.filter((d) => d.speed > 0).length.toString()}
+              value={devices.filter((d) => d.speed > 0 && d.status === 'online').length.toString()}
             />
             <StatusCard
               icon={HardDrive}
