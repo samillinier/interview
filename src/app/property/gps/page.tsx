@@ -98,14 +98,19 @@ export default function GPSPage() {
   // Fetch GPS devices via our API
   const fetchDevices = useCallback(async () => {
     try {
-      const res = await fetch('/api/gps/devices')
-      if (!res.ok) return
+      const res = await fetch(`/api/gps/devices?_t=${Date.now()}`, { cache: 'no-store' })
+      if (!res.ok) {
+        // API error — server may be down
+        setGpsConnected(false)
+        return
+      }
       const data = await res.json()
       setDevices(data.devices || [])
       setGpsConnected(!!data.gpsConnected)
       setLastRefresh(new Date())
     } catch {
-      // silently fail — keep previous device state
+      // Network error — Traccar or our API is unreachable
+      setGpsConnected(false)
     }
   }, [])
 

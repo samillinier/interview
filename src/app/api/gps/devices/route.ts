@@ -34,24 +34,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 })
     }
 
-    // If Traccar is configured, pull live positions
+    // If Traccar is NOT reachable, return empty — no stale DB data
     console.log('[GPS] TRACCAR_SERVER_URL =', process.env.TRACCAR_SERVER_URL || 'NOT SET')
     console.log('[GPS] TRACCAR_USERNAME =', process.env.TRACCAR_USERNAME ? 'SET' : 'NOT SET')
     console.log('[GPS] TRACCAR_PASSWORD =', process.env.TRACCAR_PASSWORD ? 'SET' : 'NOT SET')
     const traccarReachable = await traccar.isReachable()
     console.log('[GPS] traccarReachable =', traccarReachable)
+
+    if (!traccarReachable) {
+      return NextResponse.json({ devices: [], gpsConnected: false })
+    }
+
+    // Pull live positions from Traccar
     let livePositions: traccar.TraccarPosition[] = []
     let traccarDevices: traccar.TraccarDevice[] = []
 
-    if (traccarReachable) {
-      try {
-        ;[traccarDevices, livePositions] = await Promise.all([
-          traccar.getDevices(),
-          traccar.getPositions(),
-        ])
-      } catch {
-        // Traccar may be reachable but auth fails — degrade gracefully
-      }
+    try {
+      ;[traccarDevices, livePositions] = await Promise.all([
+        traccar.getDevices(),
+        traccar.getPositions(),
+      ])
+    } catch {
+      // Traccar may be reachable but auth fails — degrade gracefully
     }
 
     // Create a position lookup by deviceId
@@ -127,7 +131,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       devices: enriched.length > 0 ? enriched : [],
-      gpsConnected: traccarReachable,
+      gpsConnected: true,
     })
   } catch (error) {
     console.error('Failed to fetch GPS devices:', error)
