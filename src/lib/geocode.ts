@@ -19,8 +19,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   }
 
   try {
-    // zoom=16 gives street-level accuracy, zoom=18 is too granular (returns water bodies, etc.)
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`
+    // zoom=18 gives house-number-level specificity
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'RecruitingAI-GPS/1.0',
@@ -34,16 +34,15 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
     const addr = data.address
     if (!addr) return null
 
-    // If Nominatim resolved to a natural feature (lake, lagoon, park), skip it and use broader context
-    const isNaturalFeature = data.category === 'natural' || data.category === 'waterway' || data.type === 'water'
-
-    // Build a concise location string: "Street/Neighborhood, City, State"
+    // Build a concise location string: "1405 Julie Lagoon, Lutz, Florida"
     const parts: string[] = []
 
-    // Only use road if it's an actual road (not a natural feature name)
-    if (addr.road && !isNaturalFeature) {
+    // Combine house number + road for specific street address
+    if (addr.house_number && addr.road) {
+      parts.push(`${addr.house_number} ${addr.road}`)
+    } else if (addr.road) {
       parts.push(addr.road)
-    } else if (addr.neighbourhood && !isNaturalFeature) {
+    } else if (addr.neighbourhood) {
       parts.push(addr.neighbourhood)
     } else if (addr.suburb) {
       parts.push(addr.suburb)
