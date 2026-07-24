@@ -582,7 +582,7 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
       {/* Vehicle Vital Signs — always show */}
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Vehicle Vitals</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <Fuel className="w-4 h-4 text-brand-green flex-shrink-0" />
             <div>
@@ -600,7 +600,7 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <Thermometer className="w-4 h-4 text-red-400 flex-shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-400">Engine Temp</p>
+              <p className="text-[10px] text-slate-400">Temp</p>
               <p className="text-sm font-bold text-slate-900">{device.engineTemp != null ? device.engineTemp.toFixed(0) + '\u00B0F' : '--'}</p>
             </div>
           </div>
@@ -609,6 +609,20 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
             <div>
               <p className="text-[10px] text-slate-400">Odometer</p>
               <p className="text-sm font-bold text-slate-900">{device.odometer != null && device.odometer > 0 ? device.odometer.toLocaleString() + ' mi' : '--'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Gauge className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">RPM</p>
+              <p className="text-sm font-bold text-slate-900">{device.obdii?.rpm != null ? device.obdii.rpm.toLocaleString() : '--'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Gauge className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">OBD Speed</p>
+              <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
             </div>
           </div>
         </div>
@@ -664,57 +678,36 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
         </div>
       </div>
 
-      {/* OBDII Vehicle Data — show placeholder when offline */}
+      {/* Diagnostics — always show */}
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
         <div className="flex items-center gap-1.5 mb-2">
           <Wrench className="w-3.5 h-3.5 text-blue-500" />
           <p className="text-xs font-semibold text-slate-700">Diagnostics</p>
         </div>
-        {device.obdii && (device.obdii.vin || device.obdii.rpm != null || device.obdii.totalDistance != null || (device.obdii.dtcCodes && device.obdii.dtcCodes.length > 0)) ? (
-          <div className="grid grid-cols-2 gap-2">
-            {device.obdii.vin && (
-              <div className="col-span-2">
-                <p className="text-[10px] text-slate-400">VIN</p>
-                <p className="text-xs font-mono font-semibold text-slate-700">{device.obdii.vin}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="col-span-2">
+            <p className="text-[10px] text-slate-400">VIN</p>
+            <p className="text-xs font-mono font-semibold text-slate-700">{device.obdii?.vin || '--'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400">Total Odometer</p>
+            <p className="text-sm font-bold text-slate-900">{device.obdii?.totalDistance != null ? device.obdii.totalDistance.toLocaleString() + ' mi' : '--'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400">DTC Codes</p>
+            {device.obdii?.dtcCodes && device.obdii.dtcCodes.length > 0 ? (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {device.obdii.dtcCodes.map(function(code: string) {
+                  return (
+                    <span key={code} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">{code}</span>
+                  )
+                })}
               </div>
-            )}
-            {device.obdii.rpm != null && (
-              <div>
-                <p className="text-[10px] text-slate-400">RPM</p>
-                <p className="text-sm font-bold text-slate-900">{device.obdii.rpm.toLocaleString()}</p>
-              </div>
-            )}
-            {device.obdii.obdSpeed != null && (
-              <div>
-                <p className="text-[10px] text-slate-400">OBD Speed</p>
-                <p className="text-sm font-bold text-slate-900">{device.obdii.obdSpeed} mph</p>
-              </div>
-            )}
-            {device.obdii.totalDistance != null && (
-              <div className="col-span-2">
-                <p className="text-[10px] text-slate-400">Total Odometer</p>
-                <p className="text-sm font-bold text-slate-900">{device.obdii.totalDistance.toLocaleString()} mi</p>
-              </div>
-            )}
-            {device.obdii.dtcCodes && device.obdii.dtcCodes.length > 0 && (
-              <div className="col-span-2">
-                <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3 text-red-400" />
-                  Trouble Codes
-                </p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {device.obdii.dtcCodes.map(function(code: string) {
-                    return (
-                      <span key={code} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">{code}</span>
-                    )
-                  })}
-                </div>
-              </div>
+            ) : (
+              <p className="text-sm font-bold text-slate-300">--</p>
             )}
           </div>
-        ) : (
-          <p className="text-xs text-slate-400">Engine not running — connect vehicle to read</p>
-        )}
+        </div>
       </div>
 
       {/* Alerts — only show critical/warning events */}
