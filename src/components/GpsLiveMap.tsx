@@ -123,6 +123,7 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
   const polylineRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const satelliteLayerRef = useRef<any>(null)
+  const isViewingHistoryRef = useRef(false)
   const [isSatellite, setIsSatellite] = useState(false)
 
   // Initialize map AND place initial markers in a SINGLE effect
@@ -257,8 +258,8 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       }
     })
 
-    // Fit bounds when new devices appear
-    if (bounds.isValid()) {
+    // Fit bounds when new devices appear — skip if viewing history route
+    if (!isViewingHistoryRef.current && bounds.isValid()) {
       if (devices.length === 1) {
         map.setView(bounds.getCenter(), 14)
       } else {
@@ -267,10 +268,10 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     }
   }, [devices])
 
-  // Center on selected device when clicked from sidebar
+  // Center on selected device when clicked from sidebar (skip when viewing history)
   useEffect(() => {
     const map = leafletMapRef.current
-    if (!map || !selectedDevice) return
+    if (!map || !selectedDevice || isViewingHistoryRef.current) return
     map.setView([selectedDevice.latitude, selectedDevice.longitude], 15, {
       animate: true,
       duration: 0.5,
@@ -303,7 +304,13 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       polylineRef.current = null
     }
 
-    if (!routePositions || routePositions.length < 2) return
+    // User cleared history — resume live tracking
+    if (!routePositions || routePositions.length < 2) {
+      isViewingHistoryRef.current = false
+      return
+    }
+
+    isViewingHistoryRef.current = true
 
     const latlngs = routePositions.map(
       (p) => L.latLng(p.latitude, p.longitude)
