@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     const mapped = positions.map((pos) => ({
       latitude: pos.latitude,
       longitude: pos.longitude,
-      speed: Math.round((pos.speed * 1.15078) * 10) / 10,
+      speed: traccar.convertSpeedToMph(pos.speed),
       heading: pos.course,
       timestamp: pos.deviceTime,
       altitude: pos.altitude,

@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
           : undefined
 
       const speed = livePos?.speed != null
-        ? Math.round((livePos.speed * 1.15078) * 10) / 10 // knots → mph
+        ? traccar.convertSpeedToMph(livePos.speed)
         : (device.speed ?? 0)
       const heading = livePos?.course ?? (device.heading ?? 0)
       const lat = livePos?.latitude ?? (device.latitude ?? 0)
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
         lastSeen,
         latitude: lat,
         longitude: lng,
-        speed: speed > 200 ? 0 : speed,
+        speed,
         heading,
         ignition: speed > 0,
         fuelLevel: device.fuelLevel,

@@ -148,6 +148,24 @@ export function getEvents(deviceId: number, from: string, to: string): Promise<T
   )
 }
 
+/**
+ * Convert Traccar raw speed to mph.
+ *
+ * Traccar API returns speed in knots, but some servers (notably the public demo)
+ * return speed in km/h. This auto-detects the unit: if the raw value in knots
+ * would exceed 120 mph, it's treated as km/h and converted instead.
+ */
+export function convertSpeedToMph(rawSpeed: number): number {
+  const asKnots = rawSpeed * 1.15078
+  if (asKnots > 120) {
+    // Likely km/h — convert to mph
+    return Math.round((rawSpeed / 1.609344) * 10) / 10
+  }
+  const mph = Math.round(asKnots * 10) / 10
+  // Cap at 120 mph max (no vehicle should exceed this legally)
+  return mph > 120 ? 0 : mph
+}
+
 /** Check whether Traccar is reachable */
 export async function isReachable(): Promise<boolean> {
   if (!TRACCAR_URL) return false
