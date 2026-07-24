@@ -9,7 +9,7 @@ import { reverseGeocode } from '@/lib/geocode'
  * GET /api/gps/devices
  *
  * Returns GPS devices for the authenticated property user.
- * Pulls live position data from Traccar and enriches with local DB metadata.
+ * Enriches with live position, OBDII, recent events, and today's driving summary.
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -35,18 +35,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 })
     }
 
-    // If Traccar is NOT reachable, return empty — no stale DB data
-    console.log('[GPS] TRACCAR_SERVER_URL =', process.env.TRACCAR_SERVER_URL || 'NOT SET')
-    console.log('[GPS] TRACCAR_USERNAME =', process.env.TRACCAR_USERNAME ? 'SET' : 'NOT SET')
-    console.log('[GPS] TRACCAR_PASSWORD =', process.env.TRACCAR_PASSWORD ? 'SET' : 'NOT SET')
     const traccarReachable = await traccar.isReachable()
-    console.log('[GPS] traccarReachable =', traccarReachable)
 
     if (!traccarReachable) {
       return NextResponse.json({ devices: [], gpsConnected: false })
     }
 
-    // Pull live positions from Traccar
+    // Pull live data from Traccar
     let livePositions: traccar.TraccarPosition[] = []
     let traccarDevices: traccar.TraccarDevice[] = []
 
@@ -56,31 +51,66 @@ export async function GET(request: NextRequest) {
         traccar.getPositions(),
       ])
     } catch {
-      // Traccar may be reachable but auth fails — degrade gracefully
+      // Traccar may be reachable but auth fails
     }
 
-    // Create a position lookup by deviceId
     const positionByDeviceId = new Map<number, traccar.TraccarPosition>()
     for (const pos of livePositions) {
       positionByDeviceId.set(pos.deviceId, pos)
     }
 
-    // Create a traccar device lookup by uniqueId
     const traccarDeviceByUniqueId = new Map<string, traccar.TraccarDevice>()
     for (const td of traccarDevices) {
       if (td.uniqueId) traccarDeviceByUniqueId.set(td.uniqueId, td)
     }
 
-    // Enrich local devices with Traccar live data (async for geocoding)
+    // Time range for reports
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const nowIso = now.toISOString()
+
+    // Fetch all events and summary in parallel for all traccar devices
+    const allEvents: traccar.TraccarEvent[] = []
+    let allSummary: traccar.TraccarReportSummary[] = []
+
+    if (traccarDevices.length > 0) {
+      const eventPromises = traccarDevices.map(d =>
+        traccar.getEvents(d.id, weekAgo, nowIso).catch(() => [] as traccar.TraccarEvent[])
+      )
+      const summaryPromises = traccarDevices.map(d =>
+        traccar.getSummary(d.id, todayStart, nowIso).catch(() => [] as traccar.TraccarReportSummary[])
+      )
+      const [eventsArrays, summaryArrays] = await Promise.all([
+        Promise.all(eventPromises),
+        Promise.all(summaryPromises),
+      ])
+      allEvents.push(...eventsArrays.flat())
+      allSummary.push(...summaryArrays.flat())
+    }
+
+    // Group events by deviceId
+    const eventsByDeviceId = new Map<number, traccar.TraccarEvent[]>()
+    for (const evt of allEvents) {
+      const arr = eventsByDeviceId.get(evt.deviceId) || []
+      arr.push(evt)
+      eventsByDeviceId.set(evt.deviceId, arr)
+    }
+
+    // Group summary by deviceId
+    const summaryByDeviceId = new Map<number, traccar.TraccarReportSummary>()
+    for (const s of allSummary) {
+      summaryByDeviceId.set(s.deviceId, s)
+    }
+
+    // Enrich each local device
     const enriched = await Promise.all(property.GpsDevice.map(async (device: any) => {
-      // Match by deviceId (IMEI/uniqueId) if available
       const traccarDevice = device.deviceId
         ? traccarDeviceByUniqueId.get(device.deviceId)
         : undefined
-      const livePos =
-        traccarDevice != null
-          ? positionByDeviceId.get(traccarDevice.id)
-          : undefined
+      const livePos = traccarDevice != null
+        ? positionByDeviceId.get(traccarDevice.id)
+        : undefined
 
       const speed = livePos?.speed != null
         ? traccar.convertSpeedToMph(livePos.speed)
@@ -92,23 +122,39 @@ export async function GET(request: NextRequest) {
         ? new Date(livePos.deviceTime).toISOString()
         : (device.lastSeen?.toISOString() ?? null)
 
-      // Reverse geocode location (only for devices with valid coordinates)
       const location = (lat && lng) ? await reverseGeocode(lat, lng) : null
 
       const status: 'online' | 'idle' | 'offline' = livePos
-        ? speed > 3 // Ignore GPS drift under 3 mph
-          ? 'online'
-          : 'idle'
+        ? speed > 3 ? 'online' : 'idle'
         : (lastSeen != null
-            ? Date.now() - new Date(lastSeen).getTime() < 300_000
-              ? 'idle'
-              : 'offline'
+            ? Date.now() - new Date(lastSeen).getTime() < 300_000 ? 'idle' : 'offline'
             : 'offline')
+
+      // OBDII data from position attributes
+      const obdii = traccar.extractObdiiData(livePos?.attributes as Record<string, unknown> | undefined)
+
+      // Recent events (last 7 days)
+      const tcId = traccarDevice?.id
+      const deviceEvents = tcId ? (eventsByDeviceId.get(tcId) || []) : []
+      const recentEvents = deviceEvents
+        .slice(-20)
+        .map(e => traccar.classifyEvent(e))
+        .reverse()
+
+      // Today's summary
+      const tcSummary = tcId ? summaryByDeviceId.get(tcId) : undefined
+      const todaySummary = tcSummary ? {
+        trips: 0,
+        distance: traccar.metersToMiles(tcSummary.distance),
+        drivingTime: traccar.formatDuration(Math.round((tcSummary.engineHours || 0) * 3600)),
+        maxSpeed: traccar.convertSpeedToMph(tcSummary.maxSpeed),
+        avgSpeed: traccar.convertSpeedToMph(tcSummary.averageSpeed),
+      } : undefined
 
       return {
         id: device.id,
         vehicleName: device.Vehicle?.vehicleModel
-          ? `${device.Vehicle.vehicleMake ?? ''} ${device.Vehicle.vehicleModel}`.trim()
+          ? (device.Vehicle.vehicleMake || '') + ' ' + device.Vehicle.vehicleModel
           : device.deviceName,
         vehiclePlate: device.Vehicle?.plate ?? null,
         deviceId: device.deviceId ?? device.id,
@@ -120,10 +166,10 @@ export async function GET(request: NextRequest) {
         speed,
         heading,
         ignition: speed > 3,
-        fuelLevel: device.fuelLevel,
-        engineTemp: device.engineTemp,
-        batteryVoltage: device.batteryVoltage,
-        odometer: device.odometer ?? 0,
+        fuelLevel: obdii.fuelLevel ?? device.fuelLevel ?? undefined,
+        engineTemp: obdii.engineTemp ?? device.engineTemp ?? undefined,
+        batteryVoltage: obdii.batteryVoltage ?? device.batteryVoltage ?? undefined,
+        odometer: obdii.odometer ?? device.odometer ?? 0,
         satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
         signalStrength: livePos?.network
           ? typeof (livePos.network as any)?.rssi === 'number'
@@ -131,6 +177,17 @@ export async function GET(request: NextRequest) {
             : 100
           : 100,
         location,
+        obdii: Object.keys(obdii).length > 0 ? {
+          rpm: obdii.rpm,
+          fuelLevel: obdii.fuelLevel,
+          obdSpeed: obdii.obdSpeed,
+          vin: obdii.vin,
+          dtcCodes: obdii.dtcCodes,
+          motionDetected: obdii.motionDetected,
+          totalDistance: obdii.totalDistance,
+        } : undefined,
+        recentEvents: recentEvents.length > 0 ? recentEvents : undefined,
+        todaySummary,
       }
     }))
 

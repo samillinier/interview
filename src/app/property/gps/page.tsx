@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import {
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Car,
   Satellite,
   Signal,
@@ -23,6 +24,11 @@ import {
   Play,
   Pause,
   Activity,
+  Shield,
+  Tool,
+  RotateCcw,
+  MapPin,
+  TrendingUp,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -536,156 +542,231 @@ function DeviceCard({
 }
 
 // Device Telemetry sub-component
+
+
+// Device Telemetry sub-component
 function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: VehicleDevice; expanded: boolean; onToggleExpand: () => void }) {
   const items = [
-    { icon: Gauge, label: 'Speed', value: `${device.speed.toFixed(0)} mph`, unit: '' },
-    { icon: Navigation, label: 'Heading', value: `${device.heading.toFixed(0)}°`, unit: '' },
+    { icon: Gauge, label: 'Speed', value: device.speed.toFixed(0) + ' mph', unit: '' },
+    { icon: Navigation, label: 'Heading', value: device.heading.toFixed(0) + '\u00B0', unit: '' },
     { icon: Satellite, label: 'Satellites', value: device.satelliteCount.toString(), unit: '' },
-    { icon: Signal, label: 'Signal', value: `${device.signalStrength}%`, unit: '' },
+    { icon: Signal, label: 'Signal', value: device.signalStrength + '%', unit: '' },
     ...(device.fuelLevel != null
-      ? [{ icon: Fuel, label: 'Fuel Level', value: `${device.fuelLevel.toFixed(0)}%`, unit: '' }]
+      ? [{ icon: Fuel, label: 'Fuel Level', value: device.fuelLevel.toFixed(0) + '%', unit: '' }]
       : []),
     ...(device.engineTemp != null
-      ? [
-          {
-            icon: Thermometer,
-            label: 'Engine Temp',
-            value: `${device.engineTemp.toFixed(0)}°F`,
-            unit: '',
-          },
-        ]
+      ? [{ icon: Thermometer, label: 'Engine Temp', value: device.engineTemp.toFixed(0) + '\u00B0F', unit: '' }]
       : []),
     ...(device.batteryVoltage != null
-      ? [
-          {
-            icon: Battery,
-            label: 'Battery',
-            value: `${device.batteryVoltage.toFixed(1)}V`,
-            unit: '',
-          },
-        ]
+      ? [{ icon: Battery, label: 'Battery', value: device.batteryVoltage.toFixed(1) + 'V', unit: '' }]
       : []),
     { icon: Clock, label: 'Last Seen', value: formatTimeAgo(device.lastSeen), unit: '' },
   ]
 
+  const events = device.recentEvents || []
+  const harshCount = events.filter(function(e) { return e.icon === 'harsh' }).length
+  const crashCount = events.filter(function(e) { return e.icon === 'crash' }).length
+  const speedCount = events.filter(function(e) { return e.icon === 'speed' }).length
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-3">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            device.status === 'online' ? 'bg-green-500' : device.status === 'idle' ? 'bg-amber-500' : 'bg-slate-300'
-          }`}
-        />
+        <div className={'w-2 h-2 rounded-full ' + (
+          device.status === 'online' ? 'bg-green-500' : device.status === 'idle' ? 'bg-amber-500' : 'bg-slate-300'
+        )} />
         <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName || 'Unnamed Vehicle'}</h3>
       </div>
       {device.location && (
         <div className="flex items-center gap-1.5 mb-3 px-2 py-1.5 bg-slate-50 rounded-lg">
-          <svg className="w-3 h-3 flex-shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
+          <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />
           <p className="text-xs text-slate-500 truncate">{device.location}</p>
         </div>
       )}
+
+      {/* Telemetry Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg"
-          >
-            <item.icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-slate-400">{item.label}</p>
-              <p className="text-sm font-semibold text-slate-900">
-                {item.value}
-                {item.unit ? (
-                  <span className="text-xs text-slate-400 ml-0.5">{item.unit}</span>
-                ) : null}
-              </p>
+        {items.map(function(item) {
+          return (
+            <div key={item.label} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+              <item.icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {item.value}
+                  {item.unit ? <span className="text-xs text-slate-400 ml-0.5">{item.unit}</span> : null}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Collapsible Details */}
+      {/* Today's Driving Summary */}
+      {device.todaySummary && (
+        <div className="mb-3 p-3 bg-gradient-to-r from-brand-green/5 to-emerald-50 rounded-xl border border-brand-green/10">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Activity className="w-3.5 h-3.5 text-brand-green" />
+            <p className="text-xs font-semibold text-slate-700">Today's Driving</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-900">{device.todaySummary.distance}</p>
+              <p className="text-[10px] text-slate-400">miles</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-900">{device.todaySummary.drivingTime}</p>
+              <p className="text-[10px] text-slate-400">driving</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-900">{device.todaySummary.maxSpeed}</p>
+              <p className="text-[10px] text-slate-400">max mph</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Driving Behavior Stats (if any events exist) */}
+      {(harshCount > 0 || crashCount > 0 || speedCount > 0) && (
+        <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Shield className="w-3.5 h-3.5 text-amber-500" />
+            <p className="text-xs font-semibold text-slate-700">Driving Behavior</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-1.5 rounded-lg bg-red-50">
+              <p className="text-base font-bold text-red-600">{crashCount}</p>
+              <p className="text-[10px] text-red-400">crashes</p>
+            </div>
+            <div className="text-center p-1.5 rounded-lg bg-amber-50">
+              <p className="text-base font-bold text-amber-600">{harshCount}</p>
+              <p className="text-[10px] text-amber-400">harsh events</p>
+            </div>
+            <div className="text-center p-1.5 rounded-lg bg-orange-50">
+              <p className="text-base font-bold text-orange-600">{speedCount}</p>
+              <p className="text-[10px] text-orange-400">speeding</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OBDII Vehicle Data */}
+      {device.obdii && Object.keys(device.obdii).length > 0 && (
+        <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Tool className="w-3.5 h-3.5 text-blue-500" />
+            <p className="text-xs font-semibold text-slate-700">Vehicle Diagnostics</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {device.obdii.vin && (
+              <div className="col-span-2">
+                <p className="text-[10px] text-slate-400">VIN</p>
+                <p className="text-xs font-mono font-semibold text-slate-700">{device.obdii.vin}</p>
+              </div>
+            )}
+            {device.obdii.rpm != null && (
+              <div>
+                <p className="text-[10px] text-slate-400">RPM</p>
+                <p className="text-sm font-bold text-slate-900">{device.obdii.rpm.toLocaleString()}</p>
+              </div>
+            )}
+            {device.obdii.obdSpeed != null && (
+              <div>
+                <p className="text-[10px] text-slate-400">OBD Speed</p>
+                <p className="text-sm font-bold text-slate-900">{device.obdii.obdSpeed} mph</p>
+              </div>
+            )}
+            {device.obdii.totalDistance != null && (
+              <div className="col-span-2">
+                <p className="text-[10px] text-slate-400">Total Odometer</p>
+                <p className="text-sm font-bold text-slate-900">{device.obdii.totalDistance.toLocaleString()} mi</p>
+              </div>
+            )}
+            {device.obdii.dtcCodes && device.obdii.dtcCodes.length > 0 && (
+              <div className="col-span-2">
+                <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-red-400" />
+                  Diagnostic Trouble Codes
+                </p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {device.obdii.dtcCodes.map(function(code: string) {
+                    return (
+                      <span key={code} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
+                        {code}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible: Event Timeline */}
       <button
         onClick={onToggleExpand}
         className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-xs text-slate-500 font-medium"
       >
-        <span>Details & Alarms</span>
-        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+        <span>Event Timeline</span>
+        <div className="flex items-center gap-1.5">
+          {events.length > 0 && (
+            <span className="text-[10px] font-semibold bg-slate-200 text-slate-600 rounded-full px-1.5">{events.length}</span>
+          )}
+          <ChevronRight className={'w-3.5 h-3.5 transition-transform ' + (expanded ? 'rotate-90' : '')} />
+        </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 mt-2 pt-3 space-y-2">
-          {(() => {
-            const isIdle = device.speed < 3 && device.ignition
-            const isOverspeed = device.speed > 70
-            const isLowFuel = (device.fuelLevel ?? 100) < 20
-            const isLowBatt = (device.batteryVoltage ?? 13) < 12
+        <div className="border-t border-slate-100 mt-2 pt-2 max-h-[300px] overflow-y-auto">
+          {events.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-4">No recent events</p>
+          ) : (
+            <div className="space-y-1">
+              {events.map(function(event) {
+                const severityColors = {
+                  critical: 'border-red-200 bg-red-50',
+                  warning: 'border-amber-200 bg-amber-50',
+                  info: 'border-slate-200 bg-white',
+                }
+                const iconColors = {
+                  crash: 'text-red-500',
+                  harsh: 'text-amber-500',
+                  speed: 'text-orange-500',
+                  geofence: 'text-blue-500',
+                  tow: 'text-purple-500',
+                  idle: 'text-slate-400',
+                  movement: 'text-green-500',
+                  maintenance: 'text-sky-500',
+                  generic: 'text-slate-400',
+                }
+                const iconMap: Record<string, any> = {
+                  crash: AlertTriangle,
+                  harsh: Activity,
+                  speed: Gauge,
+                  geofence: MapPin,
+                  tow: CarFront,
+                  idle: Pause,
+                  movement: Play,
+                  maintenance: Tool,
+                  generic: RotateCcw,
+                }
+                const EventIcon = iconMap[event.icon] || RotateCcw
+                const borderColor = severityColors[event.severity as keyof typeof severityColors] || severityColors.info
+                const iconColor = iconColors[event.icon as keyof typeof iconColors] || iconColors.generic
 
-            return (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-0.5">
-                  Driver Behaviour
-                </p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">{device.speed > 3 ? 'Moving' : 'Stopped'}</p>
-                    <p className="text-xs font-bold text-slate-800">{device.speed.toFixed(0)} mph</p>
+                return (
+                  <div key={event.id} className={'flex items-start gap-2 p-2 rounded-lg border text-xs ' + borderColor}>
+                    <EventIcon className={'w-3.5 h-3.5 flex-shrink-0 mt-0.5 ' + iconColor} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800">{event.label}</p>
+                      {event.detail && <p className="text-[10px] text-slate-500 mt-0.5">{event.detail}</p>}
+                    </div>
+                    <span className="text-[10px] text-slate-400 flex-shrink-0">{formatTimeAgo(event.eventTime)}</span>
                   </div>
-                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">Idle</p>
-                    <p className="text-xs font-bold text-slate-800">{isIdle ? 'Yes' : 'No'}</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">Harsh Events</p>
-                    <p className="text-xs font-bold text-slate-800">0</p>
-                  </div>
-                </div>
-
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-0.5 mt-2">
-                  Reports
-                </p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">Trips Today</p>
-                    <p className="text-xs font-bold text-slate-800">{Math.floor(Math.random() * 8) + 2}</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">Distance</p>
-                    <p className="text-xs font-bold text-slate-800">{(Math.random() * 60 + 10).toFixed(0)} mi</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">Avg Speed</p>
-                    <p className="text-xs font-bold text-slate-800">{(Math.random() * 15 + 25).toFixed(0)} mph</p>
-                  </div>
-                </div>
-
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-0.5 mt-2">
-                  Alarms
-                </p>
-                <div className="space-y-1">
-                  <div className={`flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-medium ${isOverspeed ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                    <span>Speed Alert</span>
-                    <span>{isOverspeed ? 'ACTIVE' : 'OK'}</span>
-                  </div>
-                  <div className={`flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-medium ${isLowFuel ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                    <span>Low Fuel</span>
-                    <span>{isLowFuel ? 'ACTIVE' : 'OK'}</span>
-                  </div>
-                  <div className={`flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-medium ${isLowBatt ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                    <span>Low Battery</span>
-                    <span>{isLowBatt ? 'ACTIVE' : 'OK'}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-2 py-1 rounded-lg text-[10px] font-medium bg-green-50 text-green-700">
-                    <span>Geofence</span>
-                    <span>OK</span>
-                  </div>
-                </div>
-              </>
-            )
-          })()}
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -694,9 +775,8 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
 
 function formatTimeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
+  if (seconds < 60) return seconds + 's ago'
+  if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago'
+  if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago'
+  return Math.floor(seconds / 86400) + 'd ago'
 }
-

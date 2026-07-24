@@ -24,6 +24,34 @@ export interface VehicleDevice {
   satelliteCount: number
   signalStrength: number
   location?: string | null
+  /** OBDII / CAN bus data */
+  obdii?: {
+    rpm?: number
+    fuelLevel?: number
+    obdSpeed?: number
+    vin?: string
+    dtcCodes?: string[]
+    motionDetected?: boolean
+    totalDistance?: number
+  }
+  /** Recent classified events for this device */
+  recentEvents?: {
+    id: number
+    type: string
+    eventTime: string
+    label: string
+    icon: string
+    severity: string
+    detail?: string
+  }[]
+  /** Today's driving summary */
+  todaySummary?: {
+    trips: number
+    distance: number
+    drivingTime: string
+    maxSpeed: number
+    avgSpeed: number
+  }
 }
 
 type Props = {
