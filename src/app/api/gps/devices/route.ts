@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         : (device.lastSeen?.toISOString() ?? null)
 
       const status: 'online' | 'idle' | 'offline' = livePos
-        ? speed > 0
+        ? speed > 3 // Ignore GPS drift under 3 mph
           ? 'online'
           : 'idle'
         : (lastSeen != null
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
         longitude: lng,
         speed,
         heading,
-        ignition: speed > 0,
+        ignition: speed > 3,
         fuelLevel: device.fuelLevel,
         engineTemp: device.engineTemp,
         batteryVoltage: device.batteryVoltage,

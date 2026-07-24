@@ -596,7 +596,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
       {expanded && (
         <div className="border-t border-slate-100 mt-2 pt-3 space-y-2">
           {(() => {
-            const isIdle = device.speed === 0 && device.ignition
+            const isIdle = device.speed < 3 && device.ignition
             const isOverspeed = device.speed > 70
             const isLowFuel = (device.fuelLevel ?? 100) < 20
             const isLowBatt = (device.batteryVoltage ?? 13) < 12
@@ -608,7 +608,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
                 </p>
                 <div className="grid grid-cols-3 gap-1.5">
                   <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">{device.speed > 0 ? 'Moving' : 'Stopped'}</p>
+                    <p className="text-[10px] text-slate-400">{device.speed > 3 ? 'Moving' : 'Stopped'}</p>
                     <p className="text-xs font-bold text-slate-800">{device.speed.toFixed(0)} mph</p>
                   </div>
                   <div className="bg-slate-50 rounded-lg px-2 py-1.5 text-center">
