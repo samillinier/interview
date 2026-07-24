@@ -85,7 +85,8 @@ export default function PropertyDashboardPage() {
     }
     
     if (status === 'authenticated') {
-      const userType = (session?.user as any)?.userType
+      const userType = ((session?.user as any)?.userType || '').toUpperCase()
+
       const userEmail = session?.user?.email
       
       // Prevent duplicate loads
@@ -104,9 +105,9 @@ export default function PropertyDashboardPage() {
         return
       }
       
-      const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN']
+      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
       if (!allowedTypes.includes(userType)) {
-        if (userType === 'admin') {
+        if (userType === 'ADMIN') {
           console.log('🔄 Redirecting admin user to admin dashboard')
           router.push('/dashboard')
         } else {

@@ -78,8 +78,8 @@ export default function GPSPage() {
       return
     }
     if (status === 'authenticated') {
-      const userType = (session?.user as any)?.userType
-      const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN']
+      const userType = ((session?.user as any)?.userType || '').toUpperCase()
+      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
       if (!allowedTypes.includes(userType)) {
         router.push('/property/login')
         return
@@ -90,8 +90,8 @@ export default function GPSPage() {
   }, [status, session])
 
   const loadPropertyProfile = async () => {
-    const userType = (session?.user as any)?.userType
-    if (userType === 'property') {
+    const userType = ((session?.user as any)?.userType || '').toUpperCase()
+    if (userType === 'PROPERTY') {
       try {
         const res = await fetch('/api/properties/by-email', { cache: 'no-store' })
         if (res.ok) {
@@ -117,17 +117,20 @@ export default function GPSPage() {
   const fetchDevices = useCallback(async () => {
     try {
       const res = await fetch(`/api/gps/devices?_t=${Date.now()}`, { cache: 'no-store' })
+      console.log('[GPS page] fetchDevices status:', res.status, 'ok:', res.ok)
       if (!res.ok) {
-        // API error — server may be down
+        const errText = await res.text()
+        console.error('[GPS page] devices API error:', errText)
         setGpsConnected(false)
         return
       }
       const data = await res.json()
+      console.log('[GPS page] devices count:', data.devices?.length, 'gpsConnected:', data.gpsConnected)
       setDevices(data.devices || [])
       setGpsConnected(!!data.gpsConnected)
       setLastRefresh(new Date())
-    } catch {
-      // Network error — Traccar or our API is unreachable
+    } catch (e) {
+      console.error('[GPS page] network error:', e)
       setGpsConnected(false)
     }
   }, [])
