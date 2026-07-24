@@ -506,9 +506,9 @@ function DeviceCard({
           />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 truncate">{device.vehicleName}</p>
+          <p className="text-sm font-semibold text-slate-900 truncate">{device.vehicleName || 'Unnamed Vehicle'}</p>
           <p className="text-xs text-slate-400 truncate">
-            {device.vehiclePlate} · {device.deviceId}
+            {device.vehiclePlate || '—'} · {device.deviceId}
           </p>
         </div>
         <div className="flex flex-col items-end gap-0.5">
@@ -573,7 +573,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
             device.status === 'online' ? 'bg-green-500' : device.status === 'idle' ? 'bg-amber-500' : 'bg-slate-300'
           }`}
         />
-        <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName}</h3>
+        <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName || 'Unnamed Vehicle'}</h3>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-3">
         {items.map((item) => (

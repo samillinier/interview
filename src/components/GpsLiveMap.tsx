@@ -34,7 +34,7 @@ type Props = {
 function buildPopup(d: VehicleDevice): string {
   let html = '<div style="font-family:system-ui,sans-serif;font-size:12px;line-height:1.5;min-width:180px">'
   html += '<strong style="font-size:14px;color:#15803d">' + d.vehicleName + '</strong><br/>'
-  html += '<span style="color:#64748b">' + d.vehiclePlate + '</span><br/>'
+  html += '<span style="color:#64748b">' + (d.vehiclePlate || '—') + '</span><br/>'
   html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
   html += '<span style="color:#475569">Speed:</span> <strong>' + d.speed.toFixed(0) + ' mph</strong><br/>'
   html += '<span style="color:#475569">Ignition:</span> ' + (d.ignition ? 'ON' : 'OFF') + '<br/>'
