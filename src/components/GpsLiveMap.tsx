@@ -133,7 +133,7 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
   const cartoDarkRef = useRef<any>(null)
   const satelliteLayerRef = useRef<any>(null)
   const isViewingHistoryRef = useRef(false)
-  const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('osm')
+  const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('light')
 
   // Initialize map AND place initial markers in a SINGLE effect
   useEffect(() => {
@@ -149,12 +149,12 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
-    }).addTo(map)
+    })
 
     const cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
       maxZoom: 19,
-    })
+    }).addTo(map)
 
     const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
@@ -181,7 +181,7 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
         const container = L.DomUtil.create('div', 'leaflet-control')
         container.style.cssText = 'background:white;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.2);padding:3px;display:flex;gap:1px'
         for (const { key, label } of [
-          { key: 'osm', label: 'Default' },
+          { key: 'osm', label: 'OSM' },
           { key: 'light', label: 'Light' },
           { key: 'dark', label: 'Dark' },
           { key: 'satellite', label: 'Sat' },
@@ -196,8 +196,8 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
             e.stopPropagation()
             setActiveLayer(key as any)
           }
-          // Highlight active
-          if (key === 'osm') btn.style.cssText += ';background:#f0fdf4;color:#15803d'
+          // Highlight active (Light is default)
+          if (key === 'light') btn.style.cssText += ';background:#f0fdf4;color:#15803d'
           ;(container as any)['_layerBtn' + key] = btn
         }
         return container
@@ -347,7 +347,7 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
         if (!a) continue
         const key = a.textContent?.toLowerCase()
         const isActive =
-          (key === 'default' && activeLayer === 'osm') ||
+          (key === 'osm' && activeLayer === 'osm') ||
           (key === 'light' && activeLayer === 'light') ||
           (key === 'dark' && activeLayer === 'dark') ||
           (key === 'sat' && activeLayer === 'satellite')
