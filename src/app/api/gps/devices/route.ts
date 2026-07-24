@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     let gpsDevices: any[] = []
 
     if (userType === 'PROPERTY') {
-      // Property user: get their own devices
+      // Property user: get their own devices from DB
       const property = await (prisma as any).property.findUnique({
         where: { email: userEmail },
         include: { GpsDevice: { include: { Vehicle: true } } },
@@ -34,15 +34,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Property not found' }, { status: 404 })
       }
       gpsDevices = property.GpsDevice || []
-    } else {
-      // Admin: get all GPS devices across all properties
-      console.log('[gps/devices] Admin userType:', userType, 'email:', userEmail)
-      const allDevices = await (prisma as any).gpsDevice.findMany({
-        include: { Vehicle: true, Property: true },
-      })
-      console.log('[gps/devices] Found', allDevices.length, 'GPS devices for admin')
-      gpsDevices = allDevices || []
     }
+    // Admin users: devices are built directly from Traccar below, no DB needed
 
     const traccarReachable = await traccar.isReachable()
 
@@ -63,9 +56,9 @@ export async function GET(request: NextRequest) {
       // Traccar may be reachable but auth fails
     }
 
-    // If admin user has no local devices but Traccar has live ones, build synthetic entries
-    if (gpsDevices.length === 0 && traccarDevices.length > 0 && userType !== 'PROPERTY') {
-      console.log('[gps/devices] Admin has 0 local devices, building from Traccar directly')
+    // Admin users: build device entries directly from Traccar live data
+    if (userType !== 'PROPERTY' && traccarDevices.length > 0) {
+      console.log('[gps/devices] Admin building', traccarDevices.length, 'devices from Traccar')
       const posById = new Map<number, traccar.TraccarPosition>()
       for (const pos of livePositions) {
         posById.set(pos.deviceId, pos)
