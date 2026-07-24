@@ -14,9 +14,15 @@ import * as traccar from '@/lib/traccar'
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const isAdmin = (session?.user as any)?.isAdmin === true
 
   if (!session || !['PROPERTY', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Sync is only for property users (admin devices come from Traccar directly)
+  if (isAdmin) {
+    return NextResponse.json({ success: true, created: 0, updated: 0, message: 'No sync needed for admins' })
   }
 
   const userEmail = session.user?.email?.toLowerCase()

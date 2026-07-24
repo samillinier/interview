@@ -14,6 +14,7 @@ import { reverseGeocode } from '@/lib/geocode'
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const isAdmin = (session?.user as any)?.isAdmin === true
   const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
   if (!session || !allowedTypes.includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest) {
   try {
     let gpsDevices: any[] = []
 
-    if (userType === 'PROPERTY') {
-      // Property user: get their own devices from DB
+    if (!isAdmin) {
+      // True property user: get their own devices from DB
       const property = await (prisma as any).property.findUnique({
         where: { email: userEmail },
         include: { GpsDevice: { include: { Vehicle: true } } },
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Admin users: build device entries directly from Traccar live data
-    if (userType !== 'PROPERTY' && traccarDevices.length > 0) {
+    if (isAdmin && traccarDevices.length > 0) {
       console.log('[gps/devices] Admin building', traccarDevices.length, 'devices from Traccar')
       const posById = new Map<number, traccar.TraccarPosition>()
       for (const pos of livePositions) {

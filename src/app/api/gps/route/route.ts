@@ -13,6 +13,7 @@ import { snapToRoads } from '@/lib/osrm'
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const isAdmin = (session?.user as any)?.isAdmin === true
 
   if (!session || !['PROPERTY', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   try {
     let gpsDevice = null
 
-    if (userType === 'PROPERTY') {
+    if (!isAdmin) {
       const property = await (prisma as any).property.findUnique({
         where: { email: userEmail },
         include: { GpsDevice: { include: { Vehicle: true } } },

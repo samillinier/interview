@@ -13,6 +13,7 @@ import * as traccar from '@/lib/traccar'
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const isAdmin = (session?.user as any)?.isAdmin === true
 
   if (!session || !['PROPERTY', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -30,22 +31,24 @@ export async function GET(request: NextRequest) {
   const fromDate = from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const toDate = to || new Date().toISOString()
 
-  // Verify ownership
-  const userEmail = session.user?.email?.toLowerCase()
-  const property = await prisma.property.findUnique({
-    where: { email: userEmail },
-  })
+  // Verify ownership (skip for admins — they see everything)
+  if (!isAdmin) {
+    const userEmail = session.user?.email?.toLowerCase()
+    const property = await prisma.property.findUnique({
+      where: { email: userEmail },
+    })
 
-  if (!property) {
-    return NextResponse.json({ error: 'Property not found' }, { status: 404 })
-  }
+    if (!property) {
+      return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+    }
 
-  const device = await (prisma as any).gpsDevice.findFirst({
-    where: { id: deviceId, propertyId: property.id },
-  })
+    const device = await (prisma as any).gpsDevice.findFirst({
+      where: { id: deviceId, propertyId: property.id },
+    })
 
-  if (!device || !device.traccarId) {
-    return NextResponse.json({ error: 'Device not found' }, { status: 404 })
+    if (!device || !device.traccarId) {
+      return NextResponse.json({ error: 'Device not found' }, { status: 404 })
+    }
   }
 
   try {
