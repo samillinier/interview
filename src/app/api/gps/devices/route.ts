@@ -37,9 +37,11 @@ export async function GET(request: NextRequest) {
       gpsDevices = property.GpsDevice || []
     } else {
       // Admin: get all GPS devices across all properties
+      console.log('[gps/devices] Admin userType:', userType, 'email:', userEmail)
       const allDevices = await (prisma as any).gpsDevice.findMany({
-        include: { Vehicle: true },
+        include: { Vehicle: true, Property: true },
       })
+      console.log('[gps/devices] Found', allDevices.length, 'GPS devices for admin')
       gpsDevices = allDevices || []
     }
 
