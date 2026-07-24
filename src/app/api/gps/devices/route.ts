@@ -13,9 +13,8 @@ import { reverseGeocode } from '@/lib/geocode'
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
-  const userType = (session?.user as any)?.userType
-
-  const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN']
+  const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
   if (!session || !allowedTypes.includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     let gpsDevices: any[] = []
 
-    if (userType === 'property') {
+    if (userType === 'PROPERTY') {
       // Property user: get their own devices
       const property = await (prisma as any).property.findUnique({
         where: { email: userEmail },

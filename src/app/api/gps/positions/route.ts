@@ -12,9 +12,9 @@ import * as traccar from '@/lib/traccar'
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
-  const userType = (session?.user as any)?.userType
+  const userType = ((session?.user as any)?.userType || '').toUpperCase()
 
-  if (!session || !['property', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
+  if (!session || !['PROPERTY', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
