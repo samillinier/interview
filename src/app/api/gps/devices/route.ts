@@ -125,7 +125,9 @@ export async function GET(request: NextRequest) {
       const location = (lat && lng) ? await reverseGeocode(lat, lng) : null
 
       const status: 'online' | 'idle' | 'offline' = livePos
-        ? speed > 3 ? 'online' : 'idle'
+        ? (livePos.deviceTime && Date.now() - new Date(livePos.deviceTime).getTime() > 300_000)
+            ? 'offline'   // position is older than 5 minutes — device is no longer reporting
+            : speed > 3 ? 'online' : 'idle'
         : (lastSeen != null
             ? Date.now() - new Date(lastSeen).getTime() < 300_000 ? 'idle' : 'offline'
             : 'offline')
@@ -193,6 +195,16 @@ export async function GET(request: NextRequest) {
         todaySummary,
       }
     }))
+
+    // Fire-and-forget: update local DB lastSeen for devices with fresh positions
+    for (const device of enriched) {
+      if (device.status !== 'offline') {
+        (prisma as any).gpsDevice.update({
+          where: { id: device.id },
+          data: { lastSeen: new Date(device.lastSeen) },
+        }).catch(() => {})
+      }
+    }
 
     return NextResponse.json({
       devices: enriched.length > 0 ? enriched : [],
