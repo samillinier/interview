@@ -493,11 +493,8 @@ function DeviceCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900 truncate">{device.vehicleName || 'Unnamed Vehicle'}</p>
-          <p className="text-xs text-slate-400 truncate">
-            {device.vehiclePlate ? `${device.vehiclePlate} · ` : ''}{device.deviceId}
-          </p>
           {device.location && (
-            <p className="text-[11px] text-slate-500 truncate flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-slate-600 truncate flex items-center gap-1">
               <svg className="w-3 h-3 flex-shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                 <circle cx="12" cy="10" r="3" />
@@ -505,6 +502,9 @@ function DeviceCard({
               {device.location}
             </p>
           )}
+          <p className="text-[11px] text-slate-400 truncate mt-0.5">
+            {device.vehiclePlate ? `${device.vehiclePlate} · ` : ''}{device.deviceId}
+          </p>
         </div>
         <div className="flex flex-col items-end gap-0.5">
           <span
