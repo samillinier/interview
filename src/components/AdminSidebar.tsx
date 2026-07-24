@@ -17,7 +17,6 @@ import {
   Hammer,
   LayoutDashboard,
   LogOut,
-  MapPin,
   Megaphone,
   MessageSquare,
   Package,
@@ -215,16 +214,8 @@ export function AdminSidebar({ pathname }: Props) {
         href: '/property/dashboard',
         label: 'Property Portal',
         icon: Building2,
-        match: (path) => path.startsWith('/property') && path !== '/property/gps',
+        match: (path) => path.startsWith('/property'),
       })
-      if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
-        portalNav.push({
-          href: '/property/gps',
-          label: 'GPS',
-          icon: MapPin,
-          match: (path) => path === '/property/gps',
-        })
-      }
     }
     if (normalizedRole === 'SUPER_ADMIN') {
       const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount

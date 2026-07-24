@@ -10,7 +10,6 @@ import {
   Bell,
   Building2,
   LayoutDashboard,
-  MapPin,
   Menu,
   MessageSquare,
   Settings,
@@ -204,16 +203,8 @@ export function AdminMobileMenu({ pathname }: Props) {
         href: '/property/dashboard',
         label: 'Property Portal',
         icon: Building2,
-        match: (p: string) => p.startsWith('/property') && p !== '/property/gps',
+        match: (p: string) => p.startsWith('/property'),
       },
-      ...((role === 'SUPER_ADMIN' || role === 'ADMIN')
-        ? [{
-            href: '/property/gps',
-            label: 'GPS',
-            icon: MapPin,
-            match: (p: string) => p === '/property/gps',
-          }]
-        : []),
     ] as typeof base
     return withPropertyPortal
   }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, session?.user])
