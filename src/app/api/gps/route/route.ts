@@ -102,17 +102,24 @@ export async function GET(request: NextRequest) {
 
     // Snap positions to actual roads using OSRM
     let roadPath: { latitude: number; longitude: number }[] | null = null
+    let roadSnapStatus = 'skipped'
     if (rawCoords.length >= 2) {
       try {
         roadPath = await snapToRoads(rawCoords)
-      } catch {
-        // OSRM failed, fall through to return raw positions
+        roadSnapStatus = roadPath ? `ok (${roadPath.length} road pts from ${rawCoords.length} gps pts)` : 'osrm_no_match'
+        console.log(`[gps/route] OSRM snap: ${roadSnapStatus}`)
+      } catch (err) {
+        roadSnapStatus = 'osrm_error'
+        console.error('[gps/route] OSRM error:', err)
       }
+    } else {
+      roadSnapStatus = `too_few_points (${rawCoords.length})`
     }
 
     return NextResponse.json({
       positions: rawCoords,
-      roadPath: roadPath,  // null if OSRM failed, frontend falls back to raw
+      roadPath: roadPath,
+      debug: { rawCount: rawCoords.length, roadSnapStatus },
       gpsConnected: true,
     })
   } catch {

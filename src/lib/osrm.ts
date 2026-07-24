@@ -1,49 +1,45 @@
 /**
  * Road snapping via OSRM (Open Source Routing Machine).
- * Uses the free public OSRM demo server to match GPS points to actual roads.
- * Rate limit: ~500 requests/hour (fair use).
+ * Uses OSRM's route service to find actual road paths between GPS points.
+ * Falls back to simple line on failure.
  */
 
 const OSRM_BASE = 'https://router.project-osrm.org'
 
-interface OsrmMatchResponse {
+interface OsrmRouteResponse {
   code: string
-  matchings?: Array<{
+  routes?: Array<{
+    distance: number
     geometry: {
-      coordinates: [number, number][]  // [lng, lat]
+      coordinates: [number, number][]
     }
   }>
-  tracepoints?: Array<{
-    location: [number, number]  // [lng, lat]
-  } | null>
 }
 
 /**
- * Snap sparse GPS positions to actual road paths using OSRM's match service.
- * Returns road-following coordinates, or null if matching fails.
+ * Build road-following path from GPS points using OSRM route service.
+ * Works even with sparse points (e.g. one point every few miles).
+ * Returns road-following coordinates, or null if routing fails.
  */
 export async function snapToRoads(
   points: { latitude: number; longitude: number }[]
 ): Promise<{ latitude: number; longitude: number }[] | null> {
   if (points.length < 2) return null
 
-  // Sample to max 100 points to stay within OSRM limits
-  let sampled = points
-  if (points.length > 100) {
-    const step = Math.floor(points.length / 100)
-    sampled = points.filter((_, i) => i % step === 0)
-    // Always include last point
-    if (sampled[sampled.length - 1] !== points[points.length - 1]) {
-      sampled.push(points[points.length - 1])
+  // Sample to max 25 waypoints to keep URL under OSRM's limit
+  let waypoints = points
+  if (points.length > 25) {
+    const step = Math.floor(points.length / 25)
+    waypoints = points.filter((_, i) => i % step === 0)
+    if (waypoints[waypoints.length - 1] !== points[points.length - 1]) {
+      waypoints.push(points[points.length - 1])
     }
   }
 
-  // Build OSRM match URL: coordinates in lng,lat order, semicolon-separated
-  const coords = sampled.map((p) => `${p.longitude},${p.latitude}`).join(';')
-  // 30m radius per point — forgiving enough for sparse GPS but still snaps to roads
-  const radii = sampled.map(() => '30').join(';')
+  // Build coordinates string: lng,lat in order
+  const coords = waypoints.map((p) => `${p.longitude},${p.latitude}`).join(';')
 
-  const url = `${OSRM_BASE}/match/v1/driving/${coords}?geometries=geojson&overview=full&steps=false&annotations=false&radiuses=${radii}`
+  const url = `${OSRM_BASE}/route/v1/driving/${coords}?geometries=geojson&overview=full&steps=false&alternatives=false`
 
   try {
     const res = await fetch(url, {
@@ -53,12 +49,11 @@ export async function snapToRoads(
 
     if (!res.ok) return null
 
-    const data: OsrmMatchResponse = await res.json()
+    const data: OsrmRouteResponse = await res.json()
 
-    if (data.code !== 'Ok' || !data.matchings || data.matchings.length === 0) return null
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) return null
 
-    // Extract snapped coordinates [lng, lat] → { lat, lng }
-    const geometry = data.matchings[0].geometry
+    const geometry = data.routes[0].geometry
     return geometry.coordinates.map(([lng, lat]) => ({
       latitude: lat,
       longitude: lng,
