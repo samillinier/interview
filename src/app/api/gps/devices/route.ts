@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/traccar'
+import { reverseGeocode } from '@/lib/geocode'
 
 /**
  * GET /api/gps/devices
@@ -70,8 +71,8 @@ export async function GET(request: NextRequest) {
       if (td.uniqueId) traccarDeviceByUniqueId.set(td.uniqueId, td)
     }
 
-    // Enrich local devices with Traccar live data
-    const enriched = property.GpsDevice.map((device: any) => {
+    // Enrich local devices with Traccar live data (async for geocoding)
+    const enriched = await Promise.all(property.GpsDevice.map(async (device: any) => {
       // Match by deviceId (IMEI/uniqueId) if available
       const traccarDevice = device.deviceId
         ? traccarDeviceByUniqueId.get(device.deviceId)
@@ -90,6 +91,9 @@ export async function GET(request: NextRequest) {
       const lastSeen = livePos?.deviceTime
         ? new Date(livePos.deviceTime).toISOString()
         : (device.lastSeen?.toISOString() ?? null)
+
+      // Reverse geocode location (only for devices with valid coordinates)
+      const location = (lat && lng) ? await reverseGeocode(lat, lng) : null
 
       const status: 'online' | 'idle' | 'offline' = livePos
         ? speed > 3 // Ignore GPS drift under 3 mph
@@ -126,8 +130,9 @@ export async function GET(request: NextRequest) {
             ? Math.min(100, Math.max(0, ((livePos.network as any).rssi + 120) * 2))
             : 100
           : 100,
+        location,
       }
-    })
+    }))
 
     return NextResponse.json({
       devices: enriched.length > 0 ? enriched : [],

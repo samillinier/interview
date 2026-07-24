@@ -504,6 +504,15 @@ function DeviceCard({
           <p className="text-xs text-slate-400 truncate">
             {device.vehiclePlate || '—'} · {device.deviceId}
           </p>
+          {device.location && (
+            <p className="text-[11px] text-slate-500 truncate flex items-center gap-1 mt-0.5">
+              <svg className="w-3 h-3 flex-shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {device.location}
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-0.5">
           <span
@@ -569,6 +578,15 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
         />
         <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName || 'Unnamed Vehicle'}</h3>
       </div>
+      {device.location && (
+        <div className="flex items-center gap-1.5 mb-3 px-2 py-1.5 bg-slate-50 rounded-lg">
+          <svg className="w-3 h-3 flex-shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <p className="text-xs text-slate-500 truncate">{device.location}</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {items.map((item) => (
           <div
