@@ -16,7 +16,6 @@ import {
   Battery,
   WifiOff,
   RefreshCw,
-  ChevronRight,
   Clock,
   Navigation,
   CarFront,
@@ -64,7 +63,6 @@ export default function GPSPage() {
   const [error, setError] = useState('')
   const [devices, setDevices] = useState<VehicleDevice[]>([])
   const [selectedDevice, setSelectedDevice] = useState<VehicleDevice | null>(null)
-  const [expandedPanels, setExpandedPanels] = useState<Set<string>>(new Set())
   const [isLive, setIsLive] = useState(true)
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [gpsConnected, setGpsConnected] = useState(false)
@@ -148,18 +146,6 @@ export default function GPSPage() {
     const interval = setInterval(fetchDevices, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [isLive, fetchDevices])
-
-  const toggleExpandedPanel = useCallback((deviceId: string) => {
-    setExpandedPanels((prev) => {
-      const next = new Set(prev)
-      if (next.has(deviceId)) {
-        next.delete(deviceId)
-      } else {
-        next.add(deviceId)
-      }
-      return next
-    })
-  }, [])
 
   if (status === 'loading' || isLoading) {
     return (
@@ -358,7 +344,7 @@ export default function GPSPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden"
                 >
-                  <DeviceTelemetry key={selectedDevice.id} device={selectedDevice} expanded={expandedPanels.has(selectedDevice.id)} onToggleExpand={() => toggleExpandedPanel(selectedDevice.id)} />
+                  <DeviceTelemetry key={selectedDevice.id} device={selectedDevice} />
                 </motion.div>
               )}
             </div>
@@ -545,22 +531,15 @@ function DeviceCard({
 
 
 // Device Telemetry sub-component
-function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: VehicleDevice; expanded: boolean; onToggleExpand: () => void }) {
+
+
+// Device Telemetry sub-component
+function DeviceTelemetry({ device }: { device: VehicleDevice }) {
   const items = [
-    { icon: Gauge, label: 'Speed', value: device.speed.toFixed(0) + ' mph', unit: '' },
-    { icon: Navigation, label: 'Heading', value: device.heading.toFixed(0) + '\u00B0', unit: '' },
-    { icon: Satellite, label: 'Satellites', value: device.satelliteCount.toString(), unit: '' },
-    { icon: Signal, label: 'Signal', value: device.signalStrength + '%', unit: '' },
-    ...(device.fuelLevel != null
-      ? [{ icon: Fuel, label: 'Fuel Level', value: device.fuelLevel.toFixed(0) + '%', unit: '' }]
-      : []),
-    ...(device.engineTemp != null
-      ? [{ icon: Thermometer, label: 'Engine Temp', value: device.engineTemp.toFixed(0) + '\u00B0F', unit: '' }]
-      : []),
-    ...(device.batteryVoltage != null
-      ? [{ icon: Battery, label: 'Battery', value: device.batteryVoltage.toFixed(1) + 'V', unit: '' }]
-      : []),
-    { icon: Clock, label: 'Last Seen', value: formatTimeAgo(device.lastSeen), unit: '' },
+    { icon: Gauge, label: 'Speed', value: device.speed.toFixed(0) + ' mph' },
+    { icon: Navigation, label: 'Heading', value: device.heading.toFixed(0) + '\u00B0' },
+    { icon: Satellite, label: 'Satellites', value: device.satelliteCount.toString() },
+    { icon: Signal, label: 'Signal', value: device.signalStrength + '%' },
   ]
 
   const events = device.recentEvents || []
@@ -583,7 +562,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
         </div>
       )}
 
-      {/* Telemetry Grid */}
+      {/* Key Telemetry */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {items.map(function(item) {
           return (
@@ -591,18 +570,63 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
               <item.icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-slate-400">{item.label}</p>
-                <p className="text-sm font-semibold text-slate-900">
-                  {item.value}
-                  {item.unit ? <span className="text-xs text-slate-400 ml-0.5">{item.unit}</span> : null}
-                </p>
+                <p className="text-sm font-semibold text-slate-900">{item.value}</p>
               </div>
             </div>
           )
         })}
       </div>
 
+      {/* Vehicle Vital Signs — fuel, battery, engine temp, odometer */}
+      <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Vehicle Vitals</p>
+        <div className="grid grid-cols-2 gap-2">
+          {device.fuelLevel != null && (
+            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+              <Fuel className="w-4 h-4 text-brand-green flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-slate-400">Fuel</p>
+                <p className="text-sm font-bold text-slate-900">{device.fuelLevel.toFixed(0)}%</p>
+              </div>
+            </div>
+          )}
+          {device.batteryVoltage != null && (
+            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+              <Battery className="w-4 h-4 text-brand-green flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-slate-400">Battery</p>
+                <p className="text-sm font-bold text-slate-900">{device.batteryVoltage.toFixed(1)}V</p>
+              </div>
+            </div>
+          )}
+          {device.engineTemp != null && (
+            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+              <Thermometer className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-slate-400">Engine Temp</p>
+                <p className="text-sm font-bold text-slate-900">{device.engineTemp.toFixed(0)}°F</p>
+              </div>
+            </div>
+          )}
+          {device.odometer != null && device.odometer > 0 && (
+            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+              <RotateCcw className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-slate-400">Odometer</p>
+                <p className="text-sm font-bold text-slate-900">{device.odometer.toLocaleString()} mi</p>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Last seen at bottom */}
+        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
+          <Clock className="w-3 h-3 text-slate-400" />
+          <p className="text-xs text-slate-500">Last seen: {formatTimeAgo(device.lastSeen)}</p>
+        </div>
+      </div>
+
       {/* Today's Driving Summary */}
-      {device.todaySummary && (
+      {device.todaySummary && (device.todaySummary.distance > 0 || device.todaySummary.drivingTime !== '0s') && (
         <div className="mb-3 p-3 bg-gradient-to-r from-brand-green/5 to-emerald-50 rounded-xl border border-brand-green/10">
           <div className="flex items-center gap-1.5 mb-2">
             <Activity className="w-3.5 h-3.5 text-brand-green" />
@@ -625,7 +649,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
         </div>
       )}
 
-      {/* Driving Behavior Stats (if any events exist) */}
+      {/* Driving Behavior */}
       {(harshCount > 0 || crashCount > 0 || speedCount > 0) && (
         <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
           <div className="flex items-center gap-1.5 mb-2">
@@ -639,7 +663,7 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
             </div>
             <div className="text-center p-1.5 rounded-lg bg-amber-50">
               <p className="text-base font-bold text-amber-600">{harshCount}</p>
-              <p className="text-[10px] text-amber-400">harsh events</p>
+              <p className="text-[10px] text-amber-400">harsh</p>
             </div>
             <div className="text-center p-1.5 rounded-lg bg-orange-50">
               <p className="text-base font-bold text-orange-600">{speedCount}</p>
@@ -650,11 +674,11 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
       )}
 
       {/* OBDII Vehicle Data */}
-      {device.obdii && Object.keys(device.obdii).length > 0 && (
+      {device.obdii && (device.obdii.vin || device.obdii.rpm != null || device.obdii.totalDistance != null || (device.obdii.dtcCodes && device.obdii.dtcCodes.length > 0)) && (
         <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
           <div className="flex items-center gap-1.5 mb-2">
             <Wrench className="w-3.5 h-3.5 text-blue-500" />
-            <p className="text-xs font-semibold text-slate-700">Vehicle Diagnostics</p>
+            <p className="text-xs font-semibold text-slate-700">Diagnostics</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {device.obdii.vin && (
@@ -685,14 +709,12 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
               <div className="col-span-2">
                 <p className="text-[10px] text-slate-400 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3 text-red-400" />
-                  Diagnostic Trouble Codes
+                  Trouble Codes
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {device.obdii.dtcCodes.map(function(code: string) {
                     return (
-                      <span key={code} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
-                        {code}
-                      </span>
+                      <span key={code} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">{code}</span>
                     )
                   })}
                 </div>
@@ -702,73 +724,29 @@ function DeviceTelemetry({ device, expanded, onToggleExpand }: { device: Vehicle
         </div>
       )}
 
-      {/* Collapsible: Event Timeline */}
-      <button
-        onClick={onToggleExpand}
-        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-xs text-slate-500 font-medium"
-      >
-        <span>Event Timeline</span>
-        <div className="flex items-center gap-1.5">
-          {events.length > 0 && (
-            <span className="text-[10px] font-semibold bg-slate-200 text-slate-600 rounded-full px-1.5">{events.length}</span>
-          )}
-          <ChevronRight className={'w-3.5 h-3.5 transition-transform ' + (expanded ? 'rotate-90' : '')} />
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="border-t border-slate-100 mt-2 pt-2 max-h-[300px] overflow-y-auto">
-          {events.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-4">No recent events</p>
-          ) : (
+      {/* Alerts — only show critical/warning events (not config ACKs) */}
+      {(() => {
+        const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
+        if (alerts.length === 0) return null
+        return (
+          <div className="p-3 bg-red-50/50 rounded-xl border border-red-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+              <p className="text-xs font-semibold text-red-700">Alerts ({alerts.length})</p>
+            </div>
             <div className="space-y-1">
-              {events.map(function(event) {
-                const severityColors = {
-                  critical: 'border-red-200 bg-red-50',
-                  warning: 'border-amber-200 bg-amber-50',
-                  info: 'border-slate-200 bg-white',
-                }
-                const iconColors = {
-                  crash: 'text-red-500',
-                  harsh: 'text-amber-500',
-                  speed: 'text-orange-500',
-                  geofence: 'text-blue-500',
-                  tow: 'text-purple-500',
-                  idle: 'text-slate-400',
-                  movement: 'text-green-500',
-                  maintenance: 'text-sky-500',
-                  generic: 'text-slate-400',
-                }
-                const iconMap: Record<string, any> = {
-                  crash: AlertTriangle,
-                  harsh: Activity,
-                  speed: Gauge,
-                  geofence: MapPin,
-                  tow: CarFront,
-                  idle: Pause,
-                  movement: Play,
-                  maintenance: Wrench,
-                  generic: RotateCcw,
-                }
-                const EventIcon = iconMap[event.icon] || RotateCcw
-                const borderColor = severityColors[event.severity as keyof typeof severityColors] || severityColors.info
-                const iconColor = iconColors[event.icon as keyof typeof iconColors] || iconColors.generic
-
+              {alerts.slice(0, 5).map(function(event) {
                 return (
-                  <div key={event.id} className={'flex items-start gap-2 p-2 rounded-lg border text-xs ' + borderColor}>
-                    <EventIcon className={'w-3.5 h-3.5 flex-shrink-0 mt-0.5 ' + iconColor} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-800">{event.label}</p>
-                      {event.detail && <p className="text-[10px] text-slate-500 mt-0.5">{event.detail}</p>}
-                    </div>
-                    <span className="text-[10px] text-slate-400 flex-shrink-0">{formatTimeAgo(event.eventTime)}</span>
+                  <div key={event.id} className="flex items-center justify-between p-1.5 bg-white rounded-lg text-xs">
+                    <span className="font-semibold text-slate-800">{event.label}</span>
+                    <span className="text-[10px] text-slate-400">{formatTimeAgo(event.eventTime)}</span>
                   </div>
                 )
               })}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
