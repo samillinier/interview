@@ -63,6 +63,37 @@ export async function GET(request: NextRequest) {
       // Traccar may be reachable but auth fails
     }
 
+    // If admin user has no local devices but Traccar has live ones, build synthetic entries
+    if (gpsDevices.length === 0 && traccarDevices.length > 0 && userType !== 'PROPERTY') {
+      console.log('[gps/devices] Admin has 0 local devices, building from Traccar directly')
+      const posById = new Map<number, traccar.TraccarPosition>()
+      for (const pos of livePositions) {
+        posById.set(pos.deviceId, pos)
+      }
+      gpsDevices = traccarDevices.map((td) => {
+        const pos = posById.get(td.id)
+        return {
+          id: 'tc-' + td.id,
+          traccarId: td.id,
+          deviceId: td.uniqueId || ('tc-' + td.id),
+          deviceName: td.name || 'Unnamed',
+          deviceModel: 'Queclink GV500MAP',
+          status: pos ? 'online' : 'offline',
+          lastSeen: pos?.deviceTime ? new Date(pos.deviceTime).toISOString() : null,
+          latitude: pos?.latitude ?? 0,
+          longitude: pos?.longitude ?? 0,
+          speed: pos?.speed ?? 0,
+          heading: pos?.course ?? 0,
+          ignition: (pos?.speed ?? 0) > 3,
+          fuelLevel: null,
+          engineTemp: null,
+          batteryVoltage: null,
+          odometer: 0,
+          Vehicle: null,
+        }
+      })
+    }
+
     const positionByDeviceId = new Map<number, traccar.TraccarPosition>()
     for (const pos of livePositions) {
       positionByDeviceId.set(pos.deviceId, pos)
