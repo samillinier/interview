@@ -219,7 +219,7 @@ export default function GPSPage() {
   const onlineCount = devices.filter((d) => d.status === 'online').length
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex" data-gps-version="2">
       <PropertySidebar
         pathname={pathname}
         subtitle={property ? `${property.firstName} ${property.lastName}` : ''}
