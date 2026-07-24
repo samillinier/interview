@@ -341,7 +341,10 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     // Update button highlight in the DOM
     const container = mapRef.current?.querySelector('.leaflet-control > a')?.parentElement
     if (container) {
-      for (const a of container.querySelectorAll('a')) {
+      const buttons = container.querySelectorAll('a')
+      for (let i = 0; i < buttons.length; i++) {
+        const a = buttons.item(i)
+        if (!a) continue
         const key = a.textContent?.toLowerCase()
         const isActive =
           (key === 'default' && activeLayer === 'osm') ||
