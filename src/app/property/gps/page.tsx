@@ -40,7 +40,7 @@ import type { VehicleDevice } from '@/components/GpsLiveMap'
 
 const GpsLiveMap = dynamic(() => import('@/components/GpsLiveMap').then((mod) => mod.GpsLiveMap), {
   ssr: false,
-  loading: () => <div className="h-[500px] w-full bg-slate-100 animate-pulse rounded-b-2xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-slate-300 animate-spin" /></div>,
+  loading: () => <div className="h-full w-full min-h-[500px] bg-slate-100 animate-pulse rounded-b-2xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-slate-300 animate-spin" /></div>,
 })
 
 interface PropertyProfile {
@@ -363,13 +363,14 @@ export default function GPSPage() {
                     </span>
                   </div>
                 </div>
-                <GpsLiveMap
-                  devices={devices}
-                  selectedDevice={selectedDevice}
-                  onSelectDevice={setSelectedDevice}
-                  routePositions={routePositions.length > 0 ? routePositions : undefined}
-                  tall={!!selectedDevice}
-                />
+                <div className={selectedDevice ? 'h-[700px] lg:h-[750px]' : 'h-[500px]'}>
+                  <GpsLiveMap
+                    devices={devices}
+                    selectedDevice={selectedDevice}
+                    onSelectDevice={setSelectedDevice}
+                    routePositions={routePositions.length > 0 ? routePositions : undefined}
+                  />
+                </div>
               </motion.div>
             </div>
 
