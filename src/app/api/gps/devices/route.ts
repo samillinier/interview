@@ -144,12 +144,14 @@ export async function GET(request: NextRequest) {
 
       // Today's summary
       const tcSummary = tcId ? summaryByDeviceId.get(tcId) : undefined
+      const summaryOdometer = tcSummary?.endOdometer != null ? traccar.metersToMiles(tcSummary.endOdometer) : undefined
       const todaySummary = tcSummary ? {
         trips: 0,
         distance: traccar.metersToMiles(tcSummary.distance),
         drivingTime: traccar.formatDuration(Math.round((tcSummary.engineHours || 0) * 3600)),
         maxSpeed: traccar.convertSpeedToMph(tcSummary.maxSpeed),
         avgSpeed: traccar.convertSpeedToMph(tcSummary.averageSpeed),
+        odometer: summaryOdometer,
       } : undefined
 
       return {
@@ -170,7 +172,7 @@ export async function GET(request: NextRequest) {
         fuelLevel: obdii.fuelLevel ?? device.fuelLevel ?? undefined,
         engineTemp: obdii.engineTemp ?? device.engineTemp ?? undefined,
         batteryVoltage: obdii.batteryVoltage ?? device.batteryVoltage ?? undefined,
-        odometer: obdii.odometer ?? device.odometer ?? 0,
+        odometer: obdii.odometer ?? summaryOdometer ?? device.odometer ?? 0,
         satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
         signalStrength: livePos?.network
           ? typeof (livePos.network as any)?.rssi === 'number'

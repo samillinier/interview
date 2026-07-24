@@ -51,6 +51,7 @@ export interface VehicleDevice {
     drivingTime: string
     maxSpeed: number
     avgSpeed: number
+    odometer?: number
   }
 }
 

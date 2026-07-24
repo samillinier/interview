@@ -534,6 +534,8 @@ function DeviceCard({
 
 
 // Device Telemetry sub-component
+
+// Device Telemetry sub-component
 function DeviceTelemetry({ device }: { device: VehicleDevice }) {
   const items = [
     { icon: Gauge, label: 'Speed', value: device.speed.toFixed(0) + ' mph' },
@@ -577,56 +579,47 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
         })}
       </div>
 
-      {/* Vehicle Vital Signs — fuel, battery, engine temp, odometer */}
+      {/* Vehicle Vital Signs — always show */}
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Vehicle Vitals</p>
         <div className="grid grid-cols-2 gap-2">
-          {device.fuelLevel != null && (
-            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-              <Fuel className="w-4 h-4 text-brand-green flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-slate-400">Fuel</p>
-                <p className="text-sm font-bold text-slate-900">{device.fuelLevel.toFixed(0)}%</p>
-              </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Fuel className="w-4 h-4 text-brand-green flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">Fuel</p>
+              <p className="text-sm font-bold text-slate-900">{device.fuelLevel != null ? device.fuelLevel.toFixed(0) + '%' : '--'}</p>
             </div>
-          )}
-          {device.batteryVoltage != null && (
-            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-              <Battery className="w-4 h-4 text-brand-green flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-slate-400">Battery</p>
-                <p className="text-sm font-bold text-slate-900">{device.batteryVoltage.toFixed(1)}V</p>
-              </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Battery className="w-4 h-4 text-brand-green flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">Battery</p>
+              <p className="text-sm font-bold text-slate-900">{device.batteryVoltage != null ? device.batteryVoltage.toFixed(1) + 'V' : '--'}</p>
             </div>
-          )}
-          {device.engineTemp != null && (
-            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-              <Thermometer className="w-4 h-4 text-red-400 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-slate-400">Engine Temp</p>
-                <p className="text-sm font-bold text-slate-900">{device.engineTemp.toFixed(0)}°F</p>
-              </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Thermometer className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">Engine Temp</p>
+              <p className="text-sm font-bold text-slate-900">{device.engineTemp != null ? device.engineTemp.toFixed(0) + '\u00B0F' : '--'}</p>
             </div>
-          )}
-          {device.odometer != null && device.odometer > 0 && (
-            <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-              <RotateCcw className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-slate-400">Odometer</p>
-                <p className="text-sm font-bold text-slate-900">{device.odometer.toLocaleString()} mi</p>
-              </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <RotateCcw className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">Odometer</p>
+              <p className="text-sm font-bold text-slate-900">{device.odometer > 0 ? device.odometer.toLocaleString() + ' mi' : '--'}</p>
             </div>
-          )}
+          </div>
         </div>
-        {/* Last seen at bottom */}
         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
           <Clock className="w-3 h-3 text-slate-400" />
           <p className="text-xs text-slate-500">Last seen: {formatTimeAgo(device.lastSeen)}</p>
         </div>
       </div>
 
-      {/* Today's Driving Summary */}
-      {device.todaySummary && (device.todaySummary.distance > 0 || device.todaySummary.drivingTime !== '0s') && (
+      {/* Today's Driving Summary — show if we have any distance data */}
+      {device.todaySummary && device.todaySummary.distance > 0 && (
         <div className="mb-3 p-3 bg-gradient-to-r from-brand-green/5 to-emerald-50 rounded-xl border border-brand-green/10">
           <div className="flex items-center gap-1.5 mb-2">
             <Activity className="w-3.5 h-3.5 text-brand-green" />
@@ -638,48 +631,46 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
               <p className="text-[10px] text-slate-400">miles</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">{device.todaySummary.drivingTime}</p>
+              <p className="text-lg font-bold text-slate-900">{device.todaySummary.drivingTime !== '0s' ? device.todaySummary.drivingTime : '--'}</p>
               <p className="text-[10px] text-slate-400">driving</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">{device.todaySummary.maxSpeed}</p>
+              <p className="text-lg font-bold text-slate-900">{device.todaySummary.maxSpeed > 0 ? device.todaySummary.maxSpeed : '--'}</p>
               <p className="text-[10px] text-slate-400">max mph</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Driving Behavior */}
-      {(harshCount > 0 || crashCount > 0 || speedCount > 0) && (
-        <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Shield className="w-3.5 h-3.5 text-amber-500" />
-            <p className="text-xs font-semibold text-slate-700">Driving Behavior</p>
+      {/* Driving Behavior — always show, even if 0 */}
+      <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Shield className="w-3.5 h-3.5 text-amber-500" />
+          <p className="text-xs font-semibold text-slate-700">Driving Behavior</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center p-1.5 rounded-lg bg-red-50">
+            <p className="text-base font-bold text-red-600">{crashCount}</p>
+            <p className="text-[10px] text-red-400">crashes</p>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-1.5 rounded-lg bg-red-50">
-              <p className="text-base font-bold text-red-600">{crashCount}</p>
-              <p className="text-[10px] text-red-400">crashes</p>
-            </div>
-            <div className="text-center p-1.5 rounded-lg bg-amber-50">
-              <p className="text-base font-bold text-amber-600">{harshCount}</p>
-              <p className="text-[10px] text-amber-400">harsh</p>
-            </div>
-            <div className="text-center p-1.5 rounded-lg bg-orange-50">
-              <p className="text-base font-bold text-orange-600">{speedCount}</p>
-              <p className="text-[10px] text-orange-400">speeding</p>
-            </div>
+          <div className="text-center p-1.5 rounded-lg bg-amber-50">
+            <p className="text-base font-bold text-amber-600">{harshCount}</p>
+            <p className="text-[10px] text-amber-400">harsh</p>
+          </div>
+          <div className="text-center p-1.5 rounded-lg bg-orange-50">
+            <p className="text-base font-bold text-orange-600">{speedCount}</p>
+            <p className="text-[10px] text-orange-400">speeding</p>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* OBDII Vehicle Data */}
-      {device.obdii && (device.obdii.vin || device.obdii.rpm != null || device.obdii.totalDistance != null || (device.obdii.dtcCodes && device.obdii.dtcCodes.length > 0)) && (
-        <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Wrench className="w-3.5 h-3.5 text-blue-500" />
-            <p className="text-xs font-semibold text-slate-700">Diagnostics</p>
-          </div>
+      {/* OBDII Vehicle Data — show placeholder when offline */}
+      <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Wrench className="w-3.5 h-3.5 text-blue-500" />
+          <p className="text-xs font-semibold text-slate-700">Diagnostics</p>
+        </div>
+        {device.obdii && (device.obdii.vin || device.obdii.rpm != null || device.obdii.totalDistance != null || (device.obdii.dtcCodes && device.obdii.dtcCodes.length > 0)) ? (
           <div className="grid grid-cols-2 gap-2">
             {device.obdii.vin && (
               <div className="col-span-2">
@@ -721,10 +712,12 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
               </div>
             )}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-slate-400">Engine not running — connect vehicle to read</p>
+        )}
+      </div>
 
-      {/* Alerts — only show critical/warning events (not config ACKs) */}
+      {/* Alerts — only show critical/warning events */}
       {(() => {
         const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
         if (alerts.length === 0) return null
