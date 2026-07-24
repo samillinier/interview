@@ -129,9 +129,11 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
   const markersRef = useRef<Map<string, any>>(new Map())
   const polylineRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
+  const cartoLightRef = useRef<any>(null)
+  const cartoDarkRef = useRef<any>(null)
   const satelliteLayerRef = useRef<any>(null)
   const isViewingHistoryRef = useRef(false)
-  const [isSatellite, setIsSatellite] = useState(false)
+  const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('osm')
 
   // Initialize map AND place initial markers in a SINGLE effect
   useEffect(() => {
@@ -149,6 +151,16 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       maxZoom: 19,
     }).addTo(map)
 
+    const cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      maxZoom: 19,
+    })
+
+    const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      maxZoom: 19,
+    })
+
     const satelliteLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       {
@@ -158,28 +170,40 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     )
 
     osmLayerRef.current = osmLayer
+    cartoLightRef.current = cartoLight
+    cartoDarkRef.current = cartoDark
     satelliteLayerRef.current = satelliteLayer
 
-    // Custom satellite toggle control
-    const SatelliteControl = L.Control.extend({
+    // Layer picker control (replaces old satellite toggle)
+    const LayerControl = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function () {
-        const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
-        div.innerHTML =
-          '<a href="#" title="Toggle satellite view" style="display:flex;align-items:center;justify-content:center;font-size:16px;line-height:34px;width:34px;height:34px;background:white;color:#475569;text-decoration:none;border-radius:2px">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ea4335" stroke="#b31412" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round">' +
-          '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>' +
-          '<circle cx="12" cy="9" r="2.5" fill="white" stroke="none"/>' +
-          '</svg></a>'
-        div.onclick = (e: Event) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setIsSatellite((prev) => !prev)
+        const container = L.DomUtil.create('div', 'leaflet-control')
+        container.style.cssText = 'background:white;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.2);padding:3px;display:flex;gap:1px'
+        for (const { key, label } of [
+          { key: 'osm', label: 'Default' },
+          { key: 'light', label: 'Light' },
+          { key: 'dark', label: 'Dark' },
+          { key: 'satellite', label: 'Sat' },
+        ] as { key: string; label: string }[]) {
+          const btn = L.DomUtil.create('a', '', container)
+          btn.href = '#'
+          btn.title = label
+          btn.style.cssText = 'font-size:11px;font-weight:500;padding:3px 7px;border-radius:4px;color:#64748b;text-decoration:none;display:inline-block'
+          btn.textContent = label
+          btn.onclick = (e: Event) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setActiveLayer(key as any)
+          }
+          // Highlight active
+          if (key === 'osm') btn.style.cssText += ';background:#f0fdf4;color:#15803d'
+          ;(container as any)['_layerBtn' + key] = btn
         }
-        return div
+        return container
       },
     })
-    map.addControl(new SatelliteControl())
+    map.addControl(new LayerControl())
 
     leafletMapRef.current = map
 
@@ -287,18 +311,48 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     if (marker) marker.openPopup()
   }, [selectedDevice])
 
-  // Swap tile layers when satellite toggle changes
+  // Swap tile layers when active layer changes
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map) return
-    if (isSatellite) {
-      if (osmLayerRef.current) map.removeLayer(osmLayerRef.current)
-      if (satelliteLayerRef.current) map.addLayer(satelliteLayerRef.current)
-    } else {
-      if (satelliteLayerRef.current) map.removeLayer(satelliteLayerRef.current)
-      if (osmLayerRef.current) map.addLayer(osmLayerRef.current)
+
+    const layers = [
+      osmLayerRef.current,
+      cartoLightRef.current,
+      cartoDarkRef.current,
+      satelliteLayerRef.current,
+    ]
+
+    // Remove all tile layers
+    for (const l of layers) {
+      if (l && map.hasLayer(l)) map.removeLayer(l)
     }
-  }, [isSatellite])
+
+    // Add active layer
+    const active = activeLayer === 'osm' ? osmLayerRef.current
+      : activeLayer === 'light' ? cartoLightRef.current
+      : activeLayer === 'dark' ? cartoDarkRef.current
+      : satelliteLayerRef.current
+
+    if (active && !map.hasLayer(active)) {
+      map.addLayer(active)
+    }
+
+    // Update button highlight in the DOM
+    const container = mapRef.current?.querySelector('.leaflet-control > a')?.parentElement
+    if (container) {
+      for (const a of container.querySelectorAll('a')) {
+        const key = a.textContent?.toLowerCase()
+        const isActive =
+          (key === 'default' && activeLayer === 'osm') ||
+          (key === 'light' && activeLayer === 'light') ||
+          (key === 'dark' && activeLayer === 'dark') ||
+          (key === 'sat' && activeLayer === 'satellite')
+        a.style.background = isActive ? '#f0fdf4' : 'transparent'
+        a.style.color = isActive ? '#15803d' : '#64748b'
+      }
+    }
+  }, [activeLayer])
 
   // Draw route polyline when routePositions changes
   useEffect(() => {
