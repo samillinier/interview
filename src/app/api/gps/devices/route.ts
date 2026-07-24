@@ -139,6 +139,7 @@ export async function GET(request: NextRequest) {
       const recentEvents = deviceEvents
         .slice(-20)
         .map(e => traccar.classifyEvent(e))
+        .filter((e): e is traccar.ClassifiedEvent => e !== null && e.icon !== 'movement' && e.icon !== 'idle' && e.icon !== 'generic')
         .reverse()
 
       // Today's summary

@@ -199,7 +199,7 @@ export interface ClassifiedEvent {
   detail?: string
 }
 
-export function classifyEvent(event: TraccarEvent): ClassifiedEvent {
+export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
   const t = event.type
   const attrs = event.attributes || {}
   const result = (attrs['result'] as string) || ''
@@ -230,8 +230,8 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent {
   if (t === 'geofenceEnter') return { ...b, label: 'Geofence Entered', icon: 'geofence', severity: 'info', detail: (attrs['geofenceName'] as string) || undefined }
   if (t === 'geofenceExit') return { ...b, label: 'Geofence Exited', icon: 'geofence', severity: 'warning', detail: (attrs['geofenceName'] as string) || undefined }
   if (t === 'deviceOverspeed') return { ...b, label: 'Overspeed', icon: 'speed', severity: 'warning', detail: 'Speeding alert' }
-  if (t === 'deviceMoving') return { ...b, label: 'Trip Started', icon: 'movement', severity: 'info', detail: 'Vehicle moving' }
-  if (t === 'deviceStopped') return { ...b, label: 'Trip Ended', icon: 'movement', severity: 'info', detail: 'Vehicle stopped' }
+  if (t === 'deviceMoving') return null
+  if (t === 'deviceStopped') return null
   if (t === 'maintenance') return { ...b, label: 'Maintenance Due', icon: 'maintenance', severity: 'warning', detail: (attrs['name'] as string) || 'Scheduled maintenance' }
   if (t === 'fuelDrop') return { ...b, label: 'Fuel Drop', icon: 'generic', severity: 'warning' }
   if (t === 'fuelIncrease') return { ...b, label: 'Fuel Increase', icon: 'generic', severity: 'info' }
