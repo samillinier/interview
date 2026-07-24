@@ -59,6 +59,7 @@ type Props = {
   devices: VehicleDevice[]
   selectedDevice: VehicleDevice | null
   onSelectDevice: (device: VehicleDevice) => void
+  routePositions?: { latitude: number; longitude: number; speed?: number; time?: string }[]
 }
 
 function buildPopup(d: VehicleDevice): string {
@@ -115,10 +116,11 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
   })
 }
 
-export function GpsLiveMap({ devices, selectedDevice, onSelectDevice }: Props) {
+export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
+  const polylineRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const satelliteLayerRef = useRef<any>(null)
   const [isSatellite, setIsSatellite] = useState(false)
@@ -275,6 +277,35 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice }: Props) {
       if (osmLayerRef.current) map.addLayer(osmLayerRef.current)
     }
   }, [isSatellite])
+
+  // Draw route polyline when routePositions changes
+  useEffect(() => {
+    const map = leafletMapRef.current
+    if (!map) return
+
+    // Remove old polyline
+    if (polylineRef.current) {
+      map.removeLayer(polylineRef.current)
+      polylineRef.current = null
+    }
+
+    if (!routePositions || routePositions.length < 2) return
+
+    const latlngs = routePositions.map(
+      (p) => L.latLng(p.latitude, p.longitude)
+    )
+
+    polylineRef.current = L.polyline(latlngs, {
+      color: '#15803d',
+      weight: 3,
+      opacity: 0.7,
+      dashArray: '10 6',
+    }).addTo(map)
+
+    // Fit map to route bounds
+    const bounds = L.latLngBounds(latlngs)
+    map.fitBounds(bounds, { padding: [50, 50] })
+  }, [routePositions])
 
   return (
     <>

@@ -67,6 +67,9 @@ export default function GPSPage() {
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [gpsConnected, setGpsConnected] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [routePeriod, setRoutePeriod] = useState<string | null>(null)
+  const [routePositions, setRoutePositions] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[]>([])
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false)
 
   // Load property profile
   useEffect(() => {
@@ -131,6 +134,32 @@ export default function GPSPage() {
     }
     setIsSyncing(false)
   }
+
+  // Fetch route history for selected device
+  const fetchRoute = useCallback(async (deviceId: string, period: string) => {
+    setIsLoadingRoute(true)
+    try {
+      const res = await fetch(`/api/gps/route?deviceId=${encodeURIComponent(deviceId)}&period=${period}`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setRoutePositions(data.positions || [])
+      } else {
+        setRoutePositions([])
+      }
+    } catch {
+      setRoutePositions([])
+    }
+    setIsLoadingRoute(false)
+  }, [])
+
+  // When period or selected device changes, fetch route
+  useEffect(() => {
+    if (routePeriod && selectedDevice) {
+      fetchRoute(selectedDevice.deviceId, routePeriod)
+    } else {
+      setRoutePositions([])
+    }
+  }, [routePeriod, selectedDevice, fetchRoute])
 
   // Initial load
   useEffect(() => {
@@ -295,19 +324,48 @@ export default function GPSPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden"
               >
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                   <h2 className="font-semibold text-slate-900 flex items-center gap-2">
                     <Navigation className="w-4 h-4 text-brand-green" />
                     Live Map
                   </h2>
-                  <span className="text-xs text-slate-400">
-                    {devices.length} device{devices.length !== 1 ? 's' : ''}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Route history selector */}
+                    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                      {[
+                        { key: null, label: 'Off' },
+                        { key: 'today', label: 'Today' },
+                        { key: 'yesterday', label: 'Yesterday' },
+                        { key: 'week', label: 'Last 7D' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.key || 'off'}
+                          onClick={() => setRoutePeriod(opt.key)}
+                          disabled={!selectedDevice || isLoadingRoute}
+                          className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                            routePeriod === opt.key
+                              ? 'bg-white text-brand-green shadow-sm'
+                              : 'text-slate-500 hover:text-slate-700'
+                          } ${!selectedDevice ? 'opacity-40 cursor-not-allowed' : ''}`}
+                        >
+                          {isLoadingRoute && routePeriod === opt.key ? (
+                            <Loader2 className="w-3 h-3 animate-spin inline" />
+                          ) : (
+                            opt.label
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-xs text-slate-400">
+                      {devices.length} device{devices.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
                 <GpsLiveMap
                   devices={devices}
                   selectedDevice={selectedDevice}
                   onSelectDevice={setSelectedDevice}
+                  routePositions={routePositions.length > 0 ? routePositions : undefined}
                 />
               </motion.div>
             </div>
