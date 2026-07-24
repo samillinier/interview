@@ -502,7 +502,7 @@ function DeviceCard({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900 truncate">{device.vehicleName || 'Unnamed Vehicle'}</p>
           <p className="text-xs text-slate-400 truncate">
-            {device.vehiclePlate || '—'} · {device.deviceId}
+            {device.vehiclePlate ? `${device.vehiclePlate} · ` : ''}{device.deviceId}
           </p>
           {device.location && (
             <p className="text-[11px] text-slate-500 truncate flex items-center gap-1 mt-0.5">
