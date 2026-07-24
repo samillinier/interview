@@ -79,7 +79,7 @@ export default function GPSPage() {
     }
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
-      const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
+      const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN']
       if (!allowedTypes.includes(userType)) {
         router.push('/property/login')
         return
