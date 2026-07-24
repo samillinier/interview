@@ -319,15 +319,15 @@ export default function GPSPage() {
           </div>
 
           {/* Map + Device List */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Map */}
-            <div className="lg:col-span-2">
+            <div className="lg:flex-[2] min-h-0">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden"
+                className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden h-full flex flex-col"
               >
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 shrink-0">
                   <h2 className="font-semibold text-slate-900 flex items-center gap-2">
                     <Navigation className="w-4 h-4 text-brand-green" />
                     Live Map
@@ -364,7 +364,7 @@ export default function GPSPage() {
                     </span>
                   </div>
                 </div>
-                <div className={selectedDevice ? 'h-[700px] lg:h-[750px]' : 'h-[500px]'}>
+                <div className="flex-1 min-h-[500px]">
                   <GpsLiveMap
                     devices={devices}
                     selectedDevice={selectedDevice}
@@ -376,7 +376,7 @@ export default function GPSPage() {
             </div>
 
             {/* Device List */}
-            <div className="lg:col-span-1 space-y-4">
+            <div className="lg:flex-1 space-y-4">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
