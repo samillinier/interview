@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = (session?.user as any)?.userType
 
-  if (!session || userType !== 'property') {
+  if (!session || !['property', 'SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -28,18 +28,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const property = await (prisma as any).property.findUnique({
-      where: { email: userEmail },
-      include: { GpsDevice: { include: { Vehicle: true } } },
-    })
+    let gpsDevice = null
 
-    if (!property) {
-      return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+    if (userType === 'property') {
+      const property = await (prisma as any).property.findUnique({
+        where: { email: userEmail },
+        include: { GpsDevice: { include: { Vehicle: true } } },
+      })
+      if (!property) {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+      }
+      gpsDevice = property.GpsDevice.find((d: any) => d.deviceId === deviceId)
+    } else {
+      // Admin: look up device directly
+      gpsDevice = await (prisma as any).gpsDevice.findFirst({
+        where: { deviceId },
+        include: { Vehicle: true },
+      })
     }
-
-    const gpsDevice = property.GpsDevice.find(
-      (d: any) => d.deviceId === deviceId
-    )
 
     if (!gpsDevice) {
       return NextResponse.json({ error: 'Device not found' }, { status: 404 })

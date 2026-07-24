@@ -79,7 +79,8 @@ export default function GPSPage() {
     }
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
-      if (userType !== 'property') {
+      const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
+      if (!allowedTypes.includes(userType)) {
         router.push('/property/login')
         return
       }
@@ -89,17 +90,27 @@ export default function GPSPage() {
   }, [status, session])
 
   const loadPropertyProfile = async () => {
-    try {
-      const res = await fetch('/api/properties/by-email', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        setProperty(data.property || data)
+    const userType = (session?.user as any)?.userType
+    if (userType === 'property') {
+      try {
+        const res = await fetch('/api/properties/by-email', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          setProperty(data.property || data)
+        }
+      } catch {
+        // will retry or show error state
       }
-    } catch {
-      // will retry or show error state
-    } finally {
-      setIsLoading(false)
+    } else {
+      // Admin: use session data
+      setProperty({
+        id: (session?.user as any)?.id || '',
+        firstName: (session?.user as any)?.name?.split(' ')[0] || '',
+        lastName: (session?.user as any)?.name?.split(' ').slice(1).join(' ') || '',
+        email: session?.user?.email || '',
+      } as PropertyProfile)
     }
+    setIsLoading(false)
   }
 
   // Fetch GPS devices via our API

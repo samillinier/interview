@@ -15,24 +15,32 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = (session?.user as any)?.userType
 
-  if (!session || userType !== 'property') {
+  const allowedTypes = ['property', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
+  if (!session || !allowedTypes.includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const userEmail = session.user?.email?.toLowerCase()
 
   try {
-    const property = await (prisma as any).property.findUnique({
-      where: { email: userEmail },
-      include: {
-        GpsDevice: {
-          include: { Vehicle: true },
-        },
-      },
-    })
+    let gpsDevices: any[] = []
 
-    if (!property) {
-      return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+    if (userType === 'property') {
+      // Property user: get their own devices
+      const property = await (prisma as any).property.findUnique({
+        where: { email: userEmail },
+        include: { GpsDevice: { include: { Vehicle: true } } },
+      })
+      if (!property) {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+      }
+      gpsDevices = property.GpsDevice || []
+    } else {
+      // Admin: get all GPS devices across all properties
+      const allDevices = await (prisma as any).gpsDevice.findMany({
+        include: { Vehicle: true },
+      })
+      gpsDevices = allDevices || []
     }
 
     const traccarReachable = await traccar.isReachable()
@@ -103,8 +111,8 @@ export async function GET(request: NextRequest) {
       summaryByDeviceId.set(s.deviceId, s)
     }
 
-    // Enrich each local device
-    const enriched = await Promise.all(property.GpsDevice.map(async (device: any) => {
+    // Enrich each device
+    const enriched = await Promise.all(gpsDevices.map(async (device: any) => {
       const traccarDevice = device.deviceId
         ? traccarDeviceByUniqueId.get(device.deviceId)
         : undefined

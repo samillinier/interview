@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = (session?.user as any)?.userType
 
-  if (!session || userType !== 'property') {
+  if (!session || !['property', 'SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
