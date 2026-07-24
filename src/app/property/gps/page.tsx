@@ -368,6 +368,7 @@ export default function GPSPage() {
                   selectedDevice={selectedDevice}
                   onSelectDevice={setSelectedDevice}
                   routePositions={routePositions.length > 0 ? routePositions : undefined}
+                  tall={!!selectedDevice}
                 />
               </motion.div>
             </div>

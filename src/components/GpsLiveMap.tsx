@@ -60,6 +60,7 @@ type Props = {
   selectedDevice: VehicleDevice | null
   onSelectDevice: (device: VehicleDevice) => void
   routePositions?: { latitude: number; longitude: number; speed?: number; time?: string }[]
+  tall?: boolean
 }
 
 function buildPopup(d: VehicleDevice): string {
@@ -116,7 +117,7 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
   })
 }
 
-export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions }: Props) {
+export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions, tall }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
@@ -307,6 +308,13 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     map.fitBounds(bounds, { padding: [50, 50] })
   }, [routePositions])
 
+  // Resize map when tall prop changes (detail panel open/close)
+  useEffect(() => {
+    const map = leafletMapRef.current
+    if (!map) return
+    setTimeout(() => map.invalidateSize(), 350)
+  }, [tall])
+
   return (
     <>
       <style>{`
@@ -318,7 +326,7 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
           animation: gps-pulse 2s ease-in-out infinite;
         }
       `}</style>
-      <div ref={mapRef} className="h-[500px] w-full" style={{ minHeight: 500 }} />
+      <div ref={mapRef} className={`w-full transition-all duration-300 ${tall ? 'h-[700px] lg:h-[750px]' : 'h-[500px] lg:h-[530px]'}`} style={{ minHeight: tall ? 700 : 500 }} />
     </>
   )
 }
