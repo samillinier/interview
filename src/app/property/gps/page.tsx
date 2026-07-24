@@ -608,7 +608,7 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
             <RotateCcw className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <div>
               <p className="text-[10px] text-slate-400">Odometer</p>
-              <p className="text-sm font-bold text-slate-900">{device.odometer > 0 ? device.odometer.toLocaleString() + ' mi' : '--'}</p>
+              <p className="text-sm font-bold text-slate-900">{device.odometer != null && device.odometer > 0 ? device.odometer.toLocaleString() + ' mi' : '--'}</p>
             </div>
           </div>
         </div>
