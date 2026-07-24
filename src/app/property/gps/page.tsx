@@ -150,10 +150,6 @@ export default function GPSPage() {
     })
   }, [])
 
-  const refreshDevices = () => {
-    fetchDevices()
-  }
-
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -232,13 +228,6 @@ export default function GPSPage() {
                         <Pause className="w-3.5 h-3.5" /> Paused
                       </>
                     )}
-                  </button>
-                  <button
-                    onClick={refreshDevices}
-                    className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                    title="Refresh"
-                  >
-                    <RefreshCw className="w-4 h-4" />
                   </button>
                   <button
                     onClick={syncDevices}
