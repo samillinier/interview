@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
   const fromDate = from || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const toDate = to || new Date().toISOString()
 
-  // Verify ownership (skip for admins — they see everything)
+  // Look up device — admins query directly, property users scope by propertyId
+  let traccarId: number | null = null
+
   if (!isAdmin) {
     const userEmail = session.user?.email?.toLowerCase()
     const property = await prisma.property.findUnique({
@@ -49,10 +51,20 @@ export async function GET(request: NextRequest) {
     if (!device || !device.traccarId) {
       return NextResponse.json({ error: 'Device not found' }, { status: 404 })
     }
+    traccarId = device.traccarId
+  } else {
+    const device = await (prisma as any).gpsDevice.findFirst({
+      where: { id: deviceId },
+    })
+    traccarId = device?.traccarId ?? null
+  }
+
+  if (!traccarId) {
+    return NextResponse.json({ error: 'Device not found' }, { status: 404 })
   }
 
   try {
-    const positions = await traccar.getRoute(device.traccarId, fromDate, toDate)
+    const positions = await traccar.getRoute(traccarId, fromDate, toDate)
 
     const mapped = positions.map((pos) => ({
       latitude: pos.latitude,
