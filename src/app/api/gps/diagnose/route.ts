@@ -5,6 +5,7 @@ export async function GET() {
   const TRACCAR_URL = process.env.TRACCAR_SERVER_URL || ''
   const hasUser = !!process.env.TRACCAR_USERNAME
   const hasPass = !!process.env.TRACCAR_PASSWORD
+  const hasPushKey = !!process.env.TRACCAR_PUSH_API_KEY
 
   let reachable = false
   let reachableError = ''
@@ -22,6 +23,7 @@ export async function GET() {
       TRACCAR_SERVER_URL: TRACCAR_URL || '(not set)',
       TRACCAR_USERNAME: hasUser ? '(set)' : '(not set)',
       TRACCAR_PASSWORD: hasPass ? '(set)' : '(not set)',
+      TRACCAR_PUSH_API_KEY: hasPushKey ? '(set)' : '(not set)',
     },
     reachable,
     reachableError: reachableError || null,
