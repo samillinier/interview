@@ -27,5 +27,6 @@ export async function GET() {
     },
     reachable,
     reachableError: reachableError || null,
+    timestamp: new Date().toISOString(),
   })
 }
