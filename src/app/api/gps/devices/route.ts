@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     // Admin users: devices are built directly from Traccar below, no DB needed
 
     const traccarReachable = await traccar.isReachable()
+    console.log('[gps/devices] isReachable:', traccarReachable, 'URL:', process.env.TRACCAR_SERVER_URL)
 
     if (!traccarReachable) {
       return NextResponse.json({ devices: [], gpsConnected: false })
@@ -53,7 +54,9 @@ export async function GET(request: NextRequest) {
         traccar.getDevices(),
         traccar.getPositions(),
       ])
-    } catch {
+      console.log('[gps/devices] Traccar returned:', traccarDevices.length, 'devices,', livePositions.length, 'positions')
+    } catch (e) {
+      console.error('[gps/devices] Error fetching Traccar data:', e)
       // Traccar may be reachable but auth fails
     }
 
