@@ -65,6 +65,8 @@ type Props = {
   routePositions?: RoutePoint[]
   /** Separate trip polylines — does not draw lines across parked time. */
   routeSegments?: RoutePoint[][]
+  /** Increment to fly the map to the selected (or first) vehicle live position. */
+  locateTick?: number
 }
 
 function buildPopup(d: VehicleDevice): string {
@@ -206,7 +208,14 @@ function pointAlongSegment(
   return { lat, lng, heading, speed }
 }
 
-export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions, routeSegments }: Props) {
+export function GpsLiveMap({
+  devices,
+  selectedDevice,
+  onSelectDevice,
+  routePositions,
+  routeSegments,
+  locateTick = 0,
+}: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
@@ -636,6 +645,30 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     const marker = markersRef.current.get(selectedDevice.id)
     if (marker) marker.openPopup()
   }, [selectedDevice])
+
+  // Explicit Locate — fly to live vehicle position
+  useEffect(() => {
+    if (!locateTick) return
+    const map = leafletMapRef.current
+    if (!map) return
+    const device = selectedDeviceRef.current || devices[0]
+    if (!device || !Number.isFinite(device.latitude) || !Number.isFinite(device.longitude)) return
+
+    if (isViewingHistoryRef.current && playbackDeviceIdRef.current === device.id) {
+      const marker = markersRef.current.get(device.id)
+      if (marker) {
+        marker.setLatLng(L.latLng(device.latitude, device.longitude))
+        marker.setIcon(makeVehicleDivIcon(device))
+      }
+    }
+
+    map.setView([device.latitude, device.longitude], 16, {
+      animate: true,
+      duration: 0.65,
+    })
+    const marker = markersRef.current.get(device.id)
+    if (marker) marker.openPopup()
+  }, [locateTick, devices])
 
   useEffect(() => {
     const map = leafletMapRef.current
