@@ -256,12 +256,13 @@ export async function GET(request: NextRequest) {
 
     // Fire-and-forget: update local DB lastSeen for devices with fresh positions
     for (const device of enriched) {
-      if (device.status !== 'offline') {
-        (prisma as any).gpsDevice.update({
-          where: { id: device.id },
-          data: { lastSeen: new Date(device.lastSeen) },
-        }).catch(() => {})
-      }
+      if (device.status === 'offline' || !device.lastSeen) continue
+      // Admin-built devices use synthetic ids like "tc-8690054" — skip DB writes
+      if (typeof device.id !== 'string' || device.id.startsWith('tc-')) continue
+      ;(prisma as any).gpsDevice.update({
+        where: { id: device.id },
+        data: { lastSeen: new Date(device.lastSeen) },
+      }).catch(() => {})
     }
 
     return NextResponse.json({
