@@ -489,19 +489,23 @@ function DeviceCard({
       }`}
     >
       <div className="flex items-center gap-3">
-        <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${
-            device.status === 'online'
-              ? 'bg-green-100'
-              : 'bg-slate-100'
-          }`}
-        >
+        <div className="relative w-9 h-9 flex-shrink-0 flex items-center justify-center">
+          <div
+            className="absolute inset-0 rounded-full bg-white shadow-sm"
+            style={{
+              border: `2px solid ${
+                device.status === 'online'
+                  ? '#8CB63C'
+                  : device.status === 'idle'
+                    ? '#f59e0b'
+                    : '#94a3b8'
+              }`,
+            }}
+          />
           <img
             src="/vehicle-marker.png"
             alt=""
-            className={`w-6 h-6 object-contain ${
-              device.status === 'online' ? 'opacity-100' : 'opacity-50 grayscale'
-            }`}
+            className="relative z-[1] w-7 h-7 object-contain"
           />
         </div>
         <div className="flex-1 min-w-0">
