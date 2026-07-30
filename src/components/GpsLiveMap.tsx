@@ -93,7 +93,10 @@ function buildPopup(d: VehicleDevice): string {
   return html
 }
 
-function makeVehicleDivIcon(d: Pick<VehicleDevice, 'status' | 'heading'>, opts?: { pulse?: boolean }): L.DivIcon {
+function makeVehicleDivIcon(
+  d: Pick<VehicleDevice, 'status' | 'heading'>,
+  opts?: { pulse?: boolean }
+): L.DivIcon {
   const isOnline = d.status === 'online'
   const color = isOnline ? '#8CB63C' : d.status === 'idle' ? '#f59e0b' : '#94a3b8'
   const showPulse = opts?.pulse !== false && isOnline
@@ -121,14 +124,19 @@ function makeVehicleDivIcon(d: Pick<VehicleDevice, 'status' | 'heading'>, opts?:
       + 'box-shadow:0 2px 6px rgba(0,0,0,0.35);'
       + 'z-index:1;'
       + '"></div>'
-      + '<img src="/vehicle-marker.png" style="'
+      + '<img class="gps-car-img" src="/vehicle-marker.png" style="'
       + 'width:28px;height:28px;'
       + 'transform:rotate(' + d.heading + 'deg);'
       + 'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3));'
       + 'position:relative;z-index:2;'
+      + 'will-change:transform;'
       + '" alt="" />'
       + '</div>',
   })
+}
+
+function shortestAngleDelta(from: number, to: number): number {
+  return ((to - from + 540) % 360) - 180
 }
 
 function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -219,6 +227,9 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
   const playbackSpeedRef = useRef(1)
   const playbackDoneRef = useRef(false)
   const playbackPauseUntilRef = useRef(0)
+  const playbackHeadingRef = useRef<number | null>(null)
+  const playbackIconReadyRef = useRef(false)
+  const trailUpdateAccRef = useRef(0)
   const selectedDeviceRef = useRef(selectedDevice)
   selectedDeviceRef.current = selectedDevice
 
@@ -246,13 +257,34 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     }
   }, [])
 
-  const updatePlaybackMarker = useCallback((lat: number, lng: number, heading: number) => {
+  const updatePlaybackMarker = useCallback((lat: number, lng: number, heading: number, forceIcon = false) => {
     const device = selectedDeviceRef.current
     if (!device) return
     const marker = markersRef.current.get(device.id)
     if (!marker) return
-    marker.setLatLng(L.latLng(lat, lng))
-    marker.setIcon(makeVehicleDivIcon({ status: 'online', heading }, { pulse: true }))
+
+    // Smooth heading so GPS noise doesn't make the car vibrate/spin
+    const prev = playbackHeadingRef.current
+    const smoothed =
+      prev == null
+        ? heading
+        : (prev + shortestAngleDelta(prev, heading) * 0.2 + 360) % 360
+    playbackHeadingRef.current = smoothed
+
+    // Move only — never recreate the icon every frame (that causes vibration)
+    marker.setLatLng([lat, lng])
+
+    if (forceIcon || !playbackIconReadyRef.current) {
+      marker.setIcon(makeVehicleDivIcon({ status: 'online', heading: smoothed }, { pulse: false }))
+      playbackIconReadyRef.current = true
+      return
+    }
+
+    const el = marker.getElement?.() as HTMLElement | null
+    const img = el?.querySelector?.('.gps-car-img') as HTMLElement | null
+    if (img) {
+      img.style.transform = `rotate(${smoothed.toFixed(1)}deg)`
+    }
   }, [])
 
   const updateTrail = useCallback((latlngs: L.LatLng[]) => {
@@ -333,6 +365,12 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
         end.longitude,
         bearingDeg(prev.latitude, prev.longitude, end.latitude, end.longitude)
       )
+      // Final trail flush
+      const finalTrail: L.LatLng[] = []
+      for (const seg of segs) {
+        for (const p of seg.points) finalTrail.push(L.latLng(p.latitude, p.longitude))
+      }
+      updateTrail(finalTrail)
       playbackDoneRef.current = true
       playbackPausedRef.current = true
       playbackRafRef.current = null
@@ -356,22 +394,18 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       } else break
     }
     trail.push(L.latLng(pos.lat, pos.lng))
-    updateTrail(trail)
+    // Throttle trail redraws — updating every frame makes the map stutter
+    trailUpdateAccRef.current += dt
+    if (trailUpdateAccRef.current >= 0.08) {
+      trailUpdateAccRef.current = 0
+      updateTrail(trail)
+    }
 
     const doneM = segs.slice(0, segIdx).reduce((s, seg) => s + seg.lengthM, 0) + dist
     const progress = totalM > 0 ? Math.min(1, doneM / totalM) : 0
     setPlaybackUi((u) =>
-      Math.abs(u.progress - progress) > 0.01 ? { ...u, progress, playing: true, done: false } : u
+      Math.abs(u.progress - progress) > 0.02 ? { ...u, progress, playing: true, done: false } : u
     )
-
-    const map = leafletMapRef.current
-    if (map && progress > 0.02 && progress < 0.98) {
-      const center = map.getCenter()
-      const d = haversineMeters(center.lat, center.lng, pos.lat, pos.lng)
-      if (d > 180) {
-        map.panTo([pos.lat, pos.lng], { animate: true, duration: 0.4 })
-      }
-    }
 
     playbackRafRef.current = requestAnimationFrame(tickPlayback)
   }, [updatePlaybackMarker, updateTrail])
@@ -387,13 +421,17 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       if (reset) {
         playbackIndexRef.current = 0
         playbackDistRef.current = 0
+        playbackHeadingRef.current = null
+        playbackIconReadyRef.current = false
+        trailUpdateAccRef.current = 0
         clearTrail()
         const start = segs[0].points[0]
         const next = segs[0].points[1]
         updatePlaybackMarker(
           start.latitude,
           start.longitude,
-          bearingDeg(start.latitude, start.longitude, next.latitude, next.longitude)
+          bearingDeg(start.latitude, start.longitude, next.latitude, next.longitude),
+          true
         )
       }
       playbackPausedRef.current = false
@@ -418,6 +456,8 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     playbackSegsRef.current = []
     playbackDeviceIdRef.current = null
     isViewingHistoryRef.current = false
+    playbackHeadingRef.current = null
+    playbackIconReadyRef.current = false
     setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
     const device = selectedDeviceRef.current
     if (device) {
@@ -722,6 +762,10 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       <style>{`
         .gps-car-wrap {
           overflow: visible;
+        }
+        .gps-car-img {
+          transform-origin: center center;
+          backface-visibility: hidden;
         }
         .gps-pulse-ring {
           position: absolute;
