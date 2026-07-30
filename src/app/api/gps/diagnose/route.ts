@@ -1,29 +1,28 @@
 import { NextResponse } from 'next/server'
-import * as traccar from '@/lib/traccar'
+import * as ruhavik from '@/lib/ruhavik'
 
 export async function GET() {
-  const TRACCAR_URL = process.env.TRACCAR_SERVER_URL || ''
-  const hasUser = !!process.env.TRACCAR_USERNAME
-  const hasPass = !!process.env.TRACCAR_PASSWORD
-  const hasPushKey = !!process.env.TRACCAR_PUSH_API_KEY
+  const hasUser = !!(process.env.RUHAVIK_USERNAME || process.env.TRACCAR_USERNAME)
+  const hasPass = !!(process.env.RUHAVIK_PASSWORD || process.env.TRACCAR_PASSWORD)
+  const hasToken = !!process.env.RUHAVIK_ACCESS_TOKEN
+  const apiUrl = process.env.RUHAVIK_API_URL || 'https://ruhavik.gurtam.space/api/platform'
 
   let reachable = false
   let reachableError = ''
 
-  if (TRACCAR_URL) {
-    try {
-      reachable = await traccar.isReachable()
-    } catch (e: any) {
-      reachableError = e.message || String(e)
-    }
+  try {
+    reachable = await ruhavik.isReachable()
+  } catch (e: any) {
+    reachableError = e.message || String(e)
   }
 
   return NextResponse.json({
+    provider: 'ruhavik',
     env: {
-      TRACCAR_SERVER_URL: TRACCAR_URL || '(not set)',
-      TRACCAR_USERNAME: hasUser ? '(set)' : '(not set)',
-      TRACCAR_PASSWORD: hasPass ? '(set)' : '(not set)',
-      TRACCAR_PUSH_API_KEY: hasPushKey ? '(set)' : '(not set)',
+      RUHAVIK_API_URL: apiUrl,
+      RUHAVIK_USERNAME: hasUser ? '(set)' : '(not set)',
+      RUHAVIK_PASSWORD: hasPass ? '(set)' : '(not set)',
+      RUHAVIK_ACCESS_TOKEN: hasToken ? '(set)' : '(not set)',
     },
     reachable,
     reachableError: reachableError || null,

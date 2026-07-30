@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import * as traccar from '@/lib/traccar'
+import * as traccar from '@/lib/ruhavik'
 import { snapToRoads } from '@/lib/osrm'
 
 /**
@@ -57,10 +57,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ positions: [], gpsConnected: false })
     }
 
-    // Look up the Traccar device to get the numeric ID
+    // Look up the Ruhavik unit to get the numeric ID
     const traccarDevices = await traccar.getDevices()
     const traccarDevice = traccarDevices.find(
-      (td) => td.uniqueId === deviceId
+      (td) => td.uniqueId === deviceId || String(td.id) === deviceId || `tc-${td.id}` === deviceId
     )
 
     if (!traccarDevice) {
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     try {
       positions = await traccar.getRoute(traccarDevice.id, from, to)
     } catch {
-      return NextResponse.json({ positions: [], roadPath: null, error: 'Failed to fetch route from Traccar' })
+      return NextResponse.json({ positions: [], roadPath: null, error: 'Failed to fetch route from Ruhavik' })
     }
 
     // Convert raw positions to lat/lng for map

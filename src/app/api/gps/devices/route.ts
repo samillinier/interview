@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import * as traccar from '@/lib/traccar'
+import * as traccar from '@/lib/ruhavik'
 import { reverseGeocode } from '@/lib/geocode'
 
 /**
@@ -36,16 +36,16 @@ export async function GET(request: NextRequest) {
       }
       gpsDevices = property.GpsDevice || []
     }
-    // Admin users: devices are built directly from Traccar below, no DB needed
+    // Admin users: devices are built directly from Ruhavik below, no DB needed
 
     const traccarReachable = await traccar.isReachable()
-    console.log('[gps/devices] isReachable:', traccarReachable, 'URL:', process.env.TRACCAR_SERVER_URL)
+    console.log('[gps/devices] isReachable:', traccarReachable, 'provider: ruhavik')
 
     if (!traccarReachable) {
       return NextResponse.json({ devices: [], gpsConnected: false })
     }
 
-    // Pull live data from Traccar
+    // Pull live data from Ruhavik
     let livePositions: traccar.TraccarPosition[] = []
     let traccarDevices: traccar.TraccarDevice[] = []
 
@@ -54,15 +54,14 @@ export async function GET(request: NextRequest) {
         traccar.getDevices(),
         traccar.getPositions(),
       ])
-      console.log('[gps/devices] Traccar returned:', traccarDevices.length, 'devices,', livePositions.length, 'positions')
+      console.log('[gps/devices] Ruhavik returned:', traccarDevices.length, 'devices,', livePositions.length, 'positions')
     } catch (e) {
-      console.error('[gps/devices] Error fetching Traccar data:', e)
-      // Traccar may be reachable but auth fails
+      console.error('[gps/devices] Error fetching Ruhavik data:', e)
     }
 
-    // Admin users: build device entries directly from Traccar live data
+    // Admin users: build device entries directly from Ruhavik live data
     if (isAdmin && traccarDevices.length > 0) {
-      console.log('[gps/devices] Admin building', traccarDevices.length, 'devices from Traccar')
+      console.log('[gps/devices] Admin building', traccarDevices.length, 'devices from Ruhavik')
       const posById = new Map<number, traccar.TraccarPosition>()
       for (const pos of livePositions) {
         posById.set(pos.deviceId, pos)

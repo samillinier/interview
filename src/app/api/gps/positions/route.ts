@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import * as traccar from '@/lib/traccar'
+import * as traccar from '@/lib/ruhavik'
 
 /**
  * GET /api/gps/positions
@@ -57,6 +57,24 @@ export async function GET(request: NextRequest) {
       where: { id: deviceId },
     })
     traccarId = device?.traccarId ?? null
+
+    // Admin live devices may not be in DB — resolve from Ruhavik by id / IMEI
+    if (!traccarId) {
+      const tcMatch = deviceId.match(/^tc-(\d+)$/)
+      if (tcMatch) {
+        traccarId = Number(tcMatch[1])
+      } else if (/^\d+$/.test(deviceId)) {
+        traccarId = Number(deviceId)
+      } else {
+        try {
+          const devices = await traccar.getDevices()
+          const found = devices.find((d) => d.uniqueId === deviceId || String(d.id) === deviceId)
+          traccarId = found?.id ?? null
+        } catch {
+          traccarId = null
+        }
+      }
+    }
   }
 
   if (!traccarId) {
@@ -81,7 +99,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Failed to fetch positions:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch positions from Traccar' },
+      { error: 'Failed to fetch positions from Ruhavik' },
       { status: 502 }
     )
   }

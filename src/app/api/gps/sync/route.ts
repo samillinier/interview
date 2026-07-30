@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import * as traccar from '@/lib/traccar'
+import * as traccar from '@/lib/ruhavik'
 
 /**
  * POST /api/gps/sync
  *
- * Syncs Traccar devices to the local database for the authenticated property user.
- * This is called when a property user first connects to Traccar or wants to refresh
+ * Syncs Ruhavik units to the local database for the authenticated property user.
+ * This is called when a property user first connects GPS or wants to refresh
  * their device list.
  */
 export async function POST(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Sync is only for property users (admin devices come from Traccar directly)
+  // Sync is only for property users (admin devices come from Ruhavik directly)
   if (isAdmin) {
     return NextResponse.json({ success: true, created: 0, updated: 0, message: 'No sync needed for admins' })
   }
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const reachable = await traccar.isReachable()
     if (!reachable) {
       return NextResponse.json(
-        { error: 'Traccar server is not reachable' },
+        { error: 'Ruhavik server is not reachable' },
         { status: 502 }
       )
     }
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Failed to sync devices:', error)
     return NextResponse.json(
-      { error: 'Failed to sync devices from Traccar' },
+      { error: 'Failed to sync devices from Ruhavik' },
       { status: 500 }
     )
   }
