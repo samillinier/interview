@@ -60,7 +60,7 @@ export function LogoHeartbeatLoader({
             alt=""
             width={size}
             height={size}
-            className={cn('object-contain drop-shadow-[0_0_10px_rgba(22,163,74,0.55)]', logoClassName)}
+            className={cn('object-contain drop-shadow-[0_0_10px_rgba(140,182,60,0.7)]', logoClassName)}
             priority
           />
         </div>

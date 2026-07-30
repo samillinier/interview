@@ -78,23 +78,23 @@ const config: Config = {
         heartbeat: {
           '0%, 100%': {
             transform: 'scale(1)',
-            filter: 'drop-shadow(0 0 0 rgba(22, 163, 74, 0))',
+            filter: 'drop-shadow(0 0 0 rgba(140, 182, 60, 0))',
           },
           '12%': {
             transform: 'scale(1.08)',
-            filter: 'drop-shadow(0 0 12px rgba(22, 163, 74, 0.85))',
+            filter: 'drop-shadow(0 0 12px rgba(140, 182, 60, 0.9))',
           },
           '24%': {
             transform: 'scale(1)',
-            filter: 'drop-shadow(0 0 4px rgba(22, 163, 74, 0.45))',
+            filter: 'drop-shadow(0 0 4px rgba(140, 182, 60, 0.55))',
           },
           '36%': {
             transform: 'scale(1.12)',
-            filter: 'drop-shadow(0 0 18px rgba(22, 163, 74, 1))',
+            filter: 'drop-shadow(0 0 18px rgba(140, 182, 60, 1))',
           },
           '55%': {
             transform: 'scale(1)',
-            filter: 'drop-shadow(0 0 6px rgba(22, 163, 74, 0.55))',
+            filter: 'drop-shadow(0 0 6px rgba(140, 182, 60, 0.65))',
           },
         },
         'ellipsis-blink': {
