@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
-import { GPS_TIMEZONE, periodBounds } from '@/lib/gpsTime'
+import { GPS_TIMEZONE, dateRangeBounds, periodBounds } from '@/lib/gpsTime'
 
 /**
  * GET /api/gps/route?deviceId=GV500MAP&period=today|yesterday|week
+ *   or &from=YYYY-MM-DD&to=YYYY-MM-DD (custom calendar range, max 31 days)
  *
  * Returns route positions for a device within the given time period.
  * Uses raw GPS track points (not OSRM road-snapping) so history matches Ruhavik.
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const deviceId = searchParams.get('deviceId')
   const period = searchParams.get('period') || 'today'
+  const fromParam = searchParams.get('from')
+  const toParam = searchParams.get('to')
 
   if (!deviceId) {
     return NextResponse.json({ error: 'deviceId required' }, { status: 400 })
@@ -69,7 +72,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ positions: [] })
     }
 
-    const { from, to } = periodBounds(period)
+    let from: string
+    let to: string
+    let resolvedPeriod = period
+
+    if (fromParam && toParam) {
+      const bounds = dateRangeBounds(fromParam, toParam)
+      if ('error' in bounds) {
+        return NextResponse.json({ error: bounds.error, positions: [], segments: [] }, { status: 400 })
+      }
+      from = bounds.from
+      to = bounds.to
+      resolvedPeriod = `range:${fromParam}:${toParam}`
+    } else {
+      const bounds = periodBounds(period)
+      from = bounds.from
+      to = bounds.to
+    }
 
     let segments: traccar.TraccarPosition[][] = []
     try {
@@ -98,7 +117,7 @@ export async function GET(request: NextRequest) {
         from,
         to,
         timeZone: GPS_TIMEZONE,
-        period,
+        period: resolvedPeriod,
       },
       gpsConnected: true,
     })
