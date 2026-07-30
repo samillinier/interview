@@ -79,7 +79,8 @@ export async function GET(request: NextRequest) {
           deviceId: td.uniqueId || ('tc-' + td.id),
           deviceName: td.name || 'Unnamed',
           deviceModel: 'Queclink GV500MAP',
-          status: active ? (mph > 3 ? 'online' : 'idle') : 'offline',
+          // Match Ruhavik: connected/reporting = online (even when speed is 0)
+          status: active ? 'online' : 'offline',
           lastSeen: seenAt ? new Date(seenAt).toISOString() : null,
           latitude: pos?.latitude ?? 0,
           longitude: pos?.longitude ?? 0,
@@ -146,25 +147,39 @@ export async function GET(request: NextRequest) {
 
     // Enrich each device
     const enriched = await Promise.all(gpsDevices.map(async (device: any) => {
-      const traccarDevice = device.deviceId
-        ? traccarDeviceByUniqueId.get(device.deviceId)
-        : undefined
-      const livePos = traccarDevice != null
-        ? positionByDeviceId.get(traccarDevice.id)
-        : undefined
+      const traccarDevice =
+        (device.traccarId != null
+          ? traccarDevices.find((d) => d.id === device.traccarId)
+          : undefined) ||
+        (device.deviceId ? traccarDeviceByUniqueId.get(String(device.deviceId)) : undefined)
+
+      const livePos =
+        (device.traccarId != null ? positionByDeviceId.get(device.traccarId) : undefined) ||
+        (traccarDevice != null ? positionByDeviceId.get(traccarDevice.id) : undefined)
 
       const speed = livePos?.speed != null
         ? traccar.convertSpeedToMph(livePos.speed)
-        : (device.speed ?? 0)
+        : traccar.convertSpeedToMph(Number(device.speed ?? 0))
       const heading = livePos?.course ?? (device.heading ?? 0)
       const lat = livePos?.latitude ?? (device.latitude ?? 0)
       const lng = livePos?.longitude ?? (device.longitude ?? 0)
-      // Use last Ruhavik communication (serverTime), not last GPS fix (deviceTime).
-      // Parked units often keep heartbeating while the GPS fix stays stale.
-      const activityAt = livePos?.serverTime || livePos?.deviceTime || null
-      const lastSeen = activityAt
-        ? new Date(activityAt).toISOString()
-        : (device.lastSeen?.toISOString() ?? null)
+
+      // Mirror Ruhavik: online = device recently communicated (heartbeat),
+      // not "GPS fix updated in last N minutes". Parked units stay online.
+      const toIso = (v: unknown): string | null => {
+        if (v == null) return null
+        if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toISOString()
+        if (typeof v === 'string' || typeof v === 'number') {
+          const d = new Date(v)
+          return Number.isNaN(d.getTime()) ? null : d.toISOString()
+        }
+        return null
+      }
+      const lastSeen =
+        toIso(livePos?.serverTime) ||
+        toIso(livePos?.deviceTime) ||
+        toIso(traccarDevice?.lastUpdate) ||
+        toIso(device.lastSeen)
 
       const location = (lat && lng) ? await reverseGeocode(lat, lng) : null
 
@@ -172,9 +187,8 @@ export async function GET(request: NextRequest) {
       const recentlyActive =
         lastSeen != null && Date.now() - new Date(lastSeen).getTime() < ACTIVE_MS
 
-      const status: 'online' | 'idle' | 'offline' = livePos
-        ? (!recentlyActive ? 'offline' : speed > 3 ? 'online' : 'idle')
-        : (recentlyActive ? 'idle' : 'offline')
+      // online = connected in Ruhavik; UI uses speed to show LIVE vs Online
+      const status: 'online' | 'offline' = recentlyActive ? 'online' : 'offline'
 
       // OBDII data from position attributes
       const obdii = traccar.extractObdiiData(livePos?.attributes as Record<string, unknown> | undefined)

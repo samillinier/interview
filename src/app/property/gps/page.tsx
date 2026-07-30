@@ -487,8 +487,6 @@ function DeviceCard({
           className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
             device.status === 'online'
               ? 'bg-green-100'
-              : device.status === 'idle'
-              ? 'bg-amber-100'
               : 'bg-slate-100'
           }`}
         >
@@ -496,8 +494,6 @@ function DeviceCard({
             className={`w-4 h-4 ${
               device.status === 'online'
                 ? 'text-green-600'
-                : device.status === 'idle'
-                ? 'text-amber-600'
                 : 'text-slate-400'
             }`}
           />
@@ -522,12 +518,14 @@ function DeviceCard({
             className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
               device.status === 'online'
                 ? 'bg-green-100 text-green-700'
-                : device.status === 'idle'
-                ? 'bg-amber-100 text-amber-700'
                 : 'bg-slate-100 text-slate-500'
             }`}
           >
-            {device.status === 'online' ? 'LIVE' : device.status === 'idle' ? 'Idle' : 'Offline'}
+            {device.status === 'online'
+              ? device.speed > 3
+                ? 'LIVE'
+                : 'Online'
+              : 'Offline'}
           </span>
           <span className="text-xs text-slate-400">
             {device.speed > 0 ? `${device.speed.toFixed(0)} mph` : ''}
@@ -564,7 +562,7 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
     <div className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <div className={'w-2 h-2 rounded-full ' + (
-          device.status === 'online' ? 'bg-green-500' : device.status === 'idle' ? 'bg-amber-500' : 'bg-slate-300'
+          device.status === 'online' ? 'bg-green-500' : 'bg-slate-300'
         )} />
         <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName || 'Unnamed Vehicle'}</h3>
       </div>
