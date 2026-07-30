@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -93,12 +93,12 @@ function buildPopup(d: VehicleDevice): string {
   return html
 }
 
-function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
+function makeVehicleDivIcon(d: Pick<VehicleDevice, 'status' | 'heading'>, opts?: { pulse?: boolean }): L.DivIcon {
   const isOnline = d.status === 'online'
   const color = isOnline ? '#8CB63C' : d.status === 'idle' ? '#f59e0b' : '#94a3b8'
-  const pulseClass = isOnline ? 'gps-marker-pulse' : ''
+  const showPulse = opts?.pulse !== false && isOnline
+  const pulseClass = showPulse ? 'gps-marker-pulse' : ''
 
-  // Small top-down car with status ring + heading rotation
   return L.divIcon({
     className: pulseClass,
     iconSize: [48, 48],
@@ -109,10 +109,9 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
       + 'display:flex;align-items:center;justify-content:center;'
       + 'position:relative;'
       + '">'
-      + (isOnline
+      + (showPulse
         ? '<span class="gps-pulse-ring gps-pulse-ring-a"></span><span class="gps-pulse-ring gps-pulse-ring-b"></span>'
         : '')
-      // Status ring
       + '<div style="'
       + 'position:absolute;'
       + 'width:34px;height:34px;'
@@ -122,7 +121,6 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
       + 'box-shadow:0 2px 6px rgba(0,0,0,0.35);'
       + 'z-index:1;'
       + '"></div>'
-      // Car image rotated to heading
       + '<img src="/vehicle-marker.png" style="'
       + 'width:28px;height:28px;'
       + 'transform:rotate(' + d.heading + 'deg);'
@@ -133,19 +131,304 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
   })
 }
 
+function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = Math.PI / 180
+  const φ1 = lat1 * toRad
+  const φ2 = lat2 * toRad
+  const Δλ = (lng2 - lng1) * toRad
+  const y = Math.sin(Δλ) * Math.cos(φ2)
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+}
+
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000
+  const toRad = Math.PI / 180
+  const dLat = (lat2 - lat1) * toRad
+  const dLng = (lng2 - lng1) * toRad
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+type PlaybackSeg = {
+  points: RoutePoint[]
+  cumDist: number[]
+  lengthM: number
+}
+
+function buildPlaybackSegs(segments: RoutePoint[][]): PlaybackSeg[] {
+  return segments
+    .filter((s) => s.length >= 2)
+    .map((points) => {
+      const cumDist = [0]
+      for (let i = 1; i < points.length; i++) {
+        const d = haversineMeters(
+          points[i - 1].latitude,
+          points[i - 1].longitude,
+          points[i].latitude,
+          points[i].longitude
+        )
+        cumDist.push(cumDist[i - 1] + d)
+      }
+      return { points, cumDist, lengthM: cumDist[cumDist.length - 1] || 0 }
+    })
+    .filter((s) => s.lengthM > 1)
+}
+
+function pointAlongSegment(
+  seg: PlaybackSeg,
+  distM: number
+): { lat: number; lng: number; heading: number; speed?: number } {
+  const target = Math.max(0, Math.min(distM, seg.lengthM))
+  const { points, cumDist } = seg
+  let i = 1
+  while (i < cumDist.length && cumDist[i] < target) i++
+  const i1 = Math.max(1, i)
+  const i0 = i1 - 1
+  const span = Math.max(0.001, cumDist[i1] - cumDist[i0])
+  const t = (target - cumDist[i0]) / span
+  const a = points[i0]
+  const b = points[i1]
+  const lat = a.latitude + (b.latitude - a.latitude) * t
+  const lng = a.longitude + (b.longitude - a.longitude) * t
+  const heading = bearingDeg(a.latitude, a.longitude, b.latitude, b.longitude)
+  const speed = (b.speed ?? a.speed) || 0
+  return { lat, lng, heading, speed }
+}
+
 export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions, routeSegments }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
   const polylineRef = useRef<any>(null)
+  const trailRef = useRef<any>(null)
   const osmLayerRef = useRef<any>(null)
   const cartoLightRef = useRef<any>(null)
   const cartoDarkRef = useRef<any>(null)
   const satelliteLayerRef = useRef<any>(null)
   const isViewingHistoryRef = useRef(false)
-  const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('light')
+  const playbackDeviceIdRef = useRef<string | null>(null)
+  const playbackRafRef = useRef<number | null>(null)
+  const playbackSegsRef = useRef<PlaybackSeg[]>([])
+  const playbackIndexRef = useRef(0)
+  const playbackDistRef = useRef(0)
+  const playbackLastTsRef = useRef(0)
+  const playbackPausedRef = useRef(false)
+  const playbackSpeedRef = useRef(1)
+  const playbackDoneRef = useRef(false)
+  const playbackPauseUntilRef = useRef(0)
+  const selectedDeviceRef = useRef(selectedDevice)
+  selectedDeviceRef.current = selectedDevice
 
-  // Initialize map AND place initial markers in a SINGLE effect
+  const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('light')
+  const [playbackUi, setPlaybackUi] = useState<{
+    active: boolean
+    playing: boolean
+    done: boolean
+    speed: number
+    progress: number
+  }>({ active: false, playing: false, done: false, speed: 1, progress: 0 })
+
+  const stopPlaybackLoop = useCallback(() => {
+    if (playbackRafRef.current != null) {
+      cancelAnimationFrame(playbackRafRef.current)
+      playbackRafRef.current = null
+    }
+  }, [])
+
+  const clearTrail = useCallback(() => {
+    const map = leafletMapRef.current
+    if (trailRef.current && map) {
+      map.removeLayer(trailRef.current)
+      trailRef.current = null
+    }
+  }, [])
+
+  const updatePlaybackMarker = useCallback((lat: number, lng: number, heading: number) => {
+    const device = selectedDeviceRef.current
+    if (!device) return
+    const marker = markersRef.current.get(device.id)
+    if (!marker) return
+    marker.setLatLng(L.latLng(lat, lng))
+    marker.setIcon(makeVehicleDivIcon({ status: 'online', heading }, { pulse: true }))
+  }, [])
+
+  const updateTrail = useCallback((latlngs: L.LatLng[]) => {
+    const map = leafletMapRef.current
+    if (!map || latlngs.length < 2) return
+    if (trailRef.current) {
+      trailRef.current.setLatLngs(latlngs)
+    } else {
+      trailRef.current = L.polyline(latlngs, {
+        color: '#15803d',
+        weight: 4,
+        opacity: 0.95,
+      }).addTo(map)
+    }
+  }, [])
+
+  const tickPlayback = useCallback(() => {
+    const segs = playbackSegsRef.current
+    if (!segs.length) {
+      playbackRafRef.current = null
+      return
+    }
+
+    const now = performance.now()
+
+    if (playbackPausedRef.current || playbackDoneRef.current) {
+      playbackRafRef.current = null
+      return
+    }
+
+    // Brief hold between trip segments (don't animate across parking)
+    if (now < playbackPauseUntilRef.current) {
+      playbackLastTsRef.current = now
+      playbackRafRef.current = requestAnimationFrame(tickPlayback)
+      return
+    }
+
+    const last = playbackLastTsRef.current || now
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000))
+    playbackLastTsRef.current = now
+
+    const totalM = segs.reduce((s, seg) => s + seg.lengthM, 0)
+    const baseDurationSec = Math.min(40, Math.max(10, totalM / 35))
+    const metersPerSec = (totalM / baseDurationSec) * playbackSpeedRef.current
+
+    let segIdx = playbackIndexRef.current
+    let dist = playbackDistRef.current + metersPerSec * dt
+
+    while (segIdx < segs.length && dist >= segs[segIdx].lengthM) {
+      dist -= segs[segIdx].lengthM
+      segIdx++
+      if (segIdx < segs.length) {
+        playbackIndexRef.current = segIdx
+        playbackDistRef.current = 0
+        playbackPauseUntilRef.current = now + 400
+        const start = segs[segIdx].points[0]
+        updatePlaybackMarker(
+          start.latitude,
+          start.longitude,
+          bearingDeg(
+            start.latitude,
+            start.longitude,
+            segs[segIdx].points[1].latitude,
+            segs[segIdx].points[1].longitude
+          )
+        )
+        playbackRafRef.current = requestAnimationFrame(tickPlayback)
+        return
+      }
+    }
+
+    if (segIdx >= segs.length) {
+      const lastSeg = segs[segs.length - 1]
+      const end = lastSeg.points[lastSeg.points.length - 1]
+      const prev = lastSeg.points[Math.max(0, lastSeg.points.length - 2)]
+      updatePlaybackMarker(
+        end.latitude,
+        end.longitude,
+        bearingDeg(prev.latitude, prev.longitude, end.latitude, end.longitude)
+      )
+      playbackDoneRef.current = true
+      playbackPausedRef.current = true
+      playbackRafRef.current = null
+      setPlaybackUi((u) => ({ ...u, playing: false, done: true, progress: 1 }))
+      return
+    }
+
+    playbackIndexRef.current = segIdx
+    playbackDistRef.current = dist
+    const pos = pointAlongSegment(segs[segIdx], dist)
+    updatePlaybackMarker(pos.lat, pos.lng, pos.heading)
+
+    const trail: L.LatLng[] = []
+    for (let s = 0; s < segIdx; s++) {
+      for (const p of segs[s].points) trail.push(L.latLng(p.latitude, p.longitude))
+    }
+    const cur = segs[segIdx]
+    for (let i = 0; i < cur.points.length; i++) {
+      if (cur.cumDist[i] <= dist) {
+        trail.push(L.latLng(cur.points[i].latitude, cur.points[i].longitude))
+      } else break
+    }
+    trail.push(L.latLng(pos.lat, pos.lng))
+    updateTrail(trail)
+
+    const doneM = segs.slice(0, segIdx).reduce((s, seg) => s + seg.lengthM, 0) + dist
+    const progress = totalM > 0 ? Math.min(1, doneM / totalM) : 0
+    setPlaybackUi((u) =>
+      Math.abs(u.progress - progress) > 0.01 ? { ...u, progress, playing: true, done: false } : u
+    )
+
+    const map = leafletMapRef.current
+    if (map && progress > 0.02 && progress < 0.98) {
+      const center = map.getCenter()
+      const d = haversineMeters(center.lat, center.lng, pos.lat, pos.lng)
+      if (d > 180) {
+        map.panTo([pos.lat, pos.lng], { animate: true, duration: 0.4 })
+      }
+    }
+
+    playbackRafRef.current = requestAnimationFrame(tickPlayback)
+  }, [updatePlaybackMarker, updateTrail])
+
+  const startPlayback = useCallback(
+    (segs: PlaybackSeg[], reset = true) => {
+      stopPlaybackLoop()
+      if (!segs.length) {
+        setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
+        return
+      }
+      playbackSegsRef.current = segs
+      if (reset) {
+        playbackIndexRef.current = 0
+        playbackDistRef.current = 0
+        clearTrail()
+        const start = segs[0].points[0]
+        const next = segs[0].points[1]
+        updatePlaybackMarker(
+          start.latitude,
+          start.longitude,
+          bearingDeg(start.latitude, start.longitude, next.latitude, next.longitude)
+        )
+      }
+      playbackPausedRef.current = false
+      playbackDoneRef.current = false
+      playbackPauseUntilRef.current = 0
+      playbackLastTsRef.current = 0
+      setPlaybackUi((u) => ({
+        active: true,
+        playing: true,
+        done: false,
+        speed: playbackSpeedRef.current || u.speed || 1,
+        progress: reset ? 0 : u.progress,
+      }))
+      playbackRafRef.current = requestAnimationFrame(tickPlayback)
+    },
+    [stopPlaybackLoop, clearTrail, updatePlaybackMarker, tickPlayback]
+  )
+
+  const endHistoryMode = useCallback(() => {
+    stopPlaybackLoop()
+    clearTrail()
+    playbackSegsRef.current = []
+    playbackDeviceIdRef.current = null
+    isViewingHistoryRef.current = false
+    setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
+    const device = selectedDeviceRef.current
+    if (device) {
+      const marker = markersRef.current.get(device.id)
+      if (marker) {
+        marker.setLatLng(L.latLng(device.latitude, device.longitude))
+        marker.setIcon(makeVehicleDivIcon(device))
+      }
+    }
+  }, [stopPlaybackLoop, clearTrail])
+
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return
 
@@ -184,7 +467,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     cartoDarkRef.current = cartoDark
     satelliteLayerRef.current = satelliteLayer
 
-    // Layer picker control (replaces old satellite toggle)
     const LayerControl = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function () {
@@ -206,7 +488,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
             e.stopPropagation()
             setActiveLayer(key as any)
           }
-          // Highlight active (Light is default)
           if (key === 'light') btn.style.cssText += ';background:#f0fdf4;color:#15803d'
           ;(container as any)['_layerBtn' + key] = btn
         }
@@ -217,7 +498,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
 
     leafletMapRef.current = map
 
-    // Place initial markers after tiles start loading
     const bounds = L.latLngBounds([])
     devices.forEach((d) => {
       const latlng = L.latLng(d.latitude, d.longitude)
@@ -239,18 +519,16 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
 
     setTimeout(() => map.invalidateSize(), 300)
 
-    // ResizeObserver handles height changes from parent (e.g. detail panel open)
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => {
         map.invalidateSize()
       })
       observer.observe(mapRef.current)
-      // Store observer for cleanup
       ;(mapRef.current as any).__leafletResizeObserver = observer
     }
 
     return () => {
-      // Cleanup observer
+      stopPlaybackLoop()
       if ((mapRef.current as any)?.__leafletResizeObserver) {
         ;(mapRef.current as any).__leafletResizeObserver.disconnect()
       }
@@ -261,26 +539,27 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Update markers when devices data changes (position updates every 3s)
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map) return
 
     const currentIds = new Set<string>()
     const bounds = L.latLngBounds([])
+    const playbackId = playbackDeviceIdRef.current
 
     devices.forEach((d) => {
       currentIds.add(d.id)
       const latlng = L.latLng(d.latitude, d.longitude)
       const existing = markersRef.current.get(d.id)
+      const isPlaybackTarget = isViewingHistoryRef.current && playbackId === d.id
 
       if (existing) {
-        // Update position and icon
-        existing.setLatLng(latlng)
-        existing.setIcon(makeVehicleDivIcon(d))
+        if (!isPlaybackTarget) {
+          existing.setLatLng(latlng)
+          existing.setIcon(makeVehicleDivIcon(d))
+        }
         existing.setPopupContent(buildPopup(d))
       } else {
-        // Create new marker for device that arrived after initial mount
         const marker = L.marker(latlng, { icon: makeVehicleDivIcon(d) })
           .addTo(map)
           .bindPopup(buildPopup(d))
@@ -291,7 +570,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       bounds.extend(latlng)
     })
 
-    // Remove markers for devices that no longer exist
     markersRef.current.forEach((_marker, id) => {
       if (!currentIds.has(id)) {
         markersRef.current.get(id)?.remove()
@@ -299,7 +577,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       }
     })
 
-    // Fit bounds when new devices appear — skip if viewing history route
     if (!isViewingHistoryRef.current && bounds.isValid()) {
       if (devices.length === 1) {
         map.setView(bounds.getCenter(), 14)
@@ -309,7 +586,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     }
   }, [devices])
 
-  // Center on selected device when clicked from sidebar (skip when viewing history)
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map || !selectedDevice || isViewingHistoryRef.current) return
@@ -321,7 +597,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     if (marker) marker.openPopup()
   }, [selectedDevice])
 
-  // Swap tile layers when active layer changes
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map) return
@@ -333,12 +608,10 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       satelliteLayerRef.current,
     ]
 
-    // Remove all tile layers
     for (const l of layers) {
       if (l && map.hasLayer(l)) map.removeLayer(l)
     }
 
-    // Add active layer
     const active = activeLayer === 'osm' ? osmLayerRef.current
       : activeLayer === 'light' ? cartoLightRef.current
       : activeLayer === 'dark' ? cartoDarkRef.current
@@ -348,7 +621,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       map.addLayer(active)
     }
 
-    // Update button highlight in the DOM
     const container = mapRef.current?.querySelector('.leaflet-control > a')?.parentElement
     if (container) {
       const buttons = container.querySelectorAll('a')
@@ -367,7 +639,6 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     }
   }, [activeLayer])
 
-  // Draw trip segments (separate polylines — never connect parking gaps)
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map) return
@@ -385,11 +656,12 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
           : []
 
     if (segments.length === 0) {
-      isViewingHistoryRef.current = false
+      endHistoryMode()
       return
     }
 
     isViewingHistoryRef.current = true
+    playbackDeviceIdRef.current = selectedDeviceRef.current?.id ?? null
 
     const group = L.layerGroup()
     const allLatLngs: L.LatLng[] = []
@@ -398,17 +670,52 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
       const latlngs = seg.map((p) => L.latLng(p.latitude, p.longitude))
       allLatLngs.push(...latlngs)
       L.polyline(latlngs, {
-        color: '#15803d',
+        color: '#86efac',
         weight: 3,
-        opacity: 0.7,
-        dashArray: '10 6',
+        opacity: 0.55,
+        dashArray: '8 8',
       }).addTo(group)
     }
 
     group.addTo(map)
     polylineRef.current = group
     map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] })
-  }, [routePositions, routeSegments])
+
+    const playbackSegs = buildPlaybackSegs(segments)
+    const t = window.setTimeout(() => startPlayback(playbackSegs, true), 400)
+    return () => {
+      window.clearTimeout(t)
+      stopPlaybackLoop()
+    }
+  }, [routePositions, routeSegments, startPlayback, endHistoryMode, stopPlaybackLoop])
+
+  function togglePlayPause() {
+    if (!playbackUi.active) return
+    if (playbackDoneRef.current) {
+      startPlayback(playbackSegsRef.current, true)
+      return
+    }
+    const willPause = !playbackPausedRef.current
+    playbackPausedRef.current = willPause
+    setPlaybackUi((u) => ({ ...u, playing: !willPause, done: false }))
+    if (!willPause) {
+      playbackLastTsRef.current = 0
+      if (playbackRafRef.current == null) {
+        playbackRafRef.current = requestAnimationFrame(tickPlayback)
+      }
+    }
+  }
+
+  function cycleSpeed() {
+    const next = playbackSpeedRef.current === 1 ? 2 : playbackSpeedRef.current === 2 ? 4 : 1
+    playbackSpeedRef.current = next
+    setPlaybackUi((u) => ({ ...u, speed: next }))
+  }
+
+  function replay() {
+    if (!playbackSegsRef.current.length) return
+    startPlayback(playbackSegsRef.current, true)
+  }
 
   return (
     <>
@@ -452,7 +759,49 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
           overflow: visible !important;
         }
       `}</style>
-      <div ref={mapRef} className="w-full h-full" style={{ minHeight: 500 }} />
+      <div className="relative w-full h-full" style={{ minHeight: 500 }}>
+        <div ref={mapRef} className="w-full h-full" style={{ minHeight: 500 }} />
+        {playbackUi.active && (
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-[1000] -translate-x-1/2 w-[min(92%,360px)]">
+            <div className="pointer-events-auto rounded-xl border border-slate-200/80 bg-white/95 shadow-lg backdrop-blur-sm px-3 py-2">
+              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full bg-brand-green transition-[width] duration-150 ease-linear"
+                  style={{ width: `${Math.round(playbackUi.progress * 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-medium text-slate-500 truncate">
+                  {playbackUi.done ? 'Trip playback finished' : playbackUi.playing ? 'Playing trip history' : 'Paused'}
+                </p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={replay}
+                    className="px-2 py-1 text-[11px] font-semibold rounded-md text-slate-600 hover:bg-slate-100"
+                  >
+                    Replay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cycleSpeed}
+                    className="px-2 py-1 text-[11px] font-semibold rounded-md text-slate-600 hover:bg-slate-100 tabular-nums"
+                  >
+                    {playbackUi.speed}x
+                  </button>
+                  <button
+                    type="button"
+                    onClick={togglePlayPause}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-brand-green text-white hover:bg-brand-green/90"
+                  >
+                    {playbackUi.done ? 'Play again' : playbackUi.playing ? 'Pause' : 'Play'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   )
 }
