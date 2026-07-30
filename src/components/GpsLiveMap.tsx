@@ -396,11 +396,19 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     <>
       <style>{`
         @keyframes gps-pulse {
-          0%, 100% { filter: drop-shadow(0 0 6px rgba(22,163,74,0.4)); }
-          50% { filter: drop-shadow(0 0 18px rgba(22,163,74,0.7)); }
+          0%, 100% {
+            filter: drop-shadow(0 0 4px rgba(22,163,74,0.9));
+          }
+          50% {
+            filter: drop-shadow(0 0 14px rgba(22,163,74,1)) drop-shadow(0 0 28px rgba(34,197,94,0.85));
+          }
         }
         .gps-marker-pulse {
-          animation: gps-pulse 2s ease-in-out infinite;
+          animation: gps-pulse 1.6s ease-in-out infinite;
+        }
+        .gps-marker-pulse > div > div:first-child {
+          border-color: #16a34a !important;
+          box-shadow: 0 0 0 4px rgba(22,163,74,0.35), 0 0 16px rgba(22,163,74,0.55);
         }
       `}</style>
       <div ref={mapRef} className="w-full h-full" style={{ minHeight: 500 }} />
