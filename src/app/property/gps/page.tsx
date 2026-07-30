@@ -613,8 +613,8 @@ function DeviceTelemetry({
   const [customFrom, setCustomFrom] = useState(parsedRange?.from || '')
   const [customTo, setCustomTo] = useState(parsedRange?.to || '')
   const [rangeError, setRangeError] = useState<string | null>(null)
-  // Expanded until a period is chosen; collapses after selection
-  const [historyOpen, setHistoryOpen] = useState(!routePeriod)
+  // Always collapsed unless the user opens the dropdown
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   // Keep inputs in sync when clearing or switching presets
   useEffect(() => {
@@ -622,13 +622,11 @@ function DeviceTelemetry({
       const [, f, t] = routePeriod.split(':')
       setCustomFrom(f || '')
       setCustomTo(t || '')
-      setHistoryOpen(false)
-    } else if (routePeriod) {
-      setHistoryOpen(false)
-    } else {
+    } else if (!routePeriod) {
       setRangeError(null)
-      setHistoryOpen(true)
     }
+    // Collapse after any selection/clear — user reopens via dropdown
+    setHistoryOpen(false)
   }, [routePeriod])
 
   const items = [
@@ -667,6 +665,7 @@ function DeviceTelemetry({
     }
     setRangeError(null)
     onSelectHistory(`range:${customFrom}:${customTo}`)
+    setHistoryOpen(false)
   }
 
   const customActive = Boolean(parsedRange)
@@ -684,6 +683,7 @@ function DeviceTelemetry({
 
   function pickHistory(key: string) {
     onSelectHistory(routePeriod === key ? null : key)
+    setHistoryOpen(false)
   }
 
   return (
