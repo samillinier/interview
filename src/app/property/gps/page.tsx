@@ -462,7 +462,6 @@ export default function GPSPage() {
                       device={device}
                       isSelected={selectedDevice?.id === device.id}
                       onClick={() => setSelectedDevice(selectedDevice?.id === device.id ? null : device)}
-                      onLocate={() => locateVehicle(device)}
                     />
                   ))}
                 </div>
@@ -481,7 +480,6 @@ export default function GPSPage() {
                     routePointCount={routePositions.length}
                     isLoadingRoute={isLoadingRoute}
                     onSelectHistory={(period) => setRoutePeriod(period)}
-                    onLocate={() => locateVehicle(selectedDevice)}
                   />
                 </motion.div>
               )}
@@ -530,12 +528,10 @@ function DeviceCard({
   device,
   isSelected,
   onClick,
-  onLocate,
 }: {
   device: VehicleDevice
   isSelected: boolean
   onClick: () => void
-  onLocate: () => void
 }) {
   return (
     <motion.button
@@ -580,18 +576,7 @@ function DeviceCard({
             {device.vehiclePlate ? `${device.vehiclePlate} · ` : ''}{device.deviceId}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <button
-            type="button"
-            title="Locate on map"
-            onClick={(e) => {
-              e.stopPropagation()
-              onLocate()
-            }}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-slate-200 bg-white text-slate-500 hover:text-brand-green hover:border-brand-green/40 transition-colors"
-          >
-            <LocateFixed className="w-3.5 h-3.5" />
-          </button>
+        <div className="flex flex-col items-end gap-0.5">
           <span
             className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
               device.status === 'online'
@@ -629,14 +614,12 @@ function DeviceTelemetry({
   routePointCount,
   isLoadingRoute,
   onSelectHistory,
-  onLocate,
 }: {
   device: VehicleDevice
   routePeriod: string | null
   routePointCount: number
   isLoadingRoute: boolean
   onSelectHistory: (period: string | null) => void
-  onLocate: () => void
 }) {
   const todayStr = (() => {
     // Local browser date for input max — Florida users are Eastern; good enough for picker UX
@@ -733,18 +716,7 @@ function DeviceTelemetry({
         <div className={'w-2 h-2 rounded-full ' + (
           device.status === 'online' ? 'bg-green-500' : 'bg-slate-300'
         )} />
-        <h3 className="font-semibold text-slate-900 text-sm flex-1 min-w-0 truncate">
-          {device.vehicleName || 'Unnamed Vehicle'}
-        </h3>
-        <button
-          type="button"
-          onClick={onLocate}
-          title="Locate on map"
-          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-600 hover:text-brand-green hover:border-brand-green/40 transition-colors shrink-0"
-        >
-          <LocateFixed className="w-3.5 h-3.5" />
-          Locate
-        </button>
+        <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName || 'Unnamed Vehicle'}</h3>
       </div>
       {device.location && (
         <div className="flex items-center gap-1.5 mb-3 px-2 py-1.5 bg-slate-50 rounded-lg">
