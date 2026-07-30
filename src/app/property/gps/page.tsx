@@ -157,9 +157,8 @@ export default function GPSPage() {
       if (res.ok) {
         const data = await res.json()
         console.log('[GPS] route API:', data.debug)
-        // Prefer OSRM road-snapped path; fall back to raw GPS coordinates
-        const coords = (data.roadPath && data.roadPath.length > 0) ? data.roadPath : (data.positions || [])
-        setRoutePositions(coords)
+        // Use raw GPS points from Ruhavik (road snapping invents wrong cities)
+        setRoutePositions(data.positions || [])
       } else {
         setRoutePositions([])
       }

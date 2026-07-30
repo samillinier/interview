@@ -620,9 +620,17 @@ function messageToPosition(msg: RuhavikMessage, index: number): TraccarPosition 
   const lng = msg['position.longitude']
   if (lat == null || lng == null) return null
 
+  // Drop invalid / non-GPS fixes — cell/LBS junk creates fake trips (e.g. panhandle spikes)
+  if (msg['position.valid'] === false) return null
+
   const deviceId = Number(msg['device.id'] || 0)
   const ts = msg['position.timestamp'] ?? msg.timestamp ?? msg['server.timestamp']
-  const iso = unixToIso(typeof ts === 'number' ? ts : undefined)
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return null
+  const iso = unixToIso(ts)
+
+  const speed = Number(msg['position.speed'] ?? 0)
+  // Queclink sometimes reports absurd speeds with wild coordinates
+  if (speed > 200) return null
 
   return {
     id: index,
@@ -632,17 +640,49 @@ function messageToPosition(msg: RuhavikMessage, index: number): TraccarPosition 
     deviceTime: iso,
     fixTime: iso,
     outdated: false,
-    valid: Boolean(msg['position.valid']),
+    valid: true,
     latitude: Number(lat),
     longitude: Number(lng),
     altitude: Number(msg['position.altitude'] ?? 0),
-    speed: Number(msg['position.speed'] ?? 0),
+    speed,
     course: Number(msg['position.direction'] ?? 0),
     address: null,
     accuracy: Number(msg['position.hdop'] ?? 0),
     network: msg['gsm.signal.dbm'] != null ? { rssi: Number(msg['gsm.signal.dbm']) } : null,
     attributes: { ...msg },
   }
+}
+
+/** Haversine distance in meters */
+function haversineMeters(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(bLat - aLat)
+  const dLng = toRad(bLng - aLng)
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(s))
+}
+
+/** Drop teleport / spike points that imply impossible travel */
+function filterRouteSpikes(positions: TraccarPosition[]): TraccarPosition[] {
+  if (positions.length < 2) return positions
+  const out: TraccarPosition[] = [positions[0]]
+  for (let i = 1; i < positions.length; i++) {
+    const prev = out[out.length - 1]
+    const cur = positions[i]
+    const dtSec = Math.max(
+      1,
+      (new Date(cur.deviceTime).getTime() - new Date(prev.deviceTime).getTime()) / 1000
+    )
+    const distM = haversineMeters(prev.latitude, prev.longitude, cur.latitude, cur.longitude)
+    const speedMph = (distM / dtSec) * 2.236936
+    // Ignore single-point teleports (>120 mph implied, or >80 miles in one hop)
+    if (speedMph > 120 || distM > 80_000) continue
+    out.push(cur)
+  }
+  return out
 }
 
 function mapRuhavikEventType(raw: RuhavikTripStop): string {
@@ -717,10 +757,12 @@ export async function getPositions(deviceId?: number): Promise<TraccarPosition[]
 }
 
 export async function getRoute(deviceId: number, from: string, to: string): Promise<TraccarPosition[]> {
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
   const messages = await rpc<RuhavikMessage[]>('unit.messages.get', {
     unit_id: deviceId,
-    from: isoToUnix(from),
-    to: isoToUnix(to),
+    from: fromUnix,
+    to: toUnix,
     count: 5000,
   })
 
@@ -729,15 +771,17 @@ export async function getRoute(deviceId: number, from: string, to: string): Prom
   const positions: TraccarPosition[] = []
   messages.forEach((msg, i) => {
     const pos = messageToPosition(msg, i)
-    if (pos) {
-      pos.deviceId = deviceId
-      positions.push(pos)
-    }
+    if (!pos) return
+    // Ruhavik sometimes returns messages outside the requested window — enforce locally
+    const ts = isoToUnix(pos.deviceTime)
+    if (ts < fromUnix || ts > toUnix) return
+    pos.deviceId = deviceId
+    positions.push(pos)
   })
 
   // Oldest → newest for route playback
   positions.sort((a, b) => new Date(a.deviceTime).getTime() - new Date(b.deviceTime).getTime())
-  return positions
+  return filterRouteSpikes(positions)
 }
 
 export async function getTrips(deviceId: number, from: string, to: string): Promise<TraccarTrip[]> {
