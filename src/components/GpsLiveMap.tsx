@@ -90,34 +90,40 @@ function buildPopup(d: VehicleDevice): string {
 
 function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
   const isOnline = d.status === 'online'
-  const color = isOnline ? '#16a34a' : d.status === 'idle' ? '#f59e0b' : '#94a3b8'
+  // Brand green for live cars — solid + opaque pulse so it reads on the map
+  const color = isOnline ? '#8CB63C' : d.status === 'idle' ? '#f59e0b' : '#94a3b8'
   const pulseClass = isOnline ? 'gps-marker-pulse' : ''
 
   // Small top-down car with status ring + heading rotation
   return L.divIcon({
     className: pulseClass,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
     html:
-      '<div style="'
-      + 'width:36px;height:36px;'
+      '<div class="gps-car-wrap" style="'
+      + 'width:48px;height:48px;'
       + 'display:flex;align-items:center;justify-content:center;'
+      + 'position:relative;'
       + '">'
+      + (isOnline
+        ? '<span class="gps-pulse-ring gps-pulse-ring-a"></span><span class="gps-pulse-ring gps-pulse-ring-b"></span>'
+        : '')
       // Status ring
       + '<div style="'
       + 'position:absolute;'
       + 'width:34px;height:34px;'
       + 'border-radius:50%;'
-      + 'border:2px solid ' + color + ';'
-      + 'background:rgba(255,255,255,0.85);'
-      + 'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));'
+      + 'border:2.5px solid ' + color + ';'
+      + 'background:rgba(255,255,255,0.95);'
+      + 'box-shadow:0 0 0 3px rgba(140,182,60,' + (isOnline ? '0.45' : '0') + '),0 2px 6px rgba(0,0,0,0.35);'
+      + 'z-index:1;'
       + '"></div>'
       // Car image rotated to heading
       + '<img src="/vehicle-marker.png" style="'
       + 'width:28px;height:28px;'
       + 'transform:rotate(' + d.heading + 'deg);'
-      + 'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.25));'
-      + 'position:relative;z-index:1;'
+      + 'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3));'
+      + 'position:relative;z-index:2;'
       + '" alt="" />'
       + '</div>',
   })
@@ -395,20 +401,50 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
   return (
     <>
       <style>{`
-        @keyframes gps-pulse {
-          0%, 100% {
-            filter: drop-shadow(0 0 4px rgba(22,163,74,0.9));
+        .gps-car-wrap {
+          overflow: visible;
+        }
+        .gps-pulse-ring {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 34px;
+          height: 34px;
+          margin-left: -17px;
+          margin-top: -17px;
+          border-radius: 50%;
+          border: 3px solid #8CB63C;
+          background: rgba(140, 182, 60, 0.35);
+          box-sizing: border-box;
+          pointer-events: none;
+          z-index: 0;
+          animation: gps-ring-pulse 1.8s ease-out infinite;
+        }
+        .gps-pulse-ring-b {
+          animation-delay: 0.9s;
+        }
+        @keyframes gps-ring-pulse {
+          0% {
+            transform: scale(0.85);
+            opacity: 0.95;
+            border-color: #8CB63C;
+            background: rgba(140, 182, 60, 0.45);
           }
-          50% {
-            filter: drop-shadow(0 0 14px rgba(22,163,74,1)) drop-shadow(0 0 28px rgba(34,197,94,0.85));
+          70% {
+            opacity: 0.35;
+          }
+          100% {
+            transform: scale(2.15);
+            opacity: 0;
+            border-color: #8CB63C;
+            background: rgba(140, 182, 60, 0.1);
           }
         }
         .gps-marker-pulse {
-          animation: gps-pulse 1.6s ease-in-out infinite;
+          overflow: visible !important;
         }
-        .gps-marker-pulse > div > div:first-child {
-          border-color: #16a34a !important;
-          box-shadow: 0 0 0 4px rgba(22,163,74,0.35), 0 0 16px rgba(22,163,74,0.55);
+        .leaflet-marker-icon.gps-marker-pulse {
+          overflow: visible !important;
         }
       `}</style>
       <div ref={mapRef} className="w-full h-full" style={{ minHeight: 500 }} />

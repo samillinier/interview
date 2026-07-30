@@ -76,26 +76,11 @@ const config: Config = {
           '50%': { transform: 'scaleY(1.5)' },
         },
         heartbeat: {
-          '0%, 100%': {
-            transform: 'scale(1)',
-            filter: 'drop-shadow(0 0 0 rgba(140, 182, 60, 0))',
-          },
-          '12%': {
-            transform: 'scale(1.08)',
-            filter: 'drop-shadow(0 0 12px rgba(140, 182, 60, 0.9))',
-          },
-          '24%': {
-            transform: 'scale(1)',
-            filter: 'drop-shadow(0 0 4px rgba(140, 182, 60, 0.55))',
-          },
-          '36%': {
-            transform: 'scale(1.12)',
-            filter: 'drop-shadow(0 0 18px rgba(140, 182, 60, 1))',
-          },
-          '55%': {
-            transform: 'scale(1)',
-            filter: 'drop-shadow(0 0 6px rgba(140, 182, 60, 0.65))',
-          },
+          '0%, 100%': { transform: 'scale(1)' },
+          '12%': { transform: 'scale(1.08)' },
+          '24%': { transform: 'scale(1)' },
+          '36%': { transform: 'scale(1.12)' },
+          '55%': { transform: 'scale(1)' },
         },
         'ellipsis-blink': {
           '0%, 100%': { opacity: '0.2' },
