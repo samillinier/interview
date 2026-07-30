@@ -29,6 +29,7 @@ import {
   MapPin,
   History,
   CalendarDays,
+  ChevronDown,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -360,41 +361,43 @@ export default function GPSPage() {
                     Live Map
                   </h2>
                   <div className="flex items-center gap-1.5">
-                    {/* Route history selector */}
-                    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
-                      {[
-                        { key: null as string | null, label: 'Off' },
-                        { key: 'today', label: 'Today' },
-                        { key: 'yesterday', label: 'Yesterday' },
-                        { key: 'week', label: 'Last 7D' },
-                      ].map((opt) => {
-                        const active =
-                          opt.key === null
-                            ? routePeriod === null
-                            : routePeriod === opt.key
-                        return (
-                          <button
-                            key={opt.key || 'off'}
-                            onClick={() => setRoutePeriod(opt.key)}
-                            disabled={!selectedDevice || isLoadingRoute}
-                            className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                              active
-                                ? 'bg-white text-brand-green shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                            } ${!selectedDevice ? 'opacity-40 cursor-not-allowed' : ''}`}
-                          >
-                            {isLoadingRoute && active && opt.key !== null ? (
-                              <Loader2 className="w-3 h-3 animate-spin inline" />
-                            ) : (
-                              opt.label
-                            )}
-                          </button>
-                        )
-                      })}
-                      {routePeriod?.startsWith('range:') && (
-                        <span className="px-2.5 py-1 text-xs font-medium rounded-md bg-white text-brand-green shadow-sm">
-                          Custom
-                        </span>
+                    {/* Compact history dropdown on map */}
+                    <div className="relative">
+                      <select
+                        value={
+                          routePeriod?.startsWith('range:')
+                            ? 'custom'
+                            : routePeriod || ''
+                        }
+                        disabled={!selectedDevice || isLoadingRoute}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          if (!v) setRoutePeriod(null)
+                          else if (v === 'custom') {
+                            // Keep custom if already set; otherwise open sidebar selection
+                            if (!routePeriod?.startsWith('range:')) setRoutePeriod(null)
+                          } else setRoutePeriod(v)
+                        }}
+                        className={`appearance-none pl-2.5 pr-7 py-1.5 text-xs font-medium rounded-lg border transition-colors bg-white ${
+                          routePeriod
+                            ? 'border-brand-green/40 text-brand-green'
+                            : 'border-slate-200 text-slate-600'
+                        } ${!selectedDevice ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} focus:outline-none focus:ring-1 focus:ring-brand-green`}
+                        title="Trip history"
+                      >
+                        <option value="">History: Off</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="week">Last 7 days</option>
+                        {routePeriod?.startsWith('range:') && (
+                          <option value="custom">
+                            Custom: {routePeriod.split(':').slice(1).join(' → ')}
+                          </option>
+                        )}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      {isLoadingRoute && routePeriod && (
+                        <Loader2 className="absolute -right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-green animate-spin" />
                       )}
                     </div>
                     <span className="text-xs text-slate-400">
@@ -610,6 +613,8 @@ function DeviceTelemetry({
   const [customFrom, setCustomFrom] = useState(parsedRange?.from || '')
   const [customTo, setCustomTo] = useState(parsedRange?.to || '')
   const [rangeError, setRangeError] = useState<string | null>(null)
+  // Expanded until a period is chosen; collapses after selection
+  const [historyOpen, setHistoryOpen] = useState(!routePeriod)
 
   // Keep inputs in sync when clearing or switching presets
   useEffect(() => {
@@ -617,8 +622,12 @@ function DeviceTelemetry({
       const [, f, t] = routePeriod.split(':')
       setCustomFrom(f || '')
       setCustomTo(t || '')
-    } else if (!routePeriod) {
+      setHistoryOpen(false)
+    } else if (routePeriod) {
+      setHistoryOpen(false)
+    } else {
       setRangeError(null)
+      setHistoryOpen(true)
     }
   }, [routePeriod])
 
@@ -664,6 +673,17 @@ function DeviceTelemetry({
   const formatRangeLabel = (from: string, to: string) => {
     if (from === to) return from
     return `${from} → ${to}`
+  }
+
+  const selectedHistoryLabel = (() => {
+    if (!routePeriod) return 'Choose a period'
+    if (parsedRange) return formatRangeLabel(parsedRange.from, parsedRange.to)
+    const opt = historyOptions.find((o) => o.key === routePeriod)
+    return opt?.label || 'Custom'
+  })()
+
+  function pickHistory(key: string) {
+    onSelectHistory(routePeriod === key ? null : key)
   }
 
   return (
@@ -827,131 +847,166 @@ function DeviceTelemetry({
         </div>
       </div>
 
-      {/* Trip History — draw selected period on the live map */}
-      <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5">
-            <History className="w-3.5 h-3.5 text-brand-green" />
-            <p className="text-xs font-semibold text-slate-700">Trip History</p>
+      {/* Trip History — collapsible dropdown */}
+      <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setHistoryOpen((o) => !o)}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-100/80 transition-colors"
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <History className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-700">Trip History</p>
+              <p className={`text-[10px] truncate ${routePeriod ? 'text-brand-green font-medium' : 'text-slate-400'}`}>
+                {isLoadingRoute && routePeriod ? 'Loading…' : selectedHistoryLabel}
+                {routePeriod && !isLoadingRoute && routePointCount > 0
+                  ? ` · ${routePointCount} pts`
+                  : ''}
+              </p>
+            </div>
           </div>
-          {routePeriod && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isLoadingRoute && routePeriod && (
+              <Loader2 className="w-3.5 h-3.5 text-brand-green animate-spin" />
+            )}
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </button>
+
+        {historyOpen && (
+          <div className="px-3 pb-3 border-t border-slate-100 pt-2">
+            <p className="text-[10px] text-slate-400 mb-2">
+              Pick a period to draw this vehicle&apos;s route on the map.
+            </p>
+            <div className="space-y-1.5">
+              {historyOptions.map((opt) => {
+                const active = routePeriod === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    disabled={isLoadingRoute}
+                    onClick={() => pickHistory(opt.key)}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                      active
+                        ? 'bg-brand-green/10 border-brand-green/30 text-slate-900'
+                        : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200'
+                    } disabled:opacity-50`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold">{opt.label}</p>
+                        <p className="text-[10px] text-slate-400">{opt.hint}</p>
+                      </div>
+                      {active ? (
+                        <span className="text-[10px] font-semibold text-brand-green flex-shrink-0">Selected</span>
+                      ) : (
+                        <Navigation className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Custom calendar range */}
+            <div
+              className={`mt-2 p-2.5 rounded-lg border ${
+                customActive
+                  ? 'bg-brand-green/10 border-brand-green/30'
+                  : 'bg-white border-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                <CalendarDays className="w-3.5 h-3.5 text-brand-green" />
+                <p className="text-xs font-semibold text-slate-700">Custom dates</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <label className="block min-w-0">
+                  <span className="text-[10px] text-slate-400">From</span>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    max={customTo || todayStr}
+                    onChange={(e) => {
+                      setCustomFrom(e.target.value)
+                      setRangeError(null)
+                    }}
+                    className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  />
+                </label>
+                <label className="block min-w-0">
+                  <span className="text-[10px] text-slate-400">To</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    min={customFrom || undefined}
+                    max={todayStr}
+                    onChange={(e) => {
+                      setCustomTo(e.target.value)
+                      setRangeError(null)
+                    }}
+                    className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                disabled={isLoadingRoute || !customFrom || !customTo}
+                onClick={applyCustomRange}
+                className="w-full px-3 py-1.5 rounded-md text-xs font-semibold bg-brand-green text-white hover:bg-brand-green/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoadingRoute && customActive ? (
+                  <span className="inline-flex items-center gap-1.5 justify-center">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Loading…
+                  </span>
+                ) : (
+                  'Show on map'
+                )}
+              </button>
+              {rangeError && (
+                <p className="mt-1.5 text-[10px] text-amber-600">{rangeError}</p>
+              )}
+            </div>
+
+            {routePeriod && (
+              <button
+                type="button"
+                onClick={() => onSelectHistory(null)}
+                className="mt-2 w-full px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
+              >
+                Clear map
+              </button>
+            )}
+
+            {routePeriod && !isLoadingRoute && routePointCount === 0 && (
+              <p className="mt-2 text-[10px] text-amber-600">No GPS points found for this period.</p>
+            )}
+          </div>
+        )}
+
+        {/* Collapsed selected state — clear without reopening */}
+        {!historyOpen && routePeriod && (
+          <div className="px-3 pb-2.5 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="flex-1 text-left text-[10px] font-medium text-slate-500 hover:text-slate-700"
+            >
+              Change period
+            </button>
             <button
               type="button"
               onClick={() => onSelectHistory(null)}
               className="text-[10px] font-medium text-slate-500 hover:text-slate-800"
             >
-              Clear map
+              Clear
             </button>
-          )}
-        </div>
-        <p className="text-[10px] text-slate-400 mb-2">
-          Quick periods, or pick any dates (up to 31 days).
-        </p>
-        <div className="space-y-1.5">
-          {historyOptions.map((opt) => {
-            const active = routePeriod === opt.key
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                disabled={isLoadingRoute}
-                onClick={() => onSelectHistory(active ? null : opt.key)}
-                className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                  active
-                    ? 'bg-brand-green/10 border-brand-green/30 text-slate-900'
-                    : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200'
-                } disabled:opacity-50`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-semibold">{opt.label}</p>
-                    <p className="text-[10px] text-slate-400">{opt.hint}</p>
-                  </div>
-                  {isLoadingRoute && active ? (
-                    <Loader2 className="w-3.5 h-3.5 text-brand-green animate-spin flex-shrink-0" />
-                  ) : active ? (
-                    <span className="text-[10px] font-semibold text-brand-green flex-shrink-0">
-                      {routePointCount > 0 ? `${routePointCount} pts` : 'On map'}
-                    </span>
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                  )}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Custom calendar range */}
-        <div
-          className={`mt-2 p-2.5 rounded-lg border ${
-            customActive
-              ? 'bg-brand-green/10 border-brand-green/30'
-              : 'bg-white border-slate-100'
-          }`}
-        >
-          <div className="flex items-center gap-1.5 mb-2">
-            <CalendarDays className="w-3.5 h-3.5 text-brand-green" />
-            <p className="text-xs font-semibold text-slate-700">Custom dates</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <label className="block min-w-0">
-              <span className="text-[10px] text-slate-400">From</span>
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo || todayStr}
-                onChange={(e) => {
-                  setCustomFrom(e.target.value)
-                  setRangeError(null)
-                }}
-                className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
-              />
-            </label>
-            <label className="block min-w-0">
-              <span className="text-[10px] text-slate-400">To</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom || undefined}
-                max={todayStr}
-                onChange={(e) => {
-                  setCustomTo(e.target.value)
-                  setRangeError(null)
-                }}
-                className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
-              />
-            </label>
-          </div>
-          <button
-            type="button"
-            disabled={isLoadingRoute || !customFrom || !customTo}
-            onClick={applyCustomRange}
-            className="w-full px-3 py-1.5 rounded-md text-xs font-semibold bg-brand-green text-white hover:bg-brand-green/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoadingRoute && customActive ? (
-              <span className="inline-flex items-center gap-1.5 justify-center">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Loading…
-              </span>
-            ) : customActive ? (
-              `Showing ${formatRangeLabel(parsedRange!.from, parsedRange!.to)}`
-            ) : (
-              'Show on map'
-            )}
-          </button>
-          {rangeError && (
-            <p className="mt-1.5 text-[10px] text-amber-600">{rangeError}</p>
-          )}
-          {customActive && !isLoadingRoute && routePointCount > 0 && (
-            <p className="mt-1.5 text-[10px] text-brand-green font-medium">
-              {routePointCount} GPS points on map
-            </p>
-          )}
-        </div>
-
-        {routePeriod && !isLoadingRoute && routePointCount === 0 && (
-          <p className="mt-2 text-[10px] text-amber-600">No GPS points found for this period.</p>
         )}
       </div>
 
