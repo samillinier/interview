@@ -615,13 +615,17 @@ function telemetryToPosition(unitId: number, tele: TelemetryMap): TraccarPositio
   }
 }
 
+function isConfirmedGpsFix(valid: unknown): boolean {
+  return valid === true || valid === 1 || valid === '1' || valid === 'true'
+}
+
 function messageToPosition(msg: RuhavikMessage, index: number): TraccarPosition | null {
   const lat = msg['position.latitude']
   const lng = msg['position.longitude']
   if (lat == null || lng == null) return null
 
   // Drop invalid / non-GPS fixes — cell/LBS junk creates fake trips (e.g. panhandle spikes)
-  if (msg['position.valid'] === false) return null
+  if (!isConfirmedGpsFix(msg['position.valid'])) return null
 
   const deviceId = Number(msg['device.id'] || 0)
   const ts = msg['position.timestamp'] ?? msg.timestamp ?? msg['server.timestamp']
@@ -757,31 +761,102 @@ export async function getPositions(deviceId?: number): Promise<TraccarPosition[]
 }
 
 export async function getRoute(deviceId: number, from: string, to: string): Promise<TraccarPosition[]> {
+  const segments = await getRouteSegments(deviceId, from, to)
+  return segments.flat()
+}
+
+/**
+ * Route history as separate trip segments (does not connect parking gaps).
+ * Drawing one continuous polyline across overnight/parked gaps invents fake travel.
+ */
+export async function getRouteSegments(
+  deviceId: number,
+  from: string,
+  to: string
+): Promise<TraccarPosition[][]> {
   const fromUnix = isoToUnix(from)
   const toUnix = isoToUnix(to)
-  const messages = await rpc<RuhavikMessage[]>('unit.messages.get', {
-    unit_id: deviceId,
-    from: fromUnix,
-    to: toUnix,
-    count: 5000,
-  })
 
-  if (!Array.isArray(messages)) return []
+  const [messages, tripStops] = await Promise.all([
+    rpc<RuhavikMessage[]>('unit.messages.get', {
+      unit_id: deviceId,
+      from: fromUnix,
+      to: toUnix,
+      count: 5000,
+    }).catch(() => [] as RuhavikMessage[]),
+    rpc<RuhavikTripStop[]>('units.events.trips_stops.get', {
+      ids: [deviceId],
+      from: fromUnix,
+      to: toUnix,
+    }).catch(() => [] as RuhavikTripStop[]),
+  ])
 
-  const positions: TraccarPosition[] = []
-  messages.forEach((msg, i) => {
+  const points: TraccarPosition[] = []
+  ;(messages || []).forEach((msg, i) => {
     const pos = messageToPosition(msg, i)
     if (!pos) return
-    // Ruhavik sometimes returns messages outside the requested window — enforce locally
     const ts = isoToUnix(pos.deviceTime)
     if (ts < fromUnix || ts > toUnix) return
     pos.deviceId = deviceId
-    positions.push(pos)
+    points.push(pos)
   })
 
-  // Oldest → newest for route playback
-  positions.sort((a, b) => new Date(a.deviceTime).getTime() - new Date(b.deviceTime).getTime())
-  return filterRouteSpikes(positions)
+  points.sort((a, b) => new Date(a.deviceTime).getTime() - new Date(b.deviceTime).getTime())
+
+  const trips = (tripStops || [])
+    .filter((e) => {
+      const t = String(e.n_type || e.type || '').toLowerCase()
+      if (t !== 'trip') return false
+      const begin = Number(e.begin ?? e.event_time ?? 0)
+      const endRaw = e.end
+      const end = endRaw == null ? toUnix : Number(endRaw)
+      // Overlaps requested window
+      return end >= fromUnix && begin <= toUnix
+    })
+    .sort((a, b) => Number(a.begin ?? 0) - Number(b.begin ?? 0))
+
+  if (trips.length > 0) {
+    const segments: TraccarPosition[][] = []
+    for (const trip of trips) {
+      const begin = Math.max(fromUnix, Number(trip.begin ?? 0))
+      const endRaw = trip.end
+      const end = Math.min(toUnix, endRaw == null ? toUnix : Number(endRaw))
+      if (end < begin) continue
+      const seg = filterRouteSpikes(
+        points.filter((p) => {
+          const ts = isoToUnix(p.deviceTime)
+          return ts >= begin && ts <= end
+        })
+      )
+      if (seg.length >= 2) segments.push(seg)
+    }
+    if (segments.length > 0) return segments
+  }
+
+  // Fallback: only moving points, split on long parking gaps so days don't connect
+  const moving = filterRouteSpikes(points.filter((p) => Number(p.speed || 0) > 1))
+  return splitRouteByGaps(moving, 20 * 60)
+}
+
+/** Split a track into segments when the gap between points exceeds maxGapSec */
+function splitRouteByGaps(positions: TraccarPosition[], maxGapSec: number): TraccarPosition[][] {
+  if (positions.length < 2) return positions.length ? [positions] : []
+  const segments: TraccarPosition[][] = []
+  let current: TraccarPosition[] = [positions[0]]
+  for (let i = 1; i < positions.length; i++) {
+    const prev = positions[i - 1]
+    const cur = positions[i]
+    const gap =
+      (new Date(cur.deviceTime).getTime() - new Date(prev.deviceTime).getTime()) / 1000
+    if (gap > maxGapSec) {
+      if (current.length >= 2) segments.push(current)
+      current = [cur]
+    } else {
+      current.push(cur)
+    }
+  }
+  if (current.length >= 2) segments.push(current)
+  return segments
 }
 
 export async function getTrips(deviceId: number, from: string, to: string): Promise<TraccarTrip[]> {

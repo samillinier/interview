@@ -71,27 +71,30 @@ export async function GET(request: NextRequest) {
 
     const { from, to } = periodBounds(period)
 
-    let positions: traccar.TraccarPosition[] = []
+    let segments: traccar.TraccarPosition[][] = []
     try {
-      positions = await traccar.getRoute(traccarDevice.id, from, to)
+      segments = await traccar.getRouteSegments(traccarDevice.id, from, to)
     } catch {
-      return NextResponse.json({ positions: [], error: 'Failed to fetch route from Ruhavik' })
+      return NextResponse.json({ positions: [], segments: [], error: 'Failed to fetch route from Ruhavik' })
     }
 
-    // Raw GPS track only — OSRM road-snapping invents highway paths through cities
-    // the vehicle never visited when a bad/outlier fix is present.
-    const rawCoords = positions.map((p) => ({
+    const toCoord = (p: traccar.TraccarPosition) => ({
       latitude: p.latitude,
       longitude: p.longitude,
       speed: p.speed != null ? traccar.convertSpeedToMph(p.speed) : 0,
       time: p.deviceTime || p.fixTime,
-    }))
+    })
+
+    const routeSegments = segments.map((seg) => seg.map(toCoord))
+    const rawCoords = routeSegments.flat()
 
     return NextResponse.json({
       positions: rawCoords,
+      segments: routeSegments,
       roadPath: null,
       debug: {
         rawCount: rawCoords.length,
+        segmentCount: routeSegments.length,
         from,
         to,
         timeZone: GPS_TIMEZONE,

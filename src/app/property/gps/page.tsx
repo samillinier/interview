@@ -69,6 +69,7 @@ export default function GPSPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [routePeriod, setRoutePeriod] = useState<string | null>(null)
   const [routePositions, setRoutePositions] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[]>([])
+  const [routeSegments, setRouteSegments] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[][]>([])
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
 
   // Load property profile
@@ -157,13 +158,17 @@ export default function GPSPage() {
       if (res.ok) {
         const data = await res.json()
         console.log('[GPS] route API:', data.debug)
-        // Use raw GPS points from Ruhavik (road snapping invents wrong cities)
-        setRoutePositions(data.positions || [])
+        // Trip-segmented tracks — avoid drawing lines across parking gaps
+        const segments = Array.isArray(data.segments) ? data.segments : []
+        setRouteSegments(segments)
+        setRoutePositions(data.positions || segments.flat() || [])
       } else {
         setRoutePositions([])
+        setRouteSegments([])
       }
     } catch {
       setRoutePositions([])
+      setRouteSegments([])
     }
     setIsLoadingRoute(false)
   }, [])
@@ -174,6 +179,7 @@ export default function GPSPage() {
       fetchRoute(selectedDevice.deviceId, routePeriod)
     } else {
       setRoutePositions([])
+      setRouteSegments([])
     }
   }, [routePeriod, selectedDevice, fetchRoute])
 
@@ -383,6 +389,7 @@ export default function GPSPage() {
                     selectedDevice={selectedDevice}
                     onSelectDevice={setSelectedDevice}
                     routePositions={routePositions.length > 0 ? routePositions : undefined}
+                    routeSegments={routeSegments.length > 0 ? routeSegments : undefined}
                   />
                 </div>
               </motion.div>

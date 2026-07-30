@@ -55,11 +55,16 @@ export interface VehicleDevice {
   }
 }
 
+type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
+
 type Props = {
   devices: VehicleDevice[]
   selectedDevice: VehicleDevice | null
   onSelectDevice: (device: VehicleDevice) => void
-  routePositions?: { latitude: number; longitude: number; speed?: number; time?: string }[]
+  /** Flat points (legacy). Prefer routeSegments so parking gaps are not connected. */
+  routePositions?: RoutePoint[]
+  /** Separate trip polylines — does not draw lines across parked time. */
+  routeSegments?: RoutePoint[][]
 }
 
 function buildPopup(d: VehicleDevice): string {
@@ -128,7 +133,7 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
   })
 }
 
-export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions }: Props) {
+export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePositions, routeSegments }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
@@ -362,40 +367,48 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
     }
   }, [activeLayer])
 
-  // Draw route polyline when routePositions changes
+  // Draw trip segments (separate polylines — never connect parking gaps)
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map) return
 
-    // Remove old polyline
     if (polylineRef.current) {
       map.removeLayer(polylineRef.current)
       polylineRef.current = null
     }
 
-    // User cleared history — resume live tracking
-    if (!routePositions || routePositions.length < 2) {
+    const segments: RoutePoint[][] =
+      routeSegments && routeSegments.length > 0
+        ? routeSegments.filter((s) => s.length >= 2)
+        : routePositions && routePositions.length >= 2
+          ? [routePositions]
+          : []
+
+    if (segments.length === 0) {
       isViewingHistoryRef.current = false
       return
     }
 
     isViewingHistoryRef.current = true
 
-    const latlngs = routePositions.map(
-      (p) => L.latLng(p.latitude, p.longitude)
-    )
+    const group = L.layerGroup()
+    const allLatLngs: L.LatLng[] = []
 
-    polylineRef.current = L.polyline(latlngs, {
-      color: '#15803d',
-      weight: 3,
-      opacity: 0.7,
-      dashArray: '10 6',
-    }).addTo(map)
+    for (const seg of segments) {
+      const latlngs = seg.map((p) => L.latLng(p.latitude, p.longitude))
+      allLatLngs.push(...latlngs)
+      L.polyline(latlngs, {
+        color: '#15803d',
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '10 6',
+      }).addTo(group)
+    }
 
-    // Fit map to route bounds
-    const bounds = L.latLngBounds(latlngs)
-    map.fitBounds(bounds, { padding: [50, 50] })
-  }, [routePositions])
+    group.addTo(map)
+    polylineRef.current = group
+    map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] })
+  }, [routePositions, routeSegments])
 
   return (
     <>
