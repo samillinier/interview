@@ -837,19 +837,12 @@ export async function getSummary(deviceId: number, from: string, to: string): Pr
 }
 
 export async function isReachable(): Promise<boolean> {
+  // Prefer a preconfigured access token — avoids login storms that can lock the account.
   if (!RUHAVIK_USER || !RUHAVIK_PASS) {
-    if (process.env.RUHAVIK_ACCESS_TOKEN) {
-      try {
-        await rpc('units.get', {})
-        return true
-      } catch {
-        return false
-      }
-    }
-    return false
+    if (!process.env.RUHAVIK_ACCESS_TOKEN) return false
   }
   try {
-    await getAccessToken(true)
+    // Do NOT force a fresh login here — /api/gps/devices calls this on every poll.
     await rpc('units.get', {})
     return true
   } catch (e) {
