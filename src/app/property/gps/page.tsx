@@ -27,7 +27,7 @@ import {
   Wrench,
   RotateCcw,
   MapPin,
-  TrendingUp,
+  History,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -420,7 +420,14 @@ export default function GPSPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden"
                 >
-                  <DeviceTelemetry key={selectedDevice.id} device={selectedDevice} />
+                  <DeviceTelemetry
+                    key={selectedDevice.id}
+                    device={selectedDevice}
+                    routePeriod={routePeriod}
+                    routePointCount={routePositions.length}
+                    isLoadingRoute={isLoadingRoute}
+                    onSelectHistory={(period) => setRoutePeriod(period)}
+                  />
                 </motion.div>
               )}
             </div>
@@ -544,7 +551,19 @@ function DeviceCard({
 // Device Telemetry sub-component
 
 // Device Telemetry sub-component
-function DeviceTelemetry({ device }: { device: VehicleDevice }) {
+function DeviceTelemetry({
+  device,
+  routePeriod,
+  routePointCount,
+  isLoadingRoute,
+  onSelectHistory,
+}: {
+  device: VehicleDevice
+  routePeriod: string | null
+  routePointCount: number
+  isLoadingRoute: boolean
+  onSelectHistory: (period: string | null) => void
+}) {
   const items = [
     { icon: Gauge, label: 'Speed', value: device.speed.toFixed(0) + ' mph' },
     { icon: Navigation, label: 'Heading', value: device.heading.toFixed(0) + '\u00B0' },
@@ -556,6 +575,12 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
   const harshCount = events.filter(function(e) { return e.icon === 'harsh' }).length
   const crashCount = events.filter(function(e) { return e.icon === 'crash' }).length
   const speedCount = events.filter(function(e) { return e.icon === 'speed' }).length
+
+  const historyOptions = [
+    { key: 'today', label: 'Today', hint: 'Trips from this morning' },
+    { key: 'yesterday', label: 'Yesterday', hint: 'Full day track' },
+    { key: 'week', label: 'Last 7 days', hint: 'Week of movement' },
+  ] as const
 
   return (
     <div className="p-4">
@@ -716,6 +741,65 @@ function DeviceTelemetry({ device }: { device: VehicleDevice }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Trip History — draw selected period on the live map */}
+      <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-brand-green" />
+            <p className="text-xs font-semibold text-slate-700">Trip History</p>
+          </div>
+          {routePeriod && (
+            <button
+              type="button"
+              onClick={() => onSelectHistory(null)}
+              className="text-[10px] font-medium text-slate-500 hover:text-slate-800"
+            >
+              Clear map
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-slate-400 mb-2">
+          Pick a period to draw this vehicle&apos;s route on the map.
+        </p>
+        <div className="space-y-1.5">
+          {historyOptions.map((opt) => {
+            const active = routePeriod === opt.key
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                disabled={isLoadingRoute}
+                onClick={() => onSelectHistory(active ? null : opt.key)}
+                className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                  active
+                    ? 'bg-brand-green/10 border-brand-green/30 text-slate-900'
+                    : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200'
+                } disabled:opacity-50`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold">{opt.label}</p>
+                    <p className="text-[10px] text-slate-400">{opt.hint}</p>
+                  </div>
+                  {isLoadingRoute && active ? (
+                    <Loader2 className="w-3.5 h-3.5 text-brand-green animate-spin flex-shrink-0" />
+                  ) : active ? (
+                    <span className="text-[10px] font-semibold text-brand-green flex-shrink-0">
+                      {routePointCount > 0 ? `${routePointCount} pts` : 'On map'}
+                    </span>
+                  ) : (
+                    <Navigation className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        {routePeriod && !isLoadingRoute && routePointCount === 0 && (
+          <p className="mt-2 text-[10px] text-amber-600">No GPS points found for this period.</p>
+        )}
       </div>
 
       {/* Alerts — only show critical/warning events */}
