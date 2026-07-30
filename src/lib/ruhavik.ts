@@ -347,6 +347,47 @@ function teleTs(tele: TelemetryMap, key: string): number | undefined {
   return tele[key]?.ts
 }
 
+/** Normalize Ruhavik unix (sec or ms) → unix seconds */
+function toUnixSec(ts: number | null | undefined): number | undefined {
+  if (ts == null || !Number.isFinite(ts)) return undefined
+  return ts > 1e12 ? ts / 1000 : ts
+}
+
+/**
+ * Last time the unit talked to Ruhavik (heartbeat / any telemetry),
+ * not just the last GPS fix. Parked devices often keep heartbeating
+ * while the GPS fix stays unchanged for many minutes.
+ */
+function telemetryActivityUnix(tele: TelemetryMap): number | undefined {
+  const candidates: number[] = []
+  const push = (v: unknown) => {
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      const sec = toUnixSec(v)
+      if (sec != null) candidates.push(sec)
+    }
+  }
+  for (const key of ['server.timestamp', 'timestamp', 'position.latitude', 'movement.status', 'gsm.signal.dbm']) {
+    push(teleValue(tele, key))
+    push(teleTs(tele, key))
+  }
+  const posObj = teleValue<{ timestamp?: number }>(tele, 'position')
+  if (posObj && typeof posObj === 'object') push(posObj.timestamp)
+  push(teleTs(tele, 'position'))
+
+  // Newest telemetry sample as fallback (heartbeat fields update even when GPS is idle)
+  for (const entry of Object.values(tele)) {
+    push(entry?.ts)
+  }
+  if (candidates.length === 0) return undefined
+  return Math.max(...candidates)
+}
+
+function isRecentlyActive(unixSec: number | null | undefined, maxAgeMs = 15 * 60_000): boolean {
+  const sec = toUnixSec(unixSec)
+  if (sec == null) return false
+  return Date.now() - sec * 1000 < maxAgeMs
+}
+
 /** Ruhavik/flespi speeds are km/h → mph */
 export function convertSpeedToMph(rawSpeedKmh: number): number {
   if (!Number.isFinite(rawSpeedKmh) || rawSpeedKmh < 0) return 0
@@ -487,14 +528,13 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
 
 function mapUnitToDevice(unit: RuhavikUnit, tele?: TelemetryMap): TraccarDevice {
   const lastTs =
-    teleTs(tele || {}, 'position') ??
-    teleTs(tele || {}, 'position.latitude') ??
+    telemetryActivityUnix(tele || {}) ??
     unit.last_active ??
     unit.updated_at ??
     null
   const speed = Number(teleValue(tele || {}, 'position.speed') ?? 0)
-  const online =
-    lastTs != null && Date.now() - (lastTs > 1e12 ? lastTs : lastTs * 1000) < 300_000
+  // Match Ruhavik: unit is active if it recently communicated, even if GPS fix is older.
+  const online = isRecentlyActive(lastTs)
 
   // Prefer short hardware-style names in our UI (e.g. "GV500MAP" not "My Queclink GV500MAP")
   const rawName = (unit.name || '').trim()
@@ -532,11 +572,13 @@ function telemetryToPosition(unitId: number, tele: TelemetryMap): TraccarPositio
   const lng = posObj?.longitude ?? teleValue<number>(tele, 'position.longitude')
   if (lat == null || lng == null) return null
 
-  const ts =
+  const fixTs =
     posObj?.timestamp ??
     teleValue<number>(tele, 'position.timestamp') ??
     teleTs(tele, 'position') ??
     teleTs(tele, 'position.latitude')
+  // serverTime = last Ruhavik communication; deviceTime/fixTime = GPS fix time
+  const activityTs = telemetryActivityUnix(tele) ?? fixTs
 
   const speed = posObj?.speed ?? teleValue<number>(tele, 'position.speed') ?? 0
   const course = posObj?.direction ?? teleValue<number>(tele, 'position.direction') ?? 0
@@ -550,15 +592,16 @@ function telemetryToPosition(unitId: number, tele: TelemetryMap): TraccarPositio
     if (entry?.value !== undefined) attrs[k] = entry.value
   }
 
-  const iso = unixToIso(ts)
+  const fixIso = unixToIso(fixTs)
+  const serverIso = unixToIso(activityTs)
   return {
     id: unitId,
     deviceId: unitId,
     protocol: 'queclink',
-    serverTime: iso,
-    deviceTime: iso,
-    fixTime: iso,
-    outdated: false,
+    serverTime: serverIso,
+    deviceTime: fixIso,
+    fixTime: fixIso,
+    outdated: !isRecentlyActive(activityTs),
     valid: Boolean(valid),
     latitude: Number(lat),
     longitude: Number(lng),
