@@ -90,7 +90,6 @@ function buildPopup(d: VehicleDevice): string {
 
 function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
   const isOnline = d.status === 'online'
-  // Brand green for live cars — solid + opaque pulse so it reads on the map
   const color = isOnline ? '#8CB63C' : d.status === 'idle' ? '#f59e0b' : '#94a3b8'
   const pulseClass = isOnline ? 'gps-marker-pulse' : ''
 
@@ -113,9 +112,9 @@ function makeVehicleDivIcon(d: VehicleDevice): L.DivIcon {
       + 'position:absolute;'
       + 'width:34px;height:34px;'
       + 'border-radius:50%;'
-      + 'border:2.5px solid ' + color + ';'
+      + 'border:2px solid ' + color + ';'
       + 'background:rgba(255,255,255,0.95);'
-      + 'box-shadow:0 0 0 3px rgba(140,182,60,' + (isOnline ? '0.45' : '0') + '),0 2px 6px rgba(0,0,0,0.35);'
+      + 'box-shadow:0 2px 6px rgba(0,0,0,0.35);'
       + 'z-index:1;'
       + '"></div>'
       // Car image rotated to heading
@@ -413,8 +412,8 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
           margin-left: -17px;
           margin-top: -17px;
           border-radius: 50%;
-          border: 3px solid #8CB63C;
-          background: rgba(140, 182, 60, 0.35);
+          border: 2px solid rgba(15, 23, 42, 0.28);
+          background: rgba(15, 23, 42, 0.08);
           box-sizing: border-box;
           pointer-events: none;
           z-index: 0;
@@ -425,19 +424,12 @@ export function GpsLiveMap({ devices, selectedDevice, onSelectDevice, routePosit
         }
         @keyframes gps-ring-pulse {
           0% {
-            transform: scale(0.85);
-            opacity: 0.95;
-            border-color: #8CB63C;
-            background: rgba(140, 182, 60, 0.45);
-          }
-          70% {
-            opacity: 0.35;
+            transform: scale(0.9);
+            opacity: 0.55;
           }
           100% {
-            transform: scale(2.15);
+            transform: scale(2.1);
             opacity: 0;
-            border-color: #8CB63C;
-            background: rgba(140, 182, 60, 0.1);
           }
         }
         .gps-marker-pulse {
