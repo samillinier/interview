@@ -851,13 +851,20 @@ export async function getStops(deviceId: number, from: string, to: string): Prom
 }
 
 export async function getEvents(deviceId: number, from: string, to: string): Promise<TraccarEvent[]> {
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
   const items = await rpc<RuhavikTripStop[]>('units.events.get', {
     ids: [deviceId],
-    from: isoToUnix(from),
-    to: isoToUnix(to),
+    from: fromUnix,
+    to: toUnix,
   })
 
-  return (items || []).map((e, i) => {
+  return (items || [])
+    .filter((e) => {
+      const ts = Number(e.event_time ?? e.begin ?? 0)
+      return ts >= fromUnix && ts <= toUnix
+    })
+    .map((e, i) => {
     const type = mapRuhavikEventType(e)
     const attrs: Record<string, unknown> = { ...e }
     if (type === 'alarm' && String(e.n_type || e.type).toLowerCase().includes('tow')) {
@@ -877,48 +884,74 @@ export async function getEvents(deviceId: number, from: string, to: string): Pro
 }
 
 export async function getSummary(deviceId: number, from: string, to: string): Promise<TraccarReportSummary[]> {
-  const [mileage, devices] = await Promise.all([
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
+
+  const [mileage, trips] = await Promise.all([
     rpc<RuhavikMileageInterval[]>('units.mileage.intervals.get', {
       ids: [deviceId],
-      from: isoToUnix(from),
-      to: isoToUnix(to),
+      from: fromUnix,
+      to: toUnix,
     }).catch(() => [] as RuhavikMileageInterval[]),
-    getDevices().catch(() => [] as TraccarDevice[]),
+    rpc<RuhavikTripStop[]>('units.events.trips_stops.get', {
+      ids: [deviceId],
+      from: fromUnix,
+      to: toUnix,
+    }).catch(() => [] as RuhavikTripStop[]),
   ])
 
-  const deviceName = devices.find((d) => d.id === deviceId)?.name || ''
-  const intervals = mileage || []
-  if (intervals.length === 0) {
-    return [
-      {
-        deviceId,
-        deviceName,
-        distance: 0,
-        averageSpeed: 0,
-        maxSpeed: 0,
-        spentFuel: 0,
-        engineHours: 0,
-      },
-    ]
+  // Ruhavik often returns intervals/trips outside the requested window — filter locally.
+  const intervals = (mileage || []).filter((i) => {
+    const begin = Number(i.begin || 0)
+    return begin >= fromUnix && begin <= toUnix
+  })
+
+  const tripEvents = (trips || []).filter((e) => {
+    const t = String(e.n_type || e.type || '').toLowerCase()
+    if (t !== 'trip') return false
+    const begin = Number(e.begin ?? e.event_time ?? 0)
+    return begin >= fromUnix && begin <= toUnix
+  })
+
+  // Prefer trip events when available (cleaner day totals); else mileage intervals.
+  const useTrips = tripEvents.length > 0
+  const totalKm = useTrips
+    ? tripEvents.reduce((sum, i) => sum + Number(i.mileage || 0), 0)
+    : intervals.reduce((sum, i) => sum + Number(i.mileage || 0), 0)
+  const totalDurationSec = useTrips
+    ? tripEvents.reduce((sum, i) => sum + Number(i.duration || 0), 0)
+    : intervals.reduce((sum, i) => sum + Number(i.duration || 0), 0)
+
+  const rawMax = Math.max(
+    0,
+    ...intervals.map((i) => Number(i.speed_max || 0)),
+    ...tripEvents.map((i) => Number(i.speed_max || 0))
+  )
+  // Cap absurd GPS spike speeds (e.g. 198 km/h junk fixes)
+  const maxSpeed = Math.min(rawMax, 160)
+
+  const weighted = useTrips ? tripEvents : intervals
+  let avgSpeed = 0
+  if (weighted.length > 0 && totalDurationSec > 0) {
+    const speedSum = weighted.reduce(
+      (sum, i) => sum + Number(i.speed_average || 0) * Number(i.duration || 0),
+      0
+    )
+    avgSpeed = speedSum / totalDurationSec
   }
 
-  const totalKm = intervals.reduce((sum, i) => sum + Number(i.mileage || 0), 0)
-  const totalDurationSec = intervals.reduce((sum, i) => sum + Number(i.duration || 0), 0)
-  const maxSpeed = Math.max(...intervals.map((i) => Number(i.speed_max || 0)), 0)
-  const avgSpeed =
-    intervals.reduce((sum, i) => sum + Number(i.speed_average || 0), 0) / Math.max(intervals.length, 1)
-  const endOdometerKm = Math.max(...intervals.map((i) => Number(i.total_mileage || 0)), 0)
+  const endOdometerKm = Math.max(0, ...intervals.map((i) => Number(i.total_mileage || 0)))
 
   return [
     {
       deviceId,
-      deviceName,
+      deviceName: '',
       distance: totalKm * 1000, // meters
       averageSpeed: avgSpeed,
       maxSpeed,
       spentFuel: 0,
       engineHours: totalDurationSec / 3600,
-      endOdometer: endOdometerKm * 1000,
+      endOdometer: endOdometerKm > 0 ? endOdometerKm * 1000 : undefined,
     },
   ]
 }

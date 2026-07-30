@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
 import { reverseGeocode } from '@/lib/geocode'
+import { periodBounds } from '@/lib/gpsTime'
 
 /**
  * GET /api/gps/devices
@@ -106,11 +107,9 @@ export async function GET(request: NextRequest) {
       if (td.uniqueId) traccarDeviceByUniqueId.set(td.uniqueId, td)
     }
 
-    // Time range for reports
-    const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const nowIso = now.toISOString()
+    // Time range for reports — Eastern day bounds (not UTC server midnight)
+    const { from: todayStart, to: nowIso } = periodBounds('today')
+    const { from: weekAgo } = periodBounds('week')
 
     // Fetch all events and summary in parallel for all traccar devices
     const allEvents: traccar.TraccarEvent[] = []

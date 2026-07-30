@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
+import { GPS_TIMEZONE, periodBounds } from '@/lib/gpsTime'
 
 /**
  * GET /api/gps/route?deviceId=GV500MAP&period=today|yesterday|week
@@ -10,81 +11,6 @@ import * as traccar from '@/lib/ruhavik'
  * Returns route positions for a device within the given time period.
  * Uses raw GPS track points (not OSRM road-snapping) so history matches Ruhavik.
  */
-
-const ROUTE_TZ = process.env.GPS_TIMEZONE || 'America/New_York'
-
-function tzParts(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(date)
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value || '0')
-  return {
-    year: get('year'),
-    month: get('month'),
-    day: get('day'),
-    hour: get('hour'),
-    minute: get('minute'),
-    second: get('second'),
-  }
-}
-
-/** Offset (ms) to add to UTC instant to get wall-clock in timeZone */
-function tzOffsetMs(date: Date, timeZone: string): number {
-  const p = tzParts(date, timeZone)
-  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second)
-  return asUtc - date.getTime()
-}
-
-/** Convert a wall-clock datetime in timeZone → UTC Date */
-function zonedLocalToUtc(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-  second: number,
-  timeZone: string
-): Date {
-  let utcMs = Date.UTC(year, month - 1, day, hour, minute, second)
-  utcMs -= tzOffsetMs(new Date(utcMs), timeZone)
-  utcMs = Date.UTC(year, month - 1, day, hour, minute, second) - tzOffsetMs(new Date(utcMs), timeZone)
-  return new Date(utcMs)
-}
-
-function addCalendarDays(year: number, month: number, day: number, delta: number) {
-  const d = new Date(Date.UTC(year, month - 1, day + delta))
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }
-}
-
-/** Period bounds in GPS_TIMEZONE (default America/New_York) */
-function periodBounds(period: string, timeZone = ROUTE_TZ): { from: string; to: string } {
-  const now = new Date()
-  const today = tzParts(now, timeZone)
-
-  if (period === 'yesterday') {
-    const y = addCalendarDays(today.year, today.month, today.day, -1)
-    const from = zonedLocalToUtc(y.year, y.month, y.day, 0, 0, 0, timeZone)
-    const to = zonedLocalToUtc(y.year, y.month, y.day, 23, 59, 59, timeZone)
-    return { from: from.toISOString(), to: to.toISOString() }
-  }
-
-  if (period === 'week') {
-    const start = addCalendarDays(today.year, today.month, today.day, -6)
-    const from = zonedLocalToUtc(start.year, start.month, start.day, 0, 0, 0, timeZone)
-    return { from: from.toISOString(), to: now.toISOString() }
-  }
-
-  // today (default)
-  const from = zonedLocalToUtc(today.year, today.month, today.day, 0, 0, 0, timeZone)
-  return { from: from.toISOString(), to: now.toISOString() }
-}
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -168,7 +94,7 @@ export async function GET(request: NextRequest) {
         rawCount: rawCoords.length,
         from,
         to,
-        timeZone: ROUTE_TZ,
+        timeZone: GPS_TIMEZONE,
         period,
       },
       gpsConnected: true,
