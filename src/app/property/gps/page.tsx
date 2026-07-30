@@ -490,17 +490,17 @@ function DeviceCard({
     >
       <div className="flex items-center gap-3">
         <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${
             device.status === 'online'
               ? 'bg-green-100'
               : 'bg-slate-100'
           }`}
         >
-          <Car
-            className={`w-4 h-4 ${
-              device.status === 'online'
-                ? 'text-green-600'
-                : 'text-slate-400'
+          <img
+            src="/vehicle-marker.png"
+            alt=""
+            className={`w-6 h-6 object-contain ${
+              device.status === 'online' ? 'opacity-100' : 'opacity-50 grayscale'
             }`}
           />
         </div>
