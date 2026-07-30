@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
       const data = {
         traccarId: td.id,
-        deviceName: td.name,
+        deviceName: td.name?.replace(/^My\s+Queclink\s+/i, '').trim() || td.name,
         deviceId: td.uniqueId,
         deviceModel: td.model || 'Queclink GV500MAP',
         status: 'offline',

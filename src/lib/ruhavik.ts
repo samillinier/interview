@@ -496,9 +496,13 @@ function mapUnitToDevice(unit: RuhavikUnit, tele?: TelemetryMap): TraccarDevice 
   const online =
     lastTs != null && Date.now() - (lastTs > 1e12 ? lastTs : lastTs * 1000) < 300_000
 
+  // Prefer short hardware-style names in our UI (e.g. "GV500MAP" not "My Queclink GV500MAP")
+  const rawName = (unit.name || '').trim()
+  const shortName = rawName.replace(/^My\s+Queclink\s+/i, '').trim() || rawName || 'Unnamed'
+
   return {
     id: unit.id,
-    name: unit.name || 'Unnamed',
+    name: shortName,
     uniqueId: unit.ident || String(unit.id),
     status: online ? (speed > 3 ? 'online' : 'unknown') : 'offline',
     disabled: unit.enabled === false,
