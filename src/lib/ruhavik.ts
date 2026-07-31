@@ -500,10 +500,22 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   return payload
 }
 
+/** Queclink GTHBM report.reason → harsh subtype */
+function harshAlarmFromReason(reason: unknown): string {
+  const r = Number(reason)
+  if (r === 0) return 'harshBraking'
+  if (r === 1) return 'harshAcceleration'
+  if (r === 2) return 'harshCornering'
+  if (r === 3) return 'harshBraking'
+  if (r === 4) return 'harshAcceleration'
+  return 'harshAcceleration'
+}
+
 export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
   const t = event.type
   const attrs = event.attributes || {}
   const result = (attrs['result'] as string) || ''
+  const reportCode = String(attrs['report.code'] || attrs.reportCode || '').toUpperCase()
   const b = {
     id: event.id,
     type: event.type,
@@ -512,6 +524,35 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
     icon: 'generic',
     severity: 'info',
     detail: undefined as string | undefined,
+  }
+
+  // Queclink report messages (from unit.messages.get)
+  if (reportCode === 'GTSPD' || t === 'deviceOverspeed') {
+    const mph =
+      attrs.speedMph != null
+        ? Number(attrs.speedMph)
+        : attrs['position.speed'] != null
+          ? convertSpeedToMph(Number(attrs['position.speed']))
+          : undefined
+    const detail =
+      mph != null && mph > 0 ? `Speeding alert (${mph} mph)` : 'Speeding alert'
+    return { ...b, type: 'deviceOverspeed', label: 'Overspeed', icon: 'speed', severity: 'warning', detail }
+  }
+  if (reportCode === 'GTHBM' || reportCode === 'GTHBE') {
+    const alarmType = String(attrs.alarm || harshAlarmFromReason(attrs['report.reason']))
+    if (alarmType.includes('harshBraking')) {
+      return { ...b, label: 'Harsh Braking', icon: 'harsh', severity: 'warning', detail: 'Sudden braking detected' }
+    }
+    if (alarmType.includes('harshCornering') || alarmType.includes('harshTurn')) {
+      return { ...b, label: 'Harsh Cornering', icon: 'harsh', severity: 'warning', detail: 'Aggressive turn detected' }
+    }
+    return { ...b, label: 'Harsh Acceleration', icon: 'harsh', severity: 'warning', detail: 'Rapid acceleration detected' }
+  }
+  if (reportCode === 'GTCRA' || reportCode === 'GTCRD') {
+    return { ...b, label: 'Crash Detected', icon: 'crash', severity: 'critical', detail: 'Impact event recorded' }
+  }
+  if (reportCode === 'GTTOW') {
+    return { ...b, label: 'Tow Alarm', icon: 'tow', severity: 'warning', detail: 'Vehicle movement while ignition off' }
   }
 
   if (t === 'alarm') {
@@ -995,37 +1036,127 @@ export async function getStops(deviceId: number, from: string, to: string): Prom
     })
 }
 
-export async function getEvents(deviceId: number, from: string, to: string): Promise<TraccarEvent[]> {
-  const fromUnix = isoToUnix(from)
-  const toUnix = isoToUnix(to)
-  const items = await rpc<RuhavikTripStop[]>('units.events.get', {
-    ids: [deviceId],
-    from: fromUnix,
-    to: toUnix,
-  })
+/**
+ * Queclink behavior reports live in message history (GTSPD / GTHBM / GTCRA),
+ * not in units.events.get (which is mostly trip/stop).
+ */
+function behaviorEventsFromMessages(
+  deviceId: number,
+  messages: RuhavikMessage[],
+  fromUnix: number,
+  toUnix: number
+): TraccarEvent[] {
+  const BEHAVIOR = new Set(['GTSPD', 'GTHBM', 'GTHBE', 'GTCRA', 'GTCRD', 'GTTOW'])
+  type Cand = { ts: number; code: string; msg: RuhavikMessage }
+  const cands: Cand[] = []
 
-  return (items || [])
-    .filter((e) => {
-      const ts = Number(e.event_time ?? e.begin ?? 0)
-      return ts >= fromUnix && ts <= toUnix
-    })
-    .map((e, i) => {
-    const type = mapRuhavikEventType(e)
-    const attrs: Record<string, unknown> = { ...e }
-    if (type === 'alarm' && String(e.n_type || e.type).toLowerCase().includes('tow')) {
+  for (const msg of messages || []) {
+    const code = String(msg['report.code'] || '').toUpperCase()
+    if (!BEHAVIOR.has(code)) continue
+    const ts = Number(msg['position.timestamp'] ?? msg.timestamp ?? msg['server.timestamp'] ?? 0)
+    if (!Number.isFinite(ts) || ts < fromUnix || ts > toUnix) continue
+
+    // GTSPD: reason 1 = entered overspeed, 0 = left overspeed (ignore exits)
+    if (code === 'GTSPD' && Number(msg['report.reason']) === 0) continue
+
+    cands.push({ ts, code, msg })
+  }
+
+  cands.sort((a, b) => a.ts - b.ts)
+
+  // Coalesce bursts (same code within 2 minutes) into one driving-behavior event
+  const coalesced: Cand[] = []
+  for (const c of cands) {
+    const prev = coalesced[coalesced.length - 1]
+    if (prev && prev.code === c.code && c.ts - prev.ts < 120) continue
+    coalesced.push(c)
+  }
+
+  return coalesced.map((c, i) => {
+    const code = c.code
+    let type = 'alarm'
+    const attrs: Record<string, unknown> = {
+      'report.code': code,
+      'report.reason': c.msg['report.reason'],
+      'position.speed': c.msg['position.speed'],
+      speedMph:
+        c.msg['position.speed'] != null
+          ? convertSpeedToMph(Number(c.msg['position.speed']))
+          : undefined,
+      latitude: c.msg['position.latitude'],
+      longitude: c.msg['position.longitude'],
+    }
+
+    if (code === 'GTSPD') {
+      type = 'deviceOverspeed'
+      attrs.alarm = 'overspeed'
+    } else if (code === 'GTHBM' || code === 'GTHBE') {
+      attrs.alarm = harshAlarmFromReason(c.msg['report.reason'] ?? c.msg['harsh.behavior'])
+    } else if (code === 'GTCRA' || code === 'GTCRD') {
+      attrs.alarm = 'crash'
+    } else if (code === 'GTTOW') {
       attrs.alarm = 'tow'
     }
+
     return {
-      id: toEventId(e, i),
+      id: 900_000 + i,
       type,
-      eventTime: unixToIso(e.event_time ?? e.begin ?? e.timestamp as number | undefined),
-      deviceId: e.unit_id || deviceId,
+      eventTime: unixToIso(c.ts),
+      deviceId,
       positionId: null,
       geofenceId: null,
       maintenanceId: null,
       attributes: attrs,
     }
   })
+}
+
+export async function getEvents(deviceId: number, from: string, to: string): Promise<TraccarEvent[]> {
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
+
+  const [items, messages] = await Promise.all([
+    rpc<RuhavikTripStop[]>('units.events.get', {
+      ids: [deviceId],
+      from: fromUnix,
+      to: toUnix,
+    }).catch(() => [] as RuhavikTripStop[]),
+    rpc<RuhavikMessage[]>('unit.messages.get', {
+      unit_id: deviceId,
+      from: fromUnix,
+      to: toUnix,
+      count: 5000,
+    }).catch(() => [] as RuhavikMessage[]),
+  ])
+
+  const platformEvents: TraccarEvent[] = (items || [])
+    .filter((e) => {
+      const ts = Number(e.event_time ?? e.begin ?? 0)
+      return ts >= fromUnix && ts <= toUnix
+    })
+    .map((e, i) => {
+      const type = mapRuhavikEventType(e)
+      const attrs: Record<string, unknown> = { ...e }
+      if (type === 'alarm' && String(e.n_type || e.type).toLowerCase().includes('tow')) {
+        attrs.alarm = 'tow'
+      }
+      return {
+        id: toEventId(e, i),
+        type,
+        eventTime: unixToIso(e.event_time ?? e.begin ?? e.timestamp as number | undefined),
+        deviceId: e.unit_id || deviceId,
+        positionId: null,
+        geofenceId: null,
+        maintenanceId: null,
+        attributes: attrs,
+      }
+    })
+
+  const behaviorEvents = behaviorEventsFromMessages(deviceId, messages || [], fromUnix, toUnix)
+
+  return [...platformEvents, ...behaviorEvents].sort(
+    (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime()
+  )
 }
 
 /**

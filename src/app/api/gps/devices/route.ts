@@ -256,13 +256,22 @@ export async function GET(request: NextRequest) {
       // OBDII data from position attributes
       const obdii = traccar.extractObdiiData(livePos?.attributes as Record<string, unknown> | undefined)
 
-      // Recent events (last 7 days)
+      // Recent events (last 7 days) — include Queclink GTSPD/GTHBM/GTCRA behavior msgs
       const tcId = traccarDevice?.id
       const deviceEvents = tcId ? (eventsByDeviceId.get(tcId) || []) : []
       const recentEvents = deviceEvents
-        .slice(-20)
-        .map(e => traccar.classifyEvent(e))
-        .filter((e): e is traccar.ClassifiedEvent => e !== null && e.icon !== 'movement' && e.icon !== 'idle' && e.icon !== 'generic')
+        .map((e) => traccar.classifyEvent(e))
+        .filter(
+          (e): e is traccar.ClassifiedEvent =>
+            e !== null &&
+            (e.icon === 'speed' ||
+              e.icon === 'harsh' ||
+              e.icon === 'crash' ||
+              e.icon === 'tow' ||
+              e.icon === 'geofence' ||
+              e.icon === 'maintenance')
+        )
+        .slice(-40)
         .reverse()
 
       // Today's summary

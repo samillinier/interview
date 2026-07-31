@@ -944,11 +944,14 @@ function DeviceTelemetry({
         </div>
       )}
 
-      {/* Driving Behavior — always show, even if 0 */}
+      {/* Driving Behavior — from Queclink GTCRA / GTHBM / GTSPD (last 7 days) */}
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Shield className="w-3.5 h-3.5 text-amber-500" />
-          <p className="text-xs font-semibold text-slate-700">Driving Behavior</p>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-amber-500" />
+            <p className="text-xs font-semibold text-slate-700">Driving Behavior</p>
+          </div>
+          <p className="text-[10px] text-slate-400">Last 7 days</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div className="text-center p-1.5 rounded-lg bg-red-50">
