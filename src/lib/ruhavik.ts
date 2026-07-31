@@ -1053,11 +1053,18 @@ function behaviorEventsFromMessages(
   for (const msg of messages || []) {
     const code = String(msg['report.code'] || '').toUpperCase()
     if (!BEHAVIOR.has(code)) continue
-    const ts = Number(msg['position.timestamp'] ?? msg.timestamp ?? msg['server.timestamp'] ?? 0)
+    // Prefer device/fix time; fall back to server receive time
+    const ts = Number(msg.timestamp ?? msg['position.timestamp'] ?? msg['server.timestamp'] ?? 0)
     if (!Number.isFinite(ts) || ts < fromUnix || ts > toUnix) continue
 
     // GTSPD: reason 1 = entered overspeed, 0 = left overspeed (ignore exits)
-    if (code === 'GTSPD' && Number(msg['report.reason']) === 0) continue
+    if (code === 'GTSPD') {
+      if (Number(msg['report.reason']) === 0) continue
+      // Device often sends GTSPD while parked (speed 0, sometimes buffered) —
+      // those are config/status noise, not a real drive. Require actual motion.
+      const speedKmh = Number(msg['position.speed'] ?? 0)
+      if (!Number.isFinite(speedKmh) || speedKmh < 40) continue // ~25 mph
+    }
 
     cands.push({ ts, code, msg })
   }
