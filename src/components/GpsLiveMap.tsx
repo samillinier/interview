@@ -104,17 +104,15 @@ function makeVehicleDivIcon(
   const bare = opts?.bare === true
   const showPulse = !bare && opts?.pulse !== false && isOnline
   const pulseClass = showPulse ? 'gps-marker-pulse' : ''
-  // New top-down sedan is tall — size by height, keep aspect ratio
-  const carH = bare ? 44 : 34
-  const box = bare ? 52 : 48
+  const carSize = bare ? 36 : 28
 
   return L.divIcon({
     className: pulseClass,
-    iconSize: [box, box],
-    iconAnchor: [box / 2, box / 2],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
     html:
       '<div class="gps-car-wrap" style="'
-      + 'width:' + box + 'px;height:' + box + 'px;'
+      + 'width:48px;height:48px;'
       + 'display:flex;align-items:center;justify-content:center;'
       + 'position:relative;'
       + '">'
@@ -125,7 +123,7 @@ function makeVehicleDivIcon(
         ? ''
         : '<div style="'
           + 'position:absolute;'
-          + 'width:36px;height:36px;'
+          + 'width:34px;height:34px;'
           + 'border-radius:50%;'
           + 'border:2px solid ' + color + ';'
           + 'background:rgba(255,255,255,0.95);'
@@ -133,11 +131,9 @@ function makeVehicleDivIcon(
           + 'z-index:1;'
           + '"></div>')
       + '<img class="gps-car-img" src="/vehicle-marker.png" style="'
-      + 'height:' + carH + 'px;width:auto;'
-      + 'max-width:' + (box - 4) + 'px;'
-      + 'object-fit:contain;'
+      + 'width:' + carSize + 'px;height:' + carSize + 'px;'
       + 'transform:rotate(' + d.heading + 'deg);'
-      + 'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35));'
+      + 'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3));'
       + 'position:relative;z-index:2;'
       + 'will-change:transform;'
       + '" alt="" />'

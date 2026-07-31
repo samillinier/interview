@@ -594,7 +594,7 @@ function DeviceCard({
           <img
             src="/vehicle-marker.png"
             alt=""
-            className="relative z-[1] h-7 w-auto max-w-[22px] object-contain"
+            className="relative z-[1] w-7 h-7 object-contain"
           />
         </div>
         <div className="flex-1 min-w-0">
