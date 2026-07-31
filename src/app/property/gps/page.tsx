@@ -979,7 +979,11 @@ function DeviceTelemetry({
           </div>
           <div>
             <p className="text-[10px] text-slate-400">Total Odometer</p>
-            <p className="text-sm font-bold text-slate-900">{device.obdii?.totalDistance != null ? device.obdii.totalDistance.toLocaleString() + ' mi' : '--'}</p>
+            <p className="text-sm font-bold text-slate-900">
+              {device.obdii?.totalDistance != null && device.obdii.totalDistance > 0
+                ? device.obdii.totalDistance.toLocaleString() + ' mi'
+                : '--'}
+            </p>
           </div>
           <div>
             <p className="text-[10px] text-slate-400">DTC Codes</p>
@@ -992,7 +996,7 @@ function DeviceTelemetry({
                 })}
               </div>
             ) : (
-              <p className="text-sm font-bold text-slate-300">--</p>
+              <p className="text-sm font-bold text-slate-300">None</p>
             )}
           </div>
         </div>

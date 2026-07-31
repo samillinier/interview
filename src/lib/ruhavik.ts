@@ -407,6 +407,16 @@ export function formatDuration(seconds: number): string {
   return seconds + 's'
 }
 
+function normalizeDtcCodes(raw: unknown): string[] {
+  if (raw == null || raw === '' || raw === 0 || raw === '0' || raw === false) return []
+  const parts = Array.isArray(raw)
+    ? raw.map((x) => String(x).trim())
+    : String(raw)
+        .split(/[,;\s]+/)
+        .map((s) => s.trim())
+  return parts.filter((c) => c.length > 0 && c !== '0' && !/^none$/i.test(c))
+}
+
 export function extractObdiiData(attrs: Record<string, unknown> | undefined): ObdiiPayload {
   if (!attrs) return {}
   const payload: ObdiiPayload = {}
@@ -459,10 +469,14 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   const vin = attrs['vehicle.vin'] ?? attrs['vin'] ?? attrs['obdVin']
   if (typeof vin === 'string' && vin.length > 0) payload.vin = vin
 
-  const dtc = attrs['dtc'] ?? attrs['obdDtc'] ?? attrs['dtcs']
-  if (typeof dtc === 'string' && dtc.length > 0) {
-    payload.dtcCodes = dtc.split(',').map((s: string) => s.trim()).filter(Boolean)
-  }
+  const dtcRaw =
+    attrs['can.dtc'] ??
+    attrs['dtc.codes'] ??
+    attrs['dtc'] ??
+    attrs['obdDtc'] ??
+    attrs['dtcs']
+  const dtcCodes = normalizeDtcCodes(dtcRaw)
+  if (dtcCodes.length > 0) payload.dtcCodes = dtcCodes
 
   const obdSpeed =
     val('can.vehicle.speed') ??
@@ -474,10 +488,13 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   if (attrs['motion'] === true || attrs['motion'] === 'true' || attrs['movement.status'] === true) {
     payload.motionDetected = true
   }
-  if (attrs['totalDistance'] !== undefined) {
-    payload.totalDistance = Math.round(Number(attrs['totalDistance']) * 0.000621371)
-  } else if (attrs['vehicle.mileage'] !== undefined) {
-    payload.totalDistance = Math.round(Number(attrs['vehicle.mileage']) * 0.621371)
+  // vehicle.mileage is often 0 when the ECU doesn't expose odometer — treat as missing
+  const totalMeters = val('totalDistance')
+  const mileageKm = val('vehicle.mileage')
+  if (totalMeters != null && totalMeters > 0) {
+    payload.totalDistance = Math.round(totalMeters * 0.000621371)
+  } else if (mileageKm != null && mileageKm > 0) {
+    payload.totalDistance = Math.round(mileageKm * 0.621371)
   }
 
   return payload
