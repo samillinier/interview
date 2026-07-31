@@ -1067,13 +1067,13 @@ export async function getSummary(deviceId: number, from: string, to: string): Pr
     ? tripEvents.reduce((sum, i) => sum + Number(i.duration || 0), 0)
     : intervals.reduce((sum, i) => sum + Number(i.duration || 0), 0)
 
-  const rawMax = Math.max(
-    0,
+  // Ruhavik speed_max is km/h. Ignore absurd GPS spikes (>160 km/h) entirely —
+  // capping them (e.g. 247 → 160 → 99.4 mph) still shows junk as "today's max".
+  const plausibleMaxes = [
     ...intervals.map((i) => Number(i.speed_max || 0)),
-    ...tripEvents.map((i) => Number(i.speed_max || 0))
-  )
-  // Cap absurd GPS spike speeds (e.g. 198 km/h junk fixes)
-  const maxSpeed = Math.min(rawMax, 160)
+    ...tripEvents.map((i) => Number(i.speed_max || 0)),
+  ].filter((s) => Number.isFinite(s) && s > 0 && s <= 160)
+  const maxSpeed = plausibleMaxes.length > 0 ? Math.max(...plausibleMaxes) : 0
 
   const weighted = useTrips ? tripEvents : intervals
   let avgSpeed = 0
