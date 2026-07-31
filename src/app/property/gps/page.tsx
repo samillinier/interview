@@ -31,6 +31,9 @@ import {
   CalendarDays,
   ChevronDown,
   LocateFixed,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -75,6 +78,7 @@ export default function GPSPage() {
   const [routeSegments, setRouteSegments] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[][]>([])
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locateTick, setLocateTick] = useState(0)
+  const isAdmin = (session?.user as any)?.isAdmin === true
 
   function locateVehicle(device?: VehicleDevice | null) {
     const target = device || selectedDevice || devices[0]
@@ -85,6 +89,28 @@ export default function GPSPage() {
     // Exit history so the map focuses on the live car
     if (routePeriod) setRoutePeriod(null)
     setLocateTick((n) => n + 1)
+  }
+
+  async function renameDevice(device: VehicleDevice, name: string) {
+    const trimmed = name.trim()
+    if (!trimmed) throw new Error('Name is required')
+    if (trimmed === device.vehicleName) return true
+    const res = await fetch('/api/gps/devices', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: device.deviceId, name: trimmed }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to rename')
+    }
+    setDevices((prev) =>
+      prev.map((d) => (d.id === device.id ? { ...d, vehicleName: trimmed } : d))
+    )
+    setSelectedDevice((prev) =>
+      prev && prev.id === device.id ? { ...prev, vehicleName: trimmed } : prev
+    )
+    return true
   }
 
   // Load property profile
@@ -480,6 +506,8 @@ export default function GPSPage() {
                     routePointCount={routePositions.length}
                     isLoadingRoute={isLoadingRoute}
                     onSelectHistory={(period) => setRoutePeriod(period)}
+                    canRename={isAdmin}
+                    onRename={(name) => renameDevice(selectedDevice, name)}
                   />
                 </motion.div>
               )}
@@ -614,12 +642,16 @@ function DeviceTelemetry({
   routePointCount,
   isLoadingRoute,
   onSelectHistory,
+  canRename,
+  onRename,
 }: {
   device: VehicleDevice
   routePeriod: string | null
   routePointCount: number
   isLoadingRoute: boolean
   onSelectHistory: (period: string | null) => void
+  canRename?: boolean
+  onRename?: (name: string) => Promise<boolean>
 }) {
   const todayStr = (() => {
     // Local browser date for input max — Florida users are Eastern; good enough for picker UX
@@ -639,6 +671,16 @@ function DeviceTelemetry({
   const [rangeError, setRangeError] = useState<string | null>(null)
   // Always collapsed unless the user opens the dropdown
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(device.vehicleName || '')
+  const [renameError, setRenameError] = useState<string | null>(null)
+  const [isSavingName, setIsSavingName] = useState(false)
+
+  useEffect(() => {
+    setNameDraft(device.vehicleName || '')
+    setEditingName(false)
+    setRenameError(null)
+  }, [device.id, device.vehicleName])
 
   // Keep inputs in sync when clearing or switching presets
   useEffect(() => {
@@ -710,14 +752,91 @@ function DeviceTelemetry({
     setHistoryOpen(false)
   }
 
+  async function saveName() {
+    if (!onRename) return
+    setIsSavingName(true)
+    setRenameError(null)
+    try {
+      await onRename(nameDraft)
+      setEditingName(false)
+    } catch (e: any) {
+      setRenameError(e?.message || 'Failed to rename')
+    }
+    setIsSavingName(false)
+  }
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <div className={'w-2 h-2 rounded-full ' + (
           device.status === 'online' ? 'bg-green-500' : 'bg-slate-300'
         )} />
-        <h3 className="font-semibold text-slate-900 text-sm">{device.vehicleName || 'Unnamed Vehicle'}</h3>
+        {editingName ? (
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            <input
+              autoFocus
+              value={nameDraft}
+              maxLength={80}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveName()
+                if (e.key === 'Escape') {
+                  setEditingName(false)
+                  setNameDraft(device.vehicleName || '')
+                  setRenameError(null)
+                }
+              }}
+              className="flex-1 min-w-0 rounded-md border border-slate-200 px-2 py-1 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-green"
+              placeholder="GPS display name"
+            />
+            <button
+              type="button"
+              disabled={isSavingName || !nameDraft.trim()}
+              onClick={saveName}
+              className="p-1.5 rounded-md text-brand-green hover:bg-brand-green/10 disabled:opacity-40"
+              title="Save name"
+            >
+              {isSavingName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              type="button"
+              disabled={isSavingName}
+              onClick={() => {
+                setEditingName(false)
+                setNameDraft(device.vehicleName || '')
+                setRenameError(null)
+              }}
+              className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100"
+              title="Cancel"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <h3 className="font-semibold text-slate-900 text-sm flex-1 min-w-0 truncate">
+              {device.vehicleName || 'Unnamed Vehicle'}
+            </h3>
+            {canRename && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNameDraft(device.vehicleName || '')
+                  setEditingName(true)
+                }}
+                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-600 hover:text-brand-green hover:border-brand-green/40 transition-colors shrink-0"
+                title="Rename GPS device"
+              >
+                <Pencil className="w-3 h-3" />
+                Rename
+              </button>
+            )}
+          </>
+        )}
       </div>
+      {renameError && (
+        <p className="mb-2 text-[10px] text-amber-600">{renameError}</p>
+      )}
       {device.location && (
         <div className="flex items-center gap-1.5 mb-3 px-2 py-1.5 bg-slate-50 rounded-lg">
           <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />

@@ -995,6 +995,17 @@ model VehicleDocument {
   @@index([vehicleId])
 }
 
+/// Admin-custom GPS label (keyed by Ruhavik uniqueId / deviceId). Sync never overwrites this.
+model GpsDeviceAlias {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deviceKey String   @unique
+  name      String
+
+  @@index([deviceKey])
+}
+
 model GpsDevice {
   id            String        @id @default(cuid())
   createdAt     DateTime      @default(now())

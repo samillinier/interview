@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      const ruhavikName = td.name?.replace(/^My\s+Queclink\s+/i, '').trim() || td.name
       const data = {
         traccarId: td.id,
-        deviceName: td.name?.replace(/^My\s+Queclink\s+/i, '').trim() || td.name,
         deviceId: td.uniqueId,
         deviceModel: td.model || 'Queclink GV500MAP',
         status: 'offline',
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (existingId) {
+        // Do not overwrite deviceName — admin custom labels must stick
         await (prisma as any).gpsDevice.update({
           where: { id: existingId },
           data,
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
         await (prisma as any).gpsDevice.create({
           data: {
             ...data,
+            deviceName: ruhavikName,
             propertyId: property.id,
             latitude: 0,
             longitude: 0,

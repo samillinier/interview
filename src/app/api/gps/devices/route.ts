@@ -11,7 +11,51 @@ import { periodBounds } from '@/lib/gpsTime'
  *
  * Returns GPS devices for the authenticated property user.
  * Enriches with live position, OBDII, recent events, and today's driving summary.
+ *
+ * PATCH /api/gps/devices  (admin only)
+ * Body: { deviceId: string, name: string }
+ * Saves a custom display name for the GPS unit (replaces GV500MAP etc. in the UI).
  */
+export async function PATCH(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const isAdmin = (session?.user as any)?.isAdmin === true
+
+  if (!session || !isAdmin || !['SUPER_ADMIN', 'ADMIN'].includes(userType)) {
+    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  }
+
+  try {
+    const body = await request.json()
+    const deviceId = String(body?.deviceId || '').trim()
+    const name = String(body?.name || '').trim()
+
+    if (!deviceId) {
+      return NextResponse.json({ error: 'deviceId required' }, { status: 400 })
+    }
+    if (!name || name.length > 80) {
+      return NextResponse.json({ error: 'Name must be 1–80 characters' }, { status: 400 })
+    }
+
+    const alias = await (prisma as any).gpsDeviceAlias.upsert({
+      where: { deviceKey: deviceId },
+      create: { deviceKey: deviceId, name },
+      update: { name },
+    })
+
+    // Keep property-linked GpsDevice.deviceName in sync when present
+    await (prisma as any).gpsDevice.updateMany({
+      where: { deviceId },
+      data: { deviceName: name },
+    }).catch(() => {})
+
+    return NextResponse.json({ success: true, deviceId, name: alias.name })
+  } catch (error) {
+    console.error('Failed to rename GPS device:', error)
+    return NextResponse.json({ error: 'Failed to rename GPS device' }, { status: 500 })
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
@@ -60,6 +104,13 @@ export async function GET(request: NextRequest) {
       console.error('[gps/devices] Error fetching Ruhavik data:', e)
     }
 
+    // Custom admin labels (e.g. rename GV500MAP → "Van 1")
+    const aliases = await (prisma as any).gpsDeviceAlias.findMany().catch(() => [])
+    const aliasByKey = new Map<string, string>()
+    for (const a of aliases || []) {
+      if (a?.deviceKey && a?.name) aliasByKey.set(String(a.deviceKey), String(a.name))
+    }
+
     // Admin users: build device entries directly from Ruhavik live data
     if (isAdmin && traccarDevices.length > 0) {
       console.log('[gps/devices] Admin building', traccarDevices.length, 'devices from Ruhavik')
@@ -74,11 +125,12 @@ export async function GET(request: NextRequest) {
         const active =
           !!seenAt && Date.now() - new Date(seenAt).getTime() < 15 * 60_000
         const mph = pos?.speed != null ? traccar.convertSpeedToMph(pos.speed) : 0
+        const deviceKey = td.uniqueId || ('tc-' + td.id)
         return {
           id: 'tc-' + td.id,
           traccarId: td.id,
-          deviceId: td.uniqueId || ('tc-' + td.id),
-          deviceName: td.name || 'Unnamed',
+          deviceId: deviceKey,
+          deviceName: aliasByKey.get(deviceKey) || td.name || 'Unnamed',
           deviceModel: 'Queclink GV500MAP',
           // Match Ruhavik: connected/reporting = online (even when speed is 0)
           status: active ? 'online' : 'offline',
@@ -213,11 +265,16 @@ export async function GET(request: NextRequest) {
         odometer: summaryOdometer,
       } : undefined
 
+      const deviceKey = String(device.deviceId ?? device.id)
+      const customName = aliasByKey.get(deviceKey)
+      const linkedVehicleName = device.Vehicle?.vehicleModel
+        ? `${device.Vehicle.vehicleMake || ''} ${device.Vehicle.vehicleModel}`.trim()
+        : ''
+
       return {
         id: device.id,
-        vehicleName: device.Vehicle?.vehicleModel
-          ? (device.Vehicle.vehicleMake || '') + ' ' + device.Vehicle.vehicleModel
-          : device.deviceName,
+        // Admin custom name wins, then linked vehicle, then hardware/Ruhavik name
+        vehicleName: customName || linkedVehicleName || device.deviceName,
         vehiclePlate: device.Vehicle?.plate ?? null,
         deviceId: device.deviceId ?? device.id,
         deviceModel: device.deviceModel ?? 'Queclink GV500MAP',
