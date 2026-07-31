@@ -134,7 +134,7 @@ function makeVehicleDivIcon(
       + '<img class="gps-car-img" src="/vehicle-marker.png" style="'
       + 'width:' + carSize + 'px;height:' + carSize + 'px;'
       + 'transform:rotate(' + d.heading + 'deg);'
-      + 'filter:drop-shadow(0 1px 1px rgba(0,0,0,0.45));'
+      // No drop-shadow — it always falls "down" on screen, so it looks like a black blob at the rear
       + 'position:relative;z-index:2;'
       + 'will-change:transform;'
       + '" alt="" />'
