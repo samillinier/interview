@@ -418,30 +418,45 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     return isNaN(n) ? undefined : n
   }
 
-  const rpm = val('rpm') ?? val('obdRpm') ?? val('can.engine.rpm')
+  // Ruhavik/flespi param names (engine.rpm, fuel.level, …) plus legacy Traccar aliases
+  const rpm =
+    val('engine.rpm') ??
+    val('can.engine.rpm') ??
+    val('rpm') ??
+    val('obdRpm')
   if (rpm !== undefined) payload.rpm = Math.round(rpm)
 
-  const fuel = val('fuel') ?? val('obdFuel') ?? val('fuelLevel') ?? val('fuel.level')
+  const fuel = val('fuel.level') ?? val('fuel') ?? val('obdFuel') ?? val('fuelLevel')
   if (fuel !== undefined) payload.fuelLevel = Math.round(fuel)
 
-  const temp = val('coolantTemp') ?? val('obdCoolantTemp') ?? val('engineTemp') ?? val('engine.coolant.temperature')
-  if (temp !== undefined) payload.engineTemp = Math.round(temp)
+  const tempRaw =
+    val('engine.coolant.temperature') ??
+    val('can.engine.coolant.temperature') ??
+    val('coolant.temperature') ??
+    val('coolantTemp') ??
+    val('obdCoolantTemp') ??
+    val('engineTemp')
+  if (tempRaw !== undefined) {
+    // Ruhavik usually sends °C; values above ~140 are already °F
+    const f = tempRaw > 140 ? tempRaw : tempRaw * (9 / 5) + 32
+    payload.engineTemp = Math.round(f)
+  }
 
   const battery =
+    val('external.powersource.voltage') ??
+    val('backup.battery.voltage') ??
     val('battery') ??
     val('power') ??
-    val('obdBattery') ??
-    val('external.powersource.voltage') ??
-    val('backup.battery.voltage')
+    val('obdBattery')
   if (battery !== undefined) payload.batteryVoltage = Math.round(battery * 10) / 10
 
-  const odo = val('odometer') ?? val('obdOdometer') ?? val('vehicle.mileage')
-  if (odo !== undefined) {
+  const odo = val('vehicle.mileage') ?? val('odometer') ?? val('obdOdometer')
+  if (odo !== undefined && odo > 0) {
     // vehicle.mileage from Ruhavik is typically km
     payload.odometer = Math.round(odo > 100000 ? odo * 0.000621371 : odo * 0.621371)
   }
 
-  const vin = attrs['vin'] ?? attrs['obdVin'] ?? attrs['vehicle.vin']
+  const vin = attrs['vehicle.vin'] ?? attrs['vin'] ?? attrs['obdVin']
   if (typeof vin === 'string' && vin.length > 0) payload.vin = vin
 
   const dtc = attrs['dtc'] ?? attrs['obdDtc'] ?? attrs['dtcs']
@@ -449,7 +464,11 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     payload.dtcCodes = dtc.split(',').map((s: string) => s.trim()).filter(Boolean)
   }
 
-  const obdSpeed = val('obdSpeed') ?? val('can.vehicle.speed')
+  const obdSpeed =
+    val('can.vehicle.speed') ??
+    val('vehicle.speed') ??
+    val('obd.speed') ??
+    val('obdSpeed')
   if (obdSpeed !== undefined) payload.obdSpeed = convertSpeedToMph(obdSpeed)
 
   if (attrs['motion'] === true || attrs['motion'] === 'true' || attrs['movement.status'] === true) {
