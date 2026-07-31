@@ -1060,10 +1060,11 @@ function behaviorEventsFromMessages(
     // GTSPD: reason 1 = entered overspeed, 0 = left overspeed (ignore exits)
     if (code === 'GTSPD') {
       if (Number(msg['report.reason']) === 0) continue
-      // Device often sends GTSPD while parked (speed 0, sometimes buffered) —
-      // those are config/status noise, not a real drive. Require actual motion.
+      // Device is configured for 90 mph overspeed. Ruhavik still sometimes emits
+      // GTSPD while parked or well under the limit — only count real breaches.
       const speedKmh = Number(msg['position.speed'] ?? 0)
-      if (!Number.isFinite(speedKmh) || speedKmh < 40) continue // ~25 mph
+      const speedMph = convertSpeedToMph(speedKmh)
+      if (!Number.isFinite(speedMph) || speedMph < 90) continue
     }
 
     cands.push({ ts, code, msg })

@@ -679,6 +679,7 @@ function DeviceTelemetry({
   const [rangeError, setRangeError] = useState<string | null>(null)
   // Always collapsed unless the user opens the dropdown
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [alertsOpen, setAlertsOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(device.vehicleName || '')
   const [renameError, setRenameError] = useState<string | null>(null)
@@ -1168,26 +1169,37 @@ function DeviceTelemetry({
         )}
       </div>
 
-      {/* Alerts — only show critical/warning events */}
+      {/* Alerts — collapsed by default; expand on click */}
       {(() => {
         const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
         if (alerts.length === 0) return null
         return (
-          <div className="p-3 bg-red-50/50 rounded-xl border border-red-100">
-            <div className="flex items-center gap-1.5 mb-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-              <p className="text-xs font-semibold text-red-700">Alerts ({alerts.length})</p>
-            </div>
-            <div className="space-y-1">
-              {alerts.slice(0, 5).map(function(event) {
-                return (
-                  <div key={event.id} className="flex items-center justify-between p-1.5 bg-white rounded-lg text-xs">
-                    <span className="font-semibold text-slate-800">{event.label}</span>
-                    <span className="text-[10px] text-slate-400">{formatTimeAgo(event.eventTime)}</span>
-                  </div>
-                )
-              })}
-            </div>
+          <div className="rounded-xl border border-red-100 bg-red-50/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setAlertsOpen((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-red-50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                <p className="text-xs font-semibold text-red-700">Alerts ({alerts.length})</p>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-red-400 transition-transform ${alertsOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {alertsOpen && (
+              <div className="px-3 pb-3 space-y-1 border-t border-red-100 pt-2">
+                {alerts.slice(0, 5).map(function(event) {
+                  return (
+                    <div key={event.id} className="flex items-center justify-between p-1.5 bg-white rounded-lg text-xs">
+                      <span className="font-semibold text-slate-800">{event.label}</span>
+                      <span className="text-[10px] text-slate-400">{formatTimeAgo(event.eventTime)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )
       })()}
