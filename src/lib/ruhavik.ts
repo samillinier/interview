@@ -633,8 +633,9 @@ function messageToPosition(msg: RuhavikMessage, index: number): TraccarPosition 
   const iso = unixToIso(ts)
 
   const speed = Number(msg['position.speed'] ?? 0)
-  // Queclink sometimes reports absurd speeds with wild coordinates
-  if (speed > 200) return null
+  // Ruhavik speed is km/h. Drop absurd cold-start / multipath junk (e.g. 247 km/h
+  // "teleports" that placed today's trip start in San Antonio, FL).
+  if (speed > 160) return null
 
   return {
     id: index,
@@ -682,11 +683,44 @@ function filterRouteSpikes(positions: TraccarPosition[]): TraccarPosition[] {
     )
     const distM = haversineMeters(prev.latitude, prev.longitude, cur.latitude, cur.longitude)
     const speedMph = (distM / dtSec) * 2.236936
-    // Ignore single-point teleports (>120 mph implied, or >80 miles in one hop)
-    if (speedMph > 120 || distM > 80_000) continue
+    // Ignore single-point teleports (>95 mph implied, or >25 miles in one hop)
+    if (speedMph > 95 || distM > 40_000) continue
     out.push(cur)
   }
   return out
+}
+
+/**
+ * Drop leading/trailing GPS junk before/after a real lock.
+ * Cold starts often invent a faraway town (e.g. San Antonio, FL) for a few samples
+ * at high speed, then snap onto the real highway track.
+ */
+function trimSegmentTeleports(positions: TraccarPosition[]): TraccarPosition[] {
+  if (positions.length < 5) return filterRouteSpikes(positions)
+
+  const lats = positions.map((p) => p.latitude).sort((a, b) => a - b)
+  const lngs = positions.map((p) => p.longitude).sort((a, b) => a - b)
+  const mid = Math.floor(positions.length / 2)
+  const medLat = lats[mid]
+  const medLng = lngs[mid]
+
+  const MAX_FROM_CORE_M = 25_000 // ~15.5 miles
+
+  let start = 0
+  while (start < positions.length - 2) {
+    const d = haversineMeters(positions[start].latitude, positions[start].longitude, medLat, medLng)
+    if (d <= MAX_FROM_CORE_M) break
+    start++
+  }
+
+  let end = positions.length - 1
+  while (end > start + 1) {
+    const d = haversineMeters(positions[end].latitude, positions[end].longitude, medLat, medLng)
+    if (d <= MAX_FROM_CORE_M) break
+    end--
+  }
+
+  return filterRouteSpikes(positions.slice(start, end + 1))
 }
 
 function mapRuhavikEventType(raw: RuhavikTripStop): string {
@@ -822,7 +856,7 @@ export async function getRouteSegments(
       const endRaw = trip.end
       const end = Math.min(toUnix, endRaw == null ? toUnix : Number(endRaw))
       if (end < begin) continue
-      const seg = filterRouteSpikes(
+      const seg = trimSegmentTeleports(
         points.filter((p) => {
           const ts = isoToUnix(p.deviceTime)
           return ts >= begin && ts <= end
@@ -834,7 +868,7 @@ export async function getRouteSegments(
   }
 
   // Fallback: only moving points, split on long parking gaps so days don't connect
-  const moving = filterRouteSpikes(points.filter((p) => Number(p.speed || 0) > 1))
+  const moving = trimSegmentTeleports(points.filter((p) => Number(p.speed || 0) > 1))
   return splitRouteByGaps(moving, 20 * 60)
 }
 
