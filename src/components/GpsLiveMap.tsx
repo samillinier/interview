@@ -97,12 +97,14 @@ function buildPopup(d: VehicleDevice): string {
 
 function makeVehicleDivIcon(
   d: Pick<VehicleDevice, 'status' | 'heading'>,
-  opts?: { pulse?: boolean }
+  opts?: { pulse?: boolean; /** History playback: car only, no white status disc */ bare?: boolean }
 ): L.DivIcon {
   const isOnline = d.status === 'online'
   const color = isOnline ? '#8CB63C' : d.status === 'idle' ? '#f59e0b' : '#94a3b8'
-  const showPulse = opts?.pulse !== false && isOnline
+  const bare = opts?.bare === true
+  const showPulse = !bare && opts?.pulse !== false && isOnline
   const pulseClass = showPulse ? 'gps-marker-pulse' : ''
+  const carSize = bare ? 36 : 28
 
   return L.divIcon({
     className: pulseClass,
@@ -117,17 +119,19 @@ function makeVehicleDivIcon(
       + (showPulse
         ? '<span class="gps-pulse-ring gps-pulse-ring-a"></span><span class="gps-pulse-ring gps-pulse-ring-b"></span>'
         : '')
-      + '<div style="'
-      + 'position:absolute;'
-      + 'width:34px;height:34px;'
-      + 'border-radius:50%;'
-      + 'border:2px solid ' + color + ';'
-      + 'background:rgba(255,255,255,0.95);'
-      + 'box-shadow:0 2px 6px rgba(0,0,0,0.35);'
-      + 'z-index:1;'
-      + '"></div>'
+      + (bare
+        ? ''
+        : '<div style="'
+          + 'position:absolute;'
+          + 'width:34px;height:34px;'
+          + 'border-radius:50%;'
+          + 'border:2px solid ' + color + ';'
+          + 'background:rgba(255,255,255,0.95);'
+          + 'box-shadow:0 2px 6px rgba(0,0,0,0.35);'
+          + 'z-index:1;'
+          + '"></div>')
       + '<img class="gps-car-img" src="/vehicle-marker.png" style="'
-      + 'width:28px;height:28px;'
+      + 'width:' + carSize + 'px;height:' + carSize + 'px;'
       + 'transform:rotate(' + d.heading + 'deg);'
       + 'filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3));'
       + 'position:relative;z-index:2;'
@@ -284,7 +288,8 @@ export function GpsLiveMap({
     marker.setLatLng([lat, lng])
 
     if (forceIcon || !playbackIconReadyRef.current) {
-      marker.setIcon(makeVehicleDivIcon({ status: 'online', heading: smoothed }, { pulse: false }))
+      // History playback: car only — no white disc underneath
+      marker.setIcon(makeVehicleDivIcon({ status: 'online', heading: smoothed }, { pulse: false, bare: true }))
       playbackIconReadyRef.current = true
       return
     }
