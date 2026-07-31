@@ -78,7 +78,15 @@ export default function GPSPage() {
   const [routeSegments, setRouteSegments] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[][]>([])
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locateTick, setLocateTick] = useState(0)
-  const isAdmin = (session?.user as any)?.isAdmin === true
+  // Prefer role — isAdmin was missing from session for some logins
+  const sessionRole = String((session?.user as any)?.role || '').toUpperCase()
+  const sessionUserType = String((session?.user as any)?.userType || '').toUpperCase()
+  const canRenameGps =
+    (session?.user as any)?.isAdmin === true ||
+    sessionRole === 'ADMIN' ||
+    sessionRole === 'SUPER_ADMIN' ||
+    sessionUserType === 'ADMIN' ||
+    sessionUserType === 'SUPER_ADMIN'
 
   function locateVehicle(device?: VehicleDevice | null) {
     const target = device || selectedDevice || devices[0]
@@ -506,7 +514,7 @@ export default function GPSPage() {
                     routePointCount={routePositions.length}
                     isLoadingRoute={isLoadingRoute}
                     onSelectHistory={(period) => setRoutePeriod(period)}
-                    canRename={isAdmin}
+                    canRename={canRenameGps}
                     onRename={(name) => renameDevice(selectedDevice, name)}
                   />
                 </motion.div>

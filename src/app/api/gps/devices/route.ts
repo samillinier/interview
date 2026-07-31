@@ -19,9 +19,15 @@ import { periodBounds } from '@/lib/gpsTime'
 export async function PATCH(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
-  const isAdmin = (session?.user as any)?.isAdmin === true
+  const role = String((session?.user as any)?.role || '').toUpperCase()
+  const isAdmin =
+    (session?.user as any)?.isAdmin === true ||
+    role === 'ADMIN' ||
+    role === 'SUPER_ADMIN' ||
+    userType === 'ADMIN' ||
+    userType === 'SUPER_ADMIN'
 
-  if (!session || !isAdmin || !['SUPER_ADMIN', 'ADMIN'].includes(userType)) {
+  if (!session || !isAdmin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 })
   }
 
@@ -59,7 +65,13 @@ export async function PATCH(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
-  const isAdmin = (session?.user as any)?.isAdmin === true
+  const role = String((session?.user as any)?.role || '').toUpperCase()
+  const isAdmin =
+    (session?.user as any)?.isAdmin === true ||
+    role === 'ADMIN' ||
+    role === 'SUPER_ADMIN' ||
+    userType === 'ADMIN' ||
+    userType === 'SUPER_ADMIN'
   const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
   if (!session || !allowedTypes.includes(userType)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

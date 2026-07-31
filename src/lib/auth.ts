@@ -304,6 +304,8 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).role = (token as any).role
         ;(session.user as any).userType = (token as any).userType // 'admin' or 'property'
         ;(session.user as any).jobTitle = (token as any).jobTitle || null
+        ;(session.user as any).isAdmin = (token as any).isAdmin === true
+        ;(session.user as any).isProperty = (token as any).isProperty === true
 
         const picture = typeof token.picture === 'string' ? token.picture.trim() : ''
         if (picture.startsWith('http://') || picture.startsWith('https://')) {
