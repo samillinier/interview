@@ -1028,75 +1028,61 @@ export async function getEvents(deviceId: number, from: string, to: string): Pro
   })
 }
 
+/**
+ * Day/period driving summary from cleaned GPS tracks (same filters as trip history).
+ * Ruhavik trip/interval mileage+speed_max are unreliable after cold-start teleports
+ * (e.g. 67 km / 247 km/h junk), so we recompute from the filtered polyline.
+ */
 export async function getSummary(deviceId: number, from: string, to: string): Promise<TraccarReportSummary[]> {
-  const fromUnix = isoToUnix(from)
-  const toUnix = isoToUnix(to)
+  const segments = await getRouteSegments(deviceId, from, to)
 
-  const [mileage, trips] = await Promise.all([
-    rpc<RuhavikMileageInterval[]>('units.mileage.intervals.get', {
-      ids: [deviceId],
-      from: fromUnix,
-      to: toUnix,
-    }).catch(() => [] as RuhavikMileageInterval[]),
-    rpc<RuhavikTripStop[]>('units.events.trips_stops.get', {
-      ids: [deviceId],
-      from: fromUnix,
-      to: toUnix,
-    }).catch(() => [] as RuhavikTripStop[]),
-  ])
+  let distanceM = 0
+  let drivingSec = 0
+  let maxSpeedKmh = 0
+  let movingDistM = 0
 
-  // Ruhavik often returns intervals/trips outside the requested window — filter locally.
-  const intervals = (mileage || []).filter((i) => {
-    const begin = Number(i.begin || 0)
-    return begin >= fromUnix && begin <= toUnix
-  })
+  for (const seg of segments) {
+    for (let i = 1; i < seg.length; i++) {
+      const a = seg[i - 1]
+      const b = seg[i]
+      const dtSec =
+        (new Date(b.deviceTime).getTime() - new Date(a.deviceTime).getTime()) / 1000
+      // Long gaps are parking — don't count as driving or distance bridges
+      if (!(dtSec > 0) || dtSec > 10 * 60) continue
 
-  const tripEvents = (trips || []).filter((e) => {
-    const t = String(e.n_type || e.type || '').toLowerCase()
-    if (t !== 'trip') return false
-    const begin = Number(e.begin ?? e.event_time ?? 0)
-    return begin >= fromUnix && begin <= toUnix
-  })
+      const stepM = haversineMeters(a.latitude, a.longitude, b.latitude, b.longitude)
+      if (!Number.isFinite(stepM) || stepM < 0) continue
 
-  // Prefer trip events when available (cleaner day totals); else mileage intervals.
-  const useTrips = tripEvents.length > 0
-  const totalKm = useTrips
-    ? tripEvents.reduce((sum, i) => sum + Number(i.mileage || 0), 0)
-    : intervals.reduce((sum, i) => sum + Number(i.mileage || 0), 0)
-  const totalDurationSec = useTrips
-    ? tripEvents.reduce((sum, i) => sum + Number(i.duration || 0), 0)
-    : intervals.reduce((sum, i) => sum + Number(i.duration || 0), 0)
+      const impliedKmh = (stepM / dtSec) * 3.6
+      const reportedKmh = Number(b.speed || 0)
+      const moving = reportedKmh > 3 || impliedKmh > 3 || stepM > 15
 
-  // Ruhavik speed_max is km/h. Ignore absurd GPS spikes (>160 km/h) entirely —
-  // capping them (e.g. 247 → 160 → 99.4 mph) still shows junk as "today's max".
-  const plausibleMaxes = [
-    ...intervals.map((i) => Number(i.speed_max || 0)),
-    ...tripEvents.map((i) => Number(i.speed_max || 0)),
-  ].filter((s) => Number.isFinite(s) && s > 0 && s <= 160)
-  const maxSpeed = plausibleMaxes.length > 0 ? Math.max(...plausibleMaxes) : 0
+      if (moving) {
+        distanceM += stepM
+        drivingSec += dtSec
+        movingDistM += stepM
+      }
 
-  const weighted = useTrips ? tripEvents : intervals
-  let avgSpeed = 0
-  if (weighted.length > 0 && totalDurationSec > 0) {
-    const speedSum = weighted.reduce(
-      (sum, i) => sum + Number(i.speed_average || 0) * Number(i.duration || 0),
-      0
-    )
-    avgSpeed = speedSum / totalDurationSec
+      // Max from path distance/time (device speed_max spikes are unreliable)
+      if (dtSec >= 3 && impliedKmh > 5 && impliedKmh <= 160 && impliedKmh > maxSpeedKmh) {
+        maxSpeedKmh = impliedKmh
+      }
+    }
   }
 
-  const endOdometerKm = Math.max(0, ...intervals.map((i) => Number(i.total_mileage || 0)))
+  const avgSpeed =
+    drivingSec > 0 ? (movingDistM / drivingSec) * 3.6 : 0 // km/h
 
   return [
     {
       deviceId,
       deviceName: '',
-      distance: totalKm * 1000, // meters
+      distance: distanceM, // meters
       averageSpeed: avgSpeed,
-      maxSpeed,
+      maxSpeed: maxSpeedKmh,
       spentFuel: 0,
-      engineHours: totalDurationSec / 3600,
-      endOdometer: endOdometerKm > 0 ? endOdometerKm * 1000 : undefined,
+      engineHours: drivingSec / 3600,
+      endOdometer: undefined,
     },
   ]
 }
