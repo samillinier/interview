@@ -22,7 +22,9 @@ export default function PropertyHelpPage() {
       router.push('/property/login')
     } else if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
-      if (userType !== 'property') {
+      const role = String((session?.user as any)?.role || '').toUpperCase()
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+      if (userType !== 'property' && !isAdminRole) {
         if (userType === 'admin') {
           router.push('/dashboard')
         } else {

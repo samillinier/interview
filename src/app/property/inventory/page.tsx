@@ -256,20 +256,19 @@ export default function InventoryPage() {
     
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
+      const role = String((session?.user as any)?.role || '').toUpperCase()
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+
       if (!userType) {
         loadPropertyAndInventory()
         return
       }
-      
-      if (userType !== 'property') {
-        if (userType === 'admin') {
-          router.push('/dashboard')
-        } else {
-          router.push('/property/login')
-        }
+
+      if (userType !== 'property' && !isAdminRole) {
+        router.push(userType === 'admin' ? '/dashboard' : '/property/login')
         return
       }
-      
+
       loadPropertyAndInventory()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

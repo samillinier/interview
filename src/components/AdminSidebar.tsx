@@ -19,6 +19,7 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
+  PhoneCall,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
@@ -179,9 +180,10 @@ export function AdminSidebar({ pathname }: Props) {
       ...(normalizedRole === 'MANAGER'
         ? [
             { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },
-            { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, badge: pendingBolCount, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
-            { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, badge: pendingPadTransferCount, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
-            { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
+            { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (path: string) => path === '/property/ring-central' },
+            { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
+            { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
+            { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },

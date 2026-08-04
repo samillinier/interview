@@ -7,7 +7,6 @@ import {
   AlertCircle,
   Building2,
   DollarSign,
-  MapPin,
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
@@ -105,7 +104,7 @@ export default function PropertyDashboardPage() {
         return
       }
       
-      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
+      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
       if (!allowedTypes.includes(userType)) {
         if (userType === 'ADMIN') {
           console.log('🔄 Redirecting admin user to admin dashboard')
@@ -437,36 +436,6 @@ export default function PropertyDashboardPage() {
                           ? Math.round(analytics.fleet.totalMileage / analytics.fleet.total).toLocaleString()
                           : '0'} mi
                       </span>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* GPS Tracking Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.33 }}
-                  className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-lg border-2 border-amber-200 p-6 hover:shadow-xl transition-all cursor-pointer"
-                  onClick={() => router.push('/property/gps')}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-amber-600 hover:text-amber-700 text-sm font-medium">
-                      Open →
-                    </span>
-                  </div>
-                  <h3 className="text-3xl font-bold text-amber-900 mb-1">GPS</h3>
-                  <p className="text-sm text-amber-700 mb-4">Live Tracking</p>
-                  <div className="space-y-2 pt-4 border-t border-amber-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-amber-600">Real-time location</span>
-                      <span className="text-sm font-semibold text-amber-900">View Map</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-amber-600">Route history</span>
-                      <span className="text-sm font-semibold text-amber-900">Today / Week</span>
                     </div>
                   </div>
                 </motion.div>

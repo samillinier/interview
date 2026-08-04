@@ -22,6 +22,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { AdminSidebar } from '@/components/AdminSidebar'
+import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -104,6 +106,8 @@ export default function RingCentralPage() {
   const router = useRouter()
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
+  const role = String((session?.user as any)?.role || '').toUpperCase()
+  const isManager = role === 'MANAGER'
   const [property, setProperty] = useState<PropertyProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -206,8 +210,10 @@ export default function RingCentralPage() {
     if (status === 'unauthenticated') { router.push('/property/login'); return }
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
+      const role = String((session?.user as any)?.role || '').toUpperCase()
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
       if (hasLoadedProfile.current && property) return
-      if (userType !== 'property' && userType) { router.push('/dashboard'); return }
+      if (userType !== 'property' && userType && !isAdminRole) { router.push('/dashboard'); return }
       hasLoadedProfile.current = true
       loadPropertyProfile()
     }
@@ -284,18 +290,22 @@ export default function RingCentralPage() {
   if (status === 'loading' || isLoading) return <LogoHeartbeatLoader />
 
   return (
-    <div className={`flex min-h-screen bg-slate-50 ${propertyMobileSafeLeftPad}`}>
-      <PropertySidebar
-        pathname={pathname}
-        subtitle="RingCentral"
-        userName={`${property?.firstName || ''} ${property?.lastName || ''}`.trim() || undefined}
-        userEmail={property?.email}
-        userImage={property?.photoUrl}
-        onLogout={handleLogout}
-      />
-      <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
+    <div className={`flex min-h-screen bg-slate-50 ${isManager ? '' : propertyMobileSafeLeftPad}`}>
+      {isManager ? (
+        <AdminSidebar pathname={pathname} />
+      ) : (
+        <PropertySidebar
+          pathname={pathname}
+          subtitle="RingCentral"
+          userName={`${property?.firstName || ''} ${property?.lastName || ''}`.trim() || undefined}
+          userEmail={property?.email}
+          userImage={property?.photoUrl}
+          onLogout={handleLogout}
+        />
+      )}
+      {isManager ? <AdminMobileMenu pathname={pathname} /> : <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />}
 
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+      <div className={`flex-1 transition-all duration-300 ${isManager ? 'lg:ml-64' : sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Page header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

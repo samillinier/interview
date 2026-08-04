@@ -5,33 +5,16 @@ import { motion } from 'framer-motion'
 import {
   AlertCircle,
   ClipboardCheck,
-  Activity,
   BarChart3,
-  Bell,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  MessageSquare,
-  Megaphone,
-  X,
-  HelpCircle,
-  Building2,
-  Car,
-  Armchair,
-  Settings,
-  StickyNote,
-  Users,
-  User,
   CheckCircle2,
   Calendar,
   Clock,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import Image from 'next/image'
-import Link from 'next/link'
-import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { PropertySidebar } from '@/components/PropertySidebar'
+import { AdminSidebar } from '@/components/AdminSidebar'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -301,7 +284,6 @@ export default function SafetyWalkPage() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [property, setProperty] = useState<PropertyProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -315,7 +297,6 @@ export default function SafetyWalkPage() {
   const [adminWorkroomCounts, setAdminWorkroomCounts] = useState<{ workroom: string; count: number }[]>([])
   const [adminWorkroomFilter, setAdminWorkroomFilter] = useState('')
   const [form, setForm] = useState(createEmptySafetyWalkForm)
-  const [updatesCount, setUpdatesCount] = useState(0)
 
   const userType = (session?.user as any)?.userType
   const role = String((session?.user as any)?.role || '').toUpperCase()
@@ -399,25 +380,6 @@ export default function SafetyWalkPage() {
       load()
     }
   }, [status, router, userType, isAdmin, session, adminWorkroomFilter])
-
-  useEffect(() => {
-    if (status !== 'authenticated' || !isManager) return
-
-    fetchUpdatesCount()
-    const interval = setInterval(fetchUpdatesCount, 30000)
-    return () => clearInterval(interval)
-  }, [status, isManager])
-
-  const fetchUpdatesCount = async () => {
-    try {
-      const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json().catch(() => ({}))
-      setUpdatesCount(Number(data?.count || 0))
-    } catch {
-      // ignore
-    }
-  }
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: isAdmin ? '/login' : '/property/login' })
@@ -624,156 +586,23 @@ export default function SafetyWalkPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside
-        className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}
-      >
-        <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="w-10 h-10 flex-shrink-0">
-              <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
-            </div>
-            {sidebarOpen && (
-              <div className="min-w-0">
-                <h1 className="font-bold text-primary-900 text-sm truncate">
-                  {isManager ? 'PRM Dashboard' : 'Property Portal'}
-                </h1>
-                <p className="text-xs text-primary-500 truncate">
-                  {isManager ? 'Admin Dashboard' : 'Dashboard'}
-                </p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-primary-600"
-            aria-label="Toggle sidebar"
-            type="button"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
+      {isManager ? (
+        <AdminSidebar pathname={pathname} />
+      ) : (
+        <PropertySidebar
+          pathname={pathname}
+          subtitle="Safety Walk"
+          userName={property ? `${property.firstName} ${property.lastName}`.trim() : session?.user?.email || 'Property User'}
+          userEmail={property?.email || session?.user?.email || ''}
+          onLogout={handleLogout}
+        />
+      )}
 
-        <nav className="flex-1 p-3 overflow-y-auto flex flex-col gap-2">
-          {isManager ? (
-            <>
-              <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Dashboard</span>}
-              </Link>
-              <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Users className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Installers</span>}
-              </Link>
-              <Link href="/dashboard/tracking" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Activity className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Tracking</span>}
-              </Link>
-              <Link href="/dashboard/analytics" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <BarChart3 className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Analytics</span>}
-              </Link>
-              <Link href="/dashboard/notifications" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Bell className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Notifications</span>}
-              </Link>
-              <Link href="/dashboard/messages" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <MessageSquare className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Messages</span>}
-              </Link>
-              <Link
-                href="/property/safety-walk"
-                className="flex items-center gap-3 px-3 py-2 bg-white/20 text-white rounded-xl font-medium"
-              >
-                <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Safety Walk</span>}
-              </Link>
-              <Link href="/dashboard/remarks" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <StickyNote className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Remarks</span>}
-              </Link>
-              <Link href="/dashboard/updates" className="flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Megaphone className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && (
-                  <div className="flex items-center gap-2">
-                    <span>Updates</span>
-                    {updatesCount > 0 && (
-                      <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-white text-brand-green text-xs font-bold">
-                        {updatesCount}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/property/dashboard" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Dashboard</span>}
-              </Link>
-              <Link href="/property/facilities" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Building2 className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Facilities</span>}
-              </Link>
-              <Link href="/property/fleet" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Car className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Fleet</span>}
-              </Link>
-              <Link href="/property/inventory" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Armchair className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Equipment</span>}
-              </Link>
-              <Link
-                href="/property/safety-walk"
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                  pathname === '/property/safety-walk' ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-                }`}
-              >
-                <ClipboardCheck className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Safety Walk</span>}
-              </Link>
-              <Link href="/property/help" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <HelpCircle className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Help</span>}
-              </Link>
-              <Link href="/property/settings" className="flex items-center gap-3 px-4 py-3 text-white/90 hover:bg-white/10 rounded-xl transition-colors">
-                <Settings className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>Settings</span>}
-              </Link>
-            </>
-          )}
-        </nav>
-
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className={`flex items-center gap-3 mb-4 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-brand-green" />
-            </div>
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-primary-900 text-sm truncate">
-                  {property ? `${property.firstName} ${property.lastName}`.trim() : session?.user?.email || 'Property User'}
-                </p>
-                <p className="text-xs text-primary-500 truncate">{property?.email || session?.user?.email || ''}</p>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-primary-600 hover:bg-slate-100 rounded-xl transition-colors ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
-
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+      <div className="flex-1 lg:ml-64 w-full">
         {isManager ? <AdminMobileMenu pathname={pathname} /> : <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />}
 
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className={isManager ? 'px-4 lg:px-6 pt-16 lg:pt-6 pb-6' : `pr-4 lg:px-6 pt-16 lg:pt-6 pb-6 ${propertyMobileSafeLeftPad}`}>
+          <div className={`pr-4 lg:px-6 pt-16 lg:pt-6 pb-6 ${propertyMobileSafeLeftPad}`}>
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
                 <ClipboardCheck className="w-6 h-6 text-brand-green" />
@@ -801,7 +630,7 @@ export default function SafetyWalkPage() {
           </div>
         </header>
 
-        <main className={isManager ? 'p-4 sm:p-6 lg:p-8 w-full' : `p-4 sm:p-6 lg:p-8 w-full ${propertyMobileSafeLeftPad}`}>
+        <main className={`p-4 sm:p-6 lg:p-8 w-full ${propertyMobileSafeLeftPad}`}>
           <div className="w-full">
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">

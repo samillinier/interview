@@ -129,7 +129,7 @@ export default function GPSPage() {
     }
     if (status === 'authenticated') {
       const userType = ((session?.user as any)?.userType || '').toUpperCase()
-      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
+      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
       if (!allowedTypes.includes(userType)) {
         router.push('/property/login')
         return
@@ -286,7 +286,7 @@ export default function GPSPage() {
     <div className="min-h-screen bg-slate-50 flex" data-gps-version="2">
       <PropertySidebar
         pathname={pathname}
-        subtitle={property ? `${property.firstName} ${property.lastName}` : ''}
+        subtitle="GPS Tracking"
         userName={property ? `${property.firstName} ${property.lastName}` : ''}
         userEmail={property?.email || session?.user?.email || ''}
         userImage={(session?.user as any)?.image || null}

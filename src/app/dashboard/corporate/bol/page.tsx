@@ -577,7 +577,7 @@ export default function BolPage() {
                 className="flex items-center gap-2 px-5 py-3 bg-white text-brand-green rounded-xl font-semibold text-sm hover:bg-emerald-50 transition-all shadow-lg shadow-brand-green/20 flex-shrink-0"
               >
                 <Plus className="w-5 h-5" />
-                New Pad Order
+                New BOL
               </button>
             </div>
           </div>
@@ -671,7 +671,7 @@ export default function BolPage() {
               <div className="flex flex-col items-center justify-center py-16">
                 <FileText className="w-10 h-10 text-slate-200 mb-3" />
                 <p className="text-sm text-slate-400 font-medium">No pad orders yet</p>
-                <p className="text-xs text-slate-300 mt-1">Click &quot;New Pad Order&quot; to create your first record</p>
+                <p className="text-xs text-slate-300 mt-1">Click &quot;New BOL&quot; to create your first record</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -841,7 +841,7 @@ export default function BolPage() {
             )}
           </div>
 
-      {/* ── New Pad Order Modal ── */}
+      {/* ── New BOL Modal ── */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { setShowForm(false); resetForm() }} />
@@ -857,7 +857,7 @@ export default function BolPage() {
                   <Plus className="w-5 h-5 text-brand-green" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-800">New Pad Order</h2>
+                  <h2 className="text-base font-bold text-slate-800">New BOL</h2>
                   <p className="text-xs text-slate-400">Record a pad order received at warehouse</p>
                 </div>
               </div>
