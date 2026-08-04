@@ -8,6 +8,19 @@
  * for job/order data, chargebacks, and attachments.
  */
 
+/**
+ * Hard kill switch: stop ALL job pulls from Cilio (search, detail, notes,
+ * attachments, statuses, etc). Set to false only when intentionally re-enabling.
+ * Enterprise group lookups are unaffected.
+ */
+export const CILIO_JOB_PULLS_DISABLED = true
+
+export function assertCilioJobPullsEnabled(): void {
+  if (CILIO_JOB_PULLS_DISABLED) {
+    throw new Error("Cilio job pulls are disabled")
+  }
+}
+
 const CILIO_BASE_URL = process.env.CILIO_API_BASE_URL || "https://cilioapimgmt.azure-api.net/gatewayqa"
 const CILIO_SUBSCRIPTION_KEY = process.env.CILIO_SUBSCRIPTION_KEY || ""
 
@@ -32,6 +45,17 @@ export function getCilioAuthHeader(): HeadersInit {
 }
 
 async function cilioFetch<T>(path: string, options?: RequestInit, retriesRemaining: number = 3): Promise<T> {
+  const method = (options?.method || "GET").toUpperCase()
+  // Block every job/invoice/attachment GET at the network layer — not just callers.
+  // Enterprise group paths are allowed. Writes (PUT/POST) are left alone.
+  if (
+    CILIO_JOB_PULLS_DISABLED &&
+    method === "GET" &&
+    (path.startsWith("/job") || path.startsWith("/invoice") || path.startsWith("/attachment"))
+  ) {
+    throw new Error("Cilio job pulls are disabled")
+  }
+
   const url = `${CILIO_BASE_URL}${path}`
   const headers = getCilioHeaders()
 
@@ -394,11 +418,13 @@ export interface CilioJobDetail {
 
 /** Get a single job by order number (flat fields from search) */
 export async function getJob(orderNumber: number): Promise<CilioJob> {
+  assertCilioJobPullsEnabled()
   return cilioFetch<CilioJob>(`/job/${orderNumber}`)
 }
 
 /** Get full job detail with all nested objects (GET /job/{orderNumber}) */
 export async function getJobDetail(orderNumber: number): Promise<CilioJobDetail> {
+  assertCilioJobPullsEnabled()
   return cilioFetch<CilioJobDetail>(`/job/${orderNumber}`)
 }
 
@@ -422,6 +448,7 @@ export interface CilioJobSearchParams {
  *  Handles both old format (plain array) and new format
  *  ({ currentPage, pageSize, totalRecords, totalPages, results }). */
 export async function searchJobs(params: CilioJobSearchParams = {}): Promise<CilioJob[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   const q = new URLSearchParams()
   if (params.orderStatusId?.length) params.orderStatusId.forEach(id => q.append("OrderStatusId", String(id)))
   if (params.poJobNumber) q.set("POJobNumber", params.poJobNumber)
@@ -477,6 +504,7 @@ export async function searchAllJobs(
     onProgress?: (fetched: number, detail: string) => void
   }
 ): Promise<CilioJob[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   // Cilio reliably returns up to ~50-100 per request; larger PageSize returns fewer.
   const pageSize = Math.min(options?.pageSize ?? 50, 100)
   const onProgress = options?.onProgress
@@ -601,21 +629,25 @@ export async function updateJobDate(orderNumber: number, dateTypeId: number, dat
 
 /** Get available job types */
 export async function getJobTypes(): Promise<CilioJobType[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioJobType[]>("/job/types")
 }
 
 /** Get available job statuses */
 export async function getJobStatuses(): Promise<CilioJobStatus[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioJobStatus[]>("/job/statuses")
 }
 
 /** Get available job date types */
 export async function getJobDateTypes(): Promise<{ dateTypeId: number; description: string }[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch("/job/datetypes")
 }
 
 /** Get labor categories for a job */
 export async function getJobLaborCategories(orderNumber: number): Promise<CilioLaborCategory[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioLaborCategory[]>(`/job/${orderNumber}/laborcategories`)
 }
 
@@ -623,6 +655,7 @@ export async function getJobLaborCategories(orderNumber: number): Promise<CilioL
 
 /** Get line items for a job */
 export async function getJobLineItems(orderNumber: number): Promise<CilioJobLineItem[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioJobLineItem[]>(`/job/${orderNumber}/lineitems`)
 }
 
@@ -699,6 +732,7 @@ export async function createMultipleInvoices(payloads: CreateInvoicePayload[]): 
 
 /** Get invoices (optionally filtered by orderNumber) */
 export async function getInvoices(orderNumber?: number): Promise<CilioInvoice[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   const query = orderNumber ? `?orderNumber=${orderNumber}` : ""
   return cilioFetch<CilioInvoice[]>(`/invoices${query}`)
 }
@@ -707,16 +741,19 @@ export async function getInvoices(orderNumber?: number): Promise<CilioInvoice[]>
 
 /** Get attachments for a job */
 export async function getAttachments(orderNumber: number): Promise<CilioJobAttachment[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioJobAttachment[]>(`/job/${orderNumber}/attachment`)
 }
 
 /** Get available attachment types */
 export async function getAttachmentTypes(): Promise<CilioAttachmentType[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioAttachmentType[]>("/attachment/types")
 }
 
 /** Get attachment file bytes (returns base64 or blob URL) */
 export async function getAttachmentFileBytes(orderNumber: number, attachmentNumber: number): Promise<ArrayBuffer> {
+  assertCilioJobPullsEnabled()
   return cilioFetch<ArrayBuffer>(`/job/${orderNumber}/attachment/${attachmentNumber}/file`)
 }
 
@@ -736,6 +773,7 @@ export async function createNote(orderNumber: number, payload: CreateNotePayload
 
 /** Get notes for a job */
 export async function getNotes(orderNumber: number): Promise<CilioNote[]> {
+  if (CILIO_JOB_PULLS_DISABLED) return []
   return cilioFetch<CilioNote[]>(`/job/${orderNumber}/note`)
 }
 

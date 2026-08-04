@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getCilioAuthHeader } from "@/lib/cilio"
+import { CILIO_JOB_PULLS_DISABLED, getCilioAuthHeader } from "@/lib/cilio"
 
 export async function GET(
   _request: NextRequest,
@@ -11,6 +11,13 @@ export async function GET(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (CILIO_JOB_PULLS_DISABLED) {
+      return NextResponse.json(
+        { error: "Cilio job pulls are disabled" },
+        { status: 503 }
+      )
     }
 
     const resolvedParams = params instanceof Promise ? await params : params

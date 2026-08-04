@@ -301,7 +301,9 @@ export default function JobsReportsPage() {
         setDetailNotes(notesData.notes || [])
         setJobAttachments(attData.attachments || [])
       } else {
-        if (detailRes.status === 404 || detailData.code === 'NOT_FOUND') {
+        if (detailRes.status === 503 || detailData.code === 'DISABLED') {
+          setDetailError('Cilio job pulls are disabled — live detail is unavailable')
+        } else if (detailRes.status === 404 || detailData.code === 'NOT_FOUND') {
           setDetailError('This job is no longer available in Cilio (may be too old or deleted)')
         } else if (detailData.code === 'NO_DETAIL') {
           setDetailError('Cilio returned an empty response for this job — detail unavailable')

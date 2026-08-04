@@ -680,11 +680,7 @@ export default function JobsPage() {
     setIsSavingAll(false)
   }, [allJobs])
 
-  useEffect(() => {
-    if (sessionStatus === 'authenticated') {
-      fetchJobs(searchQuery, statusFilter, laborCategoryFilter, workroomFilter)
-    }
-  }, [sessionStatus, searchQuery, statusFilter, laborCategoryFilter, workroomFilter, fetchJobs])
+  // Cilio live job pulls are disabled — do not call /api/cilio/jobs on load or filter change.
 
   // Fetch installer names once for matching with Cilio's scheduledResources
   useEffect(() => {
@@ -839,6 +835,11 @@ export default function JobsPage() {
               </h1>
               <p className="text-sm text-slate-500 mt-1">Browse, search, and manage Realtime jobs — Pre-Scheduled, Dispatched, and more</p>
             </div>
+          </div>
+
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Cilio job pulls are disabled. Live jobs will not load from Cilio, and auto-sync is off.
+            Use Job Reports for previously saved records.
           </div>
 
           {/* Search + Filters Card */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getJobDetail, updateJobStatus, updateSalesOrderNumber } from "@/lib/cilio"
+import { CILIO_JOB_PULLS_DISABLED, getJobDetail, updateJobStatus, updateSalesOrderNumber } from "@/lib/cilio"
 import prisma from "@/lib/db"
 
 function extractInstallerResourceName(detail: any): string | null {
@@ -50,6 +50,13 @@ export async function GET(
     const orderNumber = parseInt(resolvedParams.orderNumber, 10)
     if (isNaN(orderNumber)) {
       return NextResponse.json({ error: "Invalid orderNumber" }, { status: 400 })
+    }
+
+    if (CILIO_JOB_PULLS_DISABLED) {
+      return NextResponse.json(
+        { error: "Cilio job pulls are disabled", code: "DISABLED", detail: null },
+        { status: 503 }
+      )
     }
 
     const detail = await getJobDetail(orderNumber)
