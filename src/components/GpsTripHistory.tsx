@@ -363,7 +363,7 @@ export function GpsTripHistory({
             </div>
           )}
 
-          <div className="px-3 pt-3 space-y-2.5 max-h-[28rem] overflow-y-auto">
+          <div className="px-3 pt-3 space-y-2.5 max-h-[min(70vh,36rem)] overflow-y-auto">
             {isLoading && (
               <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin" />

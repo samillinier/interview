@@ -724,6 +724,16 @@ function DeviceTelemetry({
     setRenameError(null)
   }, [device.id, device.vehicleName])
 
+  // When Trip History is opened, auto-load Today (date tabs + trips)
+  useEffect(() => {
+    if (!historyOpen) return
+    if (!routePeriod) {
+      onSelectTrip(null)
+      onSelectHistory('today')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen])
+
   useEffect(() => {
     if (routePeriod?.startsWith('range:')) {
       const [, f, t] = routePeriod.split(':')
@@ -852,13 +862,17 @@ function DeviceTelemetry({
       {renameError && (
         <p className="mb-2 text-[10px] text-amber-600">{renameError}</p>
       )}
-      {device.location && (
+
+      {/* When Trip History is open, hide vehicle details so the feed has room */}
+      {!historyOpen && device.location && (
         <div className="flex items-center gap-1.5 mb-3 px-2 py-1.5 bg-slate-50 rounded-lg">
           <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />
           <p className="text-xs text-slate-500 truncate">{device.location}</p>
         </div>
       )}
 
+      {!historyOpen && (
+      <>
       {/* Key Telemetry */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {items.map(function(item) {
@@ -1011,6 +1025,8 @@ function DeviceTelemetry({
           </div>
         </div>
       </div>
+      </>
+      )}
 
       <GpsTripHistory
         open={historyOpen}
@@ -1044,7 +1060,7 @@ function DeviceTelemetry({
       />
 
       {/* Alerts — collapsed by default; expand on click */}
-      {(() => {
+      {!historyOpen && (() => {
         const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
         if (alerts.length === 0) return null
         return (
