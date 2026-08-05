@@ -215,6 +215,7 @@ export interface TripHistoryItem {
   startLongitude: number
   endLatitude: number
   endLongitude: number
+  address?: string | null
   /** Index into routeSegments when type is trip */
   segmentIndex: number | null
 }

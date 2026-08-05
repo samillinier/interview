@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
 import { GPS_TIMEZONE, dateRangeBounds, periodBounds } from '@/lib/gpsTime'
+import { reverseGeocode } from '@/lib/geocode'
 
 /**
  * GET /api/gps/route?deviceId=GV500MAP&period=today|yesterday|week
@@ -113,6 +114,18 @@ export async function GET(request: NextRequest) {
     } catch {
       trips = []
     }
+
+    // Attach addresses for the feed (cap + parallel; Nominatim cache helps repeats)
+    await Promise.all(
+      trips.slice(0, 8).map(async (t) => {
+        if (!t.startLatitude || !t.startLongitude) return
+        try {
+          t.address = await reverseGeocode(t.startLatitude, t.startLongitude)
+        } catch {
+          t.address = null
+        }
+      })
+    )
 
     const tripMiles = trips
       .filter((t) => t.type === 'trip')

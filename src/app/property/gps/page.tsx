@@ -27,14 +27,11 @@ import {
   Wrench,
   RotateCcw,
   MapPin,
-  History,
-  CalendarDays,
   ChevronDown,
   LocateFixed,
   Pencil,
   Check,
   X,
-  ParkingSquare,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -44,24 +41,9 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
+import { GpsTripHistory, type TripHistoryRow } from '@/components/GpsTripHistory'
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
-
-type TripHistoryRow = {
-  id: string
-  type: 'trip' | 'parking'
-  startTime: string
-  endTime: string
-  durationSec: number
-  distanceMiles: number
-  avgSpeedMph: number
-  maxSpeedMph: number
-  startLatitude: number
-  startLongitude: number
-  endLatitude: number
-  endLongitude: number
-  segmentIndex: number | null
-}
 
 const GpsLiveMap = dynamic(() => import('@/components/GpsLiveMap').then((mod) => mod.GpsLiveMap), {
   ssr: false,
@@ -552,7 +534,7 @@ export default function GPSPage() {
                     key={selectedDevice.id}
                     device={selectedDevice}
                     routePeriod={routePeriod}
-                    routePointCount={routePositions.length}
+                    routeSegments={routeSegments}
                     isLoadingRoute={isLoadingRoute}
                     onSelectHistory={(period) => setRoutePeriod(period)}
                     tripHistory={tripHistory}
@@ -692,7 +674,7 @@ function DeviceCard({
 function DeviceTelemetry({
   device,
   routePeriod,
-  routePointCount,
+  routeSegments,
   isLoadingRoute,
   onSelectHistory,
   tripHistory,
@@ -704,7 +686,7 @@ function DeviceTelemetry({
 }: {
   device: VehicleDevice
   routePeriod: string | null
-  routePointCount: number
+  routeSegments: RoutePoint[][]
   isLoadingRoute: boolean
   onSelectHistory: (period: string | null) => void
   tripHistory: TripHistoryRow[]
@@ -715,23 +697,15 @@ function DeviceTelemetry({
   onRename?: (name: string) => Promise<boolean>
 }) {
   const todayStr = (() => {
-    // Local browser date for input max — Florida users are Eastern; good enough for picker UX
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })()
 
-  const parsedRange = routePeriod?.startsWith('range:')
-    ? (() => {
-        const [, f, t] = routePeriod.split(':')
-        return { from: f || '', to: t || '' }
-      })()
-    : null
-
-  const [customFrom, setCustomFrom] = useState(parsedRange?.from || '')
-  const [customTo, setCustomTo] = useState(parsedRange?.to || '')
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [rangeError, setRangeError] = useState<string | null>(null)
-  // Always collapsed unless the user opens the dropdown
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(true)
   const [alertsOpen, setAlertsOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(device.vehicleName || '')
@@ -744,17 +718,18 @@ function DeviceTelemetry({
     setRenameError(null)
   }, [device.id, device.vehicleName])
 
-  // Keep inputs in sync when clearing or switching presets
+  useEffect(() => {
+    if (historyOpen && !routePeriod) onSelectHistory('today')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen])
+
   useEffect(() => {
     if (routePeriod?.startsWith('range:')) {
       const [, f, t] = routePeriod.split(':')
       setCustomFrom(f || '')
       setCustomTo(t || '')
-    } else if (!routePeriod) {
-      setRangeError(null)
+      if (f && t && f !== t) setShowCalendar(true)
     }
-    // Stay open when a period is selected so the trip list is visible
-    if (routePeriod) setHistoryOpen(true)
   }, [routePeriod])
 
   const items = [
@@ -768,12 +743,6 @@ function DeviceTelemetry({
   const harshCount = events.filter(function(e) { return e.icon === 'harsh' }).length
   const crashCount = events.filter(function(e) { return e.icon === 'crash' }).length
   const speedCount = events.filter(function(e) { return e.icon === 'speed' }).length
-
-  const historyOptions = [
-    { key: 'today', label: 'Today', hint: 'Trips from this morning' },
-    { key: 'yesterday', label: 'Yesterday', hint: 'Full day track' },
-    { key: 'week', label: 'Last 7 days', hint: 'Week of movement' },
-  ] as const
 
   function applyCustomRange() {
     if (!customFrom || !customTo) {
@@ -792,25 +761,9 @@ function DeviceTelemetry({
       return
     }
     setRangeError(null)
+    setShowCalendar(false)
+    onSelectTrip(null)
     onSelectHistory(`range:${customFrom}:${customTo}`)
-  }
-
-  const customActive = Boolean(parsedRange)
-  const formatRangeLabel = (from: string, to: string) => {
-    if (from === to) return from
-    return `${from} → ${to}`
-  }
-
-  const selectedHistoryLabel = (() => {
-    if (!routePeriod) return 'Choose a period'
-    if (parsedRange) return formatRangeLabel(parsedRange.from, parsedRange.to)
-    const opt = historyOptions.find((o) => o.key === routePeriod)
-    return opt?.label || 'Custom'
-  })()
-
-  function pickHistory(key: string) {
-    onSelectHistory(routePeriod === key ? null : key)
-    // Don't force-close — trip list should stay visible after load
   }
 
   async function saveName() {
@@ -1058,288 +1011,36 @@ function DeviceTelemetry({
         </div>
       </div>
 
-      {/* Trip History — period picker + trip/parking list */}
-      <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setHistoryOpen((o) => !o)}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-100/80 transition-colors"
-        >
-          <div className="flex items-center gap-1.5 min-w-0">
-            <History className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-700">Trip History</p>
-              <p className={`text-[10px] truncate ${routePeriod ? 'text-brand-green font-medium' : 'text-slate-400'}`}>
-                {isLoadingRoute && routePeriod ? 'Loading…' : selectedHistoryLabel}
-                {routePeriod && !isLoadingRoute && tripSummary
-                  ? ` · ${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi`
-                  : routePeriod && !isLoadingRoute && routePointCount > 0
-                    ? ` · ${routePointCount} pts`
-                    : ''}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {isLoadingRoute && routePeriod && (
-              <Loader2 className="w-3.5 h-3.5 text-brand-green animate-spin" />
-            )}
-            <ChevronDown
-              className={`w-4 h-4 text-slate-400 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
-            />
-          </div>
-        </button>
-
-        {historyOpen && (
-          <div className="px-3 pb-3 border-t border-slate-100 pt-2">
-            <p className="text-[10px] text-slate-400 mb-2">
-              Pick a period to see trips with time, distance, and speed — tap a trip to show it on the map.
-            </p>
-            <div className="space-y-1.5">
-              {historyOptions.map((opt) => {
-                const active = routePeriod === opt.key
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    disabled={isLoadingRoute}
-                    onClick={() => pickHistory(opt.key)}
-                    className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
-                      active
-                        ? 'bg-brand-green/10 border-brand-green/30 text-slate-900'
-                        : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold">{opt.label}</p>
-                        <p className="text-[10px] text-slate-400">{opt.hint}</p>
-                      </div>
-                      {active ? (
-                        <span className="text-[10px] font-semibold text-brand-green flex-shrink-0">Selected</span>
-                      ) : (
-                        <Navigation className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Custom calendar range */}
-            <div
-              className={`mt-2 p-2.5 rounded-lg border ${
-                customActive
-                  ? 'bg-brand-green/10 border-brand-green/30'
-                  : 'bg-white border-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 mb-2">
-                <CalendarDays className="w-3.5 h-3.5 text-brand-green" />
-                <p className="text-xs font-semibold text-slate-700">Custom dates</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <label className="block min-w-0">
-                  <span className="text-[10px] text-slate-400">From</span>
-                  <input
-                    type="date"
-                    value={customFrom}
-                    max={customTo || todayStr}
-                    onChange={(e) => {
-                      setCustomFrom(e.target.value)
-                      setRangeError(null)
-                    }}
-                    className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
-                  />
-                </label>
-                <label className="block min-w-0">
-                  <span className="text-[10px] text-slate-400">To</span>
-                  <input
-                    type="date"
-                    value={customTo}
-                    min={customFrom || undefined}
-                    max={todayStr}
-                    onChange={(e) => {
-                      setCustomTo(e.target.value)
-                      setRangeError(null)
-                    }}
-                    className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                disabled={isLoadingRoute || !customFrom || !customTo}
-                onClick={applyCustomRange}
-                className="w-full px-3 py-1.5 rounded-md text-xs font-semibold bg-brand-green text-white hover:bg-brand-green/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {isLoadingRoute && customActive ? (
-                  <span className="inline-flex items-center gap-1.5 justify-center">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Loading…
-                  </span>
-                ) : (
-                  'Load trips'
-                )}
-              </button>
-              {rangeError && (
-                <p className="mt-1.5 text-[10px] text-amber-600">{rangeError}</p>
-              )}
-            </div>
-
-            {routePeriod && (
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectHistory(null)
-                  onSelectTrip(null)
-                }}
-                className="mt-2 w-full px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
-              >
-                Clear history
-              </button>
-            )}
-
-            {routePeriod && !isLoadingRoute && tripHistory.length === 0 && routePointCount === 0 && (
-              <p className="mt-2 text-[10px] text-amber-600">No trips found for this period.</p>
-            )}
-
-            {/* Trip / parking feed */}
-            {routePeriod && !isLoadingRoute && tripHistory.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {tripSummary && (
-                  <div className="grid grid-cols-3 gap-1.5 mb-1">
-                    <div className="text-center p-1.5 rounded-lg bg-white border border-slate-100">
-                      <p className="text-sm font-bold text-slate-900">{tripSummary.tripCount}</p>
-                      <p className="text-[9px] text-slate-400">trips</p>
-                    </div>
-                    <div className="text-center p-1.5 rounded-lg bg-white border border-slate-100">
-                      <p className="text-sm font-bold text-slate-900">{tripSummary.totalMiles}</p>
-                      <p className="text-[9px] text-slate-400">miles</p>
-                    </div>
-                    <div className="text-center p-1.5 rounded-lg bg-white border border-slate-100">
-                      <p className="text-sm font-bold text-slate-900">{tripSummary.parkingCount}</p>
-                      <p className="text-[9px] text-slate-400">stops</p>
-                    </div>
-                  </div>
-                )}
-                {selectedTripId && (
-                  <button
-                    type="button"
-                    onClick={() => onSelectTrip(null)}
-                    className="w-full text-[10px] font-medium text-brand-green hover:underline text-left px-0.5"
-                  >
-                    Show all trips on map
-                  </button>
-                )}
-                <div className="max-h-80 overflow-y-auto space-y-2 pr-0.5">
-                  {tripHistory.map((item) => {
-                    const active = selectedTripId === item.id
-                    if (item.type === 'parking') {
-                      return (
-                        <div
-                          key={item.id}
-                          className="rounded-lg border border-amber-100 bg-white p-2.5 border-l-[3px] border-l-amber-400"
-                        >
-                          <div className="flex items-start gap-2">
-                            <ParkingSquare className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-slate-900">
-                                {formatTripStamp(item.startTime)}
-                              </p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">
-                                Duration: {formatTripDuration(item.durationSec)}
-                              </p>
-                              <p className="text-[10px] text-slate-400">
-                                End of parking: {formatTripStamp(item.endTime)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    }
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => onSelectTrip(active ? null : item.id)}
-                        className={`w-full text-left rounded-lg border p-2.5 border-l-[3px] transition-colors ${
-                          active
-                            ? 'bg-brand-green/10 border-brand-green/30 border-l-brand-green'
-                            : 'bg-white border-slate-100 border-l-sky-400 hover:border-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <Car className="w-4 h-4 text-sky-500 mt-0.5 flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-semibold text-slate-900">
-                                {formatTripStamp(item.startTime)}
-                              </p>
-                              {active && (
-                                <span className="text-[9px] font-semibold text-brand-green">On map</span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-slate-500 mt-0.5">
-                              {formatTripStamp(item.startTime, true)} → {formatTripStamp(item.endTime, true)}
-                              {' · '}
-                              {formatTripDuration(item.durationSec)}
-                            </p>
-                            <div className="mt-1.5 grid grid-cols-3 gap-1">
-                              <div className="rounded-md bg-slate-50 px-1.5 py-1">
-                                <p className="text-[9px] text-slate-400">Distance</p>
-                                <p className="text-xs font-bold text-slate-900">
-                                  {item.distanceMiles > 0 ? `${item.distanceMiles} mi` : '--'}
-                                </p>
-                              </div>
-                              <div className="rounded-md bg-slate-50 px-1.5 py-1">
-                                <p className="text-[9px] text-slate-400">Avg speed</p>
-                                <p className="text-xs font-bold text-slate-900">
-                                  {item.avgSpeedMph > 0 ? `${Math.round(item.avgSpeedMph)} mph` : '--'}
-                                </p>
-                              </div>
-                              <div className="rounded-md bg-slate-50 px-1.5 py-1">
-                                <p className="text-[9px] text-slate-400">Max speed</p>
-                                <p className="text-xs font-bold text-slate-900">
-                                  {item.maxSpeedMph > 0 ? `${Math.round(item.maxSpeedMph)} mph` : '--'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Collapsed selected state — clear without reopening */}
-        {!historyOpen && routePeriod && (
-          <div className="px-3 pb-2.5 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="flex-1 text-left text-[10px] font-medium text-slate-500 hover:text-slate-700"
-            >
-              {tripSummary
-                ? `${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi — view list`
-                : 'Change period'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onSelectHistory(null)
-                onSelectTrip(null)
-              }}
-              className="text-[10px] font-medium text-slate-500 hover:text-slate-800"
-            >
-              Clear
-            </button>
-          </div>
-        )}
-      </div>
+      <GpsTripHistory
+        open={historyOpen}
+        onToggle={() => setHistoryOpen((o) => !o)}
+        routePeriod={routePeriod}
+        isLoading={isLoadingRoute}
+        tripHistory={tripHistory}
+        tripSummary={tripSummary}
+        selectedTripId={selectedTripId}
+        onSelectTrip={onSelectTrip}
+        onSelectPeriod={(period) => {
+          setShowCalendar(false)
+          onSelectHistory(period)
+        }}
+        routeSegments={routeSegments}
+        showCalendar={showCalendar}
+        onToggleCalendar={() => setShowCalendar((v) => !v)}
+        customFrom={customFrom}
+        customTo={customTo}
+        onCustomFrom={(v) => {
+          setCustomFrom(v)
+          setRangeError(null)
+        }}
+        onCustomTo={(v) => {
+          setCustomTo(v)
+          setRangeError(null)
+        }}
+        onApplyCustom={applyCustomRange}
+        rangeError={rangeError}
+        todayStr={todayStr}
+      />
 
       {/* Alerts — collapsed by default; expand on click */}
       {(() => {
@@ -1385,36 +1086,4 @@ function formatTimeAgo(dateStr: string): string {
   if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago'
   if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago'
   return Math.floor(seconds / 86400) + 'd ago'
-}
-
-/** Eastern-friendly trip stamp: "15:55, 04/08" or time-only */
-function formatTripStamp(iso: string, timeOnly = false): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '--'
-  const opts: Intl.DateTimeFormatOptions = {
-    timeZone: 'America/New_York',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }
-  const time = new Intl.DateTimeFormat('en-GB', opts).format(d)
-  if (timeOnly) return time
-  const date = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'America/New_York',
-    day: '2-digit',
-    month: '2-digit',
-  }).format(d)
-  return `${time}, ${date}`
-}
-
-function formatTripDuration(sec: number): string {
-  const s = Math.max(0, Math.round(sec))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  if (h > 0) {
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
-  }
-  if (m > 0) return `${m}m ${r}s`
-  return `${r}s`
 }

@@ -1,0 +1,501 @@
+'use client'
+
+import {
+  History,
+  ChevronDown,
+  ChevronRight,
+  CalendarDays,
+  Loader2,
+  MapPin,
+  Car,
+  ParkingSquare,
+  Play,
+} from 'lucide-react'
+
+export type TripHistoryRow = {
+  id: string
+  type: 'trip' | 'parking'
+  startTime: string
+  endTime: string
+  durationSec: number
+  distanceMiles: number
+  avgSpeedMph: number
+  maxSpeedMph: number
+  startLatitude: number
+  startLongitude: number
+  endLatitude: number
+  endLongitude: number
+  address?: string | null
+  segmentIndex: number | null
+}
+
+type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
+
+type Props = {
+  open: boolean
+  onToggle: () => void
+  routePeriod: string | null
+  isLoading: boolean
+  tripHistory: TripHistoryRow[]
+  tripSummary: { tripCount: number; parkingCount: number; totalMiles: number } | null
+  selectedTripId: string | null
+  onSelectTrip: (id: string | null) => void
+  onSelectPeriod: (period: string | null) => void
+  routeSegments: RoutePoint[][]
+  showCalendar: boolean
+  onToggleCalendar: () => void
+  customFrom: string
+  customTo: string
+  onCustomFrom: (v: string) => void
+  onCustomTo: (v: string) => void
+  onApplyCustom: () => void
+  rangeError: string | null
+  todayStr: string
+}
+
+function easternYmd(d = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
+function addDaysYmd(ymd: string, delta: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() + delta)
+  return dt.toISOString().slice(0, 10)
+}
+
+export function buildHistoryDateTabs(): { key: string; label: string; ymd: string }[] {
+  const today = easternYmd()
+  const tabs: { key: string; label: string; ymd: string }[] = []
+  for (let i = 0; i < 7; i++) {
+    const ymd = addDaysYmd(today, -i)
+    let label: string
+    let key: string
+    if (i === 0) {
+      label = 'Today'
+      key = 'today'
+    } else if (i === 1) {
+      label = 'Yesterday'
+      key = 'yesterday'
+    } else {
+      const [, m, d] = ymd.split('-')
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      label = `${months[Number(m) - 1]} ${Number(d)}`
+      key = `range:${ymd}:${ymd}`
+    }
+    tabs.push({ key, label, ymd })
+  }
+  return tabs
+}
+
+export function routePeriodToDayKey(period: string | null): string | null {
+  if (!period) return null
+  if (period === 'today' || period === 'yesterday') return period
+  if (period.startsWith('range:')) {
+    const [, f, t] = period.split(':')
+    if (f && f === t) return period
+  }
+  return period
+}
+
+function formatTripStamp(iso: string, timeOnly = false, withSeconds = false): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '--'
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: withSeconds ? '2-digit' : undefined,
+    hour12: false,
+  }).format(d)
+  if (timeOnly) return time
+  const date = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/New_York',
+    day: '2-digit',
+    month: '2-digit',
+  }).format(d)
+  return `${time}, ${date}`
+}
+
+function formatTripDuration(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
+}
+
+function DayTimelineBar({ items }: { items: TripHistoryRow[] }) {
+  if (items.length === 0) {
+    return <div className="mx-1 mt-2 mb-2 h-2 rounded-full bg-slate-200" />
+  }
+
+  const dayStart = (() => {
+    const first = items[items.length - 1]
+    const d = new Date(first.startTime)
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d)
+    const get = (t: string) => parts.find((p) => p.type === t)?.value || '01'
+    return new Date(`${get('year')}-${get('month')}-${get('day')}T00:00:00-04:00`).getTime()
+  })()
+  const dayMs = 24 * 60 * 60 * 1000
+
+  return (
+    <div className="relative mx-1 mt-2 mb-2 h-2.5 rounded-full bg-slate-200 overflow-hidden">
+      {items.map((item) => {
+        const start = new Date(item.startTime).getTime()
+        const end = new Date(item.endTime).getTime()
+        const left = Math.max(0, Math.min(100, ((start - dayStart) / dayMs) * 100))
+        const width = Math.max(0.4, Math.min(100 - left, ((end - start) / dayMs) * 100))
+        return (
+          <span
+            key={item.id}
+            className={`absolute top-0 bottom-0 rounded-sm ${
+              item.type === 'trip' ? 'bg-sky-500' : 'bg-emerald-400'
+            }`}
+            style={{ left: `${left}%`, width: `${width}%` }}
+          />
+        )
+      })}
+      <span className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-orange-500 border-2 border-white shadow" style={{ left: '2%' }} />
+    </div>
+  )
+}
+
+function TripRoutePreview({ points }: { points?: RoutePoint[] }) {
+  if (!points || points.length < 2) {
+    return <div className="h-28 w-full flex items-center justify-center text-[10px] text-slate-400">No track</div>
+  }
+  const lats = points.map((p) => p.latitude)
+  const lngs = points.map((p) => p.longitude)
+  const minLat = Math.min(...lats)
+  const maxLat = Math.max(...lats)
+  const minLng = Math.min(...lngs)
+  const maxLng = Math.max(...lngs)
+  const pad = 0.08
+  const w = Math.max(maxLng - minLng, 0.001)
+  const h = Math.max(maxLat - minLat, 0.001)
+  const vbW = 280
+  const vbH = 112
+  const step = Math.max(1, Math.floor(points.length / 80))
+  const sampled = points.filter((_, i) => i % step === 0 || i === points.length - 1)
+  const coords = sampled.map((p) => {
+    const x = ((p.longitude - minLng) / w) * (1 - pad * 2) * vbW + pad * vbW
+    const y = (1 - (p.latitude - minLat) / h) * (1 - pad * 2) * vbH + pad * vbH
+    return [x, y] as const
+  })
+  const d = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c[0].toFixed(1)} ${c[1].toFixed(1)}`).join(' ')
+  const start = coords[0]
+  const end = coords[coords.length - 1]
+
+  return (
+    <svg viewBox={`0 0 ${vbW} ${vbH}`} className="w-full h-28 block" preserveAspectRatio="xMidYMid meet">
+      <rect width={vbW} height={vbH} fill="#e8eef3" />
+      <path d={d} fill="none" stroke="#f59e0b" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      {start && <circle cx={start[0]} cy={start[1]} r="4" fill="#22c55e" stroke="#fff" strokeWidth="1.5" />}
+      {end && <circle cx={end[0]} cy={end[1]} r="4" fill="#ef4444" stroke="#fff" strokeWidth="1.5" />}
+    </svg>
+  )
+}
+
+export function GpsTripHistory({
+  open,
+  onToggle,
+  routePeriod,
+  isLoading,
+  tripHistory,
+  tripSummary,
+  selectedTripId,
+  onSelectTrip,
+  onSelectPeriod,
+  routeSegments,
+  showCalendar,
+  onToggleCalendar,
+  customFrom,
+  customTo,
+  onCustomFrom,
+  onCustomTo,
+  onApplyCustom,
+  rangeError,
+  todayStr,
+}: Props) {
+  const dateTabs = buildHistoryDateTabs()
+  const activeDayKey = routePeriodToDayKey(routePeriod)
+
+  const headerLabel = (() => {
+    if (!routePeriod) return 'Pick a day'
+    const tab = dateTabs.find((t) => t.key === routePeriod)
+    if (tab) return tab.label
+    if (routePeriod.startsWith('range:')) {
+      const [, f, t] = routePeriod.split(':')
+      return f === t ? f : `${f} → ${t}`
+    }
+    return routePeriod
+  })()
+
+  return (
+    <div className="mb-3 rounded-2xl border border-slate-200 bg-[#f3f4f6] overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left bg-white border-b border-slate-100"
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          <History className="w-3.5 h-3.5 text-brand-green flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-800">Trip History</p>
+            <p className="text-[10px] text-brand-green font-medium truncate">
+              {isLoading
+                ? 'Loading…'
+                : `${headerLabel}${tripSummary ? ` · ${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi` : ''}`}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isLoading && <Loader2 className="w-3.5 h-3.5 text-brand-green animate-spin" />}
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="pb-3">
+          <div className="bg-white px-2 pt-2 pb-1 border-b border-slate-100">
+            <div className="flex items-center gap-0.5">
+              <div className="flex-1 min-w-0 overflow-x-auto flex items-stretch gap-0">
+                {dateTabs.map((tab) => {
+                  const active = activeDayKey === tab.key || routePeriod === tab.key
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => {
+                        onSelectTrip(null)
+                        onSelectPeriod(routePeriod === tab.key ? null : tab.key)
+                      }}
+                      className={`relative flex-shrink-0 px-3 py-2 text-xs font-semibold transition-colors ${
+                        active ? 'text-sky-600' : 'text-slate-500 hover:text-slate-800'
+                      } disabled:opacity-50`}
+                    >
+                      {tab.label}
+                      {active && (
+                        <span className="absolute left-2 right-2 bottom-0 h-[3px] rounded-full bg-amber-400" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />
+              <button
+                type="button"
+                onClick={onToggleCalendar}
+                className={`p-2 rounded-lg flex-shrink-0 ${
+                  showCalendar ? 'bg-brand-green/10 text-brand-green' : 'text-slate-400 hover:bg-slate-50'
+                }`}
+                title="Custom dates"
+              >
+                <CalendarDays className="w-4 h-4" />
+              </button>
+            </div>
+            <DayTimelineBar items={tripHistory} />
+          </div>
+
+          {showCalendar && (
+            <div className="mx-3 mt-2 p-2.5 rounded-xl bg-white border border-slate-200">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <label className="block min-w-0">
+                  <span className="text-[10px] text-slate-400">From</span>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    max={customTo || todayStr}
+                    onChange={(e) => onCustomFrom(e.target.value)}
+                    className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  />
+                </label>
+                <label className="block min-w-0">
+                  <span className="text-[10px] text-slate-400">To</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    min={customFrom || undefined}
+                    max={todayStr}
+                    onChange={(e) => onCustomTo(e.target.value)}
+                    className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                disabled={isLoading || !customFrom || !customTo}
+                onClick={onApplyCustom}
+                className="w-full px-3 py-1.5 rounded-md text-xs font-semibold bg-brand-green text-white hover:bg-brand-green/90 disabled:opacity-40"
+              >
+                Load trips
+              </button>
+              {rangeError && <p className="mt-1.5 text-[10px] text-amber-600">{rangeError}</p>}
+            </div>
+          )}
+
+          <div className="px-3 pt-3 space-y-2.5 max-h-[28rem] overflow-y-auto">
+            {isLoading && (
+              <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-xs">Loading trips…</span>
+              </div>
+            )}
+
+            {!isLoading && routePeriod && tripHistory.length === 0 && (
+              <p className="text-center text-xs text-slate-400 py-8">No trips or stops for this day.</p>
+            )}
+
+            {!isLoading && selectedTripId && (
+              <button
+                type="button"
+                onClick={() => onSelectTrip(null)}
+                className="text-[10px] font-semibold text-sky-600 hover:underline"
+              >
+                Show all trips on map
+              </button>
+            )}
+
+            {!isLoading &&
+              tripHistory.map((item) => {
+                const active = selectedTripId === item.id
+                if (item.type === 'parking') {
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-2xl bg-white shadow-sm border border-slate-100/80 border-l-[3px] border-l-amber-400 p-3"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
+                          <ParkingSquare className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {formatTripStamp(item.startTime, false, true)}
+                          </p>
+                          <div className="flex items-start gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-slate-500 leading-snug">
+                              {item.address ||
+                                (item.startLatitude
+                                  ? `${item.startLatitude.toFixed(5)}, ${item.startLongitude.toFixed(5)}`
+                                  : 'Location unavailable')}
+                            </p>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                            <span className="text-slate-400">Duration:</span>{' '}
+                            <span className="font-medium text-slate-700">{formatTripDuration(item.durationSec)}</span>
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            <span className="text-slate-400">End of parking:</span>{' '}
+                            <span className="font-medium text-slate-700">{formatTripStamp(item.endTime)}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                const seg = item.segmentIndex != null ? routeSegments[item.segmentIndex] : undefined
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectTrip(active ? null : item.id)}
+                    className={`w-full text-left rounded-2xl bg-white shadow-sm border p-3 transition-shadow ${
+                      active ? 'border-sky-300 ring-2 ring-sky-100' : 'border-slate-100/80 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <Car className="w-3.5 h-3.5 text-slate-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">{formatTripStamp(item.startTime)}</p>
+                          {active && (
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-sky-600">On map</span>
+                          )}
+                        </div>
+                        <div className="flex items-start gap-1 mt-1">
+                          <MapPin className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-slate-500 leading-snug">
+                            {item.address ||
+                              (item.startLatitude
+                                ? `${item.startLatitude.toFixed(5)}, ${item.startLongitude.toFixed(5)}`
+                                : 'Location unavailable')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 relative rounded-xl overflow-hidden bg-[#e8eef3] border border-slate-100">
+                      <TripRoutePreview points={seg} />
+                      <div className="absolute right-1.5 top-1.5">
+                        <span className="w-7 h-7 rounded-md bg-white/90 shadow-sm flex items-center justify-center">
+                          <Play className="w-3.5 h-3.5 text-slate-600" />
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-4 gap-1.5">
+                      <div>
+                        <p className="text-[9px] text-slate-400">Duration</p>
+                        <p className="text-[11px] font-bold text-slate-800">{formatTripDuration(item.durationSec)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400">Distance</p>
+                        <p className="text-[11px] font-bold text-slate-800">
+                          {item.distanceMiles > 0 ? `${item.distanceMiles} mi` : '--'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400">Avg</p>
+                        <p className="text-[11px] font-bold text-slate-800">
+                          {item.avgSpeedMph > 0 ? `${Math.round(item.avgSpeedMph)}` : '--'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400">Max</p>
+                        <p className="text-[11px] font-bold text-slate-800">
+                          {item.maxSpeedMph > 0 ? `${Math.round(item.maxSpeedMph)} mph` : '--'}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+          </div>
+
+          {routePeriod && (
+            <div className="px-3 mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectPeriod(null)
+                  onSelectTrip(null)
+                }}
+                className="w-full px-3 py-2 rounded-xl text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
+              >
+                Clear history
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
