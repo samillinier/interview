@@ -132,47 +132,6 @@ function formatTripDuration(sec: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
 }
 
-function DayTimelineBar({ items }: { items: TripHistoryRow[] }) {
-  if (items.length === 0) {
-    return <div className="mx-1 mt-2 mb-2 h-2 rounded-full bg-slate-200" />
-  }
-
-  const dayStart = (() => {
-    const first = items[items.length - 1]
-    const d = new Date(first.startTime)
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(d)
-    const get = (t: string) => parts.find((p) => p.type === t)?.value || '01'
-    return new Date(`${get('year')}-${get('month')}-${get('day')}T00:00:00-04:00`).getTime()
-  })()
-  const dayMs = 24 * 60 * 60 * 1000
-
-  return (
-    <div className="relative mx-1 mt-2 mb-2 h-2.5 rounded-full bg-slate-200 overflow-hidden">
-      {items.map((item) => {
-        const start = new Date(item.startTime).getTime()
-        const end = new Date(item.endTime).getTime()
-        const left = Math.max(0, Math.min(100, ((start - dayStart) / dayMs) * 100))
-        const width = Math.max(0.4, Math.min(100 - left, ((end - start) / dayMs) * 100))
-        return (
-          <span
-            key={item.id}
-            className={`absolute top-0 bottom-0 rounded-sm ${
-              item.type === 'trip' ? 'bg-sky-500' : 'bg-emerald-400'
-            }`}
-            style={{ left: `${left}%`, width: `${width}%` }}
-          />
-        )
-      })}
-      <span className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-orange-500 border-2 border-white shadow" style={{ left: '2%' }} />
-    </div>
-  )
-}
-
 function TripRoutePreview({ points }: { points?: RoutePoint[] }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<{ remove: () => void } | null>(null)
@@ -365,7 +324,6 @@ export function GpsTripHistory({
                 <CalendarDays className="w-4 h-4" />
               </button>
             </div>
-            <DayTimelineBar items={tripHistory} />
           </div>
 
           {showCalendar && (
