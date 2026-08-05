@@ -247,6 +247,26 @@ export interface ObdiiPayload {
   obdSpeed?: number
   motionDetected?: boolean
   totalDistance?: number
+  /** Real ignition from Ruhavik (not speed proxy) */
+  ignition?: boolean
+  externalPowerVoltage?: number
+  backupBatteryVoltage?: number
+  externalPowerConnected?: boolean
+  batteryCharging?: boolean
+  /** litres/100km from CAN */
+  fuelConsumption?: number
+  ignitionOnDurationSec?: number
+  ignitionOffDurationSec?: number
+  tripActive?: boolean
+  vehicleState?: string
+  simIccid?: string
+  signalDbm?: number
+  gsmCellId?: number
+  gsmLac?: number
+  gsmMcc?: number
+  gsmMnc?: number
+  positionValid?: boolean
+  reportCode?: string
 }
 
 export interface ClassifiedEvent {
@@ -417,6 +437,12 @@ function normalizeDtcCodes(raw: unknown): string[] {
   return parts.filter((c) => c.length > 0 && c !== '0' && !/^none$/i.test(c))
 }
 
+function asBool(v: unknown): boolean | undefined {
+  if (v === true || v === 1 || v === '1' || v === 'true') return true
+  if (v === false || v === 0 || v === '0' || v === 'false') return false
+  return undefined
+}
+
 export function extractObdiiData(attrs: Record<string, unknown> | undefined): ObdiiPayload {
   if (!attrs) return {}
   const payload: ObdiiPayload = {}
@@ -439,6 +465,14 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   const fuel = val('fuel.level') ?? val('fuel') ?? val('obdFuel') ?? val('fuelLevel')
   if (fuel !== undefined) payload.fuelLevel = Math.round(fuel)
 
+  const fuelCons =
+    val('can.fuel.consumption.distance') ??
+    val('fuel.consumption.distance') ??
+    val('fuel.consumption')
+  if (fuelCons !== undefined && fuelCons > 0) {
+    payload.fuelConsumption = Math.round(fuelCons * 10) / 10
+  }
+
   const tempRaw =
     val('engine.coolant.temperature') ??
     val('can.engine.coolant.temperature') ??
@@ -452,13 +486,82 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     payload.engineTemp = Math.round(f)
   }
 
+  const extV = val('external.powersource.voltage')
+  const bakV = val('backup.battery.voltage')
+  if (extV !== undefined) payload.externalPowerVoltage = Math.round(extV * 1000) / 1000
+  if (bakV !== undefined) payload.backupBatteryVoltage = Math.round(bakV * 1000) / 1000
+
   const battery =
-    val('external.powersource.voltage') ??
-    val('backup.battery.voltage') ??
+    extV ??
+    bakV ??
     val('battery') ??
     val('power') ??
     val('obdBattery')
   if (battery !== undefined) payload.batteryVoltage = Math.round(battery * 10) / 10
+
+  const extPower = asBool(attrs['external.powersource.status'] ?? attrs['external.powersource'])
+  if (extPower !== undefined) payload.externalPowerConnected = extPower
+  const charging = asBool(attrs['battery.charging.status'] ?? attrs['battery.charging'])
+  if (charging !== undefined) payload.batteryCharging = charging
+
+  const ignOn = val('engine.ignition.on.duration')
+  const ignOff = val('engine.ignition.off.duration')
+  if (ignOn !== undefined) payload.ignitionOnDurationSec = Math.round(ignOn)
+  if (ignOff !== undefined) payload.ignitionOffDurationSec = Math.round(ignOff)
+
+  // Prefer explicit ignition flags; fall back to duration/RPM hints
+  const ignExplicit = asBool(
+    attrs['engine.ignition.status'] ??
+      attrs['engine.ignition'] ??
+      attrs['ignition.status'] ??
+      attrs['ignition']
+  )
+  if (ignExplicit !== undefined) {
+    payload.ignition = ignExplicit
+  } else if (ignOn !== undefined || ignOff !== undefined) {
+    // Snapshot often keeps both last durations — treat ignition on if on-duration
+    // is present and RPM > 0, or off-duration is 0 while on-duration > 0
+    if (rpm !== undefined && rpm > 0) payload.ignition = true
+    else if (ignOff === 0 && ignOn != null && ignOn > 0) payload.ignition = true
+    else if (ignOn === 0 && ignOff != null && ignOff > 0) payload.ignition = false
+  } else if (rpm !== undefined && rpm > 0) {
+    payload.ignition = true
+  }
+
+  const trip = asBool(attrs['trip.status'] ?? attrs['trip.active'])
+  if (trip !== undefined) payload.tripActive = trip
+
+  const vehicleState = attrs['vehicle.state'] ?? attrs['vehicle.mileage.state']
+  if (typeof vehicleState === 'string' && vehicleState.trim()) {
+    payload.vehicleState = vehicleState.trim()
+  }
+
+  const iccid = attrs['gsm.sim.iccid'] ?? attrs['sim.iccid'] ?? attrs['iccid']
+  if (typeof iccid === 'string' && iccid.trim()) {
+    payload.simIccid = iccid.trim().replace(/F$/i, '')
+  } else if (typeof iccid === 'number') {
+    payload.simIccid = String(iccid)
+  }
+
+  const signalDbm = val('gsm.signal.dbm') ?? val('gsm.signal.level')
+  if (signalDbm !== undefined) payload.signalDbm = Math.round(signalDbm)
+
+  const cellId = val('gsm.cellid') ?? val('gsm.cell.id')
+  if (cellId !== undefined) payload.gsmCellId = Math.round(cellId)
+  const lac = val('gsm.lac')
+  if (lac !== undefined) payload.gsmLac = Math.round(lac)
+  const mcc = val('gsm.mcc')
+  if (mcc !== undefined) payload.gsmMcc = Math.round(mcc)
+  const mnc = val('gsm.mnc')
+  if (mnc !== undefined) payload.gsmMnc = Math.round(mnc)
+
+  const posValid = asBool(attrs['position.valid'])
+  if (posValid !== undefined) payload.positionValid = posValid
+
+  const reportCode = attrs['report.code'] ?? attrs['reportCode']
+  if (typeof reportCode === 'string' && reportCode.trim()) {
+    payload.reportCode = reportCode.trim().toUpperCase()
+  }
 
   const odo = val('vehicle.mileage') ?? val('odometer') ?? val('obdOdometer')
   if (odo !== undefined && odo > 0) {
@@ -485,9 +588,10 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     val('obdSpeed')
   if (obdSpeed !== undefined) payload.obdSpeed = convertSpeedToMph(obdSpeed)
 
-  if (attrs['motion'] === true || attrs['motion'] === 'true' || attrs['movement.status'] === true) {
-    payload.motionDetected = true
-  }
+  const motion = asBool(attrs['motion'] ?? attrs['movement.status'])
+  if (motion === true) payload.motionDetected = true
+  else if (motion === false) payload.motionDetected = false
+
   // vehicle.mileage is often 0 when the ECU doesn't expose odometer — treat as missing
   const totalMeters = val('totalDistance')
   const mileageKm = val('vehicle.mileage')

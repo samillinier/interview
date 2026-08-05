@@ -34,6 +34,10 @@ import {
   Pencil,
   Check,
   X,
+  Power,
+  Zap,
+  Radio,
+  KeyRound,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -708,8 +712,33 @@ function DeviceTelemetry({
     { icon: Gauge, label: 'Speed', value: device.speed.toFixed(0) + ' mph' },
     { icon: Navigation, label: 'Heading', value: device.heading.toFixed(0) + '\u00B0' },
     { icon: Satellite, label: 'Satellites', value: device.satelliteCount.toString() },
-    { icon: Signal, label: 'Signal', value: device.signalStrength + '%' },
+    {
+      icon: Signal,
+      label: 'Signal',
+      value:
+        device.signalStrength +
+        '%' +
+        (device.obdii?.signalDbm != null ? ` (${device.obdii.signalDbm} dBm)` : ''),
+    },
   ]
+
+  function formatDur(sec?: number) {
+    if (sec == null || !Number.isFinite(sec)) return '--'
+    const s = Math.max(0, Math.round(sec))
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    if (h > 0) return h + 'h ' + m + 'm'
+    if (m > 0) return m + 'm'
+    return s + 's'
+  }
+
+  const powerLabel = (() => {
+    if (device.batteryVoltage == null) return '--'
+    const base = device.batteryVoltage.toFixed(1) + 'V'
+    if (device.obdii?.externalPowerConnected === true) return base + ' · ext'
+    if (device.obdii?.externalPowerConnected === false) return base + ' · batt'
+    return base
+  })()
 
   const events = device.recentEvents || []
   const harshCount = events.filter(function(e) { return e.icon === 'harsh' }).length
@@ -861,11 +890,83 @@ function DeviceTelemetry({
               <item.icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-slate-400">{item.label}</p>
-                <p className="text-sm font-semibold text-slate-900">{item.value}</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">{item.value}</p>
               </div>
             </div>
           )
         })}
+      </div>
+
+      {/* Device / vehicle status from Ruhavik */}
+      <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Status</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Power className={'w-4 h-4 flex-shrink-0 ' + (device.ignition ? 'text-brand-green' : 'text-slate-300')} />
+            <div>
+              <p className="text-[10px] text-slate-400">Ignition</p>
+              <p className="text-sm font-bold text-slate-900">{device.ignition ? 'ON' : 'OFF'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Activity className={'w-4 h-4 flex-shrink-0 ' + (device.obdii?.motionDetected ? 'text-brand-green' : 'text-slate-300')} />
+            <div>
+              <p className="text-[10px] text-slate-400">Movement</p>
+              <p className="text-sm font-bold text-slate-900">
+                {device.obdii?.motionDetected == null ? '--' : device.obdii.motionDetected ? 'Yes' : 'No'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <CarFront className={'w-4 h-4 flex-shrink-0 ' + (device.obdii?.tripActive ? 'text-brand-green' : 'text-slate-300')} />
+            <div>
+              <p className="text-[10px] text-slate-400">Trip</p>
+              <p className="text-sm font-bold text-slate-900">
+                {device.obdii?.tripActive == null ? '--' : device.obdii.tripActive ? 'Active' : 'Idle'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Zap className={'w-4 h-4 flex-shrink-0 ' + (device.obdii?.externalPowerConnected ? 'text-brand-green' : 'text-slate-300')} />
+            <div>
+              <p className="text-[10px] text-slate-400">Ext. Power</p>
+              <p className="text-sm font-bold text-slate-900">
+                {device.obdii?.externalPowerConnected == null
+                  ? '--'
+                  : device.obdii.externalPowerConnected
+                    ? 'Connected'
+                    : 'Disconnected'}
+              </p>
+            </div>
+          </div>
+          {device.obdii?.vehicleState && (
+            <div className="col-span-2 flex items-center gap-2 p-2 bg-white rounded-lg">
+              <HardDrive className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-400">Vehicle state</p>
+                <p className="text-sm font-bold text-slate-900 truncate">{device.obdii.vehicleState}</p>
+              </div>
+            </div>
+          )}
+          {(device.obdii?.ignitionOnDurationSec != null || device.obdii?.ignitionOffDurationSec != null) && (
+            <>
+              <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-400">Ign. ON</p>
+                  <p className="text-sm font-bold text-slate-900">{formatDur(device.obdii?.ignitionOnDurationSec)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-400">Ign. OFF</p>
+                  <p className="text-sm font-bold text-slate-900">{formatDur(device.obdii?.ignitionOffDurationSec)}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Vehicle Vital Signs — always show */}
@@ -883,7 +984,7 @@ function DeviceTelemetry({
             <Battery className="w-4 h-4 text-brand-green flex-shrink-0" />
             <div>
               <p className="text-[10px] text-slate-400">Battery</p>
-              <p className="text-sm font-bold text-slate-900">{device.batteryVoltage != null ? device.batteryVoltage.toFixed(1) + 'V' : '--'}</p>
+              <p className="text-sm font-bold text-slate-900">{powerLabel}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
@@ -914,6 +1015,46 @@ function DeviceTelemetry({
               <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
             </div>
           </div>
+          {device.obdii?.fuelConsumption != null && (
+            <div className="col-span-3 flex items-center gap-2 p-2 bg-white rounded-lg">
+              <Fuel className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-slate-400">Fuel consumption</p>
+                <p className="text-sm font-bold text-slate-900">{device.obdii.fuelConsumption} L/100km</p>
+              </div>
+            </div>
+          )}
+          {(device.obdii?.externalPowerVoltage != null || device.obdii?.backupBatteryVoltage != null) && (
+            <>
+              {device.obdii?.externalPowerVoltage != null && (
+                <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                  <Zap className="w-4 h-4 text-brand-green flex-shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-slate-400">Ext. V</p>
+                    <p className="text-sm font-bold text-slate-900">{device.obdii.externalPowerVoltage.toFixed(2)}V</p>
+                  </div>
+                </div>
+              )}
+              {device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage > 0 && (
+                <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                  <Battery className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-slate-400">Backup V</p>
+                    <p className="text-sm font-bold text-slate-900">{device.obdii.backupBatteryVoltage.toFixed(2)}V</p>
+                  </div>
+                </div>
+              )}
+              {device.obdii?.batteryCharging != null && (
+                <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+                  <Battery className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-slate-400">Charging</p>
+                    <p className="text-sm font-bold text-slate-900">{device.obdii.batteryCharging ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
           <Clock className="w-3 h-3 text-slate-400" />
@@ -1002,6 +1143,43 @@ function DeviceTelemetry({
             ) : (
               <p className="text-sm font-bold text-slate-300">None</p>
             )}
+          </div>
+          <div className="col-span-2 flex items-start gap-2 pt-1 border-t border-slate-200 mt-1">
+            <KeyRound className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] text-slate-400">SIM ICCID</p>
+              <p className="text-xs font-mono font-semibold text-slate-700 break-all">
+                {device.obdii?.simIccid || '--'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Radio className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-[10px] text-slate-400">GSM cell</p>
+              <p className="text-xs font-semibold text-slate-700">
+                {device.obdii?.gsmCellId != null
+                  ? `${device.obdii.gsmCellId}`
+                  : '--'}
+                {device.obdii?.gsmLac != null ? ` · LAC ${device.obdii.gsmLac}` : ''}
+              </p>
+              {(device.obdii?.gsmMcc != null || device.obdii?.gsmMnc != null) && (
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  MCC {device.obdii.gsmMcc ?? '—'} / MNC {device.obdii.gsmMnc ?? '—'}
+                </p>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-slate-400">GPS fix</p>
+            <p className="text-sm font-bold text-slate-900">
+              {device.obdii?.positionValid == null
+                ? '--'
+                : device.obdii.positionValid
+                  ? 'Valid'
+                  : 'Invalid'}
+              {device.obdii?.reportCode ? ` · ${device.obdii.reportCode}` : ''}
+            </p>
           </div>
         </div>
       </div>
