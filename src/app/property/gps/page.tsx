@@ -253,11 +253,12 @@ export default function GPSPage() {
   }, [routePeriod, selectedDevice, fetchRoute])
 
   const mapSegments = (() => {
-    if (!selectedTripId) return routeSegments
+    // Only draw a trip on the main map after the user selects a trip card
+    if (!selectedTripId) return [] as typeof routeSegments
     const trip = tripHistory.find((t) => t.id === selectedTripId)
-    if (!trip || trip.type !== 'trip' || trip.segmentIndex == null) return routeSegments
+    if (!trip || trip.type !== 'trip' || trip.segmentIndex == null) return []
     const seg = routeSegments[trip.segmentIndex]
-    return seg ? [seg] : routeSegments
+    return seg ? [seg] : []
   })()
 
   const mapPositions = mapSegments.flat()
@@ -705,7 +706,7 @@ function DeviceTelemetry({
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
   const [rangeError, setRangeError] = useState<string | null>(null)
-  const [historyOpen, setHistoryOpen] = useState(true)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [alertsOpen, setAlertsOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(device.vehicleName || '')
@@ -717,11 +718,6 @@ function DeviceTelemetry({
     setEditingName(false)
     setRenameError(null)
   }, [device.id, device.vehicleName])
-
-  useEffect(() => {
-    if (historyOpen && !routePeriod) onSelectHistory('today')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyOpen])
 
   useEffect(() => {
     if (routePeriod?.startsWith('range:')) {

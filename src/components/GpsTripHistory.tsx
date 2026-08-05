@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   History,
   ChevronDown,
@@ -172,39 +175,89 @@ function DayTimelineBar({ items }: { items: TripHistoryRow[] }) {
 }
 
 function TripRoutePreview({ points }: { points?: RoutePoint[] }) {
-  if (!points || points.length < 2) {
-    return <div className="h-28 w-full flex items-center justify-center text-[10px] text-slate-400">No track</div>
-  }
-  const lats = points.map((p) => p.latitude)
-  const lngs = points.map((p) => p.longitude)
-  const minLat = Math.min(...lats)
-  const maxLat = Math.max(...lats)
-  const minLng = Math.min(...lngs)
-  const maxLng = Math.max(...lngs)
-  const pad = 0.08
-  const w = Math.max(maxLng - minLng, 0.001)
-  const h = Math.max(maxLat - minLat, 0.001)
-  const vbW = 280
-  const vbH = 112
-  const step = Math.max(1, Math.floor(points.length / 80))
-  const sampled = points.filter((_, i) => i % step === 0 || i === points.length - 1)
-  const coords = sampled.map((p) => {
-    const x = ((p.longitude - minLng) / w) * (1 - pad * 2) * vbW + pad * vbW
-    const y = (1 - (p.latitude - minLat) / h) * (1 - pad * 2) * vbH + pad * vbH
-    return [x, y] as const
-  })
-  const d = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c[0].toFixed(1)} ${c[1].toFixed(1)}`).join(' ')
-  const start = coords[0]
-  const end = coords[coords.length - 1]
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<L.Map | null>(null)
 
-  return (
-    <svg viewBox={`0 0 ${vbW} ${vbH}`} className="w-full h-28 block" preserveAspectRatio="xMidYMid meet">
-      <rect width={vbW} height={vbH} fill="#e8eef3" />
-      <path d={d} fill="none" stroke="#f59e0b" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-      {start && <circle cx={start[0]} cy={start[1]} r="4" fill="#22c55e" stroke="#fff" strokeWidth="1.5" />}
-      {end && <circle cx={end[0]} cy={end[1]} r="4" fill="#ef4444" stroke="#fff" strokeWidth="1.5" />}
-    </svg>
-  )
+  useEffect(() => {
+    if (!containerRef.current) return
+    if (!points || points.length < 2) return
+
+    // Clean previous instance (React strict mode / point updates)
+    if (mapRef.current) {
+      mapRef.current.remove()
+      mapRef.current = null
+    }
+
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+    })
+    mapRef.current = map
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(map)
+
+    const step = Math.max(1, Math.floor(points.length / 120))
+    const latlngs: L.LatLngExpression[] = points
+      .filter((_, i) => i % step === 0 || i === points.length - 1)
+      .map((p) => [p.latitude, p.longitude])
+
+    const line = L.polyline(latlngs, {
+      color: '#f59e0b',
+      weight: 4,
+      opacity: 0.95,
+      lineJoin: 'round',
+      lineCap: 'round',
+    }).addTo(map)
+
+    const start = points[0]
+    const end = points[points.length - 1]
+    L.circleMarker([start.latitude, start.longitude], {
+      radius: 5,
+      color: '#fff',
+      weight: 2,
+      fillColor: '#22c55e',
+      fillOpacity: 1,
+    }).addTo(map)
+    L.circleMarker([end.latitude, end.longitude], {
+      radius: 5,
+      color: '#fff',
+      weight: 2,
+      fillColor: '#ef4444',
+      fillOpacity: 1,
+    }).addTo(map)
+
+    // Fit after layout so tiles size correctly inside the card
+    const fit = () => {
+      try {
+        map.invalidateSize()
+        map.fitBounds(line.getBounds().pad(0.18), { animate: false, maxZoom: 15 })
+      } catch {
+        /* empty bounds */
+      }
+    }
+    requestAnimationFrame(fit)
+    const t = window.setTimeout(fit, 80)
+
+    return () => {
+      window.clearTimeout(t)
+      map.remove()
+      mapRef.current = null
+    }
+  }, [points])
+
+  if (!points || points.length < 2) {
+    return <div className="h-32 w-full flex items-center justify-center text-[10px] text-slate-400">No track</div>
+  }
+
+  return <div ref={containerRef} className="h-32 w-full z-0" />
 }
 
 export function GpsTripHistory({
@@ -411,11 +464,18 @@ export function GpsTripHistory({
                 const seg = item.segmentIndex != null ? routeSegments[item.segmentIndex] : undefined
 
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onSelectTrip(active ? null : item.id)}
-                    className={`w-full text-left rounded-2xl bg-white shadow-sm border p-3 transition-shadow ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onSelectTrip(active ? null : item.id)
+                      }
+                    }}
+                    className={`w-full text-left rounded-2xl bg-white shadow-sm border p-3 transition-shadow cursor-pointer ${
                       active ? 'border-sky-300 ring-2 ring-sky-100' : 'border-slate-100/80 hover:shadow-md'
                     }`}
                   >
@@ -442,9 +502,12 @@ export function GpsTripHistory({
                       </div>
                     </div>
 
-                    <div className="mt-2.5 relative rounded-xl overflow-hidden bg-[#e8eef3] border border-slate-100">
-                      <TripRoutePreview points={seg} />
-                      <div className="absolute right-1.5 top-1.5">
+                    <div className="mt-2.5 relative rounded-xl overflow-hidden bg-[#e8eef3] border border-slate-100 pointer-events-none">
+                      <TripRoutePreview
+                        key={`${item.id}-${seg?.length ?? 0}-${seg?.[0]?.time ?? ''}`}
+                        points={seg}
+                      />
+                      <div className="absolute right-1.5 top-1.5 z-[500]">
                         <span className="w-7 h-7 rounded-md bg-white/90 shadow-sm flex items-center justify-center">
                           <Play className="w-3.5 h-3.5 text-slate-600" />
                         </span>
@@ -475,7 +538,7 @@ export function GpsTripHistory({
                         </p>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 )
               })}
           </div>

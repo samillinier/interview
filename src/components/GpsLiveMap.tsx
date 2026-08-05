@@ -426,7 +426,7 @@ export function GpsLiveMap({
   }, [updatePlaybackMarker, updateTrail])
 
   const startPlayback = useCallback(
-    (segs: PlaybackSeg[], reset = true) => {
+    (segs: PlaybackSeg[], reset = true, autoPlay = true) => {
       stopPlaybackLoop()
       if (!segs.length) {
         setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
@@ -449,18 +449,20 @@ export function GpsLiveMap({
           true
         )
       }
-      playbackPausedRef.current = false
+      playbackPausedRef.current = !autoPlay
       playbackDoneRef.current = false
       playbackPauseUntilRef.current = 0
       playbackLastTsRef.current = 0
       setPlaybackUi((u) => ({
         active: true,
-        playing: true,
+        playing: autoPlay,
         done: false,
         speed: playbackSpeedRef.current || u.speed || 1,
         progress: reset ? 0 : u.progress,
       }))
-      playbackRafRef.current = requestAnimationFrame(tickPlayback)
+      if (autoPlay) {
+        playbackRafRef.current = requestAnimationFrame(tickPlayback)
+      }
     },
     [stopPlaybackLoop, clearTrail, updatePlaybackMarker, tickPlayback]
   )
@@ -761,7 +763,8 @@ export function GpsLiveMap({
     map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] })
 
     const playbackSegs = buildPlaybackSegs(segments)
-    const t = window.setTimeout(() => startPlayback(playbackSegs, true), 400)
+    // Load track paused — user presses Play to animate
+    const t = window.setTimeout(() => startPlayback(playbackSegs, true, false), 400)
     return () => {
       window.clearTimeout(t)
       stopPlaybackLoop()
