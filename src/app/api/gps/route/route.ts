@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     try {
       segments = await traccar.getRouteSegments(traccarDevice.id, from, to)
     } catch {
-      return NextResponse.json({ positions: [], segments: [], error: 'Failed to fetch route from Ruhavik' })
+      return NextResponse.json({ positions: [], segments: [], trips: [], error: 'Failed to fetch route from Ruhavik' })
     }
 
     const toCoord = (p: traccar.TraccarPosition) => ({
@@ -107,13 +107,31 @@ export async function GET(request: NextRequest) {
     const routeSegments = segments.map((seg) => seg.map(toCoord))
     const rawCoords = routeSegments.flat()
 
+    let trips: traccar.TripHistoryItem[] = []
+    try {
+      trips = await traccar.getTripHistory(traccarDevice.id, from, to, segments)
+    } catch {
+      trips = []
+    }
+
+    const tripMiles = trips
+      .filter((t) => t.type === 'trip')
+      .reduce((s, t) => s + (t.distanceMiles || 0), 0)
+
     return NextResponse.json({
       positions: rawCoords,
       segments: routeSegments,
+      trips,
+      summary: {
+        tripCount: trips.filter((t) => t.type === 'trip').length,
+        parkingCount: trips.filter((t) => t.type === 'parking').length,
+        totalMiles: Math.round(tripMiles * 10) / 10,
+      },
       roadPath: null,
       debug: {
         rawCount: rawCoords.length,
         segmentCount: routeSegments.length,
+        tripCount: trips.length,
         from,
         to,
         timeZone: GPS_TIMEZONE,
@@ -122,6 +140,6 @@ export async function GET(request: NextRequest) {
       gpsConnected: true,
     })
   } catch {
-    return NextResponse.json({ positions: [], gpsConnected: false }, { status: 500 })
+    return NextResponse.json({ positions: [], segments: [], trips: [], gpsConnected: false }, { status: 500 })
   }
 }

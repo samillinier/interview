@@ -201,6 +201,24 @@ export interface TraccarTrip {
   endPositionId: number
 }
 
+/** Trip or parking row for the GPS history list (Ruhavik-style). */
+export interface TripHistoryItem {
+  id: string
+  type: 'trip' | 'parking'
+  startTime: string
+  endTime: string
+  durationSec: number
+  distanceMiles: number
+  avgSpeedMph: number
+  maxSpeedMph: number
+  startLatitude: number
+  startLongitude: number
+  endLatitude: number
+  endLongitude: number
+  /** Index into routeSegments when type is trip */
+  segmentIndex: number | null
+}
+
 export interface TraccarEvent {
   id: number
   type: string
@@ -1034,6 +1052,195 @@ export async function getStops(deviceId: number, from: string, to: string): Prom
         spentFuel: 0,
       }
     })
+}
+
+function segmentStats(seg: TraccarPosition[]): {
+  distanceMiles: number
+  avgSpeedMph: number
+  maxSpeedMph: number
+  durationSec: number
+} {
+  if (seg.length === 0) {
+    return { distanceMiles: 0, avgSpeedMph: 0, maxSpeedMph: 0, durationSec: 0 }
+  }
+  let meters = 0
+  let maxKmh = 0
+  let speedSum = 0
+  let speedN = 0
+  for (let i = 0; i < seg.length; i++) {
+    const sp = Number(seg[i].speed || 0)
+    if (sp > maxKmh) maxKmh = sp
+    if (sp > 0.5) {
+      speedSum += sp
+      speedN++
+    }
+    if (i > 0) {
+      meters += haversineMeters(
+        seg[i - 1].latitude,
+        seg[i - 1].longitude,
+        seg[i].latitude,
+        seg[i].longitude
+      )
+    }
+  }
+  const startMs = new Date(seg[0].deviceTime).getTime()
+  const endMs = new Date(seg[seg.length - 1].deviceTime).getTime()
+  const durationSec = Math.max(0, Math.round((endMs - startMs) / 1000))
+  const distanceMiles = Math.round(meters * 0.000621371 * 10) / 10
+  const avgFromPointsMph = speedN > 0 ? convertSpeedToMph(speedSum / speedN) : 0
+  const avgFromDistMph =
+    durationSec > 0 ? Math.round((meters / durationSec) * 2.236936 * 10) / 10 : 0
+  return {
+    distanceMiles,
+    avgSpeedMph: avgFromPointsMph > 0 ? avgFromPointsMph : avgFromDistMph,
+    maxSpeedMph: convertSpeedToMph(maxKmh),
+    durationSec,
+  }
+}
+
+/**
+ * Ruhavik-style timeline: trips + parking with time, duration, distance, speeds.
+ * Uses GPS segments for accurate miles/speed; falls back to Ruhavik trip events.
+ */
+export async function getTripHistory(
+  deviceId: number,
+  from: string,
+  to: string,
+  segments?: TraccarPosition[][]
+): Promise<TripHistoryItem[]> {
+  const segs = segments ?? (await getRouteSegments(deviceId, from, to))
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
+
+  const events = await rpc<RuhavikTripStop[]>('units.events.trips_stops.get', {
+    ids: [deviceId],
+    from: fromUnix,
+    to: toUnix,
+  }).catch(() => [] as RuhavikTripStop[])
+
+  const items: TripHistoryItem[] = []
+  const usedSeg = new Set<number>()
+
+  const findSegment = (begin: number, end: number): number => {
+    let best = -1
+    let bestOverlap = 0
+    for (let i = 0; i < segs.length; i++) {
+      if (usedSeg.has(i) || segs[i].length < 2) continue
+      const s0 = isoToUnix(segs[i][0].deviceTime)
+      const s1 = isoToUnix(segs[i][segs[i].length - 1].deviceTime)
+      const overlap = Math.min(end, s1) - Math.max(begin, s0)
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap
+        best = i
+      }
+    }
+    return bestOverlap > 30 ? best : -1
+  }
+
+  for (let i = 0; i < (events || []).length; i++) {
+    const e = events[i]
+    const kind = String(e.n_type || e.type || '').toLowerCase()
+    const begin = Number(e.begin ?? e.event_time ?? 0)
+    const endRaw = e.end
+    const end = endRaw == null ? begin : Number(endRaw)
+    if (!(end >= fromUnix && begin <= toUnix)) continue
+
+    if (kind === 'trip') {
+      const segIdx = findSegment(begin, end || toUnix)
+      let distanceMiles = Math.round(Number(e.mileage ?? 0) * 0.621371 * 10) / 10
+      let avgSpeedMph = convertSpeedToMph(Number(e.speed_average ?? 0))
+      let maxSpeedMph = 0
+      let durationSec = Math.round(Number(e.duration ?? Math.max(0, end - begin)))
+      let startLat = Number(e.lat ?? 0)
+      let startLng = Number(e.lon ?? 0)
+      let endLat = Number(e.lat_last ?? e.lat ?? 0)
+      let endLng = Number(e.lon_last ?? e.lon ?? 0)
+      let startTime = unixToIso(begin)
+      let endTime = unixToIso(end || begin)
+
+      if (segIdx >= 0) {
+        usedSeg.add(segIdx)
+        const stats = segmentStats(segs[segIdx])
+        if (stats.distanceMiles > 0) distanceMiles = stats.distanceMiles
+        if (stats.avgSpeedMph > 0) avgSpeedMph = stats.avgSpeedMph
+        if (stats.maxSpeedMph > 0) maxSpeedMph = stats.maxSpeedMph
+        if (stats.durationSec > 0) durationSec = stats.durationSec
+        const first = segs[segIdx][0]
+        const last = segs[segIdx][segs[segIdx].length - 1]
+        startLat = first.latitude
+        startLng = first.longitude
+        endLat = last.latitude
+        endLng = last.longitude
+        startTime = first.deviceTime
+        endTime = last.deviceTime
+      }
+
+      // Skip zero-length noise
+      if (distanceMiles < 0.05 && durationSec < 60) continue
+
+      items.push({
+        id: `trip-${toEventId(e, i)}`,
+        type: 'trip',
+        startTime,
+        endTime,
+        durationSec,
+        distanceMiles,
+        avgSpeedMph,
+        maxSpeedMph,
+        startLatitude: startLat,
+        startLongitude: startLng,
+        endLatitude: endLat,
+        endLongitude: endLng,
+        segmentIndex: segIdx >= 0 ? segIdx : null,
+      })
+    } else if (kind === 'stop' || kind === 'parking') {
+      const durationSec = Math.round(Number(e.duration ?? Math.max(0, end - begin)))
+      if (durationSec < 60) continue
+      items.push({
+        id: `park-${toEventId(e, i)}`,
+        type: 'parking',
+        startTime: unixToIso(begin),
+        endTime: unixToIso(end || begin),
+        durationSec,
+        distanceMiles: 0,
+        avgSpeedMph: 0,
+        maxSpeedMph: 0,
+        startLatitude: Number(e.lat ?? 0),
+        startLongitude: Number(e.lon ?? 0),
+        endLatitude: Number(e.lat ?? 0),
+        endLongitude: Number(e.lon ?? 0),
+        segmentIndex: null,
+      })
+    }
+  }
+
+  // Segments with no matching Ruhavik trip event still show as trips
+  for (let i = 0; i < segs.length; i++) {
+    if (usedSeg.has(i) || segs[i].length < 2) continue
+    const stats = segmentStats(segs[i])
+    if (stats.distanceMiles < 0.05 && stats.durationSec < 60) continue
+    const first = segs[i][0]
+    const last = segs[i][segs[i].length - 1]
+    items.push({
+      id: `seg-${i}-${isoToUnix(first.deviceTime)}`,
+      type: 'trip',
+      startTime: first.deviceTime,
+      endTime: last.deviceTime,
+      durationSec: stats.durationSec,
+      distanceMiles: stats.distanceMiles,
+      avgSpeedMph: stats.avgSpeedMph,
+      maxSpeedMph: stats.maxSpeedMph,
+      startLatitude: first.latitude,
+      startLongitude: first.longitude,
+      endLatitude: last.latitude,
+      endLongitude: last.longitude,
+      segmentIndex: i,
+    })
+  }
+
+  // Newest first (Ruhavik-style feed)
+  items.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+  return items
 }
 
 /**

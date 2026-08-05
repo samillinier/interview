@@ -34,6 +34,7 @@ import {
   Pencil,
   Check,
   X,
+  ParkingSquare,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -43,6 +44,24 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
+
+type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
+
+type TripHistoryRow = {
+  id: string
+  type: 'trip' | 'parking'
+  startTime: string
+  endTime: string
+  durationSec: number
+  distanceMiles: number
+  avgSpeedMph: number
+  maxSpeedMph: number
+  startLatitude: number
+  startLongitude: number
+  endLatitude: number
+  endLongitude: number
+  segmentIndex: number | null
+}
 
 const GpsLiveMap = dynamic(() => import('@/components/GpsLiveMap').then((mod) => mod.GpsLiveMap), {
   ssr: false,
@@ -76,6 +95,9 @@ export default function GPSPage() {
   const [routePeriod, setRoutePeriod] = useState<string | null>(null)
   const [routePositions, setRoutePositions] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[]>([])
   const [routeSegments, setRouteSegments] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[][]>([])
+  const [tripHistory, setTripHistory] = useState<TripHistoryRow[]>([])
+  const [tripSummary, setTripSummary] = useState<{ tripCount: number; parkingCount: number; totalMiles: number } | null>(null)
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locateTick, setLocateTick] = useState(0)
   // Prefer role — isAdmin was missing from session for some logins
@@ -202,6 +224,7 @@ export default function GPSPage() {
   // Fetch route history for selected device
   const fetchRoute = useCallback(async (deviceId: string, period: string) => {
     setIsLoadingRoute(true)
+    setSelectedTripId(null)
     try {
       let url = `/api/gps/route?deviceId=${encodeURIComponent(deviceId)}`
       if (period.startsWith('range:')) {
@@ -214,17 +237,22 @@ export default function GPSPage() {
       if (res.ok) {
         const data = await res.json()
         console.log('[GPS] route API:', data.debug)
-        // Trip-segmented tracks — avoid drawing lines across parking gaps
         const segments = Array.isArray(data.segments) ? data.segments : []
         setRouteSegments(segments)
         setRoutePositions(data.positions || segments.flat() || [])
+        setTripHistory(Array.isArray(data.trips) ? data.trips : [])
+        setTripSummary(data.summary || null)
       } else {
         setRoutePositions([])
         setRouteSegments([])
+        setTripHistory([])
+        setTripSummary(null)
       }
     } catch {
       setRoutePositions([])
       setRouteSegments([])
+      setTripHistory([])
+      setTripSummary(null)
     }
     setIsLoadingRoute(false)
   }, [])
@@ -236,8 +264,21 @@ export default function GPSPage() {
     } else {
       setRoutePositions([])
       setRouteSegments([])
+      setTripHistory([])
+      setTripSummary(null)
+      setSelectedTripId(null)
     }
   }, [routePeriod, selectedDevice, fetchRoute])
+
+  const mapSegments = (() => {
+    if (!selectedTripId) return routeSegments
+    const trip = tripHistory.find((t) => t.id === selectedTripId)
+    if (!trip || trip.type !== 'trip' || trip.segmentIndex == null) return routeSegments
+    const seg = routeSegments[trip.segmentIndex]
+    return seg ? [seg] : routeSegments
+  })()
+
+  const mapPositions = mapSegments.flat()
 
   // Initial load
   useEffect(() => {
@@ -467,8 +508,8 @@ export default function GPSPage() {
                     devices={devices}
                     selectedDevice={selectedDevice}
                     onSelectDevice={setSelectedDevice}
-                    routePositions={routePositions.length > 0 ? routePositions : undefined}
-                    routeSegments={routeSegments.length > 0 ? routeSegments : undefined}
+                    routePositions={mapPositions.length > 0 ? mapPositions : undefined}
+                    routeSegments={mapSegments.length > 0 ? mapSegments : undefined}
                     locateTick={locateTick}
                   />
                 </div>
@@ -514,6 +555,10 @@ export default function GPSPage() {
                     routePointCount={routePositions.length}
                     isLoadingRoute={isLoadingRoute}
                     onSelectHistory={(period) => setRoutePeriod(period)}
+                    tripHistory={tripHistory}
+                    tripSummary={tripSummary}
+                    selectedTripId={selectedTripId}
+                    onSelectTrip={setSelectedTripId}
                     canRename={canRenameGps}
                     onRename={(name) => renameDevice(selectedDevice, name)}
                   />
@@ -650,6 +695,10 @@ function DeviceTelemetry({
   routePointCount,
   isLoadingRoute,
   onSelectHistory,
+  tripHistory,
+  tripSummary,
+  selectedTripId,
+  onSelectTrip,
   canRename,
   onRename,
 }: {
@@ -658,6 +707,10 @@ function DeviceTelemetry({
   routePointCount: number
   isLoadingRoute: boolean
   onSelectHistory: (period: string | null) => void
+  tripHistory: TripHistoryRow[]
+  tripSummary: { tripCount: number; parkingCount: number; totalMiles: number } | null
+  selectedTripId: string | null
+  onSelectTrip: (id: string | null) => void
   canRename?: boolean
   onRename?: (name: string) => Promise<boolean>
 }) {
@@ -700,8 +753,8 @@ function DeviceTelemetry({
     } else if (!routePeriod) {
       setRangeError(null)
     }
-    // Collapse after any selection/clear — user reopens via dropdown
-    setHistoryOpen(false)
+    // Stay open when a period is selected so the trip list is visible
+    if (routePeriod) setHistoryOpen(true)
   }, [routePeriod])
 
   const items = [
@@ -740,7 +793,6 @@ function DeviceTelemetry({
     }
     setRangeError(null)
     onSelectHistory(`range:${customFrom}:${customTo}`)
-    setHistoryOpen(false)
   }
 
   const customActive = Boolean(parsedRange)
@@ -758,7 +810,7 @@ function DeviceTelemetry({
 
   function pickHistory(key: string) {
     onSelectHistory(routePeriod === key ? null : key)
-    setHistoryOpen(false)
+    // Don't force-close — trip list should stay visible after load
   }
 
   async function saveName() {
@@ -1006,7 +1058,7 @@ function DeviceTelemetry({
         </div>
       </div>
 
-      {/* Trip History — collapsible dropdown */}
+      {/* Trip History — period picker + trip/parking list */}
       <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 overflow-hidden">
         <button
           type="button"
@@ -1019,9 +1071,11 @@ function DeviceTelemetry({
               <p className="text-xs font-semibold text-slate-700">Trip History</p>
               <p className={`text-[10px] truncate ${routePeriod ? 'text-brand-green font-medium' : 'text-slate-400'}`}>
                 {isLoadingRoute && routePeriod ? 'Loading…' : selectedHistoryLabel}
-                {routePeriod && !isLoadingRoute && routePointCount > 0
-                  ? ` · ${routePointCount} pts`
-                  : ''}
+                {routePeriod && !isLoadingRoute && tripSummary
+                  ? ` · ${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi`
+                  : routePeriod && !isLoadingRoute && routePointCount > 0
+                    ? ` · ${routePointCount} pts`
+                    : ''}
               </p>
             </div>
           </div>
@@ -1038,7 +1092,7 @@ function DeviceTelemetry({
         {historyOpen && (
           <div className="px-3 pb-3 border-t border-slate-100 pt-2">
             <p className="text-[10px] text-slate-400 mb-2">
-              Pick a period to draw this vehicle&apos;s route on the map.
+              Pick a period to see trips with time, distance, and speed — tap a trip to show it on the map.
             </p>
             <div className="space-y-1.5">
               {historyOptions.map((opt) => {
@@ -1124,7 +1178,7 @@ function DeviceTelemetry({
                     Loading…
                   </span>
                 ) : (
-                  'Show on map'
+                  'Load trips'
                 )}
               </button>
               {rangeError && (
@@ -1135,15 +1189,128 @@ function DeviceTelemetry({
             {routePeriod && (
               <button
                 type="button"
-                onClick={() => onSelectHistory(null)}
+                onClick={() => {
+                  onSelectHistory(null)
+                  onSelectTrip(null)
+                }}
                 className="mt-2 w-full px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
               >
-                Clear map
+                Clear history
               </button>
             )}
 
-            {routePeriod && !isLoadingRoute && routePointCount === 0 && (
-              <p className="mt-2 text-[10px] text-amber-600">No GPS points found for this period.</p>
+            {routePeriod && !isLoadingRoute && tripHistory.length === 0 && routePointCount === 0 && (
+              <p className="mt-2 text-[10px] text-amber-600">No trips found for this period.</p>
+            )}
+
+            {/* Trip / parking feed */}
+            {routePeriod && !isLoadingRoute && tripHistory.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {tripSummary && (
+                  <div className="grid grid-cols-3 gap-1.5 mb-1">
+                    <div className="text-center p-1.5 rounded-lg bg-white border border-slate-100">
+                      <p className="text-sm font-bold text-slate-900">{tripSummary.tripCount}</p>
+                      <p className="text-[9px] text-slate-400">trips</p>
+                    </div>
+                    <div className="text-center p-1.5 rounded-lg bg-white border border-slate-100">
+                      <p className="text-sm font-bold text-slate-900">{tripSummary.totalMiles}</p>
+                      <p className="text-[9px] text-slate-400">miles</p>
+                    </div>
+                    <div className="text-center p-1.5 rounded-lg bg-white border border-slate-100">
+                      <p className="text-sm font-bold text-slate-900">{tripSummary.parkingCount}</p>
+                      <p className="text-[9px] text-slate-400">stops</p>
+                    </div>
+                  </div>
+                )}
+                {selectedTripId && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectTrip(null)}
+                    className="w-full text-[10px] font-medium text-brand-green hover:underline text-left px-0.5"
+                  >
+                    Show all trips on map
+                  </button>
+                )}
+                <div className="max-h-80 overflow-y-auto space-y-2 pr-0.5">
+                  {tripHistory.map((item) => {
+                    const active = selectedTripId === item.id
+                    if (item.type === 'parking') {
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-lg border border-amber-100 bg-white p-2.5 border-l-[3px] border-l-amber-400"
+                        >
+                          <div className="flex items-start gap-2">
+                            <ParkingSquare className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-slate-900">
+                                {formatTripStamp(item.startTime)}
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Duration: {formatTripDuration(item.durationSec)}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                End of parking: {formatTripStamp(item.endTime)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onSelectTrip(active ? null : item.id)}
+                        className={`w-full text-left rounded-lg border p-2.5 border-l-[3px] transition-colors ${
+                          active
+                            ? 'bg-brand-green/10 border-brand-green/30 border-l-brand-green'
+                            : 'bg-white border-slate-100 border-l-sky-400 hover:border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Car className="w-4 h-4 text-sky-500 mt-0.5 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-semibold text-slate-900">
+                                {formatTripStamp(item.startTime)}
+                              </p>
+                              {active && (
+                                <span className="text-[9px] font-semibold text-brand-green">On map</span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              {formatTripStamp(item.startTime, true)} → {formatTripStamp(item.endTime, true)}
+                              {' · '}
+                              {formatTripDuration(item.durationSec)}
+                            </p>
+                            <div className="mt-1.5 grid grid-cols-3 gap-1">
+                              <div className="rounded-md bg-slate-50 px-1.5 py-1">
+                                <p className="text-[9px] text-slate-400">Distance</p>
+                                <p className="text-xs font-bold text-slate-900">
+                                  {item.distanceMiles > 0 ? `${item.distanceMiles} mi` : '--'}
+                                </p>
+                              </div>
+                              <div className="rounded-md bg-slate-50 px-1.5 py-1">
+                                <p className="text-[9px] text-slate-400">Avg speed</p>
+                                <p className="text-xs font-bold text-slate-900">
+                                  {item.avgSpeedMph > 0 ? `${Math.round(item.avgSpeedMph)} mph` : '--'}
+                                </p>
+                              </div>
+                              <div className="rounded-md bg-slate-50 px-1.5 py-1">
+                                <p className="text-[9px] text-slate-400">Max speed</p>
+                                <p className="text-xs font-bold text-slate-900">
+                                  {item.maxSpeedMph > 0 ? `${Math.round(item.maxSpeedMph)} mph` : '--'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -1156,11 +1323,16 @@ function DeviceTelemetry({
               onClick={() => setHistoryOpen(true)}
               className="flex-1 text-left text-[10px] font-medium text-slate-500 hover:text-slate-700"
             >
-              Change period
+              {tripSummary
+                ? `${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi — view list`
+                : 'Change period'}
             </button>
             <button
               type="button"
-              onClick={() => onSelectHistory(null)}
+              onClick={() => {
+                onSelectHistory(null)
+                onSelectTrip(null)
+              }}
               className="text-[10px] font-medium text-slate-500 hover:text-slate-800"
             >
               Clear
@@ -1213,4 +1385,36 @@ function formatTimeAgo(dateStr: string): string {
   if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago'
   if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago'
   return Math.floor(seconds / 86400) + 'd ago'
+}
+
+/** Eastern-friendly trip stamp: "15:55, 04/08" or time-only */
+function formatTripStamp(iso: string, timeOnly = false): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '--'
+  const opts: Intl.DateTimeFormatOptions = {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }
+  const time = new Intl.DateTimeFormat('en-GB', opts).format(d)
+  if (timeOnly) return time
+  const date = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/New_York',
+    day: '2-digit',
+    month: '2-digit',
+  }).format(d)
+  return `${time}, ${date}`
+}
+
+function formatTripDuration(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
+  }
+  if (m > 0) return `${m}m ${r}s`
+  return `${r}s`
 }
