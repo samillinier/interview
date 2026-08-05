@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import {
@@ -256,24 +256,22 @@ export default function GPSPage() {
       setTripSummary(null)
       setSelectedTripId(null)
     }
-  }, [routePeriod, selectedDevice, fetchRoute])
+  }, [routePeriod, selectedDevice?.deviceId, fetchRoute])
 
-  const mapSegments = (() => {
-    // Only draw a trip on the main map after the user selects a trip card
+  const mapSegments = useMemo(() => {
     if (!selectedTripId) return [] as typeof routeSegments
     const trip = tripHistory.find((t) => t.id === selectedTripId)
     if (!trip || trip.type !== 'trip' || trip.segmentIndex == null) return []
     const seg = routeSegments[trip.segmentIndex]
-    return seg ? [seg] : []
-  })()
+    return seg && seg.length >= 2 ? [seg] : []
+  }, [selectedTripId, tripHistory, routeSegments])
 
-  const mapPositions = mapSegments.flat()
+  const mapPositions = useMemo(() => mapSegments.flat(), [mapSegments])
 
-  const selectedTripInfo = (() => {
+  const selectedTripInfo = useMemo(() => {
     if (!selectedTripId) return null
     const trip = tripHistory.find((t) => t.id === selectedTripId)
     if (!trip || trip.type !== 'trip') return null
-    // Parking that ended when this trip started
     const tripStart = new Date(trip.startTime).getTime()
     const preceding = tripHistory.find((p) => {
       if (p.type !== 'parking') return false
@@ -291,7 +289,7 @@ export default function GPSPage() {
       address: trip.address,
       parkingEndedAt: preceding?.endTime ?? null,
     }
-  })()
+  }, [selectedTripId, tripHistory])
 
   // Initial load
   useEffect(() => {

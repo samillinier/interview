@@ -288,6 +288,26 @@ function pointAlongSegment(
   return { lat, lng, heading, speed }
 }
 
+function routeFingerprint(
+  segments?: RoutePoint[][],
+  positions?: RoutePoint[]
+): string {
+  const segs =
+    segments && segments.length > 0
+      ? segments.filter((s) => s.length >= 2)
+      : positions && positions.length >= 2
+        ? [positions]
+        : []
+  if (segs.length === 0) return ''
+  return segs
+    .map((s) => {
+      const a = s[0]
+      const b = s[s.length - 1]
+      return `${s.length}:${a.latitude.toFixed(5)},${a.longitude.toFixed(5)}>${b.latitude.toFixed(5)},${b.longitude.toFixed(5)}:${a.time || ''}:${b.time || ''}`
+    })
+    .join('|')
+}
+
 export function GpsLiveMap({
   devices,
   selectedDevice,
@@ -325,6 +345,9 @@ export function GpsLiveMap({
   selectedDeviceRef.current = selectedDevice
   const selectedTripRef = useRef(selectedTrip)
   selectedTripRef.current = selectedTrip
+  const routeFpRef = useRef('')
+  const lastPlayTickRef = useRef(0)
+  const playbackDurationHintRef = useRef(0)
 
   const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('light')
   const [playbackUi, setPlaybackUi] = useState<{
@@ -421,13 +444,18 @@ export function GpsLiveMap({
     playbackLastTsRef.current = now
 
     const totalM = segs.reduce((s, seg) => s + seg.lengthM, 0)
-    const baseDurationSec = Math.min(40, Math.max(10, totalM / 35))
-    const metersPerSec = (totalM / baseDurationSec) * playbackSpeedRef.current
+    // Prefer real trip duration (sped up) so long trips don't finish in a blink
+    const hint = playbackDurationHintRef.current
+    const baseDurationSec =
+      hint > 0
+        ? Math.min(120, Math.max(20, hint / 6))
+        : Math.min(75, Math.max(18, totalM / 22))
+    const metersPerSec = totalM > 0 ? (totalM / baseDurationSec) * playbackSpeedRef.current : 0
 
     let segIdx = playbackIndexRef.current
     let dist = playbackDistRef.current + metersPerSec * dt
 
-    while (segIdx < segs.length && dist >= segs[segIdx].lengthM) {
+    while (segIdx < segs.length && segs[segIdx].lengthM > 0 && dist >= segs[segIdx].lengthM) {
       dist -= segs[segIdx].lengthM
       segIdx++
       if (segIdx < segs.length) {
@@ -435,16 +463,13 @@ export function GpsLiveMap({
         playbackDistRef.current = 0
         playbackPauseUntilRef.current = now + 400
         const start = segs[segIdx].points[0]
+        const next = segs[segIdx].points[1] || start
         updatePlaybackMarker(
           start.latitude,
           start.longitude,
-          bearingDeg(
-            start.latitude,
-            start.longitude,
-            segs[segIdx].points[1].latitude,
-            segs[segIdx].points[1].longitude
-          )
+          bearingDeg(start.latitude, start.longitude, next.latitude, next.longitude)
         )
+        playbackLastTsRef.current = now
         playbackRafRef.current = requestAnimationFrame(tickPlayback)
         return
       }
@@ -562,6 +587,7 @@ export function GpsLiveMap({
     isViewingHistoryRef.current = false
     playbackHeadingRef.current = null
     playbackIconReadyRef.current = false
+    routeFpRef.current = ''
     setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
     const device = selectedDeviceRef.current
     if (device) {
@@ -572,6 +598,13 @@ export function GpsLiveMap({
       }
     }
   }, [stopPlaybackLoop, clearTrail])
+
+  const startPlaybackRef = useRef(startPlayback)
+  startPlaybackRef.current = startPlayback
+  const endHistoryModeRef = useRef(endHistoryMode)
+  endHistoryModeRef.current = endHistoryMode
+  const stopPlaybackLoopRef = useRef(stopPlaybackLoop)
+  stopPlaybackLoopRef.current = stopPlaybackLoop
 
   useEffect(() => {
     if (!mapRef.current || leafletMapRef.current) return
@@ -823,6 +856,32 @@ export function GpsLiveMap({
     const map = leafletMapRef.current
     if (!map) return
 
+    const fp = routeFingerprint(routeSegments, routePositions)
+    const prevFp = routeFpRef.current
+    const playPressed = playTick > lastPlayTickRef.current
+    if (playPressed) lastPlayTickRef.current = playTick
+
+    // Same path + Play pressed → restart animation only (don't tear down the line)
+    if (fp && fp === prevFp && playPressed) {
+      const segments: RoutePoint[][] =
+        routeSegments && routeSegments.length > 0
+          ? routeSegments.filter((s) => s.length >= 2)
+          : routePositions && routePositions.length >= 2
+            ? [routePositions]
+            : []
+      if (segments.length === 0) return
+      playbackDurationHintRef.current = selectedTripRef.current?.durationSec || 0
+      startPlaybackRef.current(buildPlaybackSegs(segments), true, true)
+      return
+    }
+
+    // Identical path still on the map — do not interrupt in-progress playback
+    if (fp && fp === prevFp) {
+      return
+    }
+
+    routeFpRef.current = fp
+
     if (polylineRef.current) {
       map.removeLayer(polylineRef.current)
       polylineRef.current = null
@@ -836,12 +895,14 @@ export function GpsLiveMap({
           : []
 
     if (segments.length === 0) {
-      endHistoryMode()
+      stopPlaybackLoopRef.current()
+      endHistoryModeRef.current()
       return
     }
 
     isViewingHistoryRef.current = true
     playbackDeviceIdRef.current = selectedDeviceRef.current?.id ?? null
+    playbackDurationHintRef.current = selectedTripRef.current?.durationSec || 0
 
     const group = L.layerGroup()
     const allLatLngs: L.LatLng[] = []
@@ -861,14 +922,9 @@ export function GpsLiveMap({
     polylineRef.current = group
     map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] })
 
-    const playbackSegs = buildPlaybackSegs(segments)
-    // Segments only appear when a trip is selected — start the animation
-    const t = window.setTimeout(() => startPlayback(playbackSegs, true, true), 400)
-    return () => {
-      window.clearTimeout(t)
-      stopPlaybackLoop()
-    }
-  }, [routePositions, routeSegments, playTick, startPlayback, endHistoryMode, stopPlaybackLoop])
+    // Start immediately — delayed starts were getting cancelled by effect re-runs
+    startPlaybackRef.current(buildPlaybackSegs(segments), true, true)
+  }, [routePositions, routeSegments, playTick])
 
   function togglePlayPause() {
     if (!playbackUi.active) return
