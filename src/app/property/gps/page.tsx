@@ -41,7 +41,7 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
-import { GpsTripHistory, type TripHistoryRow } from '@/components/GpsTripHistory'
+import type { TripHistoryRow } from '@/components/GpsTripHistory'
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
 
@@ -49,6 +49,11 @@ const GpsLiveMap = dynamic(() => import('@/components/GpsLiveMap').then((mod) =>
   ssr: false,
   loading: () => <div className="h-full w-full min-h-[500px] bg-slate-100 animate-pulse rounded-b-2xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-slate-300 animate-spin" /></div>,
 })
+
+const GpsTripHistory = dynamic(
+  () => import('@/components/GpsTripHistory').then((mod) => mod.GpsTripHistory),
+  { ssr: false }
+)
 
 interface PropertyProfile {
   id: string

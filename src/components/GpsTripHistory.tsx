@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   History,
@@ -176,80 +175,87 @@ function DayTimelineBar({ items }: { items: TripHistoryRow[] }) {
 
 function TripRoutePreview({ points }: { points?: RoutePoint[] }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<L.Map | null>(null)
+  const mapRef = useRef<{ remove: () => void } | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
     if (!points || points.length < 2) return
 
-    // Clean previous instance (React strict mode / point updates)
-    if (mapRef.current) {
-      mapRef.current.remove()
-      mapRef.current = null
-    }
+    let cancelled = false
 
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-      attributionControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      boxZoom: false,
-      keyboard: false,
-      touchZoom: false,
-    })
-    mapRef.current = map
+    ;(async () => {
+      const L = (await import('leaflet')).default
+      if (cancelled || !containerRef.current) return
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-    }).addTo(map)
-
-    const step = Math.max(1, Math.floor(points.length / 120))
-    const latlngs: L.LatLngExpression[] = points
-      .filter((_, i) => i % step === 0 || i === points.length - 1)
-      .map((p) => [p.latitude, p.longitude])
-
-    const line = L.polyline(latlngs, {
-      color: '#f59e0b',
-      weight: 4,
-      opacity: 0.95,
-      lineJoin: 'round',
-      lineCap: 'round',
-    }).addTo(map)
-
-    const start = points[0]
-    const end = points[points.length - 1]
-    L.circleMarker([start.latitude, start.longitude], {
-      radius: 5,
-      color: '#fff',
-      weight: 2,
-      fillColor: '#22c55e',
-      fillOpacity: 1,
-    }).addTo(map)
-    L.circleMarker([end.latitude, end.longitude], {
-      radius: 5,
-      color: '#fff',
-      weight: 2,
-      fillColor: '#ef4444',
-      fillOpacity: 1,
-    }).addTo(map)
-
-    // Fit after layout so tiles size correctly inside the card
-    const fit = () => {
-      try {
-        map.invalidateSize()
-        map.fitBounds(line.getBounds().pad(0.18), { animate: false, maxZoom: 15 })
-      } catch {
-        /* empty bounds */
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
       }
-    }
-    requestAnimationFrame(fit)
-    const t = window.setTimeout(fit, 80)
+
+      const map = L.map(containerRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        touchZoom: false,
+      })
+      mapRef.current = map
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+      }).addTo(map)
+
+      const step = Math.max(1, Math.floor(points.length / 120))
+      const latlngs: [number, number][] = points
+        .filter((_, i) => i % step === 0 || i === points.length - 1)
+        .map((p) => [p.latitude, p.longitude])
+
+      const line = L.polyline(latlngs, {
+        color: '#f59e0b',
+        weight: 4,
+        opacity: 0.95,
+        lineJoin: 'round',
+        lineCap: 'round',
+      }).addTo(map)
+
+      const start = points[0]
+      const end = points[points.length - 1]
+      L.circleMarker([start.latitude, start.longitude], {
+        radius: 5,
+        color: '#fff',
+        weight: 2,
+        fillColor: '#22c55e',
+        fillOpacity: 1,
+      }).addTo(map)
+      L.circleMarker([end.latitude, end.longitude], {
+        radius: 5,
+        color: '#fff',
+        weight: 2,
+        fillColor: '#ef4444',
+        fillOpacity: 1,
+      }).addTo(map)
+
+      const fit = () => {
+        try {
+          map.invalidateSize()
+          map.fitBounds(line.getBounds().pad(0.18), { animate: false, maxZoom: 15 })
+        } catch {
+          /* empty bounds */
+        }
+      }
+      requestAnimationFrame(fit)
+      window.setTimeout(fit, 80)
+    })()
 
     return () => {
-      window.clearTimeout(t)
-      map.remove()
-      mapRef.current = null
+      cancelled = true
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
     }
   }, [points])
 
