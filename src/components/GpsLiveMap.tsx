@@ -57,6 +57,20 @@ export interface VehicleDevice {
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
 
+/** Trip selected from history — shown on the map marker popup */
+export type SelectedTripInfo = {
+  type: 'trip' | 'parking'
+  startTime: string
+  endTime: string
+  durationSec: number
+  distanceMiles: number
+  avgSpeedMph: number
+  maxSpeedMph: number
+  address?: string | null
+  /** Preceding parking end time (when the vehicle left for this trip) */
+  parkingEndedAt?: string | null
+}
+
 type Props = {
   devices: VehicleDevice[]
   selectedDevice: VehicleDevice | null
@@ -67,28 +81,89 @@ type Props = {
   routeSegments?: RoutePoint[][]
   /** Increment to fly the map to the selected (or first) vehicle live position. */
   locateTick?: number
+  selectedTrip?: SelectedTripInfo | null
+  /** Bump to force restart trip playback (e.g. Play button on an already-selected trip) */
+  playTick?: number
 }
 
-function buildPopup(d: VehicleDevice): string {
+function formatPopupDuration(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
+}
+
+function formatPopupStamp(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '--'
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d)
+  const date = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/New_York',
+    day: '2-digit',
+    month: '2-digit',
+  }).format(d)
+  return `${time}, ${date}`
+}
+
+function buildPopup(d: VehicleDevice, trip?: SelectedTripInfo | null): string {
   const isOffline = d.status === 'offline'
-  let html = '<div style="font-family:system-ui,sans-serif;font-size:12px;line-height:1.5;min-width:180px">'
+  let html = '<div style="font-family:system-ui,sans-serif;font-size:12px;line-height:1.5;min-width:200px">'
   html += '<strong style="font-size:14px;color:' + (isOffline ? '#94a3b8' : '#15803d') + '">' + d.vehicleName + '</strong>'
-  if (d.location) html += '<br/><span style="font-size:11px;color:#64748b">'+ d.location + '</span>'
+  if (trip?.address) {
+    html += '<br/><span style="font-size:11px;color:#64748b">' + trip.address + '</span>'
+  } else if (d.location) {
+    html += '<br/><span style="font-size:11px;color:#64748b">' + d.location + '</span>'
+  }
   if (d.vehiclePlate) html += '<br/><span style="font-size:10px;color:#94a3b8">' + d.vehiclePlate + '</span>'
-  if (isOffline) {
+  if (isOffline && !trip) {
     html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
     html += '<span style="font-size:11px;color:#ef4444;font-weight:600">OFFLINE</span>'
     html += '<br/><span style="font-size:10px;color:#94a3b8">Last known position shown below</span>'
     html += '</div>'
   }
-  html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
-  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Speed:</span> <strong style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.speed.toFixed(0) + ' mph</strong><br/>'
-  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Ignition:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + (d.ignition ? 'ON' : 'OFF') + '</span><br/>'
-  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Satellites:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.satelliteCount + '</span><br/>'
-  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Signal:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.signalStrength + '%</span><br/>'
-  if (d.fuelLevel != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Fuel:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.fuelLevel.toFixed(0) + '%</span><br/>'
-  if (d.odometer != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Odometer:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.odometer.toFixed(0) + ' mi</span><br/>'
-  html += '</div>'
+
+  if (trip && trip.type === 'trip') {
+    html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
+    html += '<span style="font-size:10px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:0.04em">Selected trip</span><br/>'
+    html += '<span style="color:#475569">Duration:</span> <strong>' + formatPopupDuration(trip.durationSec) + '</strong><br/>'
+    html +=
+      '<span style="color:#475569">Distance:</span> <strong>' +
+      (trip.distanceMiles > 0 ? trip.distanceMiles.toFixed(1) + ' mi' : '--') +
+      '</strong><br/>'
+    html +=
+      '<span style="color:#475569">Avg speed:</span> <strong>' +
+      (trip.avgSpeedMph > 0 ? Math.round(trip.avgSpeedMph) + ' mph' : '--') +
+      '</strong><br/>'
+    html +=
+      '<span style="color:#475569">Max speed:</span> <strong>' +
+      (trip.maxSpeedMph > 0 ? Math.round(trip.maxSpeedMph) + ' mph' : '--') +
+      '</strong><br/>'
+    html += '<span style="color:#475569">Started:</span> <span>' + formatPopupStamp(trip.startTime) + '</span><br/>'
+    html += '<span style="color:#475569">Ended:</span> <span>' + formatPopupStamp(trip.endTime) + '</span><br/>'
+    if (trip.parkingEndedAt) {
+      html +=
+        '<span style="color:#475569">End of parking:</span> <span>' +
+        formatPopupStamp(trip.parkingEndedAt) +
+        '</span><br/>'
+    }
+    html += '</div>'
+  } else {
+    html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
+    html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Speed:</span> <strong style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.speed.toFixed(0) + ' mph</strong><br/>'
+    html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Ignition:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + (d.ignition ? 'ON' : 'OFF') + '</span><br/>'
+    html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Satellites:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.satelliteCount + '</span><br/>'
+    html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Signal:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.signalStrength + '%</span><br/>'
+    if (d.fuelLevel != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Fuel:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.fuelLevel.toFixed(0) + '%</span><br/>'
+    if (d.odometer != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Odometer:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.odometer.toFixed(0) + ' mi</span><br/>'
+    html += '</div>'
+  }
+
   html += '<div style="margin-top:4px;font-size:10px;color:#94a3b8">' + d.deviceModel + '</div>'
   html += '<div style="font-size:10px;color:#94a3b8">ID: ' + d.deviceId + '</div>'
   html += '</div>'
@@ -220,6 +295,8 @@ export function GpsLiveMap({
   routePositions,
   routeSegments,
   locateTick = 0,
+  selectedTrip = null,
+  playTick = 0,
 }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
@@ -246,6 +323,8 @@ export function GpsLiveMap({
   const trailUpdateAccRef = useRef(0)
   const selectedDeviceRef = useRef(selectedDevice)
   selectedDeviceRef.current = selectedDevice
+  const selectedTripRef = useRef(selectedTrip)
+  selectedTripRef.current = selectedTrip
 
   const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('light')
   const [playbackUi, setPlaybackUi] = useState<{
@@ -441,7 +520,7 @@ export function GpsLiveMap({
         trailUpdateAccRef.current = 0
         clearTrail()
         const start = segs[0].points[0]
-        const next = segs[0].points[1]
+        const next = segs[0].points[1] || segs[0].points[0]
         updatePlaybackMarker(
           start.latitude,
           start.longitude,
@@ -461,6 +540,14 @@ export function GpsLiveMap({
         progress: reset ? 0 : u.progress,
       }))
       if (autoPlay) {
+        const device = selectedDeviceRef.current
+        if (device) {
+          try {
+            markersRef.current.get(device.id)?.closePopup()
+          } catch {
+            /* ignore */
+          }
+        }
         playbackRafRef.current = requestAnimationFrame(tickPlayback)
       }
     },
@@ -560,7 +647,7 @@ export function GpsLiveMap({
       const latlng = L.latLng(d.latitude, d.longitude)
       const marker = L.marker(latlng, { icon: makeVehicleDivIcon(d) })
         .addTo(map)
-        .bindPopup(buildPopup(d))
+        .bindPopup(buildPopup(d, selectedTripRef.current))
       marker.on('click', () => onSelectDevice(d))
       markersRef.current.set(d.id, marker)
       bounds.extend(latlng)
@@ -615,11 +702,11 @@ export function GpsLiveMap({
           existing.setLatLng(latlng)
           existing.setIcon(makeVehicleDivIcon(d))
         }
-        existing.setPopupContent(buildPopup(d))
+        existing.setPopupContent(buildPopup(d, selectedTripRef.current))
       } else {
         const marker = L.marker(latlng, { icon: makeVehicleDivIcon(d) })
           .addTo(map)
-          .bindPopup(buildPopup(d))
+          .bindPopup(buildPopup(d, selectedTripRef.current))
         marker.on('click', () => onSelectDevice(d))
         markersRef.current.set(d.id, marker)
       }
@@ -642,6 +729,18 @@ export function GpsLiveMap({
       }
     }
   }, [devices])
+
+  // Refresh popup when a trip is selected / cleared
+  useEffect(() => {
+    const device = selectedDeviceRef.current
+    if (!device) return
+    const marker = markersRef.current.get(device.id)
+    if (!marker) return
+    marker.setPopupContent(buildPopup(device, selectedTrip))
+    if (selectedTrip) {
+      marker.openPopup()
+    }
+  }, [selectedTrip, selectedDevice])
 
   useEffect(() => {
     const map = leafletMapRef.current
@@ -763,13 +862,13 @@ export function GpsLiveMap({
     map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] })
 
     const playbackSegs = buildPlaybackSegs(segments)
-    // Load track paused — user presses Play to animate
-    const t = window.setTimeout(() => startPlayback(playbackSegs, true, false), 400)
+    // Segments only appear when a trip is selected — start the animation
+    const t = window.setTimeout(() => startPlayback(playbackSegs, true, true), 400)
     return () => {
       window.clearTimeout(t)
       stopPlaybackLoop()
     }
-  }, [routePositions, routeSegments, startPlayback, endHistoryMode, stopPlaybackLoop])
+  }, [routePositions, routeSegments, playTick, startPlayback, endHistoryMode, stopPlaybackLoop])
 
   function togglePlayPause() {
     if (!playbackUi.active) return

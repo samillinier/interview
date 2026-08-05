@@ -85,6 +85,7 @@ export default function GPSPage() {
   const [tripHistory, setTripHistory] = useState<TripHistoryRow[]>([])
   const [tripSummary, setTripSummary] = useState<{ tripCount: number; parkingCount: number; totalMiles: number } | null>(null)
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
+  const [playTick, setPlayTick] = useState(0)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locateTick, setLocateTick] = useState(0)
   // Prefer role — isAdmin was missing from session for some logins
@@ -267,6 +268,30 @@ export default function GPSPage() {
   })()
 
   const mapPositions = mapSegments.flat()
+
+  const selectedTripInfo = (() => {
+    if (!selectedTripId) return null
+    const trip = tripHistory.find((t) => t.id === selectedTripId)
+    if (!trip || trip.type !== 'trip') return null
+    // Parking that ended when this trip started
+    const tripStart = new Date(trip.startTime).getTime()
+    const preceding = tripHistory.find((p) => {
+      if (p.type !== 'parking') return false
+      const end = new Date(p.endTime).getTime()
+      return Math.abs(end - tripStart) < 10 * 60_000
+    })
+    return {
+      type: 'trip' as const,
+      startTime: trip.startTime,
+      endTime: trip.endTime,
+      durationSec: trip.durationSec,
+      distanceMiles: trip.distanceMiles,
+      avgSpeedMph: trip.avgSpeedMph,
+      maxSpeedMph: trip.maxSpeedMph,
+      address: trip.address,
+      parkingEndedAt: preceding?.endTime ?? null,
+    }
+  })()
 
   // Initial load
   useEffect(() => {
@@ -499,6 +524,8 @@ export default function GPSPage() {
                     routePositions={mapPositions.length > 0 ? mapPositions : undefined}
                     routeSegments={mapSegments.length > 0 ? mapSegments : undefined}
                     locateTick={locateTick}
+                    selectedTrip={selectedTripInfo}
+                    playTick={playTick}
                   />
                 </div>
               </motion.div>
@@ -547,6 +574,10 @@ export default function GPSPage() {
                     tripSummary={tripSummary}
                     selectedTripId={selectedTripId}
                     onSelectTrip={setSelectedTripId}
+                    onPlayTrip={(id) => {
+                      setSelectedTripId(id)
+                      setPlayTick((n) => n + 1)
+                    }}
                     canRename={canRenameGps}
                     onRename={(name) => renameDevice(selectedDevice, name)}
                   />
@@ -687,6 +718,7 @@ function DeviceTelemetry({
   tripSummary,
   selectedTripId,
   onSelectTrip,
+  onPlayTrip,
   canRename,
   onRename,
 }: {
@@ -699,6 +731,7 @@ function DeviceTelemetry({
   tripSummary: { tripCount: number; parkingCount: number; totalMiles: number } | null
   selectedTripId: string | null
   onSelectTrip: (id: string | null) => void
+  onPlayTrip?: (id: string) => void
   canRename?: boolean
   onRename?: (name: string) => Promise<boolean>
 }) {
@@ -1037,6 +1070,7 @@ function DeviceTelemetry({
         tripSummary={tripSummary}
         selectedTripId={selectedTripId}
         onSelectTrip={onSelectTrip}
+        onPlayTrip={onPlayTrip}
         onSelectPeriod={(period) => {
           setShowCalendar(false)
           onSelectHistory(period)

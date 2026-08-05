@@ -42,6 +42,8 @@ type Props = {
   tripSummary: { tripCount: number; parkingCount: number; totalMiles: number } | null
   selectedTripId: string | null
   onSelectTrip: (id: string | null) => void
+  /** Force replay animation for the currently selected trip */
+  onPlayTrip?: (id: string) => void
   onSelectPeriod: (period: string | null) => void
   routeSegments: RoutePoint[][]
   showCalendar: boolean
@@ -234,6 +236,7 @@ export function GpsTripHistory({
   tripSummary,
   selectedTripId,
   onSelectTrip,
+  onPlayTrip,
   onSelectPeriod,
   routeSegments,
   showCalendar,
@@ -466,15 +469,26 @@ export function GpsTripHistory({
                       </div>
                     </div>
 
-                    <div className="mt-2.5 relative rounded-xl overflow-hidden bg-[#e8eef3] border border-slate-100 pointer-events-none">
-                      <TripRoutePreview
-                        key={`${item.id}-${seg?.length ?? 0}-${seg?.[0]?.time ?? ''}`}
-                        points={seg}
-                      />
+                    <div className="mt-2.5 relative rounded-xl overflow-hidden bg-[#e8eef3] border border-slate-100">
+                      <div className="pointer-events-none">
+                        <TripRoutePreview
+                          key={`${item.id}-${seg?.length ?? 0}-${seg?.[0]?.time ?? ''}`}
+                          points={seg}
+                        />
+                      </div>
                       <div className="absolute right-1.5 top-1.5 z-[500]">
-                        <span className="w-7 h-7 rounded-md bg-white/90 shadow-sm flex items-center justify-center">
-                          <Play className="w-3.5 h-3.5 text-slate-600" />
-                        </span>
+                        <button
+                          type="button"
+                          title="Play trip on map"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (onPlayTrip) onPlayTrip(item.id)
+                            else onSelectTrip(item.id)
+                          }}
+                          className="w-7 h-7 rounded-md bg-white/95 shadow-sm flex items-center justify-center hover:bg-white border border-slate-200"
+                        >
+                          <Play className="w-3.5 h-3.5 text-slate-700" />
+                        </button>
                       </div>
                     </div>
 
