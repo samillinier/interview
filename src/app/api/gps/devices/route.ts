@@ -253,22 +253,8 @@ export async function GET(request: NextRequest) {
       // online = connected in Ruhavik; UI uses speed to show LIVE vs Online
       const status: 'online' | 'offline' = recentlyActive ? 'online' : 'offline'
 
-      // OBDII / Ruhavik telemetry from position attributes
+      // OBDII data from position attributes
       const obdii = traccar.extractObdiiData(livePos?.attributes as Record<string, unknown> | undefined)
-
-      // Real ignition from Ruhavik when available; else speed proxy
-      const ignition =
-        obdii.ignition !== undefined ? obdii.ignition : speed > 3
-
-      const rssi =
-        obdii.signalDbm ??
-        (typeof (livePos?.network as { rssi?: number } | null)?.rssi === 'number'
-          ? (livePos!.network as { rssi: number }).rssi
-          : undefined)
-      const signalStrength =
-        rssi != null
-          ? Math.min(100, Math.max(0, Math.round((rssi + 120) * 2)))
-          : 0
 
       // Recent events (last 7 days) — include Queclink GTSPD/GTHBM/GTCRA behavior msgs
       const tcId = traccarDevice?.id
@@ -319,13 +305,17 @@ export async function GET(request: NextRequest) {
         longitude: lng,
         speed,
         heading,
-        ignition,
+        ignition: speed > 3,
         fuelLevel: obdii.fuelLevel ?? device.fuelLevel ?? undefined,
         engineTemp: obdii.engineTemp ?? device.engineTemp ?? undefined,
         batteryVoltage: obdii.batteryVoltage ?? device.batteryVoltage ?? undefined,
         odometer: obdii.odometer ?? summaryOdometer ?? device.odometer ?? 0,
         satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
-        signalStrength,
+        signalStrength: livePos?.network
+          ? typeof (livePos.network as any)?.rssi === 'number'
+            ? Math.min(100, Math.max(0, ((livePos.network as any).rssi + 120) * 2))
+            : 100
+          : 100,
         location,
         obdii: Object.keys(obdii).length > 0 ? {
           rpm: obdii.rpm,
@@ -335,24 +325,6 @@ export async function GET(request: NextRequest) {
           dtcCodes: obdii.dtcCodes,
           motionDetected: obdii.motionDetected,
           totalDistance: obdii.totalDistance,
-          ignition: obdii.ignition,
-          externalPowerVoltage: obdii.externalPowerVoltage,
-          backupBatteryVoltage: obdii.backupBatteryVoltage,
-          externalPowerConnected: obdii.externalPowerConnected,
-          batteryCharging: obdii.batteryCharging,
-          fuelConsumption: obdii.fuelConsumption,
-          ignitionOnDurationSec: obdii.ignitionOnDurationSec,
-          ignitionOffDurationSec: obdii.ignitionOffDurationSec,
-          tripActive: obdii.tripActive,
-          vehicleState: obdii.vehicleState,
-          simIccid: obdii.simIccid,
-          signalDbm: obdii.signalDbm,
-          gsmCellId: obdii.gsmCellId,
-          gsmLac: obdii.gsmLac,
-          gsmMcc: obdii.gsmMcc,
-          gsmMnc: obdii.gsmMnc,
-          positionValid: obdii.positionValid,
-          reportCode: obdii.reportCode,
         } : undefined,
         recentEvents: recentEvents.length > 0 ? recentEvents : undefined,
         todaySummary,

@@ -24,7 +24,7 @@ export interface VehicleDevice {
   satelliteCount: number
   signalStrength: number
   location?: string | null
-  /** OBDII / CAN / Ruhavik status */
+  /** OBDII / CAN bus data */
   obdii?: {
     rpm?: number
     fuelLevel?: number
@@ -33,24 +33,6 @@ export interface VehicleDevice {
     dtcCodes?: string[]
     motionDetected?: boolean
     totalDistance?: number
-    ignition?: boolean
-    externalPowerVoltage?: number
-    backupBatteryVoltage?: number
-    externalPowerConnected?: boolean
-    batteryCharging?: boolean
-    fuelConsumption?: number
-    ignitionOnDurationSec?: number
-    ignitionOffDurationSec?: number
-    tripActive?: boolean
-    vehicleState?: string
-    simIccid?: string
-    signalDbm?: number
-    gsmCellId?: number
-    gsmLac?: number
-    gsmMcc?: number
-    gsmMnc?: number
-    positionValid?: boolean
-    reportCode?: string
   }
   /** Recent classified events for this device */
   recentEvents?: {
@@ -102,15 +84,9 @@ function buildPopup(d: VehicleDevice): string {
   html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
   html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Speed:</span> <strong style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.speed.toFixed(0) + ' mph</strong><br/>'
   html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Ignition:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + (d.ignition ? 'ON' : 'OFF') + '</span><br/>'
-  if (d.obdii?.motionDetected != null) {
-    html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Movement:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + (d.obdii.motionDetected ? 'Yes' : 'No') + '</span><br/>'
-  }
   html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Satellites:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.satelliteCount + '</span><br/>'
-  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Signal:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.signalStrength + '%'
-  if (d.obdii?.signalDbm != null) html += ' (' + d.obdii.signalDbm + ' dBm)'
-  html += '</span><br/>'
+  html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Signal:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.signalStrength + '%</span><br/>'
   if (d.fuelLevel != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Fuel:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.fuelLevel.toFixed(0) + '%</span><br/>'
-  if (d.batteryVoltage != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Power:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.batteryVoltage.toFixed(1) + 'V</span><br/>'
   if (d.odometer != null) html += '<span style="color:' + (isOffline ? '#94a3b8' : '#475569') + '">Odometer:</span> <span style="color:' + (isOffline ? '#94a3b8' : 'inherit') + '">' + d.odometer.toFixed(0) + ' mi</span><br/>'
   html += '</div>'
   html += '<div style="margin-top:4px;font-size:10px;color:#94a3b8">' + d.deviceModel + '</div>'
