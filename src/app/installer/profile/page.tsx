@@ -2053,15 +2053,6 @@ export default function InstallerProfilePage() {
                   }
                 </motion.h2>
                 {(() => {
-                  const workroomToShow = (isEditing ? workroom : installer?.workroom) || ''
-                  if (!workroomToShow) return null
-                  return (
-                    <p className="text-sm sm:text-base text-slate-500 font-medium mb-1 truncate">
-                      {workroomToShow}
-                    </p>
-                  )
-                })()}
-                {(() => {
                   const companyNameToShow = (isEditing ? companyName : installer?.companyName) || ''
                   if (!companyNameToShow) return null
                   return (
@@ -2073,13 +2064,22 @@ export default function InstallerProfilePage() {
                     </div>
                   )
                 })()}
+                {(() => {
+                  const workroomToShow = (isEditing ? workroom : installer?.workroom) || ''
+                  if (!workroomToShow) return null
+                  return (
+                    <p className="text-sm sm:text-base text-slate-500 font-medium mb-1 truncate">
+                      {workroomToShow}
+                    </p>
+                  )
+                })()}
                 {/* Removed document status badges on installer portal (admin-only) */}
               </div>
             </div>
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Barcode Section - Right Side */}
               {installer && (
-                <div className="w-full md:w-auto md:flex-shrink-0">
+                <div className="w-full md:w-auto md:max-w-[200px] lg:max-w-none md:flex-shrink-0">
                   <InstallerBarcode 
                     installerId={installer.id}
                     installerName={`${installer.firstName} ${installer.lastName}`.trim()}
