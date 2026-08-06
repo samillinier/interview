@@ -20,8 +20,14 @@
     box-sizing: border-box !important;
   }
 
+  /* Collapsed rows hug the title — no empty white band on the right */
+  .ios-installer-profile .ios-profile-section > div:not(:has(.ios-profile-section-body)) {
+    width: fit-content !important;
+    max-width: 100% !important;
+  }
+
   .ios-installer-profile .ios-profile-section > div {
-    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .ios-installer-profile .ios-profile-section-body > .bg-white,
