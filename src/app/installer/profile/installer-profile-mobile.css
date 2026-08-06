@@ -20,6 +20,10 @@
     box-sizing: border-box !important;
   }
 
+  .ios-installer-profile .ios-profile-section > div {
+    width: 100% !important;
+  }
+
   .ios-installer-profile .ios-profile-section-body > .bg-white,
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-2xl'],
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-3xl'] {
