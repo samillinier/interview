@@ -178,17 +178,17 @@ export function IosProfileEditBar({
 }: IosProfileEditBarProps) {
   return (
     <div
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#f2f2f7]/94 backdrop-blur-xl border-t border-black/[0.08]"
+      className="ios-edit-bar lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#f2f2f7]/94 backdrop-blur-xl border-t border-black/[0.08]"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 12px), 12px)' }}
     >
-      <div className="px-4 pt-2.5 pb-2 flex gap-2">
+      <div className="px-4 pt-2 pb-1.5 flex gap-2">
         {!isEditing ? (
           <button
             type="button"
             onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-2 h-[48px] rounded-[12px] bg-[#8CB63C] text-white text-[17px] font-semibold active:opacity-80 transition-opacity"
+            className="flex-1 flex items-center justify-center gap-1.5 h-[44px] rounded-[10px] bg-[#8CB63C] text-white text-[15px] font-semibold tracking-[-0.24px] active:opacity-80 transition-opacity"
           >
-            <Edit2 className="w-4 h-4" />
+            <Edit2 className="w-3.5 h-3.5" />
             Edit Profile
           </button>
         ) : (
@@ -197,18 +197,18 @@ export function IosProfileEditBar({
               type="button"
               onClick={onCancel}
               disabled={isSaving}
-              className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-[12px] bg-white text-[#1c1c1e] text-[17px] font-semibold border border-black/[0.08] active:bg-black/[0.04] disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-1 h-[44px] rounded-[10px] bg-white text-[#1c1c1e] text-[15px] font-semibold tracking-[-0.24px] border border-black/[0.08] active:bg-black/[0.04] disabled:opacity-50"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
               Cancel
             </button>
             <button
               type="button"
               onClick={onSave}
               disabled={isSaving}
-              className="flex-[1.4] flex items-center justify-center gap-1.5 h-[48px] rounded-[12px] bg-[#8CB63C] text-white text-[17px] font-semibold active:opacity-80 disabled:opacity-50"
+              className="flex-[1.4] flex items-center justify-center gap-1 h-[44px] rounded-[10px] bg-[#8CB63C] text-white text-[15px] font-semibold tracking-[-0.24px] active:opacity-80 disabled:opacity-50"
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save
             </button>
           </>

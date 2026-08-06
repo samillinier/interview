@@ -34,26 +34,27 @@ export function IosProfileSection({
   }
 
   return (
-    <div className="mb-2.5">
-      <div className="bg-white rounded-[12px] overflow-hidden">
+    <div className="ios-profile-section mb-2">
+      <div className="bg-white rounded-[10px] overflow-hidden">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center justify-between gap-3 px-4 py-[13px] text-left active:bg-black/[0.04] transition-colors"
+          className="ios-profile-section-trigger w-full flex items-center justify-between gap-2 px-3.5 py-[11px] text-left active:bg-black/[0.04] transition-colors"
           aria-expanded={open}
         >
-          <span className="text-[17px] font-semibold text-[#1c1c1e] tracking-[-0.22px]">
+          <span className="ios-profile-section-title text-[15px] font-medium text-[#1c1c1e] tracking-[-0.24px] leading-[1.2]">
             {title}
           </span>
           <ChevronDown
             className={cn(
-              'w-[18px] h-[18px] text-[#c7c7cc] shrink-0 transition-transform duration-200',
+              'w-3.5 h-3.5 text-[#c7c7cc] shrink-0 transition-transform duration-200',
               open && 'rotate-180 text-[#8e8e93]'
             )}
+            strokeWidth={2.25}
           />
         </button>
         {open && (
-          <div className="border-t border-black/[0.06] px-3 pb-4 pt-3 ios-profile-section-body">
+          <div className="border-t border-black/[0.06] px-2.5 pb-3 pt-2 ios-profile-section-body">
             {children}
           </div>
         )}
