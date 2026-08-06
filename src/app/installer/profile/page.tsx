@@ -1909,7 +1909,7 @@ export default function InstallerProfilePage() {
                           {profilePoints.percent}%
                         </p>
                       </div>
-                      <div className="h-4 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${profilePoints.percent}%` }}
@@ -2045,7 +2045,7 @@ export default function InstallerProfilePage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-2 leading-tight"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-1 leading-tight"
                 >
                   {installer && (installer.firstName || installer.lastName 
                     ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
@@ -2053,10 +2053,19 @@ export default function InstallerProfilePage() {
                   }
                 </motion.h2>
                 {(() => {
+                  const workroomToShow = (isEditing ? workroom : installer?.workroom) || ''
+                  if (!workroomToShow) return null
+                  return (
+                    <p className="text-sm sm:text-base text-slate-500 font-medium mb-1 truncate">
+                      {workroomToShow}
+                    </p>
+                  )
+                })()}
+                {(() => {
                   const companyNameToShow = (isEditing ? companyName : installer?.companyName) || ''
                   if (!companyNameToShow) return null
                   return (
-                    <div className="flex flex-wrap items-center gap-2 mt-1 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5 mb-1">
                       <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
                         <Building2 className="w-4 h-4 text-slate-500" />
                         <span className="truncate max-w-[280px]">{companyNameToShow}</span>

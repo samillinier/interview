@@ -99,13 +99,13 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
         aria-modal="true"
         aria-label="Installer navigation menu"
       >
-        <div className="p-6">
-          <div className="flex justify-center mb-4">
+        <div className="px-5 pt-4 pb-5">
+          <div className="flex justify-center mb-3">
             <div className="w-12 h-1.5 bg-white/35 rounded-full" />
           </div>
 
           {/* Header (white background as requested) */}
-          <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm border border-white/30">
+          <div className="bg-white rounded-2xl px-4 py-3 mb-4 shadow-sm border border-white/30">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10">
                 <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
@@ -124,7 +124,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
             </div>
           </div>
 
-          <nav className="space-y-2 max-h-[60vh] overflow-y-auto pb-4">
+          <nav className="space-y-0.5 max-h-[60vh] overflow-y-auto pb-2">
             {items.map((it) => {
               const active = isActive(it.href)
               const Icon = it.icon
@@ -133,7 +133,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
                   key={it.label}
                   href={it.href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors min-h-[44px] ${
+                  className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-colors min-h-[40px] ${
                     active ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
                   }`}
                 >
@@ -149,13 +149,13 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
             })}
           </nav>
 
-          <div className="pt-4 mt-4 border-t border-white/20">
+          <div className="pt-2.5 mt-2 border-t border-white/20">
             <button
               onClick={() => {
                 setOpen(false)
                 if (onLogout) onLogout()
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors min-h-[44px]"
+              className="w-full flex items-center gap-3 px-4 py-2 text-white hover:bg-white/10 rounded-xl transition-colors min-h-[40px]"
             >
               <LogOut className="w-5 h-5 flex-shrink-0" />
               <span>Logout</span>
