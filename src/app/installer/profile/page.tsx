@@ -1909,7 +1909,7 @@ export default function InstallerProfilePage() {
                           {profilePoints.percent}%
                         </p>
                       </div>
-                      <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                      <div className="h-4 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${profilePoints.percent}%` }}

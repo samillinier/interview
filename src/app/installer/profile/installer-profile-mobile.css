@@ -1,19 +1,7 @@
-/* Mobile-only iOS Settings-style restyle for installer profile.
-   Desktop (lg+) is untouched. */
+/* Installer profile mobile restyle.
+   Font is forced via <style> in IosProfileRoot (beats body Inter / font-sans). */
 
 @media (max-width: 1023px) {
-  /*
-   * Body uses Inter via Tailwind font-sans — override it on the whole mobile profile,
-   * including every child (h1/h2/spans), so the top card matches the accordion.
-   */
-  .ios-installer-profile,
-  .ios-installer-profile *:not(svg):not(path) {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'SF UI Text',
-      system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
   .ios-installer-profile .ios-profile-section-body > .bg-white,
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-2xl'],
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-3xl'] {
@@ -173,13 +161,5 @@
   .ios-installer-profile .ios-profile-section-body .text-xs.text-slate-500 {
     font-size: 11px !important;
     color: #8e8e93 !important;
-  }
-}
-
-/* Desktop: restore Inter from the app shell */
-@media (min-width: 1024px) {
-  .ios-installer-profile,
-  .ios-installer-profile *:not(svg):not(path) {
-    font-family: var(--font-inter), system-ui, sans-serif !important;
   }
 }

@@ -218,6 +218,10 @@ export function IosProfileEditBar({
   )
 }
 
+/** Apple system UI stack — never Inter */
+export const IOS_PROFILE_FONT =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif'
+
 type IosProfileRootProps = {
   children: ReactNode
   className?: string
@@ -225,15 +229,29 @@ type IosProfileRootProps = {
 
 export function IosProfileRoot({ children, className }: IosProfileRootProps) {
   return (
-    <div
-      className={cn('ios-installer-profile min-h-screen lg:min-h-0 bg-[#f2f2f7] lg:bg-transparent', className)}
-      style={{
-        // Force SF / system UI on mobile; CSS media query scopes desktop back to inherited Inter
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif',
-      }}
-    >
-      {children}
-    </div>
+    <>
+      {/* Injected late so it beats body font-sans / Inter from the root layout */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            .ios-installer-profile,
+            .ios-installer-profile *:not(svg):not(path):not(canvas) {
+              font-family: ${IOS_PROFILE_FONT} !important;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+          `,
+        }}
+      />
+      <div
+        className={cn(
+          'ios-installer-profile min-h-screen lg:min-h-0 bg-[#f2f2f7] lg:bg-transparent font-normal',
+          className
+        )}
+        style={{ fontFamily: IOS_PROFILE_FONT }}
+      >
+        {children}
+      </div>
+    </>
   )
 }
