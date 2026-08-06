@@ -186,7 +186,7 @@ export function IosProfileEditBar({
           <button
             type="button"
             onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-1.5 h-[44px] rounded-[10px] bg-[#8CB63C] text-white text-[15px] font-semibold tracking-[-0.24px] active:opacity-80 transition-opacity"
+            className="flex-1 flex items-center justify-center gap-1.5 h-[42px] rounded-[10px] bg-[#8CB63C] text-white text-[13px] font-semibold tracking-[-0.2px] active:opacity-80 transition-opacity"
           >
             <Edit2 className="w-3.5 h-3.5" />
             Edit Profile
@@ -197,7 +197,7 @@ export function IosProfileEditBar({
               type="button"
               onClick={onCancel}
               disabled={isSaving}
-              className="flex-1 flex items-center justify-center gap-1 h-[44px] rounded-[10px] bg-white text-[#1c1c1e] text-[15px] font-semibold tracking-[-0.24px] border border-black/[0.08] active:bg-black/[0.04] disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-1 h-[42px] rounded-[10px] bg-white text-[#1c1c1e] text-[13px] font-semibold tracking-[-0.2px] border border-black/[0.08] active:bg-black/[0.04] disabled:opacity-50"
             >
               <X className="w-3.5 h-3.5" />
               Cancel
@@ -206,7 +206,7 @@ export function IosProfileEditBar({
               type="button"
               onClick={onSave}
               disabled={isSaving}
-              className="flex-[1.4] flex items-center justify-center gap-1 h-[44px] rounded-[10px] bg-[#8CB63C] text-white text-[15px] font-semibold tracking-[-0.24px] active:opacity-80 disabled:opacity-50"
+              className="flex-[1.4] flex items-center justify-center gap-1 h-[42px] rounded-[10px] bg-[#8CB63C] text-white text-[13px] font-semibold tracking-[-0.2px] active:opacity-80 disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save

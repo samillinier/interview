@@ -39,22 +39,22 @@ export function IosProfileSection({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="ios-profile-section-trigger w-full flex items-center justify-between gap-2 px-3.5 py-[11px] text-left active:bg-black/[0.04] transition-colors"
+          className="ios-profile-section-trigger w-full flex items-center justify-between gap-2 px-3.5 py-[10px] text-left active:bg-black/[0.04] transition-colors"
           aria-expanded={open}
         >
-          <span className="ios-profile-section-title text-[15px] font-medium text-[#1c1c1e] tracking-[-0.24px] leading-[1.2]">
+          <span className="ios-profile-section-title text-[13px] font-medium text-[#1c1c1e] tracking-[-0.2px] leading-[1.2]">
             {title}
           </span>
           <ChevronDown
             className={cn(
-              'w-3.5 h-3.5 text-[#c7c7cc] shrink-0 transition-transform duration-200',
+              'w-3 h-3 text-[#c7c7cc] shrink-0 transition-transform duration-200',
               open && 'rotate-180 text-[#8e8e93]'
             )}
             strokeWidth={2.25}
           />
         </button>
         {open && (
-          <div className="border-t border-black/[0.06] px-2.5 pb-3 pt-2 ios-profile-section-body">
+          <div className="border-t border-black/[0.06] px-3 pb-2.5 pt-1.5 ios-profile-section-body">
             {children}
           </div>
         )}
