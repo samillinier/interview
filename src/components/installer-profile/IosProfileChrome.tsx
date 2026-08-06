@@ -225,7 +225,14 @@ type IosProfileRootProps = {
 
 export function IosProfileRoot({ children, className }: IosProfileRootProps) {
   return (
-    <div className={cn('ios-installer-profile min-h-screen lg:min-h-0 bg-[#f2f2f7] lg:bg-transparent', className)}>
+    <div
+      className={cn('ios-installer-profile min-h-screen lg:min-h-0 bg-[#f2f2f7] lg:bg-transparent', className)}
+      style={{
+        // Force SF / system UI on mobile; CSS media query scopes desktop back to inherited Inter
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif',
+      }}
+    >
       {children}
     </div>
   )
