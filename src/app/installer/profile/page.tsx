@@ -4030,8 +4030,8 @@ export default function InstallerProfilePage() {
                 })()}
               </div>
             </motion.div>
-          </IosProfileSection>
           )}
+          </IosProfileSection>
 
           {/* Travel & Start Date Information */}
           <IosProfileSection title="Travel & Start Date">
@@ -4277,8 +4277,8 @@ export default function InstallerProfilePage() {
                 )}
               </div>
             </motion.div>
-          </IosProfileSection>
           )}
+          </IosProfileSection>
 
           {/* Carpet Installation Information */}
           <IosProfileSection title="Carpet Installation">
@@ -5812,8 +5812,8 @@ export default function InstallerProfilePage() {
                 </div>
               )}
             </motion.div>
-          </IosProfileSection>
           )}
+          </IosProfileSection>
 
           {/* Location Map (uses saved Address) */}
           <IosProfileSection title="Location">
