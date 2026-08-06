@@ -41,6 +41,8 @@ import { PropertySidebar } from '@/components/PropertySidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
+import { googleMapsEmbedUrl } from '@/lib/maps'
 
 type LocationDocumentCategory = 'lease' | 'misc'
 interface LocationDocument {
@@ -1213,10 +1215,10 @@ export default function FacilitiesPage() {
                 const addressForMap = (formData.propertyAddress || editingLocation?.propertyAddress || '').trim()
                 if (!addressForMap) return null
 
-                const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-                const mapsUrl = googleMapsApiKey
-                  ? `https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(addressForMap)}`
-                  : `https://www.google.com/maps?q=${encodeURIComponent(addressForMap)}&output=embed`
+                const mapsUrl = googleMapsEmbedUrl(
+                  addressForMap,
+                  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+                )
 
                 return (
                   <div className="mb-8">
@@ -1230,20 +1232,16 @@ export default function FacilitiesPage() {
                       transition={{ delay: 0.25 }}
                       className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 shrink-0">
                           <MapPin className="w-4 h-4 text-brand-green" />
                           Property Location
                         </h4>
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <OpenInMapsLinks
+                          address={addressForMap}
                           className="text-xs text-brand-green hover:text-brand-green-dark font-medium flex items-center gap-1"
-                        >
-                          Open in Google Maps
-                          <MapPin className="w-3 h-3" />
-                        </a>
+                          iconClassName="w-3 h-3"
+                        />
                       </div>
                       <div className="w-full h-64 rounded-xl overflow-hidden border border-slate-200 relative">
                         <iframe

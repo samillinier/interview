@@ -76,6 +76,8 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { NullAttachmentShade } from '@/components/NullAttachmentShade'
+import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
+import { googleMapsEmbedUrl } from '@/lib/maps'
 
 
 const DOCUMENT_TYPES: Array<{
@@ -8996,10 +8998,10 @@ export default function InstallerProfileViewPage() {
 
             if (!addressForMap) return null
 
-            const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-            const mapsUrl = googleMapsApiKey
-              ? `https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(addressForMap)}`
-              : `https://www.google.com/maps?q=${encodeURIComponent(addressForMap)}&output=embed`
+            const mapsUrl = googleMapsEmbedUrl(
+              addressForMap,
+              process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+            )
 
             return (
               <motion.div
@@ -9008,20 +9010,12 @@ export default function InstallerProfileViewPage() {
                 transition={{ delay: 0.95 }}
                 className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 shrink-0">
                     <MapPin className="w-5 h-5 text-brand-green" />
                     Location Map
                   </h3>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressForMap)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-brand-green hover:text-brand-green-dark font-medium flex items-center gap-1"
-                  >
-                    Open in Google Maps
-                    <MapPin className="w-4 h-4" />
-                  </a>
+                  <OpenInMapsLinks address={addressForMap} />
                 </div>
                 <div className="w-full h-96 rounded-xl overflow-hidden border border-slate-200 relative">
                   <iframe

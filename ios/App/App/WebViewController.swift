@@ -110,19 +110,37 @@ class WebViewController: UIViewController, WKNavigationDelegate {
         }
     }
 
-    // Open external links in Safari
+    private func isAppHost(_ url: URL) -> Bool {
+        guard let host = url.host else { return false }
+        return host == "job.floorinteriorservices.com" || host.hasSuffix(".floorinteriorservices.com")
+    }
+
+    private func openExternally(_ url: URL) {
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+
+    // Open external links (Apple Maps, Google Maps, etc.) in the system handler
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else {
             decisionHandler(.cancel)
             return
         }
-        if url.host == "job.floorinteriorservices.com" || url.host?.hasSuffix(".floorinteriorservices.com") == true {
+        if isAppHost(url) {
             decisionHandler(.allow)
-        } else if navigationAction.navigationType == .linkActivated {
-            UIApplication.shared.open(url)
+        } else if navigationAction.navigationType == .linkActivated || navigationAction.targetFrame == nil {
+            // targetFrame == nil covers target="_blank" map links
+            openExternally(url)
             decisionHandler(.cancel)
         } else {
             decisionHandler(.allow)
         }
+    }
+
+    // Required so target="_blank" links (maps) open instead of being ignored
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if let url = navigationAction.request.url, !isAppHost(url) {
+            openExternally(url)
+        }
+        return nil
     }
 }
