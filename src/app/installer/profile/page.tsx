@@ -1896,9 +1896,11 @@ export default function InstallerProfilePage() {
 
       <IosProfileHero
         name={
-          installer && (installer.firstName || installer.lastName
-            ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-            : installer.email.split('@')[0] || 'Installer')
+          installer
+            ? (installer.firstName || installer.lastName
+                ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
+                : installer.email.split('@')[0] || 'Installer')
+            : 'Installer'
         }
         companyName={(isEditing ? companyName : installer?.companyName) || undefined}
         photoUrl={photoUrl}
