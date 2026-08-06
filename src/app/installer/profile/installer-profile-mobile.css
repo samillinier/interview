@@ -13,21 +13,20 @@
   }
 
   .ios-installer-profile .ios-profile-section {
-    width: 100% !important;
+    width: auto !important;
     max-width: 100% !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    box-sizing: border-box !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 
-  /* Collapsed rows hug the title — no empty white band on the right */
-  .ios-installer-profile .ios-profile-section > div:not(:has(.ios-profile-section-body)) {
-    width: fit-content !important;
-    max-width: 100% !important;
-  }
-
-  .ios-installer-profile .ios-profile-section > div {
-    max-width: 100% !important;
+  .ios-installer-profile .ios-profile-section-trigger {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
   }
 
   .ios-installer-profile .ios-profile-section-body > .bg-white,

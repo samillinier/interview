@@ -11,7 +11,7 @@ type IosProfileSectionProps = {
 }
 
 /**
- * Mobile: accordion row (tap title to expand).
+ * Mobile: text-only section title; tap to expand content.
  * Desktop / unknown: passthrough — children render once (no duplicate forms).
  */
 export function IosProfileSection({
@@ -32,34 +32,22 @@ export function IosProfileSection({
   }
 
   return (
-    <div className="ios-profile-section mb-2 w-full max-w-full">
-      <div
-        className={
-          open
-            ? 'bg-white rounded-[10px] overflow-hidden w-full'
-            : 'bg-white rounded-[10px] overflow-hidden w-fit max-w-full'
-        }
+    <div className="ios-profile-section mb-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="ios-profile-section-trigger block w-auto max-w-full px-1 py-2 text-left active:opacity-60 transition-opacity"
+        aria-expanded={open}
       >
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className={
-            open
-              ? 'ios-profile-section-trigger w-full px-3.5 py-[10px] text-left active:bg-black/[0.04] transition-colors'
-              : 'ios-profile-section-trigger px-3.5 py-[10px] text-left active:bg-black/[0.04] transition-colors'
-          }
-          aria-expanded={open}
-        >
-          <span className="ios-profile-section-title text-[13px] font-medium text-[#1c1c1e] tracking-[-0.2px] leading-[1.2] whitespace-nowrap">
-            {title}
-          </span>
-        </button>
-        {open && (
-          <div className="border-t border-black/[0.06] px-3 pb-2.5 pt-1.5 ios-profile-section-body">
-            {children}
-          </div>
-        )}
-      </div>
+        <span className="ios-profile-section-title text-[15px] font-medium text-[#1c1c1e] tracking-[-0.2px] leading-[1.2]">
+          {title}
+        </span>
+      </button>
+      {open && (
+        <div className="ios-profile-section-body pb-2 pt-0.5">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
