@@ -1976,7 +1976,7 @@ export default function InstallerProfilePage() {
             className="ios-profile-top bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-5 sm:p-8 md:p-10 mb-6 backdrop-blur-sm"
           >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            <div className="flex items-start gap-5 flex-1">
+            <div className="flex items-center gap-5 flex-1">
               {/* Profile Photo on Left */}
               <div className="flex-shrink-0">
                 <div className="relative group">
@@ -2056,21 +2056,12 @@ export default function InstallerProfilePage() {
                   const companyNameToShow = (isEditing ? companyName : installer?.companyName) || ''
                   if (!companyNameToShow) return null
                   return (
-                    <div className="flex flex-wrap items-center gap-2 mt-0.5 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
                       <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
                         <Building2 className="w-4 h-4 text-slate-500" />
                         <span className="truncate max-w-[280px]">{companyNameToShow}</span>
                       </span>
                     </div>
-                  )
-                })()}
-                {(() => {
-                  const workroomToShow = (isEditing ? workroom : installer?.workroom) || ''
-                  if (!workroomToShow) return null
-                  return (
-                    <p className="text-sm sm:text-base text-slate-500 font-medium mb-1 truncate">
-                      {workroomToShow}
-                    </p>
                   )
                 })()}
                 {/* Removed document status badges on installer portal (admin-only) */}
