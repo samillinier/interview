@@ -60,6 +60,7 @@ import {
   IosProfileRoot,
   IosProfileEditBar,
 } from '@/components/installer-profile/IosProfileChrome'
+import { DeleteAccountSection } from '@/components/installer-profile/DeleteAccountSection'
 import './installer-profile-mobile.css'
 
 // Helper function to get expiration status
@@ -5841,6 +5842,8 @@ export default function InstallerProfilePage() {
             )
           })()}
           </IosProfileSection>
+
+          <DeleteAccountSection installerEmail={installer?.email} />
 
         </main>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { ArrowRight, Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -14,6 +14,7 @@ function InstallerLoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailParam = searchParams.get('email')
+  const accountDeleted = searchParams.get('deleted') === '1'
   
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -137,6 +138,13 @@ function InstallerLoginContent() {
               Sign in to manage your profile and view your interview results
             </p>
           </div>
+
+          {accountDeleted && (
+            <div className="flex items-start gap-2 p-3 mb-6 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm">
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>Your account has been permanently deleted.</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
