@@ -1,0 +1,83 @@
+/* Mobile-only iOS Settings-style restyle for installer profile sections.
+   Desktop (lg+) is untouched — rules are scoped under .ios-installer-profile
+   and max-width: 1023px. */
+
+@media (max-width: 1023px) {
+  .ios-installer-profile .ios-profile-section-body > .bg-white,
+  .ios-installer-profile .ios-profile-section-body > [class*='rounded-2xl'],
+  .ios-installer-profile .ios-profile-section-body > [class*='rounded-3xl'] {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Hide each section's desktop card header — accordion provides the title */
+  .ios-installer-profile .ios-profile-section-body > div > .flex.items-center.justify-between.mb-8,
+  .ios-installer-profile .ios-profile-section-body > .flex.items-center.justify-between.mb-8,
+  .ios-installer-profile .ios-profile-section-body > div > div.flex.items-center.justify-between.mb-8.pb-6 {
+    display: none !important;
+  }
+
+  /* Keep map action links visible */
+  .ios-installer-profile .ios-profile-section-body .ios-maps-actions {
+    display: flex !important;
+  }
+
+  /* Field rows → inset grouped list cells */
+  .ios-installer-profile .ios-profile-section-body .group.relative.p-4.rounded-xl {
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid rgba(60, 60, 67, 0.12) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .ios-installer-profile .ios-profile-section-body .group.relative.p-4.rounded-xl:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Inputs feel more native */
+  .ios-installer-profile .ios-profile-section-body input[type='text'],
+  .ios-installer-profile .ios-profile-section-body input[type='tel'],
+  .ios-installer-profile .ios-profile-section-body input[type='email'],
+  .ios-installer-profile .ios-profile-section-body input[type='number'],
+  .ios-installer-profile .ios-profile-section-body input[type='date'],
+  .ios-installer-profile .ios-profile-section-body select,
+  .ios-installer-profile .ios-profile-section-body textarea {
+    border-radius: 10px !important;
+    font-size: 16px !important; /* avoid iOS zoom */
+    min-height: 44px;
+  }
+
+  /* Hide desktop sticky header + status card on mobile when iOS chrome is shown */
+  .ios-installer-profile .ios-hide-on-mobile {
+    display: none !important;
+  }
+
+  /* Map links: stack like iOS actions */
+  .ios-installer-profile .ios-maps-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .ios-installer-profile .ios-maps-actions > span[aria-hidden] {
+    display: none !important;
+  }
+
+  .ios-installer-profile .ios-maps-actions > a {
+    justify-content: center !important;
+    background: #f2f2f7 !important;
+    border-radius: 10px !important;
+    padding: 10px 12px !important;
+    font-size: 15px !important;
+  }
+}
