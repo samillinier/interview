@@ -1892,7 +1892,7 @@ export default function InstallerProfilePage() {
     <IosProfileRoot>
       {/* Main Content */}
         {/* Top Header — classic layout kept on mobile */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
+        <header className="ios-profile-top bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
           <div className="px-4 lg:px-6 pt-20 lg:pt-6 pb-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
@@ -1973,7 +1973,7 @@ export default function InstallerProfilePage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-5 sm:p-8 md:p-10 mb-6 backdrop-blur-sm"
+            className="ios-profile-top bg-gradient-to-br from-white via-white to-slate-50/50 rounded-3xl shadow-xl border border-slate-200/60 p-5 sm:p-8 md:p-10 mb-6 backdrop-blur-sm"
           >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
             <div className="flex items-start gap-5 flex-1">

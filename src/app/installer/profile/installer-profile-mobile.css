@@ -1,8 +1,10 @@
-/* Mobile-only iOS Settings-style restyle for installer profile *sections*.
-   Classic header + status card stay as-is. Desktop (lg+) is untouched. */
+/* Mobile-only iOS Settings-style restyle for installer profile.
+   Desktop (lg+) is untouched. */
 
 @media (max-width: 1023px) {
-  /* Apple system / SF Pro stack for accordion UI only */
+  /* Apple system / SF Pro stack for the whole mobile profile */
+  .ios-installer-profile,
+  .ios-installer-profile .ios-profile-top,
   .ios-installer-profile .ios-profile-section,
   .ios-installer-profile .ios-profile-section-body,
   .ios-installer-profile .ios-edit-bar {
@@ -10,6 +12,40 @@
       'Helvetica Neue', Helvetica, Arial, sans-serif !important;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Top header + status card typography */
+  .ios-installer-profile .ios-profile-top h1 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px !important;
+  }
+
+  .ios-installer-profile .ios-profile-top h1 + p,
+  .ios-installer-profile .ios-profile-top .text-sm.text-slate-500 {
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.08px !important;
+  }
+
+  .ios-installer-profile .ios-profile-top h2 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px !important;
+  }
+
+  .ios-installer-profile header.ios-profile-top .text-sm.font-semibold,
+  .ios-installer-profile .ios-profile-top .text-lg.font-bold {
+    font-family: inherit !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  /* Remove top-card icons: company building, tracker checks, photo verified badge */
+  .ios-installer-profile .ios-profile-top .bg-slate-100 > svg,
+  .ios-installer-profile .ios-profile-top .absolute.bottom-0.right-0.w-8.h-8,
+  .ios-installer-profile .ios-profile-top .grid span.inline-flex > svg,
+  .ios-installer-profile .ios-profile-top .grid .rounded-full > svg {
+    display: none !important;
   }
 
   .ios-installer-profile .ios-profile-section-body > .bg-white,
