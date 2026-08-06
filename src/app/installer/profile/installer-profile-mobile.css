@@ -20,12 +20,6 @@
     box-sizing: border-box !important;
   }
 
-  /* Closed rows use one consistent compact width, without a large empty tail. */
-  .ios-installer-profile .ios-profile-section[data-open='false'] {
-    width: min(20rem, 100%) !important;
-    max-width: min(20rem, 100%) !important;
-  }
-
   .ios-installer-profile .ios-profile-section > div {
     width: 100% !important;
   }

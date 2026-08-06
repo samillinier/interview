@@ -11,7 +11,7 @@ type IosProfileSectionProps = {
 }
 
 /**
- * Mobile: compact, uniform accordion row without a dropdown icon.
+ * Mobile: full-width accordion row without a dropdown icon.
  * Desktop / unknown: passthrough — children render once (no duplicate forms).
  */
 export function IosProfileSection({
