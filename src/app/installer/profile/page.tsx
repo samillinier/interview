@@ -2128,7 +2128,7 @@ export default function InstallerProfilePage() {
         </motion.div>
 
           {/* Profile Information */}
-          <IosProfileSection title="Profile Information" defaultOpen>
+          <IosProfileSection title="Profile Information">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

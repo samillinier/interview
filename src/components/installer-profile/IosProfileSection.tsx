@@ -54,7 +54,7 @@ export function IosProfileSection({
           />
         </button>
         {open && (
-          <div className="border-t border-black/[0.06] px-3 pb-2.5 pt-1.5 ios-profile-section-body">
+          <div className="border-t border-black/[0.06] px-3 pb-1.5 pt-0.5 ios-profile-section-body">
             {children}
           </div>
         )}
