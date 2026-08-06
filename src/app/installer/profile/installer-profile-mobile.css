@@ -56,9 +56,7 @@
     display: none !important;
   }
 
-  /* Field rows → ultra-tight iOS Settings rows */
-  .ios-installer-profile .ios-profile-section-body .group.relative,
-  .ios-installer-profile .ios-profile-section-body .group.relative.p-4,
+  /* Field rows → inset grouped list cells (tight spacing) */
   .ios-installer-profile .ios-profile-section-body .group.relative.p-4.rounded-xl {
     border-radius: 0 !important;
     border-left: none !important;
@@ -67,15 +65,10 @@
     border-bottom: 0.5px solid rgba(60, 60, 67, 0.18) !important;
     background: transparent !important;
     box-shadow: none !important;
-    padding-top: 3px !important;
-    padding-bottom: 3px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    padding: 5px 2px !important;
     margin: 0 !important;
-    min-height: 0 !important;
   }
 
-  .ios-installer-profile .ios-profile-section-body .group.relative:last-child,
   .ios-installer-profile .ios-profile-section-body .group.relative.p-4.rounded-xl:last-child {
     border-bottom: none !important;
   }
@@ -83,32 +76,13 @@
   .ios-installer-profile .ios-profile-section-body .group .flex.items-start.gap-3,
   .ios-installer-profile .ios-profile-section-body .group .flex.items-center.gap-3 {
     gap: 0 !important;
-    align-items: flex-start !important;
-  }
-
-  .ios-installer-profile .ios-profile-section-body .group .flex-1.min-w-0 {
-    min-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
   }
 
   /* Kill grid / stack gaps that inflate Profile Information */
-  .ios-installer-profile .ios-profile-section-body .grid,
-  .ios-installer-profile .ios-profile-section-body .grid.gap-6 {
+  .ios-installer-profile .ios-profile-section-body .grid {
     gap: 0 !important;
     row-gap: 0 !important;
     column-gap: 0 !important;
-  }
-
-  .ios-installer-profile .ios-profile-section-body .mb-2,
-  .ios-installer-profile .ios-profile-section-body .mb-1,
-  .ios-installer-profile .ios-profile-section-body .mb-1\.5,
-  .ios-installer-profile .ios-profile-section-body .mb-4,
-  .ios-installer-profile .ios-profile-section-body .mb-6,
-  .ios-installer-profile .ios-profile-section-body .mt-1,
-  .ios-installer-profile .ios-profile-section-body .mt-2 {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
   }
 
   .ios-installer-profile .ios-profile-section-body .space-y-4 > :not([hidden]) ~ :not([hidden]),
@@ -118,32 +92,22 @@
   }
 
   .ios-installer-profile .ios-profile-section-body {
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
+    padding-top: 4px !important;
+    padding-bottom: 6px !important;
   }
 
-  /* Chip / tag rows keep a tiny gap only */
-  .ios-installer-profile .ios-profile-section-body .flex.flex-wrap {
-    gap: 4px !important;
-    margin-top: 2px !important;
-  }
-
-  .ios-installer-profile .ios-profile-section-body .flex.flex-wrap.gap-2 {
-    gap: 4px !important;
-  }
-
-  /* Field labels — iOS caption */
+  /* Field labels — iOS caption (slightly above Yes/No values) */
   .ios-installer-profile .ios-profile-section-body .text-xs,
   .ios-installer-profile .ios-profile-section-body p.text-xs,
   .ios-installer-profile .ios-profile-section-body .uppercase.tracking-wide {
-    font-size: 11px !important;
+    font-size: 12px !important;
     font-weight: 400 !important;
     letter-spacing: -0.08px !important;
     text-transform: none !important;
     color: #8e8e93 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    line-height: 1.1 !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    line-height: 1.15 !important;
   }
 
   /* Field values — compact body */
@@ -156,10 +120,9 @@
     font-size: 13px !important;
     font-weight: 400 !important;
     letter-spacing: -0.2px !important;
-    line-height: 1.15 !important;
+    line-height: 1.2 !important;
     color: #1c1c1e !important;
     margin: 0 !important;
-    padding: 0 !important;
   }
 
   /* Yes / No + checkmark — smaller than labels and body values */
