@@ -20,17 +20,6 @@
     box-sizing: border-box !important;
   }
 
-  /* iPad / tablet: collapsed rows stay compact (no huge empty gap after the title) */
-  @media (min-width: 768px) {
-    .ios-installer-profile .ios-profile-section:not(:has(.ios-profile-section-body)) {
-      max-width: 28rem !important;
-    }
-  }
-
-  .ios-installer-profile .ios-profile-section > div {
-    width: 100% !important;
-  }
-
   .ios-installer-profile .ios-profile-section-body > .bg-white,
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-2xl'],
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-3xl'] {
