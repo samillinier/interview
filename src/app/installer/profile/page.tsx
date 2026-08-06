@@ -55,6 +55,12 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
 import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
+import { IosProfileSection } from '@/components/installer-profile/IosProfileSection'
+import {
+  IosProfileRoot,
+  IosProfileEditBar,
+} from '@/components/installer-profile/IosProfileChrome'
+import './installer-profile-mobile.css'
 
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
@@ -1883,9 +1889,9 @@ export default function InstallerProfilePage() {
   }
 
   return (
-    <>
+    <IosProfileRoot>
       {/* Main Content */}
-        {/* Top Header */}
+        {/* Top Header — classic layout kept on mobile */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
           <div className="px-4 lg:px-6 pt-20 lg:pt-6 pb-6">
             <div className="flex items-start justify-between gap-4">
@@ -1933,7 +1939,7 @@ export default function InstallerProfilePage() {
         </header>
 
         {/* Content Area */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8">
           {/* Complete Profile Notice */}
           {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div
@@ -1963,7 +1969,7 @@ export default function InstallerProfilePage() {
             </motion.div>
           )}
 
-          {/* Status Card */}
+          {/* Status Card — classic layout kept on mobile */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2122,6 +2128,7 @@ export default function InstallerProfilePage() {
         </motion.div>
 
           {/* Profile Information */}
+          <IosProfileSection title="Profile Information" defaultOpen>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2812,8 +2819,10 @@ export default function InstallerProfilePage() {
           </div>
 
         </motion.div>
+          </IosProfileSection>
 
           {/* Insurance & Registration Information */}
+          <IosProfileSection title="Insurance & Registration">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3361,8 +3370,10 @@ export default function InstallerProfilePage() {
             </motion.div>
 
           </motion.div>
+          </IosProfileSection>
 
           {/* Team Members Section - Standalone */}
+          <IosProfileSection title="Team Members">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3498,8 +3509,10 @@ export default function InstallerProfilePage() {
               </div>
             )}
           </motion.div>
+          </IosProfileSection>
 
           {/* License & Background Check Section */}
+          <IosProfileSection title="License & Background">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3667,8 +3680,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Availability Information */}
+          <IosProfileSection title="Availability">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3731,8 +3746,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Tools & Equipment */}
+          <IosProfileSection title="Tools & Equipment">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3879,8 +3896,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Work History & Service Areas */}
+          <IosProfileSection title="Work History">
           {installer && (installer.previousEmployers || installer.serviceAreas) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -3985,8 +4004,10 @@ export default function InstallerProfilePage() {
               </div>
             </motion.div>
           )}
+          </IosProfileSection>
 
           {/* Travel & Start Date Information */}
+          <IosProfileSection title="Travel & Start Date">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4158,8 +4179,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Additional Information (Notes & Follow-up) */}
+          <IosProfileSection title="Additional Information">
           {installer && (installer.notes || installer.followUpDate || installer.followUpReason) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -4228,8 +4251,10 @@ export default function InstallerProfilePage() {
               </div>
             </motion.div>
           )}
+          </IosProfileSection>
 
           {/* Carpet Installation Information */}
+          <IosProfileSection title="Carpet Installation">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4424,8 +4449,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Hardwood Installation Information */}
+          <IosProfileSection title="Hardwood Installation">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4620,8 +4647,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Laminate Installation Information */}
+          <IosProfileSection title="Laminate Installation">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4767,8 +4796,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Vinyl Installation Information */}
+          <IosProfileSection title="Vinyl Installation">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -5090,8 +5121,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Tile Installation Information */}
+          <IosProfileSection title="Tile Installation">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -5520,8 +5553,10 @@ export default function InstallerProfilePage() {
               </div>
             </div>
           </motion.div>
+          </IosProfileSection>
 
           {/* Additional Work Information */}
+          <IosProfileSection title="Additional Work">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -5751,8 +5786,10 @@ export default function InstallerProfilePage() {
               )}
             </motion.div>
           )}
+          </IosProfileSection>
 
           {/* Location Map (uses saved Address) */}
+          <IosProfileSection title="Location">
           {(() => {
             const street = (isEditing ? companyStreetAddress : installer?.companyStreetAddress) || ''
             const city = (isEditing ? companyCity : installer?.companyCity) || ''
@@ -5780,14 +5817,14 @@ export default function InstallerProfilePage() {
                 transition={{ delay: 0.95 }}
                 className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
               >
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h3 className="hidden lg:flex text-lg font-bold text-slate-900 items-center gap-2 shrink-0">
                     <MapPin className="w-5 h-5 text-brand-green" />
                     Location Map
                   </h3>
-                  <OpenInMapsLinks address={addressForMap} />
+                  <OpenInMapsLinks address={addressForMap} wrapperClassName="ios-maps-actions w-full sm:w-auto" />
                 </div>
-                <div className="w-full h-96 rounded-xl overflow-hidden border border-slate-200 relative">
+                <div className="w-full h-56 lg:h-96 rounded-xl overflow-hidden border border-slate-200 relative">
                   <iframe
                     width="100%"
                     height="100%"
@@ -5803,6 +5840,7 @@ export default function InstallerProfilePage() {
               </motion.div>
             )
           })()}
+          </IosProfileSection>
 
         </main>
 
@@ -7613,6 +7651,17 @@ export default function InstallerProfilePage() {
           </motion.div>
         </div>
       )}
-    </>
+
+      <IosProfileEditBar
+        isEditing={isEditing}
+        isSaving={isSaving}
+        onEdit={() => setIsEditing(true)}
+        onCancel={() => {
+          setIsEditing(false)
+          void checkAuthAndLoadProfile()
+        }}
+        onSave={() => void handleSave()}
+      />
+    </IosProfileRoot>
   )
 }
