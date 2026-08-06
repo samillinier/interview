@@ -1894,7 +1894,7 @@ export default function InstallerProfilePage() {
       {/* Main Content */}
         {/* Top Header — classic layout kept on mobile */}
         <header className="ios-profile-top bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className="px-4 lg:px-6 pt-20 lg:pt-6 pb-6">
+          <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">My Profile</h1>
@@ -1940,7 +1940,7 @@ export default function InstallerProfilePage() {
         </header>
 
         {/* Content Area */}
-        <main className="p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8">
+        <main className="p-4 sm:p-6 lg:p-8 pb-28 2xl:pb-8">
           {/* Complete Profile Notice */}
           {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div
@@ -2071,7 +2071,7 @@ export default function InstallerProfilePage() {
             <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
               {/* Barcode Section - Right Side */}
               {installer && (
-                <div className="w-full md:w-auto md:max-w-[200px] lg:max-w-none md:flex-shrink-0">
+                <div className="w-full md:w-auto md:max-w-[200px] 2xl:max-w-none md:flex-shrink-0">
                   <InstallerBarcode 
                     installerId={installer.id}
                     installerName={`${installer.firstName} ${installer.lastName}`.trim()}
@@ -2100,13 +2100,13 @@ export default function InstallerProfilePage() {
 
                 return (
                   <div className="-mx-2 px-2">
-                    <div className="w-full bg-transparent px-0 py-0 grid grid-cols-2 sm:grid-cols-3 gap-2 lg:flex lg:flex-nowrap lg:w-max lg:whitespace-nowrap lg:overflow-x-auto lg:hide-scrollbar">
+                    <div className="w-full bg-transparent px-0 py-0 grid grid-cols-2 sm:grid-cols-3 gap-2 2xl:flex 2xl:flex-nowrap 2xl:w-max 2xl:whitespace-nowrap 2xl:overflow-x-auto 2xl:hide-scrollbar">
                     {stages.map((s, idx) => {
                       const isCurrent = idx === currentIdx
                       const isDone = idx < currentIdx
                         const showCheck = isDone || isCurrent
                       const base =
-                        'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors w-full lg:w-auto'
+                        'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold transition-colors w-full 2xl:w-auto'
                       const cls = isCurrent
                         ? `${base} bg-brand-green text-white shadow-sm`
                         : isDone
@@ -5819,7 +5819,7 @@ export default function InstallerProfilePage() {
                 className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                  <h3 className="hidden lg:flex text-lg font-bold text-slate-900 items-center gap-2 shrink-0">
+                  <h3 className="hidden 2xl:flex text-lg font-bold text-slate-900 items-center gap-2 shrink-0">
                     <MapPin className="w-5 h-5 text-brand-green" />
                     Location Map
                   </h3>

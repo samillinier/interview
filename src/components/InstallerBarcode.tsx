@@ -16,8 +16,8 @@ function getViewport(): BarcodeViewport {
   if (typeof window === 'undefined') return 'desktop'
   const w = window.innerWidth
   if (w <= 640) return 'mobile'
-  // iPad portrait/landscape and small laptops — keep barcode compact beside the name
-  if (w <= 1024) return 'tablet'
+  // iPad portrait/landscape and tablets — keep barcode compact beside the name
+  if (w <= 1535) return 'tablet'
   return 'desktop'
 }
 

@@ -75,7 +75,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       {/* Hamburger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="lg:hidden fixed right-4 z-50 p-3 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
+        className="2xl:hidden fixed right-4 z-50 p-3 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
                 style={{ top: 'max(env(safe-area-inset-top, 54px), 54px)' }}
         aria-label={open ? 'Close menu' : 'Open menu'}
       >
@@ -85,14 +85,14 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       {/* Overlay */}
       {open && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+          className="2xl:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         />
       )}
 
       {/* Bottom sheet */}
       <div
-        className={`lg:hidden fixed inset-x-0 bottom-0 z-50 bg-brand-green rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+        className={`2xl:hidden fixed inset-x-0 bottom-0 z-50 bg-brand-green rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
         role="dialog"

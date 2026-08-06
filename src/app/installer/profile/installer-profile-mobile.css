@@ -1,7 +1,8 @@
 /* Installer profile mobile restyle.
    Font is forced via <style> in IosProfileRoot (beats body Inter / font-sans). */
 
-@media (max-width: 1023px) {
+/* Phone + tablet (incl. iPad Pro). Desktop shell starts at 1536px (2xl). */
+@media (max-width: 1535px) {
   .ios-installer-profile .ios-profile-section-body > .bg-white,
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-2xl'],
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-3xl'] {

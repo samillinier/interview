@@ -39,7 +39,7 @@ export default function InstallerSidebar({ notificationCount = 0, installer, sid
   }
 
   return (
-    <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
+    <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden 2xl:flex shadow-lg`}>
       {/* Logo */}
       <div className="p-6 border-b border-slate-200 bg-white flex items-center justify-between">
         <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>

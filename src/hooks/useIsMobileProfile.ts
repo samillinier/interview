@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react'
 
-/** True when viewport is below Tailwind `lg` (1024px). null until mounted. */
+/**
+ * True for phone + tablet (incl. iPad Pro) layouts.
+ * Desktop shell (sidebar) starts at Tailwind `2xl` (1536px).
+ * null until mounted.
+ */
 export function useIsMobileProfile(): boolean | null {
   const [isMobile, setIsMobile] = useState<boolean | null>(null)
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)')
+    const mq = window.matchMedia('(max-width: 1535px)')
     const update = () => setIsMobile(mq.matches)
     update()
     mq.addEventListener('change', update)

@@ -153,7 +153,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
         notificationCount={notificationCount}
         onLogout={handleLogout}
       />
-      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? '2xl:ml-64' : '2xl:ml-20'} w-full`}>
         {children}
       </div>
     </div>

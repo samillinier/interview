@@ -47,7 +47,7 @@ export function IosProfileHero({
             : 'ring-amber-400'
 
   return (
-    <div className="lg:hidden px-4 pb-3">
+    <div className="2xl:hidden px-4 pb-3">
       <div className="flex flex-col items-center text-center pt-1 pb-4">
         <div className="relative mb-3">
           <div
@@ -151,7 +151,7 @@ type IosProfileTopBarProps = {
 export function IosProfileTopBar({ title = 'Profile' }: IosProfileTopBarProps) {
   return (
     <div
-      className="lg:hidden sticky top-0 z-30 bg-[#f2f2f7]/92 backdrop-blur-xl border-b border-black/[0.06]"
+      className="2xl:hidden sticky top-0 z-30 bg-[#f2f2f7]/92 backdrop-blur-xl border-b border-black/[0.06]"
       style={{ paddingTop: 'max(env(safe-area-inset-top, 12px), 12px)' }}
     >
       <div className="flex items-end h-12 px-4 pb-2 pr-16">
@@ -178,7 +178,7 @@ export function IosProfileEditBar({
 }: IosProfileEditBarProps) {
   return (
     <div
-      className="ios-edit-bar lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#f2f2f7]/94 backdrop-blur-xl border-t border-black/[0.08]"
+      className="ios-edit-bar 2xl:hidden fixed bottom-0 inset-x-0 z-40 bg-[#f2f2f7]/94 backdrop-blur-xl border-t border-black/[0.08]"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 12px), 12px)' }}
     >
       <div className="px-4 pt-2 pb-1.5 flex gap-2">
@@ -245,7 +245,7 @@ export function IosProfileRoot({ children, className }: IosProfileRootProps) {
       />
       <div
         className={cn(
-          'ios-installer-profile min-h-screen lg:min-h-0 bg-[#f2f2f7] lg:bg-transparent font-normal',
+          'ios-installer-profile min-h-screen 2xl:min-h-0 bg-[#f2f2f7] 2xl:bg-transparent font-normal',
           className
         )}
         style={{ fontFamily: IOS_PROFILE_FONT }}
