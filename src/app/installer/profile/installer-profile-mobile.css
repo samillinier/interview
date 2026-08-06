@@ -3,6 +3,27 @@
 
 /* Phone + tablet (incl. iPad Pro). Desktop shell starts at 1536px (2xl). */
 @media (max-width: 1535px) {
+  /* Keep accordion gutters equal — avoid wide right-only empty band on iPad */
+  .ios-installer-profile main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .ios-installer-profile .ios-profile-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .ios-installer-profile .ios-profile-section > div {
+    width: 100% !important;
+  }
+
   .ios-installer-profile .ios-profile-section-body > .bg-white,
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-2xl'],
   .ios-installer-profile .ios-profile-section-body > [class*='rounded-3xl'] {

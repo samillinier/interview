@@ -34,8 +34,8 @@ export function IosProfileSection({
   }
 
   return (
-    <div className="ios-profile-section mb-2">
-      <div className="bg-white rounded-[10px] overflow-hidden">
+    <div className="ios-profile-section mb-2 w-full max-w-full">
+      <div className="bg-white rounded-[10px] overflow-hidden w-full">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
