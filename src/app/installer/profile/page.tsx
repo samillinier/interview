@@ -1940,7 +1940,7 @@ export default function InstallerProfilePage() {
         </header>
 
         {/* Content Area */}
-        <main className="px-4 py-4 sm:py-6 2xl:p-8 pb-28 2xl:pb-8 w-full max-w-full box-border">
+        <main className="px-3 py-4 sm:py-6 2xl:p-8 pb-28 2xl:pb-8 w-full max-w-full box-border">
           {/* Complete Profile Notice */}
           {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div

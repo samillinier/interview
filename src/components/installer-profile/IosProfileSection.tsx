@@ -39,7 +39,7 @@ export function IosProfileSection({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="ios-profile-section-trigger w-full flex items-center justify-between gap-2 px-3.5 py-[10px] text-left active:bg-black/[0.04] transition-colors"
+          className="ios-profile-section-trigger w-full flex items-center justify-start gap-1.5 px-3.5 py-[10px] text-left active:bg-black/[0.04] transition-colors"
           aria-expanded={open}
         >
           <span className="ios-profile-section-title text-[13px] font-medium text-[#1c1c1e] tracking-[-0.2px] leading-[1.2]">
