@@ -34,7 +34,7 @@ export function IosProfileSection({
   }
 
   return (
-    <div className="ios-profile-section mb-2 w-full max-w-full">
+    <div className={cn('ios-profile-section mb-2 w-full max-w-full', !open && 'md:max-w-md')}>
       <div className="bg-white rounded-[10px] overflow-hidden w-full">
         <button
           type="button"
@@ -47,10 +47,11 @@ export function IosProfileSection({
           </span>
           <ChevronDown
             className={cn(
-              'w-3 h-3 text-[#c7c7cc] shrink-0 transition-transform duration-200',
-              open && 'rotate-180 text-[#8e8e93]'
+              'w-3.5 h-3.5 text-[#8e8e93] shrink-0 transition-transform duration-200',
+              open && 'rotate-180'
             )}
             strokeWidth={2.25}
+            aria-hidden
           />
         </button>
         {open && (
