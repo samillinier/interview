@@ -20,6 +20,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import { IosProfileSection } from '@/components/installer-profile/IosProfileSection'
 import './installer-attachments-mobile.css'
 
 // All document types now support multiple uploads
@@ -549,8 +550,8 @@ export default function AttachmentsPage() {
             const hasActiveVerificationLink = hasVerificationLinkFeature && existingDoc?.verificationLink && existingDoc?.verificationLinkStatus === 'active'
 
             return (
+              <IosProfileSection key={docType.id} title={docType.name}>
               <motion.div
-                key={docType.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`ios-attach-card bg-white rounded-3xl sm:rounded-2xl shadow-sm sm:shadow-lg border p-4 sm:p-6 backdrop-blur-sm ${
@@ -560,7 +561,7 @@ export default function AttachmentsPage() {
                 }`}
               >
                 <div className="mb-4">
-                  <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="ios-attach-card-head flex items-start gap-3 sm:gap-4">
                     <div className={`ios-attach-type-icon w-11 h-11 sm:w-12 sm:h-12 rounded-2xl sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
                       existingDoc ? 'bg-success-100' : 'bg-brand-green/10'
                     }`}>
@@ -579,43 +580,43 @@ export default function AttachmentsPage() {
                         )}
                       </div>
                       <p className="ios-attach-desc text-sm sm:text-sm text-slate-500 leading-snug">{docType.description}</p>
-                      {existingDoc && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
-                          <CheckCircle2 className="w-4 h-4 text-success-600" />
-                          <span>
-                            Uploaded on {
-                              existingDoc.uploadedAt
-                                ? (() => {
-                                    try {
-                                      const date = new Date(existingDoc.uploadedAt)
-                                      return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
-                                    } catch {
-                                      return 'Unknown date'
-                                    }
-                                  })()
-                                : 'Unknown date'
-                            }
-                          </span>
-                        </div>
-                      )}
-                      {docType.id === 'business_registration' && (existingDoc?.expiryDate || installer?.btrExpiry) ? (
-                        <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
-                          <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
-                            Valid until{' '}
-                            {(() => {
-                              const raw = (existingDoc?.expiryDate || installer?.btrExpiry) as any
-                              try {
-                                const d = new Date(raw)
-                                return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString()
-                              } catch {
-                                return String(raw)
-                              }
-                            })()}
-                          </span>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
+                  {existingDoc && (
+                    <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
+                      <CheckCircle2 className="w-4 h-4 text-success-600" />
+                      <span>
+                        Uploaded on {
+                          existingDoc.uploadedAt
+                            ? (() => {
+                                try {
+                                  const date = new Date(existingDoc.uploadedAt)
+                                  return isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleDateString()
+                                } catch {
+                                  return 'Unknown date'
+                                }
+                              })()
+                            : 'Unknown date'
+                        }
+                      </span>
+                    </div>
+                  )}
+                  {docType.id === 'business_registration' && (existingDoc?.expiryDate || installer?.btrExpiry) ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
+                      <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                        Valid until{' '}
+                        {(() => {
+                          const raw = (existingDoc?.expiryDate || installer?.btrExpiry) as any
+                          try {
+                            const d = new Date(raw)
+                            return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString()
+                          } catch {
+                            return String(raw)
+                          }
+                        })()}
+                      </span>
+                    </div>
+                  ) : null}
                   {isMulti && (
                     <div className="flex justify-end mt-3">
                       <label
@@ -827,6 +828,7 @@ export default function AttachmentsPage() {
                   </label>
                 )}
               </motion.div>
+              </IosProfileSection>
             )
           })}
         </div>

@@ -37,56 +37,63 @@
     box-sizing: border-box !important;
   }
 
+  /* Accordion list spacing — section provides mb-2 */
   .ios-installer-attachments main > .grid {
-    gap: 10px !important;
+    gap: 0 !important;
   }
 
-  /* Document type cards */
-  .ios-installer-attachments .ios-attach-card {
-    background: #ffffff !important;
+  .ios-installer-attachments .ios-profile-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .ios-installer-attachments .ios-profile-section > div {
+    width: 100% !important;
+  }
+
+  /* Flatten nested card chrome — accordion owns the white shell */
+  .ios-installer-attachments .ios-profile-section-body > .ios-attach-card {
+    background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    border-radius: 10px !important;
-    padding: 12px 14px !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
     backdrop-filter: none !important;
   }
 
-  /* Hide decorative left type icons */
-  .ios-installer-attachments .ios-attach-card .ios-attach-type-icon {
+  /* Accordion title replaces card title / icon / description */
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card-head {
     display: none !important;
   }
 
-  .ios-installer-attachments .ios-attach-card h3 {
-    font-size: 16px !important;
-    font-weight: 500 !important;
-    letter-spacing: -0.2px !important;
-    color: #1c1c1e !important;
-    line-height: 1.25 !important;
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card > .mb-4 {
+    margin-bottom: 10px !important;
   }
 
-  .ios-installer-attachments .ios-attach-card > .mb-4 p.text-sm,
-  .ios-installer-attachments .ios-attach-card .ios-attach-desc {
-    font-size: 12px !important;
-    letter-spacing: -0.08px !important;
-    color: #8e8e93 !important;
-    line-height: 1.3 !important;
-  }
-
-  .ios-installer-attachments .ios-attach-card .text-xs,
-  .ios-installer-attachments .ios-attach-card .text-\[11px\] {
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card .text-xs,
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card .text-\[11px\] {
     font-size: 10px !important;
     letter-spacing: -0.08px !important;
   }
 
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card .text-sm {
+    font-size: 12px !important;
+    letter-spacing: -0.08px !important;
+  }
+
   /* Uploaded file chips */
-  .ios-installer-attachments .ios-attach-card .p-4.bg-slate-50 {
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card .p-4.bg-slate-50 {
     background: #f2f2f7 !important;
     border: none !important;
     border-radius: 8px !important;
     padding: 10px 12px !important;
   }
 
-  .ios-installer-attachments .ios-attach-card .border-dashed {
+  .ios-installer-attachments .ios-profile-section-body .ios-attach-card .border-dashed {
     border-radius: 10px !important;
     border-color: rgba(60, 60, 67, 0.22) !important;
     background: #f2f2f7 !important;
