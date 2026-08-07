@@ -2,6 +2,12 @@
    Desktop shell starts at 1536px (2xl). */
 
 @media (max-width: 1535px) {
+  .ios-installer-agreements,
+  .ios-installer-agreements *:not(svg):not(path):not(canvas) {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+  }
+
   .ios-installer-agreements header {
     background: transparent !important;
     border: none !important;
@@ -56,7 +62,7 @@
     border-bottom: 0.5px solid rgba(60, 60, 67, 0.18) !important;
     background: transparent !important;
     box-shadow: none !important;
-    padding: 12px 14px !important;
+    padding: 10px 14px !important;
     margin: 0 !important;
   }
 
@@ -65,17 +71,27 @@
     border-bottom: none !important;
   }
 
-  .ios-installer-agreements .ios-agreements-list .font-bold {
-    font-size: 16px !important;
+  /* Row titles — smaller iOS body */
+  .ios-installer-agreements .ios-agreements-list .font-bold,
+  .ios-installer-agreements .ios-agreements-list .font-semibold {
+    font-size: 13px !important;
     font-weight: 500 !important;
     letter-spacing: -0.2px !important;
     color: #1c1c1e !important;
+    line-height: 1.25 !important;
   }
 
+  /* Row subtitles */
   .ios-installer-agreements .ios-agreements-list .text-sm {
-    font-size: 13px !important;
+    font-size: 11px !important;
     letter-spacing: -0.08px !important;
     color: #8e8e93 !important;
+    line-height: 1.3 !important;
+  }
+
+  .ios-installer-agreements .ios-agreements-list .text-xs {
+    font-size: 10px !important;
+    letter-spacing: -0.08px !important;
   }
 
   /* Soften left icon tiles */
@@ -99,13 +115,13 @@
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
-    padding: 12px 14px !important;
+    padding: 10px 14px !important;
   }
 
   .ios-installer-agreements .ios-agreements-uploaded > .grid > a {
     border: none !important;
     border-radius: 8px !important;
     background: #f2f2f7 !important;
-    padding: 10px 12px !important;
+    padding: 8px 10px !important;
   }
 }
