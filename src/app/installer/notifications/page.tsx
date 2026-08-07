@@ -18,6 +18,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import './installer-notifications-mobile.css'
 
 interface Notification {
   id: string
@@ -418,7 +420,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <>
+    <IosProfileRoot className="ios-installer-notifications">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -431,19 +433,19 @@ export default function NotificationsPage() {
 
       {/* Content Area */}
       <main className="p-4 sm:p-6 lg:p-8">
-        {/* Mobile: section selector (separate buttons, not tabs) */}
-        <div className="grid gap-3 mb-6 sm:hidden">
+        {/* Mobile + tablet: section selector (phone through iPad Pro) */}
+        <div className="ios-notif-tabs grid gap-3 mb-6 2xl:hidden">
           <button
             onClick={() => setActiveTab('notification')}
             className={`w-full rounded-2xl border p-4 text-left transition-all ${
               activeTab === 'notification'
-                ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                ? 'ios-notif-tab-active border-brand-green bg-brand-green/10 shadow-sm'
                 : 'border-slate-200 bg-white hover:bg-slate-50'
             }`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                className={`ios-notif-tab-icon w-11 h-11 rounded-xl flex items-center justify-center ${
                   activeTab === 'notification' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
@@ -453,7 +455,7 @@ export default function NotificationsPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-slate-900 truncate">Notifications</p>
                   {unreadCount.notification > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                    <span className="ios-notif-badge inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
                       {unreadCount.notification}
                     </span>
                   )}
@@ -467,13 +469,13 @@ export default function NotificationsPage() {
             onClick={() => setActiveTab('message')}
             className={`w-full rounded-2xl border p-4 text-left transition-all ${
               activeTab === 'message'
-                ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                ? 'ios-notif-tab-active border-brand-green bg-brand-green/10 shadow-sm'
                 : 'border-slate-200 bg-white hover:bg-slate-50'
             }`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                className={`ios-notif-tab-icon w-11 h-11 rounded-xl flex items-center justify-center ${
                   activeTab === 'message' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
@@ -483,7 +485,7 @@ export default function NotificationsPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-slate-900 truncate">Messages</p>
                   {unreadCount.message > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                    <span className="ios-notif-badge inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
                       {unreadCount.message}
                     </span>
                   )}
@@ -497,13 +499,13 @@ export default function NotificationsPage() {
             onClick={() => setActiveTab('news')}
             className={`w-full rounded-2xl border p-4 text-left transition-all ${
               activeTab === 'news'
-                ? 'border-brand-green bg-brand-green/10 shadow-sm'
+                ? 'ios-notif-tab-active border-brand-green bg-brand-green/10 shadow-sm'
                 : 'border-slate-200 bg-white hover:bg-slate-50'
             }`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                className={`ios-notif-tab-icon w-11 h-11 rounded-xl flex items-center justify-center ${
                   activeTab === 'news' ? 'bg-brand-green text-white' : 'bg-slate-100 text-slate-700'
                 }`}
               >
@@ -513,7 +515,7 @@ export default function NotificationsPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-slate-900 truncate">News</p>
                   {unreadCount.news > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                    <span className="ios-notif-badge inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
                       {unreadCount.news}
                     </span>
                   )}
@@ -524,8 +526,8 @@ export default function NotificationsPage() {
           </button>
         </div>
 
-        {/* Desktop/tablet: tabs (keep existing desktop behavior) */}
-        <div className="hidden sm:block bg-white rounded-2xl shadow-lg border border-slate-200/60 p-2 mb-6 backdrop-blur-sm">
+        {/* Desktop: tabs */}
+        <div className="ios-notif-desktop-tabs hidden 2xl:block bg-white rounded-2xl shadow-lg border border-slate-200/60 p-2 mb-6 backdrop-blur-sm">
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('notification')}
@@ -594,7 +596,7 @@ export default function NotificationsPage() {
 
         {activeTab === 'message' ? (
           // Chat UI for Messages
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 flex flex-col" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
+          <div className="ios-notif-chat bg-white rounded-2xl shadow-lg border border-slate-200/60 flex flex-col" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {filteredNotifications.length === 0 ? (
@@ -853,7 +855,7 @@ export default function NotificationsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-12 text-center"
+            className="ios-notif-empty bg-white rounded-2xl shadow-lg border border-slate-200/60 p-12 text-center"
           >
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
               {activeTab === 'notification' && <Bell className="w-8 h-8 text-slate-400" />}
@@ -863,13 +865,13 @@ export default function NotificationsPage() {
             <p className="text-slate-500">You don't have any {activeTab === 'notification' ? 'notifications' : 'news'} yet.</p>
           </motion.div>
         ) : (
-          <div className="space-y-4">
+          <div className="ios-notif-list space-y-4">
             {filteredNotifications.map((notification) => (
               <motion.div
                 key={notification.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 backdrop-blur-sm ${
+                className={`ios-notif-card bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 backdrop-blur-sm ${
                   !notification.isRead ? 'border-l-4 border-l-brand-green' : ''
                 }`}
               >
@@ -991,6 +993,6 @@ export default function NotificationsPage() {
           </div>
         </div>
       )}
-    </>
+    </IosProfileRoot>
   )
 }

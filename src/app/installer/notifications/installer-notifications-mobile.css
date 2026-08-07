@@ -1,0 +1,215 @@
+/* Installer Notifications — mobile iOS look (phone + tablet).
+   Desktop shell starts at 1536px (2xl). */
+
+@media (max-width: 1535px) {
+  .ios-installer-notifications,
+  .ios-installer-notifications *:not(svg):not(path):not(canvas) {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ios-installer-notifications header {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .ios-installer-notifications header h1 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px !important;
+    color: #1c1c1e !important;
+    line-height: 1.15 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .ios-installer-notifications header p {
+    font-size: 13px !important;
+    color: #8e8e93 !important;
+    letter-spacing: -0.08px !important;
+  }
+
+  .ios-installer-notifications main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 1rem 1.5rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Section picker → iOS inset list */
+  .ios-installer-notifications .ios-notif-tabs {
+    display: grid !important;
+    gap: 0 !important;
+    margin-bottom: 12px !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs > button {
+    border: none !important;
+    border-radius: 0 !important;
+    border-bottom: 0.5px solid rgba(60, 60, 67, 0.18) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 10px 14px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs > button:last-child {
+    border-bottom: none !important;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs > button.ios-notif-tab-active {
+    background: rgba(140, 182, 60, 0.12) !important;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs .ios-notif-tab-icon {
+    display: none !important;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs p.font-semibold {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.2px !important;
+    color: #1c1c1e !important;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs .text-xs {
+    font-size: 12px !important;
+    letter-spacing: -0.08px !important;
+    color: #8e8e93 !important;
+  }
+
+  .ios-installer-notifications .ios-notif-tabs .ios-notif-badge {
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 0 6px !important;
+    border-radius: 11px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    background: #8cb63c !important;
+    color: #fff !important;
+  }
+
+  /* Hide desktop tab bar on phone/tablet (markup still uses 2xl) */
+  .ios-installer-notifications .ios-notif-desktop-tabs {
+    display: none !important;
+  }
+
+  /* Notification / news cards → inset list */
+  .ios-installer-notifications .ios-notif-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+  }
+
+  .ios-installer-notifications .ios-notif-card {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 0.5px solid rgba(60, 60, 67, 0.18) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 12px 14px !important;
+    backdrop-filter: none !important;
+  }
+
+  .ios-installer-notifications .ios-notif-card:last-child {
+    border-bottom: none !important;
+  }
+
+  .ios-installer-notifications .ios-notif-card h3 {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.2px !important;
+    color: #1c1c1e !important;
+    line-height: 1.25 !important;
+  }
+
+  .ios-installer-notifications .ios-notif-card p.text-slate-700 {
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.08px !important;
+    color: #3a3a3c !important;
+    line-height: 1.35 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-card .text-xs {
+    font-size: 11px !important;
+    letter-spacing: -0.08px !important;
+    color: #8e8e93 !important;
+  }
+
+  /* Empty state */
+  .ios-installer-notifications .ios-notif-empty {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+    padding: 2.5rem 1.25rem !important;
+  }
+
+  .ios-installer-notifications .ios-notif-empty h3 {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    color: #1c1c1e !important;
+  }
+
+  .ios-installer-notifications .ios-notif-empty p {
+    font-size: 13px !important;
+    color: #8e8e93 !important;
+  }
+
+  /* Chat panel */
+  .ios-installer-notifications .ios-notif-chat {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+    height: calc(100vh - 280px) !important;
+    min-height: 420px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-chat .custom-scrollbar {
+    padding: 12px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-chat .rounded-3xl {
+    border-radius: 18px !important;
+    box-shadow: none !important;
+    border-width: 0 !important;
+    padding: 10px 14px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-chat .text-lg {
+    font-size: 15px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.2px !important;
+    line-height: 1.35 !important;
+  }
+
+  .ios-installer-notifications .ios-notif-chat .border-t {
+    background: #f2f2f7 !important;
+    border-color: rgba(60, 60, 67, 0.18) !important;
+    border-radius: 0 0 10px 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-chat textarea {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 18px !important;
+    font-size: 15px !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  .ios-installer-notifications .ios-notif-chat form > button {
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
