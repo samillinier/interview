@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
+  CheckCircle2,
   CreditCard,
   ExternalLink,
   FileText,
@@ -205,7 +206,7 @@ export default function InstallerAgreementsPage() {
                     Background Authorization and Release Form
                   </div>
                 </div>
-                <div className="text-sm text-slate-600 mt-1 leading-snug">BACKGROUND AUTHORIZATION AND RELEASE FORM - Fillable Form</div>
+                <div className="text-sm text-slate-600 mt-1 leading-snug">BACKGROUND AUTHORIZATION AND RELEASE FORM</div>
               </div>
               <div className="ml-1 sm:ml-2 text-slate-400 group-hover:text-brand-green transition-colors flex items-center gap-1 flex-shrink-0 self-start">
                 <ExternalLink className="w-4 h-4" />
@@ -250,17 +251,16 @@ export default function InstallerAgreementsPage() {
                       <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">
                         {independentContractorServices.title}
                       </div>
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
-                          independentContractorServices.status === 'approved'
-                            ? 'bg-success-100 border-success-200 text-success-700'
-                            : 'bg-warning-100 border-warning-200 text-warning-700'
-                        }`}
-                      >
-                        {independentContractorServices.status === 'approved'
-                          ? 'Completed'
-                          : 'Pending Approval'}
-                      </span>
+                      {independentContractorServices.status === 'approved' ? (
+                        <CheckCircle2
+                          className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5"
+                          aria-label="Completed"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-warning-100 border-warning-200 text-warning-700">
+                          Pending Approval
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-slate-600 mt-1 leading-snug">
                       {independentContractorServices.completedLink
@@ -297,9 +297,10 @@ export default function InstallerAgreementsPage() {
                 <div className="flex flex-wrap items-start gap-2">
                   <div className="font-bold text-slate-900 group-hover:text-brand-green transition-colors leading-tight">NDA Agreement</div>
                   {installer?.ndaAgreedAt ? (
-                    <span className="text-xs font-bold text-success-700 bg-success-100 border border-success-200 px-2 py-0.5 rounded-full">
-                      Completed
-                    </span>
+                    <CheckCircle2
+                      className="w-4 h-4 text-brand-green flex-shrink-0 mt-0.5"
+                      aria-label="Completed"
+                    />
                   ) : (
                     <span className="text-xs font-bold text-warning-700 bg-warning-100 border border-warning-200 px-2 py-0.5 rounded-full">
                       Required

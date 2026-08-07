@@ -71,19 +71,19 @@
     border-bottom: none !important;
   }
 
-  /* Row titles — smaller iOS body */
+  /* Row titles — match profile accordion titles (16px) */
   .ios-installer-agreements .ios-agreements-list .font-bold,
   .ios-installer-agreements .ios-agreements-list .font-semibold {
-    font-size: 13px !important;
+    font-size: 16px !important;
     font-weight: 500 !important;
     letter-spacing: -0.2px !important;
     color: #1c1c1e !important;
     line-height: 1.25 !important;
   }
 
-  /* Row subtitles */
+  /* Row subtitles — match profile supporting text */
   .ios-installer-agreements .ios-agreements-list .text-sm {
-    font-size: 11px !important;
+    font-size: 12px !important;
     letter-spacing: -0.08px !important;
     color: #8e8e93 !important;
     line-height: 1.3 !important;
