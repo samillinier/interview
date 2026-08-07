@@ -286,6 +286,14 @@ export interface ObdiiPayload {
   obdSpeed?: number
   motionDetected?: boolean
   totalDistance?: number
+  /** Ruhavik vehicle.state e.g. "ignition off rest" */
+  vehicleState?: string
+  ignitionOn?: boolean
+  externalPowerConnected?: boolean
+  backupBatteryVoltage?: number
+  batteryCharging?: boolean
+  /** GSM signal in dBm (e.g. -91) */
+  gsmSignalDbm?: number
 }
 
 export interface ClassifiedEvent {
@@ -446,14 +454,33 @@ export function formatDuration(seconds: number): string {
   return seconds + 's'
 }
 
+function dtcCodeFromValue(x: unknown): string | null {
+  if (x == null || x === '' || x === 0 || x === '0' || x === false) return null
+  if (typeof x === 'string' || typeof x === 'number') {
+    const s = String(x).trim()
+    return s && s !== '0' && !/^none$/i.test(s) && s !== '[object Object]' ? s : null
+  }
+  if (typeof x === 'object') {
+    const o = x as Record<string, unknown>
+    // Ruhavik/flespi often send [{ code: "P0420", ... }] or similar
+    for (const key of ['code', 'dtc', 'value', 'name', 'id', 'label']) {
+      const s = dtcCodeFromValue(o[key])
+      if (s) return s
+    }
+  }
+  return null
+}
+
 function normalizeDtcCodes(raw: unknown): string[] {
   if (raw == null || raw === '' || raw === 0 || raw === '0' || raw === false) return []
   const parts = Array.isArray(raw)
-    ? raw.map((x) => String(x).trim())
-    : String(raw)
-        .split(/[,;\s]+/)
-        .map((s) => s.trim())
-  return parts.filter((c) => c.length > 0 && c !== '0' && !/^none$/i.test(c))
+    ? raw.map(dtcCodeFromValue)
+    : typeof raw === 'object'
+      ? [dtcCodeFromValue(raw)]
+      : String(raw)
+          .split(/[,;\s]+/)
+          .map((s) => dtcCodeFromValue(s))
+  return parts.filter((c): c is string => Boolean(c))
 }
 
 export function extractObdiiData(attrs: Record<string, unknown> | undefined): ObdiiPayload {
@@ -534,6 +561,65 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     payload.totalDistance = Math.round(totalMeters * 0.000621371)
   } else if (mileageKm != null && mileageKm > 0) {
     payload.totalDistance = Math.round(mileageKm * 0.621371)
+  }
+
+  const vehicleStateRaw = attrs['vehicle.state'] ?? attrs['vehicleState']
+  if (typeof vehicleStateRaw === 'string' && vehicleStateRaw.trim()) {
+    payload.vehicleState = vehicleStateRaw.trim()
+  }
+
+  const ignRaw =
+    attrs['engine.ignition.status'] ??
+    attrs['ignition.status'] ??
+    attrs['ignition']
+  if (typeof ignRaw === 'boolean') {
+    payload.ignitionOn = ignRaw
+  } else if (typeof ignRaw === 'string') {
+    const s = ignRaw.trim().toLowerCase()
+    if (s === 'on' || s === 'true' || s === '1') payload.ignitionOn = true
+    else if (s === 'off' || s === 'false' || s === '0') payload.ignitionOn = false
+  } else if (ignRaw === 1 || ignRaw === 0) {
+    payload.ignitionOn = ignRaw === 1
+  }
+
+  const extPower =
+    attrs['external.powersource.status'] ??
+    attrs['external.power.status'] ??
+    attrs['externalPower']
+  if (typeof extPower === 'boolean') {
+    payload.externalPowerConnected = extPower
+  } else if (typeof extPower === 'string') {
+    const s = extPower.trim().toLowerCase()
+    if (s === 'true' || s === '1' || s === 'on') payload.externalPowerConnected = true
+    else if (s === 'false' || s === '0' || s === 'off') payload.externalPowerConnected = false
+  } else if (extPower === 1 || extPower === 0) {
+    payload.externalPowerConnected = extPower === 1
+  }
+
+  const backupV = val('backup.battery.voltage')
+  if (backupV !== undefined) {
+    payload.backupBatteryVoltage = Math.round(backupV * 1000) / 1000
+  }
+
+  const chargingRaw = attrs['battery.charging.status'] ?? attrs['battery.charging']
+  if (typeof chargingRaw === 'boolean') {
+    payload.batteryCharging = chargingRaw
+  } else if (typeof chargingRaw === 'string') {
+    const s = chargingRaw.trim().toLowerCase()
+    if (s === 'true' || s === '1' || s === 'on' || s === 'charging') payload.batteryCharging = true
+    else if (s === 'false' || s === '0' || s === 'off') payload.batteryCharging = false
+  } else if (chargingRaw === 1 || chargingRaw === 0) {
+    payload.batteryCharging = chargingRaw === 1
+  }
+
+  const gsm =
+    val('gsm.signal.dbm') ??
+    val('gsm.signal.level') ??
+    (typeof (attrs.network as { rssi?: number } | undefined)?.rssi === 'number'
+      ? (attrs.network as { rssi: number }).rssi
+      : undefined)
+  if (gsm !== undefined && Number.isFinite(gsm)) {
+    payload.gsmSignalDbm = Math.round(gsm)
   }
 
   return payload

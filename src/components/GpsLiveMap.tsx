@@ -33,6 +33,12 @@ export interface VehicleDevice {
     dtcCodes?: string[]
     motionDetected?: boolean
     totalDistance?: number
+    vehicleState?: string
+    ignitionOn?: boolean
+    externalPowerConnected?: boolean
+    backupBatteryVoltage?: number
+    batteryCharging?: boolean
+    gsmSignalDbm?: number
   }
   /** Recent classified events for this device */
   recentEvents?: {

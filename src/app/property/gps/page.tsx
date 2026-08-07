@@ -696,13 +696,39 @@ function DeviceCard({
   )
 }
 
-// Device Telemetry sub-component
+/** Plain-English meaning for common OBD-II DTCs shown under the code badge. */
+function describeDtcCode(code: string): string {
+  const key = code.trim().toUpperCase()
+  const known: Record<string, string> = {
+    P059F: 'Active grille air shutter “A” performance / stuck — front shutters not opening or closing as commanded.',
+    P059E: 'Active grille air shutter “A” circuit / performance issue.',
+    P0420: 'Catalytic converter efficiency below threshold (Bank 1).',
+    P0171: 'System too lean (Bank 1) — possible vacuum leak or fuel delivery issue.',
+    P0300: 'Random/multiple cylinder misfire detected.',
+    P0455: 'EVAP system large leak detected.',
+    P0128: 'Coolant thermostat temperature below regulating temperature.',
+  }
+  return known[key] || 'Diagnostic trouble code from the vehicle computer. Have a shop scan for details if the light stays on.'
+}
 
+function formatVehicleState(state?: string | null): string {
+  if (!state?.trim()) return '--'
+  return state
+    .trim()
+    .split(/[\s_]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
 
-// Device Telemetry sub-component
-
-
-// Device Telemetry sub-component
+function formatGsmSignal(dbm?: number | null): { label: string; detail: string } {
+  if (dbm == null || !Number.isFinite(dbm)) return { label: '--', detail: '' }
+  // Typical GSM RSSI bands (dBm)
+  let quality = 'Poor'
+  if (dbm >= -70) quality = 'Excellent'
+  else if (dbm >= -85) quality = 'Good'
+  else if (dbm >= -100) quality = 'Fair'
+  return { label: quality, detail: `${dbm} dBm` }
+}
 
 // Device Telemetry sub-component
 function DeviceTelemetry({
@@ -922,6 +948,61 @@ function DeviceTelemetry({
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Vehicle Vitals</p>
         <div className="grid grid-cols-3 gap-2">
+          <div className="col-span-3 p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">Vehicle State</p>
+            <p className="text-sm font-bold text-slate-900">
+              {formatVehicleState(device.obdii?.vehicleState)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <div>
+              <p className="text-[10px] text-slate-400">Ignition</p>
+              <p className={`text-sm font-bold ${
+                device.obdii?.ignitionOn == null
+                  ? 'text-slate-300'
+                  : device.obdii.ignitionOn
+                    ? 'text-brand-green'
+                    : 'text-slate-700'
+              }`}>
+                {device.obdii?.ignitionOn == null ? '--' : device.obdii.ignitionOn ? 'On' : 'Off'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <div>
+              <p className="text-[10px] text-slate-400">Power</p>
+              <p className={`text-sm font-bold ${
+                device.obdii?.externalPowerConnected == null
+                  ? 'text-slate-300'
+                  : device.obdii.externalPowerConnected
+                    ? 'text-brand-green'
+                    : 'text-red-600'
+              }`}>
+                {device.obdii?.externalPowerConnected == null
+                  ? '--'
+                  : device.obdii.externalPowerConnected
+                    ? 'Connected'
+                    : 'Cut'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Signal className="w-4 h-4 text-sky-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400">GSM</p>
+              {(() => {
+                const gsm = formatGsmSignal(device.obdii?.gsmSignalDbm)
+                return (
+                  <>
+                    <p className="text-sm font-bold text-slate-900 leading-tight">{gsm.label}</p>
+                    {gsm.detail ? (
+                      <p className="text-[10px] text-slate-400 tabular-nums">{gsm.detail}</p>
+                    ) : null}
+                  </>
+                )
+              })()}
+            </div>
+          </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <Fuel className="w-4 h-4 text-brand-green flex-shrink-0" />
             <div>
@@ -934,6 +1015,30 @@ function DeviceTelemetry({
             <div>
               <p className="text-[10px] text-slate-400">Battery</p>
               <p className="text-sm font-bold text-slate-900">{device.batteryVoltage != null ? device.batteryVoltage.toFixed(1) + 'V' : '--'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <Battery className={`w-4 h-4 flex-shrink-0 ${
+              device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
+                ? 'text-red-500'
+                : 'text-amber-500'
+            }`} />
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400">Backup Batt</p>
+              <p className={`text-sm font-bold leading-tight ${
+                device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
+                  ? 'text-red-600'
+                  : 'text-slate-900'
+              }`}>
+                {device.obdii?.backupBatteryVoltage != null
+                  ? `${device.obdii.backupBatteryVoltage.toFixed(1)}V`
+                  : '--'}
+              </p>
+              {device.obdii?.batteryCharging != null ? (
+                <p className="text-[10px] text-slate-400">
+                  {device.obdii.batteryCharging ? 'Charging' : 'Not charging'}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
@@ -977,10 +1082,19 @@ function DeviceTelemetry({
           <div className="col-span-3 p-2 bg-white rounded-lg">
             <p className="text-[10px] text-slate-400">DTC Codes</p>
             {device.obdii?.dtcCodes && device.obdii.dtcCodes.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mt-0.5">
-                {device.obdii.dtcCodes.map(function (code: string) {
+              <div className="mt-0.5 space-y-2">
+                {device.obdii.dtcCodes.map(function (code: string, idx: number) {
+                  const label = typeof code === 'string' ? code : String((code as any)?.code || code || '')
+                  if (!label || label === '[object Object]') return null
                   return (
-                    <span key={code} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">{code}</span>
+                    <div key={`${label}-${idx}`}>
+                      <span className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
+                        {label}
+                      </span>
+                      <p className="text-[11px] text-slate-500 leading-snug mt-1">
+                        {describeDtcCode(label)}
+                      </p>
+                    </div>
                   )
                 })}
               </div>

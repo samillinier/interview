@@ -314,17 +314,18 @@ export async function GET(request: NextRequest) {
         longitude: lng,
         speed,
         heading,
-        ignition: speed > 3,
+        ignition: obdii.ignitionOn ?? speed > 3,
         fuelLevel: obdii.fuelLevel ?? device.fuelLevel ?? undefined,
         engineTemp: obdii.engineTemp ?? device.engineTemp ?? undefined,
         batteryVoltage: obdii.batteryVoltage ?? device.batteryVoltage ?? undefined,
         odometer: obdii.odometer ?? summaryOdometer ?? device.odometer ?? 0,
         satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
-        signalStrength: livePos?.network
-          ? typeof (livePos.network as any)?.rssi === 'number'
-            ? Math.min(100, Math.max(0, ((livePos.network as any).rssi + 120) * 2))
-            : 100
-          : 100,
+        signalStrength:
+          obdii.gsmSignalDbm != null
+            ? Math.min(100, Math.max(0, (obdii.gsmSignalDbm + 120) * 2))
+            : livePos?.network && typeof (livePos.network as any)?.rssi === 'number'
+              ? Math.min(100, Math.max(0, ((livePos.network as any).rssi + 120) * 2))
+              : 100,
         location,
         obdii: Object.keys(obdii).length > 0 ? {
           rpm: obdii.rpm,
@@ -334,6 +335,12 @@ export async function GET(request: NextRequest) {
           dtcCodes: obdii.dtcCodes,
           motionDetected: obdii.motionDetected,
           totalDistance: obdii.totalDistance,
+          vehicleState: obdii.vehicleState,
+          ignitionOn: obdii.ignitionOn,
+          externalPowerConnected: obdii.externalPowerConnected,
+          backupBatteryVoltage: obdii.backupBatteryVoltage,
+          batteryCharging: obdii.batteryCharging,
+          gsmSignalDbm: obdii.gsmSignalDbm,
         } : undefined,
         recentEvents: recentEvents.length > 0 ? recentEvents : undefined,
         todaySummary,
