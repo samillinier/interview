@@ -95,8 +95,11 @@ async function loginForToken(): Promise<string> {
 }
 
 async function getAccessToken(force = false): Promise<string> {
-  const fresh = process.env.RUHAVIK_ACCESS_TOKEN
-  if (fresh) return fresh
+  // Optional static token from env. Skip it when force-refreshing —
+  // otherwise an expired RUHAVIK_ACCESS_TOKEN can never recover and
+  // the GPS page stays "Offline" even though Ruhavik itself is fine.
+  const envToken = process.env.RUHAVIK_ACCESS_TOKEN
+  if (!force && envToken) return envToken
 
   if (!force && cachedToken && Date.now() - tokenFetchedAt < TOKEN_TTL_MS) {
     return cachedToken
