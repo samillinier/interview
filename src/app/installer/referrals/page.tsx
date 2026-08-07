@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import { Loader2, Link as LinkIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import './installer-referrals-mobile.css'
 
 interface InstallerProfile {
   id: string
@@ -88,7 +90,7 @@ export default function InstallerReferralsPage() {
   }
 
   return (
-    <>
+    <IosProfileRoot className="ios-installer-referrals">
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-1">Referrals</h1>
@@ -106,22 +108,22 @@ export default function InstallerReferralsPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6"
+          className="ios-referrals-card bg-white rounded-2xl shadow-md border border-slate-200/60 p-6"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
+              <div className="ios-referrals-icon w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center flex-shrink-0">
                 <LinkIcon className="w-6 h-6 text-brand-green" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Your referral link</h2>
-                <p className="text-sm text-slate-500">
+                <p className="ios-referrals-desc text-sm text-slate-500">
                   When a new installer creates an account using your link, they'll be attributed to you.
                 </p>
               </div>
             </div>
 
-            <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="ios-referrals-count px-4 py-2 rounded-xl bg-slate-50 border border-slate-200">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Referred installers</p>
               <p className="text-lg font-bold text-slate-900">{installer?.referralsCount ?? 0}</p>
             </div>
@@ -168,6 +170,6 @@ export default function InstallerReferralsPage() {
           </div>
         </motion.div>
       </main>
-    </>
+    </IosProfileRoot>
   )
 }

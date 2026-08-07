@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useIsMobileProfile } from '@/hooks/useIsMobileProfile'
+import { cn } from '@/lib/utils'
 
 type IosProfileSectionProps = {
   title: string
@@ -11,7 +13,7 @@ type IosProfileSectionProps = {
 }
 
 /**
- * Mobile: full-width accordion row without a dropdown icon.
+ * Mobile: full-width accordion row with dropdown chevron.
  * Desktop / unknown: passthrough — children render once (no duplicate forms).
  */
 export function IosProfileSection({
@@ -40,12 +42,19 @@ export function IosProfileSection({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="ios-profile-section-trigger w-full px-3.5 py-[10px] text-left active:bg-black/[0.04] transition-colors"
+          className="ios-profile-section-trigger w-full px-3.5 py-[10px] flex items-center justify-between gap-3 text-left active:bg-black/[0.04] transition-colors"
           aria-expanded={open}
         >
           <span className="ios-profile-section-title text-[16px] font-medium text-[#1c1c1e] tracking-[-0.2px] leading-[1.2]">
             {title}
           </span>
+          <ChevronDown
+            className={cn(
+              'ios-profile-section-chevron w-[18px] h-[18px] shrink-0 text-[#8e8e93] transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+            aria-hidden
+          />
         </button>
         {open && (
           <div className="border-t border-black/[0.06] px-3 pb-2.5 pt-1.5 ios-profile-section-body">
