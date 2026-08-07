@@ -631,7 +631,7 @@ export default function NotificationsPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className={`flex ${isFromAdmin ? 'justify-start' : 'justify-end'} items-end gap-3` }
                       >
-                        {/* Avatar for admin messages (company logo) */}
+                        {/* Admin: avatar left, bubble right of it */}
                         {isFromAdmin && (
                           <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                             <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-white shadow-md">
@@ -645,40 +645,6 @@ export default function NotificationsPage() {
                                   e.currentTarget.style.display = 'none'
                                 }}
                               />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Avatar for installer messages (installer photo) */}
-                        {!isFromAdmin && (
-                          <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
-                            <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
-                              {installer?.photoUrl ? (
-                                <Image
-                                  src={installer.photoUrl}
-                                  alt={`${installer.firstName || ''} ${installer.lastName || ''}`}
-                                  width={40}
-                                  height={40}
-                                  className="w-full h-full object-cover relative z-10"
-                                  onError={(e) => {
-                                    const parent = e.currentTarget.parentElement
-                                    if (parent) {
-                                      const initialsDiv = parent.querySelector('.initials-fallback')
-                                      if (initialsDiv) {
-                                        (initialsDiv as HTMLElement).style.display = 'flex'
-                                      }
-                                    }
-                                    e.currentTarget.style.display = 'none'
-                                  }}
-                                />
-                              ) : null}
-                              <div className={`w-full h-full flex items-center justify-center initials-fallback ${
-                                installer?.photoUrl ? 'absolute inset-0 z-0' : ''
-                              }`} style={{ display: installer?.photoUrl ? 'none' : 'flex' }}>
-                                <span className="text-white font-bold text-sm">
-                                  {installer ? getInitials(installer.firstName || '', installer.lastName || '') : 'I'}
-                                </span>
-                              </div>
                             </div>
                           </div>
                         )}
@@ -761,6 +727,40 @@ export default function NotificationsPage() {
                               </span>
                             </div>
                           </div>
+
+                        {/* Installer: bubble then photo on the far right */}
+                        {!isFromAdmin && (
+                          <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
+                              {installer?.photoUrl ? (
+                                <Image
+                                  src={installer.photoUrl}
+                                  alt={`${installer.firstName || ''} ${installer.lastName || ''}`}
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover relative z-10"
+                                  onError={(e) => {
+                                    const parent = e.currentTarget.parentElement
+                                    if (parent) {
+                                      const initialsDiv = parent.querySelector('.initials-fallback')
+                                      if (initialsDiv) {
+                                        (initialsDiv as HTMLElement).style.display = 'flex'
+                                      }
+                                    }
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`w-full h-full flex items-center justify-center initials-fallback ${
+                                installer?.photoUrl ? 'absolute inset-0 z-0' : ''
+                              }`} style={{ display: installer?.photoUrl ? 'none' : 'flex' }}>
+                                <span className="text-white font-bold text-sm">
+                                  {installer ? getInitials(installer.firstName || '', installer.lastName || '') : 'I'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </motion.div>
                     )
                   })}
