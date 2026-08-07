@@ -24,6 +24,11 @@ let tokenFetchedAt = 0
 const TOKEN_TTL_MS = 50 * 60 * 1000 // refresh hourly-ish; expires_in=0 from Gurtam
 /** After an env-token 401, stop preferring RUHAVIK_ACCESS_TOKEN for this process. */
 let preferLoginOverEnv = false
+/** Avoid login storms that trigger Ruhavik "strange activity" account locks. */
+let lastLoginAttemptAt = 0
+let loginBlockedUntil = 0
+const MIN_LOGIN_GAP_MS = 60_000
+const LOGIN_LOCKOUT_MS = 15 * 60_000
 
 function parseSetCookies(res: Response): string[] {
   const anyHeaders = res.headers as Headers & { getSetCookie?: () => string[] }
@@ -47,6 +52,16 @@ async function loginForToken(): Promise<string> {
   if (!RUHAVIK_USER || !RUHAVIK_PASS) {
     throw new Error('RUHAVIK_USERNAME / RUHAVIK_PASSWORD are not configured')
   }
+
+  const now = Date.now()
+  if (now < loginBlockedUntil) {
+    const mins = Math.ceil((loginBlockedUntil - now) / 60_000)
+    throw new Error(`Ruhavik login temporarily paused (${mins}m) after account lock / rate limit`)
+  }
+  if (now - lastLoginAttemptAt < MIN_LOGIN_GAP_MS) {
+    throw new Error('Ruhavik login rate limited — retry in about a minute')
+  }
+  lastLoginAttemptAt = now
 
   const loginUrl =
     `${LOGIN_BASE}/auth/login` +
@@ -73,12 +88,21 @@ async function loginForToken(): Promise<string> {
   cookies = mergeCookies(cookies, parseSetCookies(loginRes))
   const loginJson = (await loginRes.json()) as {
     result?: Array<{ url?: string }>
-    errors?: Array<{ reason?: string }>
+    errors?: Array<{ reason?: string; code?: number | string }>
   }
 
   const nextPath = loginJson.result?.[0]?.url
   if (!nextPath) {
-    const reason = loginJson.errors?.[0]?.reason || 'Login failed'
+    const err = loginJson.errors?.[0]
+    const reason = err?.reason || 'Login failed'
+    const code = err?.code != null ? String(err.code) : ''
+    if (
+      code === '2001' ||
+      /strange activity|locked|too many|rate/i.test(reason)
+    ) {
+      loginBlockedUntil = Date.now() + LOGIN_LOCKOUT_MS
+      console.error('[ruhavik] login locked/rate-limited — pausing retries for 15m:', reason)
+    }
     throw new Error(`Ruhavik login failed: ${reason}`)
   }
 
@@ -93,6 +117,7 @@ async function loginForToken(): Promise<string> {
   if (!match?.[1]) {
     throw new Error('Ruhavik login did not return an access token')
   }
+  loginBlockedUntil = 0
   return match[1]
 }
 
