@@ -220,9 +220,18 @@ export async function GET(request: NextRequest) {
         (device.traccarId != null ? positionByDeviceId.get(device.traccarId) : undefined) ||
         (traccarDevice != null ? positionByDeviceId.get(traccarDevice.id) : undefined)
 
-      const speed = livePos?.speed != null
+      const attrs = (livePos?.attributes || {}) as Record<string, unknown>
+      const motionFlag =
+        typeof attrs.motion === 'boolean'
+          ? attrs.motion
+          : typeof attrs['movement.status'] === 'boolean'
+            ? (attrs['movement.status'] as boolean)
+            : undefined
+      let speed = livePos?.speed != null
         ? traccar.convertSpeedToMph(livePos.speed)
         : traccar.convertSpeedToMph(Number(device.speed ?? 0))
+      // Trust Ruhavik parked flag over stale GPS speed junk
+      if (motionFlag === false) speed = 0
       const heading = livePos?.course ?? (device.heading ?? 0)
       const lat = livePos?.latitude ?? (device.latitude ?? 0)
       const lng = livePos?.longitude ?? (device.longitude ?? 0)

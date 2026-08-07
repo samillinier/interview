@@ -648,7 +648,10 @@ function mapUnitToDevice(unit: RuhavikUnit, tele?: TelemetryMap): TraccarDevice 
     unit.last_active ??
     unit.updated_at ??
     null
-  const speed = Number(teleValue(tele || {}, 'position.speed') ?? 0)
+  const moving = teleValue<boolean>(tele || {}, 'movement.status')
+  const rawSpeed = Number(teleValue(tele || {}, 'position.speed') ?? 0)
+  // Parked units often keep a stale GPS speed; Ruhavik's movement.status is authoritative.
+  const speed = moving === false ? 0 : rawSpeed
   // Match Ruhavik: unit is active if it recently communicated, even if GPS fix is older.
   const online = isRecentlyActive(lastTs)
 
@@ -696,7 +699,14 @@ function telemetryToPosition(unitId: number, tele: TelemetryMap): TraccarPositio
   // serverTime = last Ruhavik communication; deviceTime/fixTime = GPS fix time
   const activityTs = telemetryActivityUnix(tele) ?? fixTs
 
-  const speed = posObj?.speed ?? teleValue<number>(tele, 'position.speed') ?? 0
+  const moving = teleValue<boolean>(tele, 'movement.status')
+  const ignition =
+    teleValue<boolean>(tele, 'engine.ignition.status') ??
+    teleValue<boolean>(tele, 'ignition.status')
+  const rawSpeed = Number(posObj?.speed ?? teleValue<number>(tele, 'position.speed') ?? 0)
+  // Stale GPS speed is common while parked (Ruhavik still shows movement.status=false).
+  // Prefer that flag so the UI doesn't show LIVE/Moving incorrectly.
+  const speed = moving === false ? 0 : rawSpeed
   const course = posObj?.direction ?? teleValue<number>(tele, 'position.direction') ?? 0
   const altitude = posObj?.altitude ?? teleValue<number>(tele, 'position.altitude') ?? 0
   const valid = posObj?.valid ?? teleValue<boolean>(tele, 'position.valid') ?? false
@@ -707,6 +717,8 @@ function telemetryToPosition(unitId: number, tele: TelemetryMap): TraccarPositio
   for (const [k, entry] of Object.entries(tele)) {
     if (entry?.value !== undefined) attrs[k] = entry.value
   }
+  if (moving !== undefined) attrs.motion = moving
+  if (ignition !== undefined) attrs.ignition = ignition
 
   const fixIso = unixToIso(fixTs)
   const serverIso = unixToIso(activityTs)
