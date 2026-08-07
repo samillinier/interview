@@ -10,6 +10,8 @@ import {
   Search,
   X,
 } from 'lucide-react'
+import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import './installer-survey-mobile.css'
 
 type Delivery = {
   id: string
@@ -168,24 +170,24 @@ export default function InstallerSurveyPage() {
   }
 
   return (
-    <>
+    <IosProfileRoot className="ios-installer-survey">
         <main className="w-full max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 lg:px-6 pt-20 2xl:pt-8 pb-8 box-border">
           <div className="mb-6 w-full min-w-0">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full min-w-0">
               <div className="min-w-0 shrink lg:max-w-[min(100%,42rem)]">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-brand-green/10 rounded-xl shrink-0">
+                  <div className="ios-survey-icon p-2 bg-brand-green/10 rounded-xl shrink-0">
                     <ClipboardList className="w-6 h-6 text-brand-green" />
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">Survey</h1>
                 </div>
-                <p className="text-slate-600 max-w-2xl text-sm sm:text-base">
+                <p className="ios-survey-subtitle text-slate-600 max-w-2xl text-sm sm:text-base">
                   Surveys shared with you by the admin team. Click a report to view the underlying survey entries.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-stretch w-full min-w-0 lg:w-auto lg:min-w-[min(100%,28rem)] lg:max-w-xl lg:shrink-0">
-                <div className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm w-full min-w-0">
+                <div className="ios-survey-search flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm w-full min-w-0">
                   <Search className="w-4 h-4 text-slate-400 shrink-0" />
                   <input
                     value={query}
@@ -205,7 +207,7 @@ export default function InstallerSurveyPage() {
                     </button>
                   ) : null}
                 </div>
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-2.5 shrink-0 sm:min-w-[9.5rem]">
+                <div className="ios-survey-count bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-2.5 shrink-0 sm:min-w-[9.5rem]">
                   <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                     Shared reports
                   </div>
@@ -220,9 +222,9 @@ export default function InstallerSurveyPage() {
           ) : null}
 
           {deliveries.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8">
+            <div className="ios-survey-empty bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8">
               <div className="flex items-start gap-4">
-                <div className="p-3 rounded-2xl bg-brand-green/10 border border-brand-green/15">
+                <div className="ios-survey-icon p-3 rounded-2xl bg-brand-green/10 border border-brand-green/15">
                   <ClipboardList className="w-6 h-6 text-brand-green" />
                 </div>
                 <div className="min-w-0">
@@ -234,57 +236,102 @@ export default function InstallerSurveyPage() {
               </div>
             </div>
           ) : (
-            <div className="w-full min-w-0 bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
-              <div className="px-4 sm:px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Shared reports</h2>
-                  <p className="text-sm text-slate-500 mt-0.5">Search and click a row to open details.</p>
+            <>
+              {/* Mobile / tablet: stacked cards (no horizontal table scroll) */}
+              <div className="2xl:hidden space-y-2.5">
+                <div className="px-0.5 mb-1 flex items-center justify-between gap-2">
+                  <p className="ios-survey-subtitle text-sm text-slate-500">Tap a report to open details</p>
+                  <p className="ios-survey-subtitle text-xs text-slate-500 tabular-nums shrink-0">
+                    {filteredDeliveries.length}/{deliveries.length}
+                  </p>
                 </div>
-                <div className="text-xs text-slate-500">
-                  Showing <span className="font-semibold text-slate-700 tabular-nums">{filteredDeliveries.length}</span> of{' '}
-                  <span className="font-semibold text-slate-700 tabular-nums">{deliveries.length}</span>
-                </div>
+                {filteredDeliveries.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => void openDetails(d)}
+                    className="ios-survey-card w-full text-left bg-white rounded-2xl shadow-sm border border-slate-200/60 p-4 active:scale-[0.99] transition-transform"
+                  >
+                    <div className="ios-survey-card-title font-semibold text-slate-900 truncate">
+                      {d.workroom || 'Workroom'}
+                    </div>
+                    <div className="ios-survey-card-meta mt-1 truncate">{d.company}</div>
+                    <div className="ios-survey-card-meta truncate">{d.installer}</div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="ios-survey-card-label tabular-nums">
+                        Sent {new Date(d.createdAt).toLocaleString()}
+                      </span>
+                      {d.LtrUploadBatch?.createdAt ? (
+                        <span className="ios-survey-card-label tabular-nums">
+                          Batch {new Date(d.LtrUploadBatch.createdAt).toLocaleDateString()}
+                        </span>
+                      ) : null}
+                    </div>
+                    {d.LtrUploadBatch?.fileName ? (
+                      <div className="ios-survey-card-meta mt-1 truncate">{d.LtrUploadBatch.fileName}</div>
+                    ) : null}
+                  </button>
+                ))}
+                {filteredDeliveries.length === 0 ? (
+                  <div className="ios-survey-empty bg-white rounded-2xl p-6 text-center text-sm text-slate-500">
+                    No reports match your search.
+                  </div>
+                ) : null}
               </div>
-              <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain touch-pan-x">
-                <table className="w-full min-w-0 sm:min-w-[860px] text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-slate-900 text-white">
-                      <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800 w-52">Sent</th>
-                      <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Workroom</th>
-                      <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Company</th>
-                      <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Installer</th>
-                      <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Batch</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredDeliveries.map((d) => (
-                      <tr
-                        key={d.id}
-                        className="bg-white hover:bg-slate-50/80 cursor-pointer"
-                        onClick={() => void openDetails(d)}
-                      >
-                        <td className="px-5 py-3.5 text-slate-700 tabular-nums">
-                          {new Date(d.createdAt).toLocaleString()}
-                        </td>
-                        <td className="px-5 py-3.5 text-slate-900 font-semibold">{d.workroom}</td>
-                        <td className="px-5 py-3.5 text-slate-800">{d.company}</td>
-                        <td className="px-5 py-3.5 text-slate-800">{d.installer}</td>
-                        <td className="px-5 py-3.5 text-slate-700">
-                          <div className="flex flex-col">
-                            <span className="text-slate-700">
-                              {d.LtrUploadBatch?.createdAt ? new Date(d.LtrUploadBatch.createdAt).toLocaleDateString() : ''}
-                            </span>
-                            {d.LtrUploadBatch?.fileName ? (
-                              <span className="text-xs text-slate-500 truncate max-w-[360px]">{d.LtrUploadBatch.fileName}</span>
-                            ) : null}
-                          </div>
-                        </td>
+
+              {/* Desktop: table */}
+              <div className="ios-survey-table-wrap hidden 2xl:block w-full min-w-0 bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
+                <div className="px-4 sm:px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Shared reports</h2>
+                    <p className="text-sm text-slate-500 mt-0.5">Search and click a row to open details.</p>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Showing <span className="font-semibold text-slate-700 tabular-nums">{filteredDeliveries.length}</span> of{' '}
+                    <span className="font-semibold text-slate-700 tabular-nums">{deliveries.length}</span>
+                  </div>
+                </div>
+                <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain touch-pan-x">
+                  <table className="w-full min-w-[860px] text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900 text-white">
+                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800 w-52">Sent</th>
+                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Workroom</th>
+                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Company</th>
+                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Installer</th>
+                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Batch</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredDeliveries.map((d) => (
+                        <tr
+                          key={d.id}
+                          className="bg-white hover:bg-slate-50/80 cursor-pointer"
+                          onClick={() => void openDetails(d)}
+                        >
+                          <td className="px-5 py-3.5 text-slate-700 tabular-nums">
+                            {new Date(d.createdAt).toLocaleString()}
+                          </td>
+                          <td className="px-5 py-3.5 text-slate-900 font-semibold">{d.workroom}</td>
+                          <td className="px-5 py-3.5 text-slate-800">{d.company}</td>
+                          <td className="px-5 py-3.5 text-slate-800">{d.installer}</td>
+                          <td className="px-5 py-3.5 text-slate-700">
+                            <div className="flex flex-col">
+                              <span className="text-slate-700">
+                                {d.LtrUploadBatch?.createdAt ? new Date(d.LtrUploadBatch.createdAt).toLocaleDateString() : ''}
+                              </span>
+                              {d.LtrUploadBatch?.fileName ? (
+                                <span className="text-xs text-slate-500 truncate max-w-[360px]">{d.LtrUploadBatch.fileName}</span>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </main>
 
@@ -365,7 +412,7 @@ export default function InstallerSurveyPage() {
             document.body
           )
         : null}
-    </>
+    </IosProfileRoot>
   )
 }
 

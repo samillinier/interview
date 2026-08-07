@@ -1,0 +1,99 @@
+/* Installer Survey — mobile iOS look (phone + tablet).
+   Desktop shell starts at 1536px (2xl). */
+
+@media (max-width: 1535px) {
+  .ios-installer-survey,
+  .ios-installer-survey *:not(svg):not(path):not(canvas) {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ios-installer-survey main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .ios-installer-survey h1 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px !important;
+    color: #1c1c1e !important;
+    line-height: 1.15 !important;
+  }
+
+  .ios-installer-survey .ios-survey-icon {
+    display: none !important;
+  }
+
+  .ios-installer-survey .ios-survey-subtitle {
+    font-size: 13px !important;
+    color: #8e8e93 !important;
+    letter-spacing: -0.08px !important;
+  }
+
+  .ios-installer-survey .ios-survey-search {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .ios-installer-survey .ios-survey-count {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .ios-installer-survey .ios-survey-count .text-\[10px\] {
+    font-size: 10px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.08px !important;
+    text-transform: none !important;
+    color: #8e8e93 !important;
+  }
+
+  .ios-installer-survey .ios-survey-empty {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  /* Hide wide desktop table chrome on mobile — cards are used instead */
+  .ios-installer-survey .ios-survey-table-wrap {
+    display: none !important;
+  }
+
+  .ios-installer-survey .ios-survey-card {
+    background: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    padding: 12px 14px !important;
+  }
+
+  .ios-installer-survey .ios-survey-card .ios-survey-card-title {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.2px !important;
+    color: #1c1c1e !important;
+    line-height: 1.25 !important;
+  }
+
+  .ios-installer-survey .ios-survey-card .ios-survey-card-meta {
+    font-size: 12px !important;
+    letter-spacing: -0.08px !important;
+    color: #8e8e93 !important;
+    line-height: 1.35 !important;
+  }
+
+  .ios-installer-survey .ios-survey-card .ios-survey-card-label {
+    font-size: 10px !important;
+    letter-spacing: -0.08px !important;
+    color: #8e8e93 !important;
+  }
+}
