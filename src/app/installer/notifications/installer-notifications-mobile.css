@@ -37,13 +37,15 @@
     box-sizing: border-box !important;
   }
 
-  /* Section picker → iOS inset list */
+  /* Section picker → iOS inset list with green frame */
   .ios-installer-notifications .ios-notif-tabs {
     display: grid !important;
     gap: 0 !important;
     margin-bottom: 12px !important;
     background: #ffffff !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
+    border: 1.5px solid #8cb63c !important;
+    box-shadow: 0 4px 14px rgba(140, 182, 60, 0.22), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
     overflow: hidden;
   }
 
