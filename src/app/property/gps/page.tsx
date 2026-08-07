@@ -1045,24 +1045,6 @@ function DeviceTelemetry({
               <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
             </div>
           </div>
-          <div className="col-span-2 p-2 bg-white rounded-lg">
-            <p className="text-[10px] text-slate-400">DTC</p>
-            {device.obdii?.dtcCodes && device.obdii.dtcCodes.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mt-0.5">
-                {device.obdii.dtcCodes.map(function (code: string, idx: number) {
-                  const label = typeof code === 'string' ? code : String((code as any)?.code || code || '')
-                  if (!label || label === '[object Object]') return null
-                  return (
-                    <span key={`${label}-${idx}`} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
-                      {label}
-                    </span>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-sm font-bold text-slate-300">None</p>
-            )}
-          </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${
               device.obdii?.milOn ? 'text-amber-500' : 'text-slate-300'
@@ -1118,6 +1100,24 @@ function DeviceTelemetry({
                 {device.obdii?.engineLoadPercent != null ? `${device.obdii.engineLoadPercent}%` : '--'}
               </p>
             </div>
+          </div>
+          <div className="p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">DTC</p>
+            {device.obdii?.dtcCodes && device.obdii.dtcCodes.length > 0 ? (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {device.obdii.dtcCodes.map(function (code: string, idx: number) {
+                  const label = typeof code === 'string' ? code : String((code as any)?.code || code || '')
+                  if (!label || label === '[object Object]') return null
+                  return (
+                    <span key={`${label}-${idx}`} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
+                      {label}
+                    </span>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm font-bold text-slate-300">None</p>
+            )}
           </div>
           <div className="col-span-3 p-2 bg-white rounded-lg">
             <p className="text-[10px] text-slate-400">VIN</p>
