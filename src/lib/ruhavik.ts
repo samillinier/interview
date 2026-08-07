@@ -22,6 +22,8 @@ const LOGIN_BASE = 'https://login.gurtam.space'
 let cachedToken: string | null = null
 let tokenFetchedAt = 0
 const TOKEN_TTL_MS = 50 * 60 * 1000 // refresh hourly-ish; expires_in=0 from Gurtam
+/** After an env-token 401, stop preferring RUHAVIK_ACCESS_TOKEN for this process. */
+let preferLoginOverEnv = false
 
 function parseSetCookies(res: Response): string[] {
   const anyHeaders = res.headers as Headers & { getSetCookie?: () => string[] }
@@ -95,17 +97,21 @@ async function loginForToken(): Promise<string> {
 }
 
 async function getAccessToken(force = false): Promise<string> {
-  // Optional static token from env. Skip it when force-refreshing —
-  // otherwise an expired RUHAVIK_ACCESS_TOKEN can never recover and
-  // the GPS page stays "Offline" even though Ruhavik itself is fine.
-  const envToken = process.env.RUHAVIK_ACCESS_TOKEN
-  if (!force && envToken) return envToken
-
+  // Prefer a freshly logged-in token over a stale env token.
   if (!force && cachedToken && Date.now() - tokenFetchedAt < TOKEN_TTL_MS) {
     return cachedToken
   }
+
+  // Optional static token — only for the first attempt. Once it 401s we switch
+  // to username/password for the rest of the process lifetime.
+  const envToken = process.env.RUHAVIK_ACCESS_TOKEN
+  if (!force && !preferLoginOverEnv && envToken) {
+    return envToken
+  }
+
   cachedToken = await loginForToken()
   tokenFetchedAt = Date.now()
+  preferLoginOverEnv = true
   return cachedToken
 }
 
@@ -122,8 +128,17 @@ async function rpc<T>(method: string, params: Record<string, unknown> = {}, retr
     signal: AbortSignal.timeout(30000),
   })
 
+  // Expired env tokens often come back as bare HTTP 401 (no JSON-RPC error body).
+  // Force a username/password login and retry once.
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    if (retry && (res.status === 401 || res.status === 403)) {
+      preferLoginOverEnv = true
+      cachedToken = null
+      tokenFetchedAt = 0
+      await getAccessToken(true)
+      return rpc<T>(method, params, false)
+    }
     throw new Error(`Ruhavik API HTTP ${res.status}: ${text.slice(0, 200)}`)
   }
 
@@ -135,7 +150,9 @@ async function rpc<T>(method: string, params: Record<string, unknown> = {}, retr
   if (body.error) {
     // Invalid/expired token — refresh once
     if (retry && (body.error.code === 401 || body.error.message?.toLowerCase().includes('token'))) {
+      preferLoginOverEnv = true
       cachedToken = null
+      tokenFetchedAt = 0
       await getAccessToken(true)
       return rpc<T>(method, params, false)
     }
