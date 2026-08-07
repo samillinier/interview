@@ -1118,6 +1118,11 @@ function DeviceTelemetry({
             ) : (
               <p className="text-sm font-bold text-slate-300">None</p>
             )}
+            {device.obdii?.dtcClearedMileageMi != null ? (
+              <p className="text-[10px] text-slate-400 tabular-nums mt-1 leading-snug">
+                {device.obdii.dtcClearedMileageMi.toLocaleString()} mi since codes cleared
+              </p>
+            ) : null}
           </div>
           <div className="col-span-3 p-2 bg-white rounded-lg">
             <p className="text-[10px] text-slate-400">VIN</p>

@@ -41,6 +41,7 @@ export interface VehicleDevice {
     gsmSignalDbm?: number
     milOn?: boolean
     milMileageMi?: number
+    dtcClearedMileageMi?: number
     obdConnected?: boolean
     throttlePercent?: number
     engineLoadPercent?: number

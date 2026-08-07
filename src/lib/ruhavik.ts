@@ -298,6 +298,8 @@ export interface ObdiiPayload {
   milOn?: boolean
   /** Miles driven while MIL has been on */
   milMileageMi?: number
+  /** Miles driven since DTCs were last cleared */
+  dtcClearedMileageMi?: number
   obdConnected?: boolean
   throttlePercent?: number
   engineLoadPercent?: number
@@ -652,6 +654,14 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   if (milKm !== undefined && milKm >= 0) {
     // Ruhavik reports km
     payload.milMileageMi = Math.round(milKm * 0.621371)
+  }
+
+  const clearedKm =
+    val('can.dtc.cleared.mileage') ??
+    val('dtc.cleared.mileage') ??
+    val('distance.since.dtc.cleared')
+  if (clearedKm !== undefined && clearedKm >= 0) {
+    payload.dtcClearedMileageMi = Math.round(clearedKm * 0.621371)
   }
 
   const obdConn = boolish(attrs['obd.connected.status'] ?? attrs['obd.connected'] ?? attrs['obdConnected'])

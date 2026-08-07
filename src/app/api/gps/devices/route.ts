@@ -343,6 +343,7 @@ export async function GET(request: NextRequest) {
           gsmSignalDbm: obdii.gsmSignalDbm,
           milOn: obdii.milOn,
           milMileageMi: obdii.milMileageMi,
+          dtcClearedMileageMi: obdii.dtcClearedMileageMi,
           obdConnected: obdii.obdConnected,
           throttlePercent: obdii.throttlePercent,
           engineLoadPercent: obdii.engineLoadPercent,
