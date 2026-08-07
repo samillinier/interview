@@ -82,16 +82,16 @@
   .ios-installer-agreements .ios-agreements-list .w-10.h-10,
   .ios-installer-agreements .ios-agreements-list .w-12.h-12,
   .ios-installer-agreements .ios-agreements-list .sm\:w-12 {
-    width: 32px !important;
-    height: 32px !important;
-    border-radius: 8px !important;
+    display: none !important;
   }
 
-  .ios-installer-agreements .ios-agreements-list .w-5.h-5,
-  .ios-installer-agreements .ios-agreements-list .w-6.h-6,
-  .ios-installer-agreements .ios-agreements-list .sm\:w-6 {
-    width: 16px !important;
-    height: 16px !important;
+  /* Hide trailing external-link / arrow icons */
+  .ios-installer-agreements .ios-agreements-list > .grid > a > .ml-1,
+  .ios-installer-agreements .ios-agreements-list > .grid > a > .sm\:ml-2,
+  .ios-installer-agreements .ios-agreements-list > .grid > div > a > .ml-1,
+  .ios-installer-agreements .ios-agreements-list > .grid > div > a > .sm\:ml-2,
+  .ios-installer-agreements .ios-agreements-uploaded a > .ml-1 {
+    display: none !important;
   }
 
   /* Uploaded-by-admin nested block */
