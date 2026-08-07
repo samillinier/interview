@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import './installer-attachments-mobile.css'
 
 // All document types now support multiple uploads
 const MULTI_DOCUMENT_TYPES = new Set() // Empty set - all types are multi now
@@ -503,7 +505,7 @@ export default function AttachmentsPage() {
   }
 
   return (
-    <>
+    <IosProfileRoot className="ios-installer-attachments">
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-1">Attachments</h1>
@@ -551,7 +553,7 @@ export default function AttachmentsPage() {
                 key={docType.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`bg-white rounded-3xl sm:rounded-2xl shadow-sm sm:shadow-lg border p-4 sm:p-6 backdrop-blur-sm ${
+                className={`ios-attach-card bg-white rounded-3xl sm:rounded-2xl shadow-sm sm:shadow-lg border p-4 sm:p-6 backdrop-blur-sm ${
                   hasActiveVerificationLink 
                     ? 'border-brand-green/50 bg-brand-green/5' 
                     : 'border-slate-200'
@@ -559,7 +561,7 @@ export default function AttachmentsPage() {
               >
                 <div className="mb-4">
                   <div className="flex items-start gap-3 sm:gap-4">
-                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    <div className={`ios-attach-type-icon w-11 h-11 sm:w-12 sm:h-12 rounded-2xl sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
                       existingDoc ? 'bg-success-100' : 'bg-brand-green/10'
                     }`}>
                       <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${existingDoc ? 'text-success-600' : 'text-brand-green'}`} />
@@ -576,7 +578,7 @@ export default function AttachmentsPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm sm:text-sm text-slate-500 leading-snug">{docType.description}</p>
+                      <p className="ios-attach-desc text-sm sm:text-sm text-slate-500 leading-snug">{docType.description}</p>
                       {existingDoc && (
                         <div className="flex items-center gap-2 text-sm text-slate-600 mt-2">
                           <CheckCircle2 className="w-4 h-4 text-success-600" />
@@ -898,6 +900,6 @@ export default function AttachmentsPage() {
           </motion.div>
         </div>
       )}
-    </>
+    </IosProfileRoot>
   )
 }
