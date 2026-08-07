@@ -1,0 +1,111 @@
+/* Installer Form / Agreements — mobile iOS look (phone + tablet).
+   Desktop shell starts at 1536px (2xl). */
+
+@media (max-width: 1535px) {
+  .ios-installer-agreements header {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .ios-installer-agreements header .bg-brand-green\/10 {
+    display: none !important;
+  }
+
+  .ios-installer-agreements header h1 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.4px !important;
+    color: #1c1c1e !important;
+    line-height: 1.15 !important;
+  }
+
+  .ios-installer-agreements header p {
+    font-size: 13px !important;
+    color: #8e8e93 !important;
+    letter-spacing: -0.08px !important;
+  }
+
+  .ios-installer-agreements main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 1rem 1.5rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Outer card → iOS inset grouped list */
+  .ios-installer-agreements .ios-agreements-list {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .ios-installer-agreements .ios-agreements-list > .grid {
+    gap: 0 !important;
+  }
+
+  /* Each form row */
+  .ios-installer-agreements .ios-agreements-list > .grid > a,
+  .ios-installer-agreements .ios-agreements-list > .grid > div {
+    border: none !important;
+    border-radius: 0 !important;
+    border-bottom: 0.5px solid rgba(60, 60, 67, 0.18) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 12px 14px !important;
+    margin: 0 !important;
+  }
+
+  .ios-installer-agreements .ios-agreements-list > .grid > a:last-child,
+  .ios-installer-agreements .ios-agreements-list > .grid > div:last-child {
+    border-bottom: none !important;
+  }
+
+  .ios-installer-agreements .ios-agreements-list .font-bold {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.2px !important;
+    color: #1c1c1e !important;
+  }
+
+  .ios-installer-agreements .ios-agreements-list .text-sm {
+    font-size: 13px !important;
+    letter-spacing: -0.08px !important;
+    color: #8e8e93 !important;
+  }
+
+  /* Soften left icon tiles */
+  .ios-installer-agreements .ios-agreements-list .w-10.h-10,
+  .ios-installer-agreements .ios-agreements-list .w-12.h-12,
+  .ios-installer-agreements .ios-agreements-list .sm\:w-12 {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+  }
+
+  .ios-installer-agreements .ios-agreements-list .w-5.h-5,
+  .ios-installer-agreements .ios-agreements-list .w-6.h-6,
+  .ios-installer-agreements .ios-agreements-list .sm\:w-6 {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Uploaded-by-admin nested block */
+  .ios-installer-agreements .ios-agreements-uploaded {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 12px 14px !important;
+  }
+
+  .ios-installer-agreements .ios-agreements-uploaded > .grid > a {
+    border: none !important;
+    border-radius: 8px !important;
+    background: #f2f2f7 !important;
+    padding: 10px 12px !important;
+  }
+}

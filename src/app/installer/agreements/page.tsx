@@ -11,6 +11,8 @@ import {
   Shield,
 } from 'lucide-react'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import './installer-agreements-mobile.css'
 
 /** Matches Adobe embed: `...esignWidget?wid=...*&hosted=false` (see generate-independent-contractor-contract API). */
 const DEFAULT_INDEPENDENT_CONTRACTOR_ADOBE_WIDGET =
@@ -150,7 +152,7 @@ export default function InstallerAgreementsPage() {
   }
 
   return (
-    <>
+    <IosProfileRoot className="ios-installer-agreements">
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-5 2xl:pb-6">
           <div className="flex items-center gap-3">
@@ -166,7 +168,7 @@ export default function InstallerAgreementsPage() {
       </header>
 
       <main className="p-4 sm:p-6 lg:p-8 w-full">
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6 w-full">
+        <div className="ios-agreements-list bg-white rounded-2xl shadow-lg border border-slate-200/60 p-4 sm:p-6 w-full">
           <div className="grid gap-4">
             <a
               href="https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhB5j-mH_p2ruL7INNqrKVKTBR2ncZH-koaIAKG71Adn7Y-twmq0L10ntLY98fB-vjc*"
@@ -310,7 +312,7 @@ export default function InstallerAgreementsPage() {
             </Link>
 
             {uploadedAgreements.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+              <div className="ios-agreements-uploaded rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-bold text-slate-900">Uploaded by Admin</div>
                   <span className="text-xs font-semibold text-slate-500">{uploadedAgreements.length}</span>
@@ -348,6 +350,6 @@ export default function InstallerAgreementsPage() {
           </div>
         </div>
       </main>
-    </>
+    </IosProfileRoot>
   )
 }
