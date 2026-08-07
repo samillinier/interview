@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import './installer-help-mobile.css'
 
 export default function InstallerHelpPage() {
   const router = useRouter()
@@ -109,7 +110,7 @@ export default function InstallerHelpPage() {
   }
 
   return (
-    <>
+    <div className="ios-installer-help">
       {/* Main Content */}
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
@@ -251,6 +252,6 @@ export default function InstallerHelpPage() {
             </div>
           </motion.div>
         </main>
-    </>
+    </div>
   )
 }

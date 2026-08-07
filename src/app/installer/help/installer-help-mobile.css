@@ -1,0 +1,10 @@
+/* Installer Help — mobile SF font only (phone + tablet).
+   Desktop shell starts at 1536px (2xl). Layout/colors unchanged. */
+
+@media (max-width: 1535px) {
+  .ios-installer-help,
+  .ios-installer-help *:not(svg):not(path):not(canvas) {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+  }
+}
