@@ -1120,7 +1120,7 @@ function DeviceTelemetry({
             )}
             {device.obdii?.dtcClearedMileageMi != null ? (
               <p className="text-[10px] text-slate-400 tabular-nums mt-1 leading-snug">
-                {device.obdii.dtcClearedMileageMi.toLocaleString()} mi since codes cleared
+                {device.obdii.dtcClearedMileageMi.toLocaleString()} mi since cleared
               </p>
             ) : null}
           </div>
