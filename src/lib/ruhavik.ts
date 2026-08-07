@@ -294,6 +294,13 @@ export interface ObdiiPayload {
   batteryCharging?: boolean
   /** GSM signal in dBm (e.g. -91) */
   gsmSignalDbm?: number
+  /** Check-engine / malfunction indicator lamp */
+  milOn?: boolean
+  /** Miles driven while MIL has been on */
+  milMileageMi?: number
+  obdConnected?: boolean
+  throttlePercent?: number
+  engineLoadPercent?: number
 }
 
 export interface ClassifiedEvent {
@@ -502,7 +509,12 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     val('obdRpm')
   if (rpm !== undefined) payload.rpm = Math.round(rpm)
 
-  const fuel = val('fuel.level') ?? val('fuel') ?? val('obdFuel') ?? val('fuelLevel')
+  const fuel =
+    val('can.fuel.level') ??
+    val('fuel.level') ??
+    val('fuel') ??
+    val('obdFuel') ??
+    val('fuelLevel')
   if (fuel !== undefined) payload.fuelLevel = Math.round(fuel)
 
   const tempRaw =
@@ -621,6 +633,35 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   if (gsm !== undefined && Number.isFinite(gsm)) {
     payload.gsmSignalDbm = Math.round(gsm)
   }
+
+  const boolish = (raw: unknown): boolean | undefined => {
+    if (typeof raw === 'boolean') return raw
+    if (raw === 1 || raw === 0) return raw === 1
+    if (typeof raw === 'string') {
+      const s = raw.trim().toLowerCase()
+      if (s === 'true' || s === '1' || s === 'on') return true
+      if (s === 'false' || s === '0' || s === 'off') return false
+    }
+    return undefined
+  }
+
+  const mil = boolish(attrs['can.mil.status'] ?? attrs['mil.status'] ?? attrs['mil'])
+  if (mil !== undefined) payload.milOn = mil
+
+  const milKm = val('can.mil.mileage') ?? val('mil.mileage')
+  if (milKm !== undefined && milKm >= 0) {
+    // Ruhavik reports km
+    payload.milMileageMi = Math.round(milKm * 0.621371)
+  }
+
+  const obdConn = boolish(attrs['obd.connected.status'] ?? attrs['obd.connected'] ?? attrs['obdConnected'])
+  if (obdConn !== undefined) payload.obdConnected = obdConn
+
+  const throttle = val('can.throttle.pedal.level') ?? val('throttle.pedal.level') ?? val('throttle')
+  if (throttle !== undefined) payload.throttlePercent = Math.round(throttle)
+
+  const load = val('can.engine.load.level') ?? val('engine.load.level') ?? val('engine.load')
+  if (load !== undefined) payload.engineLoadPercent = Math.round(load)
 
   return payload
 }

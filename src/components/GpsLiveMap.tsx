@@ -39,6 +39,11 @@ export interface VehicleDevice {
     backupBatteryVoltage?: number
     batteryCharging?: boolean
     gsmSignalDbm?: number
+    milOn?: boolean
+    milMileageMi?: number
+    obdConnected?: boolean
+    throttlePercent?: number
+    engineLoadPercent?: number
   }
   /** Recent classified events for this device */
   recentEvents?: {

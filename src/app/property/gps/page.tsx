@@ -696,30 +696,6 @@ function DeviceCard({
   )
 }
 
-/** Plain-English meaning for common OBD-II DTCs shown under the code badge. */
-function describeDtcCode(code: string): string {
-  const key = code.trim().toUpperCase()
-  const known: Record<string, string> = {
-    P059F: 'Active grille air shutter “A” performance / stuck — front shutters not opening or closing as commanded.',
-    P059E: 'Active grille air shutter “A” circuit / performance issue.',
-    P0420: 'Catalytic converter efficiency below threshold (Bank 1).',
-    P0171: 'System too lean (Bank 1) — possible vacuum leak or fuel delivery issue.',
-    P0300: 'Random/multiple cylinder misfire detected.',
-    P0455: 'EVAP system large leak detected.',
-    P0128: 'Coolant thermostat temperature below regulating temperature.',
-  }
-  return known[key] || 'Diagnostic trouble code from the vehicle computer. Have a shop scan for details if the light stays on.'
-}
-
-function formatVehicleState(state?: string | null): string {
-  if (!state?.trim()) return '--'
-  return state
-    .trim()
-    .split(/[\s_]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ')
-}
-
 function formatGsmSignal(dbm?: number | null): { label: string; detail: string } {
   if (dbm == null || !Number.isFinite(dbm)) return { label: '--', detail: '' }
   // Typical GSM RSSI bands (dBm)
@@ -948,12 +924,6 @@ function DeviceTelemetry({
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Vehicle Vitals</p>
         <div className="grid grid-cols-3 gap-2">
-          <div className="col-span-3 p-2 bg-white rounded-lg">
-            <p className="text-[10px] text-slate-400">Vehicle State</p>
-            <p className="text-sm font-bold text-slate-900">
-              {formatVehicleState(device.obdii?.vehicleState)}
-            </p>
-          </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <div>
               <p className="text-[10px] text-slate-400">Ignition</p>
@@ -1075,32 +1045,83 @@ function DeviceTelemetry({
               <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
             </div>
           </div>
-          <div className="col-span-3 p-2 bg-white rounded-lg">
-            <p className="text-[10px] text-slate-400">VIN</p>
-            <p className="text-xs font-mono font-semibold text-slate-700 truncate">{device.obdii?.vin || '--'}</p>
-          </div>
-          <div className="col-span-3 p-2 bg-white rounded-lg">
-            <p className="text-[10px] text-slate-400">DTC Codes</p>
+          <div className="col-span-2 p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">DTC</p>
             {device.obdii?.dtcCodes && device.obdii.dtcCodes.length > 0 ? (
-              <div className="mt-0.5 space-y-2">
+              <div className="flex flex-wrap gap-1 mt-0.5">
                 {device.obdii.dtcCodes.map(function (code: string, idx: number) {
                   const label = typeof code === 'string' ? code : String((code as any)?.code || code || '')
                   if (!label || label === '[object Object]') return null
                   return (
-                    <div key={`${label}-${idx}`}>
-                      <span className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
-                        {label}
-                      </span>
-                      <p className="text-[11px] text-slate-500 leading-snug mt-1">
-                        {describeDtcCode(label)}
-                      </p>
-                    </div>
+                    <span key={`${label}-${idx}`} className="text-xs font-mono bg-red-50 text-red-600 border border-red-100 rounded px-1.5 py-0.5">
+                      {label}
+                    </span>
                   )
                 })}
               </div>
             ) : (
               <p className="text-sm font-bold text-slate-300">None</p>
             )}
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${
+              device.obdii?.milOn ? 'text-amber-500' : 'text-slate-300'
+            }`} />
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400">Check Engine</p>
+              <p className={`text-sm font-bold leading-tight ${
+                device.obdii?.milOn == null
+                  ? 'text-slate-300'
+                  : device.obdii.milOn
+                    ? 'text-amber-600'
+                    : 'text-slate-700'
+              }`}>
+                {device.obdii?.milOn == null ? '--' : device.obdii.milOn ? 'On' : 'Off'}
+              </p>
+              {device.obdii?.milOn && device.obdii.milMileageMi != null ? (
+                <p className="text-[10px] text-slate-400 tabular-nums">
+                  {device.obdii.milMileageMi.toLocaleString()} mi since on
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <div>
+              <p className="text-[10px] text-slate-400">OBD Link</p>
+              <p className={`text-sm font-bold ${
+                device.obdii?.obdConnected == null
+                  ? 'text-slate-300'
+                  : device.obdii.obdConnected
+                    ? 'text-brand-green'
+                    : 'text-red-600'
+              }`}>
+                {device.obdii?.obdConnected == null
+                  ? '--'
+                  : device.obdii.obdConnected
+                    ? 'Connected'
+                    : 'Disconnected'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <div>
+              <p className="text-[10px] text-slate-400">Throttle</p>
+              <p className="text-sm font-bold text-slate-900">
+                {device.obdii?.throttlePercent != null ? `${device.obdii.throttlePercent}%` : '--'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <div>
+              <p className="text-[10px] text-slate-400">Engine Load</p>
+              <p className="text-sm font-bold text-slate-900">
+                {device.obdii?.engineLoadPercent != null ? `${device.obdii.engineLoadPercent}%` : '--'}
+              </p>
+            </div>
+          </div>
+          <div className="col-span-3 p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">VIN</p>
+            <p className="text-xs font-mono font-semibold text-slate-700 truncate">{device.obdii?.vin || '--'}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
