@@ -66,9 +66,6 @@ type Props = {
   onApplyCustom: () => void
   rangeError: string | null
   todayStr: string
-  /** Live idle from Ruhavik (temporary state — shown in trip history, not vitals) */
-  idleDurationSec?: number | null
-  idleStatus?: boolean | null
 }
 
 function easternYmd(d = new Date()): string {
@@ -146,16 +143,6 @@ function formatTripDuration(sec: number): string {
   const m = Math.floor((s % 3600) / 60)
   const r = s % 60
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
-}
-
-function formatIdleDuration(sec: number): string {
-  const s = Math.max(0, Math.round(sec))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return r > 0 ? `${m}m ${r}s` : `${m}m`
-  return `${r}s`
 }
 
 function TripRoutePreview({ points }: { points?: RoutePoint[] }) {
@@ -272,8 +259,6 @@ export function GpsTripHistory({
   onApplyCustom,
   rangeError,
   todayStr,
-  idleDurationSec,
-  idleStatus,
 }: Props) {
   const dateTabs = buildHistoryDateTabs()
   const activeDayKey = routePeriodToDayKey(routePeriod)
@@ -305,12 +290,6 @@ export function GpsTripHistory({
                 ? 'Loading…'
                 : `${headerLabel}${tripSummary ? ` · ${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi` : ''}`}
             </p>
-            {idleDurationSec != null || idleStatus != null ? (
-              <p className={`text-[10px] font-medium truncate ${idleStatus ? 'text-amber-600' : 'text-slate-400'}`}>
-                Idle {idleDurationSec != null ? formatIdleDuration(idleDurationSec) : '--'}
-                {idleStatus != null ? (idleStatus ? ' · Idling' : ' · Not idle') : ''}
-              </p>
-            ) : null}
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -399,26 +378,6 @@ export function GpsTripHistory({
           )}
 
           <div className="px-3 pt-3 space-y-2.5 max-h-[min(70vh,36rem)] overflow-y-auto">
-            {(idleDurationSec != null || idleStatus != null) && (
-              <div
-                className={`rounded-xl border px-3 py-2 ${
-                  idleStatus
-                    ? 'bg-amber-50 border-amber-100'
-                    : 'bg-white border-slate-100'
-                }`}
-              >
-                <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Current idle</p>
-                <p className={`text-sm font-bold ${idleStatus ? 'text-amber-700' : 'text-slate-800'}`}>
-                  {idleDurationSec != null ? formatIdleDuration(idleDurationSec) : '--'}
-                </p>
-                {idleStatus != null ? (
-                  <p className="text-[10px] text-slate-500">
-                    {idleStatus ? 'Vehicle is idling now' : 'Not currently idle'}
-                  </p>
-                ) : null}
-              </div>
-            )}
-
             {isLoading && (
               <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin" />

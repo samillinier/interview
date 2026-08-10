@@ -1222,16 +1222,16 @@ function DeviceTelemetry({
         onApplyCustom={applyCustomRange}
         rangeError={rangeError}
         todayStr={todayStr}
-        idleDurationSec={device.obdii?.idleDurationSec ?? null}
-        idleStatus={device.obdii?.idleStatus ?? null}
       />
 
       {/* Alerts — collapsed by default; expand on click */}
       {!historyOpen && (() => {
         const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
-        const idleSec = device.obdii?.idleDurationSec
-        const idleSt = device.obdii?.idleStatus
-        const hasIdle = idleSec != null || idleSt != null
+        // Idle is live-only — Ruhavik keeps stale idle.status after the unit goes offline
+        const deviceOnline = device.status === 'online'
+        const idleSec = deviceOnline ? device.obdii?.idleDurationSec : undefined
+        const idleSt = deviceOnline ? device.obdii?.idleStatus : undefined
+        const hasIdle = deviceOnline && (idleSec != null || idleSt != null)
         if (alerts.length === 0 && !hasIdle) return null
         const alertCount = alerts.length + (hasIdle ? 1 : 0)
         const onlyIdle = alerts.length === 0 && hasIdle
