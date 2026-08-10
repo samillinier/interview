@@ -1459,14 +1459,10 @@ function behaviorEventsFromMessages(
     const ts = Number(msg.timestamp ?? msg['position.timestamp'] ?? msg['server.timestamp'] ?? 0)
     if (!Number.isFinite(ts) || ts < fromUnix || ts > toUnix) continue
 
-    // GTSPD: reason 1 = entered overspeed, 0 = left overspeed (ignore exits)
+    // GTSPD: reason 1 = entered overspeed, 0 = left overspeed (ignore exits).
+    // Trust Ruhavik/Queclink's configured threshold — don't re-gate on a local mph floor.
     if (code === 'GTSPD') {
       if (Number(msg['report.reason']) === 0) continue
-      // Device is configured for 90 mph overspeed. Ruhavik still sometimes emits
-      // GTSPD while parked or well under the limit — only count real breaches.
-      const speedKmh = Number(msg['position.speed'] ?? 0)
-      const speedMph = convertSpeedToMph(speedKmh)
-      if (!Number.isFinite(speedMph) || speedMph < 90) continue
     }
 
     cands.push({ ts, code, msg })
