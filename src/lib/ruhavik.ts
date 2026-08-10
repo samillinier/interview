@@ -275,6 +275,9 @@ export interface TripHistoryItem {
   segmentIndex: number | null
   /** Speeding / harsh / crash / tow that fired during this window */
   events?: TripBehaviorEvent[]
+  /** Original Ruhavik trip/stop bounds (for attaching alerts when GPS segment is shorter) */
+  windowStart?: string
+  windowEnd?: string
 }
 
 export interface TraccarEvent {
@@ -1461,6 +1464,8 @@ export async function getTripHistory(
         endLatitude: endLat,
         endLongitude: endLng,
         segmentIndex: segIdx >= 0 ? segIdx : null,
+        windowStart: unixToIso(begin),
+        windowEnd: unixToIso(end || begin),
       })
     } else if (kind === 'stop' || kind === 'parking') {
       const durationSec = Math.round(Number(e.duration ?? Math.max(0, end - begin)))
@@ -1479,6 +1484,8 @@ export async function getTripHistory(
         endLatitude: Number(e.lat ?? 0),
         endLongitude: Number(e.lon ?? 0),
         segmentIndex: null,
+        windowStart: unixToIso(begin),
+        windowEnd: unixToIso(end || begin),
       })
     }
   }

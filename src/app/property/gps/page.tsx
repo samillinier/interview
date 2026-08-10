@@ -1230,6 +1230,15 @@ function DeviceTelemetry({
           return e.severity === 'critical' || e.severity === 'warning'
         })
         if (alerts.length === 0) return null
+        // Newest first list, but always keep crashes visible (they can be older)
+        const byId = new Map<number | string, (typeof alerts)[number]>()
+        for (const e of alerts.slice(0, 12)) byId.set(e.id, e)
+        for (const e of alerts) {
+          if (e.icon === 'crash') byId.set(e.id, e)
+        }
+        const shown = Array.from(byId.values()).sort(function(a, b) {
+          return new Date(b.eventTime).getTime() - new Date(a.eventTime).getTime()
+        })
         return (
           <div className="rounded-xl border border-red-100 bg-red-50/50 overflow-hidden">
             <button
@@ -1247,11 +1256,13 @@ function DeviceTelemetry({
             </button>
             {alertsOpen && (
               <div className="px-3 pb-3 space-y-1 border-t border-red-100 pt-2">
-                {alerts.slice(0, 8).map(function(event) {
+                {shown.map(function(event) {
                   return (
                     <div key={event.id} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg text-xs">
                       <div className="min-w-0">
-                        <span className="font-semibold text-slate-800">{event.label}</span>
+                        <span className={`font-semibold ${event.icon === 'crash' ? 'text-red-600' : 'text-slate-800'}`}>
+                          {event.label}
+                        </span>
                         {event.detail ? (
                           <p className="text-[10px] text-slate-400 truncate">{event.detail}</p>
                         ) : null}

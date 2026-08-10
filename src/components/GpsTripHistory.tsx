@@ -403,48 +403,67 @@ export function GpsTripHistory({
               tripHistory.map((item) => {
                 const active = selectedTripId === item.id
                 if (item.type === 'parking') {
+                  const crashOnly =
+                    item.id.startsWith('crash-') ||
+                    (item.durationSec === 0 &&
+                      (item.events || []).some((ev) => ev.icon === 'crash') &&
+                      (item.events || []).every((ev) => ev.icon === 'crash'))
                   return (
                     <div
                       key={item.id}
-                      className="rounded-2xl bg-white shadow-sm border border-slate-100/80 border-l-[3px] border-l-amber-400 p-3"
+                      className={`rounded-2xl bg-white shadow-sm border border-slate-100/80 border-l-[3px] p-3 ${
+                        crashOnly ? 'border-l-red-500' : 'border-l-amber-400'
+                      }`}
                     >
                       <div className="flex items-start gap-2.5">
-                        <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
-                          <ParkingSquare className="w-4 h-4 text-slate-500" />
+                        <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${
+                          crashOnly ? 'bg-red-50' : 'bg-slate-100'
+                        }`}>
+                          <ParkingSquare className={`w-4 h-4 ${crashOnly ? 'text-red-500' : 'text-slate-500'}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-slate-900">
+                            {crashOnly ? 'Crash' : null}
+                            {crashOnly ? ' · ' : ''}
                             {formatTripStamp(item.startTime, false, true)}
                           </p>
-                          <div className="flex items-start gap-1 mt-1">
-                            <MapPin className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-slate-500 leading-snug">
-                              {item.address ||
-                                (item.startLatitude
-                                  ? `${item.startLatitude.toFixed(5)}, ${item.startLongitude.toFixed(5)}`
-                                  : 'Location unavailable')}
-                            </p>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-2">
-                            <span className="text-slate-400">Duration:</span>{' '}
-                            <span className="font-medium text-slate-700">{formatTripDuration(item.durationSec)}</span>
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            <span className="text-slate-400">End of parking:</span>{' '}
-                            <span className="font-medium text-slate-700">{formatTripStamp(item.endTime)}</span>
-                          </p>
-                          {item.events && item.events.length > 0 ? (
-                            <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
-                                Alerts during stop
+                          {!crashOnly ? (
+                            <>
+                              <div className="flex items-start gap-1 mt-1">
+                                <MapPin className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-slate-500 leading-snug">
+                                  {item.address ||
+                                    (item.startLatitude
+                                      ? `${item.startLatitude.toFixed(5)}, ${item.startLongitude.toFixed(5)}`
+                                      : 'Location unavailable')}
+                                </p>
+                              </div>
+                              <p className="text-xs text-slate-500 mt-2">
+                                <span className="text-slate-400">Duration:</span>{' '}
+                                <span className="font-medium text-slate-700">{formatTripDuration(item.durationSec)}</span>
                               </p>
+                              <p className="text-xs text-slate-500">
+                                <span className="text-slate-400">End of parking:</span>{' '}
+                                <span className="font-medium text-slate-700">{formatTripStamp(item.endTime)}</span>
+                              </p>
+                            </>
+                          ) : null}
+                          {item.events && item.events.length > 0 ? (
+                            <div className={`space-y-1 ${crashOnly ? 'mt-1.5' : 'mt-2 pt-2 border-t border-slate-100'}`}>
+                              {!crashOnly ? (
+                                <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                                  Alerts during stop
+                                </p>
+                              ) : null}
                               {item.events.map((ev) => (
                                 <div key={`${ev.id}-${ev.eventTime}`} className="flex items-start gap-2">
                                   <span className="text-[10px] font-mono tabular-nums text-slate-500 flex-shrink-0 pt-0.5">
                                     {formatTripStamp(ev.eventTime, true)}
                                   </span>
                                   <div className="min-w-0">
-                                    <p className="text-[11px] font-semibold text-slate-800 leading-snug">{ev.label}</p>
+                                    <p className={`text-[11px] font-semibold leading-snug ${
+                                      ev.icon === 'crash' ? 'text-red-600' : 'text-slate-800'
+                                    }`}>{ev.label}</p>
                                     {ev.detail ? (
                                       <p className="text-[10px] text-slate-400 leading-snug">{ev.detail}</p>
                                     ) : null}

@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       trips = []
     }
 
-    // Attach driving-behavior events (speeding, harsh, crash, tow) to each trip/parking window
+    // Attach driving-behavior events (speeding, harsh, crash, tow, idle) to each trip/parking
     try {
       const rawEvents = await traccar.getEvents(traccarDevice.id, from, to)
       const behavior = rawEvents
@@ -140,34 +140,111 @@ export async function GET(request: NextRequest) {
           })
         )
 
-      for (const trip of trips) {
-        const startMs = new Date(trip.startTime).getTime()
-        const endMs = new Date(trip.endTime).getTime()
-        if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-          trip.events = []
+      for (const trip of trips) trip.events = []
+
+      const tripWindow = (trip: traccar.TripHistoryItem) => {
+        const startMs = new Date(trip.windowStart || trip.startTime).getTime()
+        const endMs = new Date(trip.windowEnd || trip.endTime).getTime()
+        return { startMs, endMs }
+      }
+
+      const attached = new Set<number>()
+
+      // Pass 1: events that fall inside a trip/stop window (extra buffer for crashes)
+      for (const e of behavior) {
+        const t = new Date(e.eventTime).getTime()
+        if (!Number.isFinite(t)) continue
+        const bufferMs = e.icon === 'crash' ? 5 * 60_000 : 30_000
+        let best: traccar.TripHistoryItem | null = null
+        let bestDist = Number.POSITIVE_INFINITY
+        for (const trip of trips) {
+          const allowed =
+            trip.type === 'parking'
+              ? e.icon === 'tow' || e.icon === 'crash' || e.icon === 'idle'
+              : e.icon === 'speed' ||
+                e.icon === 'harsh' ||
+                e.icon === 'crash' ||
+                e.icon === 'tow' ||
+                e.icon === 'idle'
+          if (!allowed) continue
+          const { startMs, endMs } = tripWindow(trip)
+          if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue
+          const lo = startMs - bufferMs
+          const hi = endMs + bufferMs
+          if (t < lo || t > hi) continue
+          const dist = t < startMs ? startMs - t : t > endMs ? t - endMs : 0
+          // Prefer the containing window; for ties prefer parking for crash/tow/idle
+          const prefer =
+            dist < bestDist ||
+            (dist === bestDist &&
+              best &&
+              best.type === 'trip' &&
+              trip.type === 'parking' &&
+              (e.icon === 'crash' || e.icon === 'tow' || e.icon === 'idle'))
+          if (prefer) {
+            bestDist = dist
+            best = trip
+          }
+        }
+        if (best) {
+          best.events = best.events || []
+          best.events.push(e)
+          attached.add(e.id)
+        }
+      }
+
+      // Pass 2: leftover crashes → nearest trip/stop within 15 minutes, else standalone card
+      for (const e of behavior) {
+        if (e.icon !== 'crash' || attached.has(e.id)) continue
+        const t = new Date(e.eventTime).getTime()
+        if (!Number.isFinite(t)) continue
+        let best: traccar.TripHistoryItem | null = null
+        let bestDist = Number.POSITIVE_INFINITY
+        for (const trip of trips) {
+          const { startMs, endMs } = tripWindow(trip)
+          if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue
+          const dist = t < startMs ? startMs - t : t > endMs ? t - endMs : 0
+          if (dist < bestDist) {
+            bestDist = dist
+            best = trip
+          }
+        }
+        if (best && bestDist <= 15 * 60_000) {
+          best.events = best.events || []
+          best.events.push(e)
+          attached.add(e.id)
           continue
         }
-        // Small edge buffer so events right at start/end still count
-        const lo = startMs - 30_000
-        const hi = endMs + 30_000
-        trip.events = behavior
-          .filter((e) => {
-            const t = new Date(e.eventTime).getTime()
-            if (!Number.isFinite(t) || t < lo || t > hi) return false
-            // Tow/idle/crash fit parking stops; driving behaviors on trips
-            if (trip.type === 'parking') {
-              return e.icon === 'tow' || e.icon === 'crash' || e.icon === 'idle'
-            }
-            return (
-              e.icon === 'speed' ||
-              e.icon === 'harsh' ||
-              e.icon === 'crash' ||
-              e.icon === 'tow' ||
-              e.icon === 'idle'
-            )
-          })
-          .sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime())
+        trips.push({
+          id: `crash-${e.id}`,
+          type: 'parking',
+          startTime: e.eventTime,
+          endTime: e.eventTime,
+          durationSec: 0,
+          distanceMiles: 0,
+          avgSpeedMph: 0,
+          maxSpeedMph: 0,
+          startLatitude: 0,
+          startLongitude: 0,
+          endLatitude: 0,
+          endLongitude: 0,
+          address: e.detail || 'Crash event',
+          segmentIndex: null,
+          events: [e],
+          windowStart: e.eventTime,
+          windowEnd: e.eventTime,
+        })
+        attached.add(e.id)
       }
+
+      for (const trip of trips) {
+        trip.events = (trip.events || []).sort(
+          (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime()
+        )
+      }
+      trips.sort(
+        (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      )
     } catch {
       for (const trip of trips) trip.events = trip.events || []
     }
