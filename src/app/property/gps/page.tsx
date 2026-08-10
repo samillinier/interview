@@ -499,45 +499,6 @@ export default function GPSPage() {
                       <Navigation className="w-3.5 h-3.5" />
                       Drive there
                     </button>
-                    {/* Compact history dropdown on map */}
-                    <div className="relative">
-                      <select
-                        value={
-                          routePeriod?.startsWith('range:')
-                            ? 'custom'
-                            : routePeriod || ''
-                        }
-                        disabled={!selectedDevice || isLoadingRoute}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          if (!v) setRoutePeriod(null)
-                          else if (v === 'custom') {
-                            // Keep custom if already set; otherwise open sidebar selection
-                            if (!routePeriod?.startsWith('range:')) setRoutePeriod(null)
-                          } else setRoutePeriod(v)
-                        }}
-                        className={`appearance-none pl-2.5 pr-7 py-1.5 text-xs font-medium rounded-lg border transition-colors bg-white ${
-                          routePeriod
-                            ? 'border-brand-green/40 text-brand-green'
-                            : 'border-slate-200 text-slate-600'
-                        } ${!selectedDevice ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} focus:outline-none focus:ring-1 focus:ring-brand-green`}
-                        title="Trip history"
-                      >
-                        <option value="">History: Off</option>
-                        <option value="today">Today</option>
-                        <option value="yesterday">Yesterday</option>
-                        <option value="week">Last 7 days</option>
-                        {routePeriod?.startsWith('range:') && (
-                          <option value="custom">
-                            Custom: {routePeriod.split(':').slice(1).join(' → ')}
-                          </option>
-                        )}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                      {isLoadingRoute && routePeriod && (
-                        <Loader2 className="absolute -right-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-green animate-spin" />
-                      )}
-                    </div>
                     <span className="text-xs text-slate-400">
                       {devices.length} device{devices.length !== 1 ? 's' : ''}
                     </span>

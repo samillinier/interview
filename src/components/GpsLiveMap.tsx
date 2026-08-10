@@ -655,27 +655,34 @@ export function GpsLiveMap({
       zoom: 10,
       zoomControl: true,
       scrollWheelZoom: false,
+      attributionControl: false,
     })
+    L.control
+      .attribution({
+        position: 'bottomright',
+        prefix: false,
+      })
+      .addTo(map)
 
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+      attribution: '© OSM',
       maxZoom: 19,
     })
 
     const cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      attribution: '© OSM · CARTO',
       maxZoom: 19,
     }).addTo(map)
 
     const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      attribution: '© OSM · CARTO',
       maxZoom: 19,
     })
 
     const satelliteLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       {
-        attribution: '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        attribution: '© Esri',
         maxZoom: 19,
       }
     )
@@ -1039,6 +1046,23 @@ export function GpsLiveMap({
         }
         .leaflet-marker-icon.gps-marker-pulse {
           overflow: visible !important;
+        }
+        .leaflet-control-attribution {
+          background: transparent !important;
+          box-shadow: none !important;
+          margin: 0 4px 2px 0 !important;
+          padding: 0 !important;
+          font-size: 9px !important;
+          line-height: 1.2 !important;
+          color: #94a3b8 !important;
+          opacity: 0.55;
+        }
+        .leaflet-control-attribution a {
+          color: #94a3b8 !important;
+          text-decoration: none !important;
+        }
+        .leaflet-control-attribution:hover {
+          opacity: 0.9;
         }
       `}</style>
       <div className="relative w-full h-full" style={{ minHeight: 500 }}>
