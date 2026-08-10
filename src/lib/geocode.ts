@@ -68,12 +68,14 @@ function formatState(addr: Record<string, string>): string | null {
 }
 
 function formatCountry(addr: Record<string, string>): string | null {
-  if (addr.country_code === 'us') return 'USA'
-  if (addr.country === 'United States' || addr.country === 'United States of America') return 'USA'
+  // Domestic US addresses omit country (e.g. "Tampa, FL 33647")
+  const code = (addr.country_code || '').toLowerCase()
+  if (code === 'us') return null
+  if (addr.country === 'United States' || addr.country === 'United States of America') return null
   return addr.country || null
 }
 
-/** Build "4420 Adamo Dr, Tampa, FL 33605, USA" from Nominatim address parts */
+/** Build "4420 Adamo Dr, Tampa, FL 33605" from Nominatim address parts */
 export function formatPostalAddress(addr: Record<string, string>): string | null {
   const parts: string[] = []
 
@@ -142,10 +144,15 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
     const addr = data.address as Record<string, string> | undefined
     if (!addr) return null
 
-    const location =
-      formatPostalAddress(addr) ||
-      data.display_name?.split(',').slice(0, 4).join(',').trim() ||
-      null
+    const fallback = data.display_name
+      ? String(data.display_name)
+          .replace(/,\s*(United States of America|United States|USA)\s*$/i, '')
+          .split(',')
+          .slice(0, 4)
+          .join(',')
+          .trim()
+      : null
+    const location = formatPostalAddress(addr) || fallback || null
 
     if (location) {
       cache.set(key, { location, expiry: Date.now() + CACHE_TTL_MS })
