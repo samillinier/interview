@@ -126,7 +126,8 @@ export async function GET(request: NextRequest) {
             (e.icon === 'speed' ||
               e.icon === 'harsh' ||
               e.icon === 'crash' ||
-              e.icon === 'tow')
+              e.icon === 'tow' ||
+              e.icon === 'idle')
         )
         .map(
           (e): traccar.TripBehaviorEvent => ({
@@ -153,9 +154,17 @@ export async function GET(request: NextRequest) {
           .filter((e) => {
             const t = new Date(e.eventTime).getTime()
             if (!Number.isFinite(t) || t < lo || t > hi) return false
-            // Tow is most relevant while parked; other behavior during driving trips
-            if (trip.type === 'parking') return e.icon === 'tow' || e.icon === 'crash'
-            return e.icon === 'speed' || e.icon === 'harsh' || e.icon === 'crash' || e.icon === 'tow'
+            // Tow/idle/crash fit parking stops; driving behaviors on trips
+            if (trip.type === 'parking') {
+              return e.icon === 'tow' || e.icon === 'crash' || e.icon === 'idle'
+            }
+            return (
+              e.icon === 'speed' ||
+              e.icon === 'harsh' ||
+              e.icon === 'crash' ||
+              e.icon === 'tow' ||
+              e.icon === 'idle'
+            )
           })
           .sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime())
       }

@@ -563,7 +563,10 @@ export function GpsTripHistory({
                                 className={`text-[11px] font-semibold leading-snug ${
                                   ev.icon === 'crash'
                                     ? 'text-red-600'
-                                    : ev.icon === 'speed' || ev.icon === 'harsh' || ev.icon === 'tow'
+                                    : ev.icon === 'speed' ||
+                                        ev.icon === 'harsh' ||
+                                        ev.icon === 'tow' ||
+                                        ev.icon === 'idle'
                                       ? 'text-orange-600'
                                       : 'text-slate-800'
                                 }`}

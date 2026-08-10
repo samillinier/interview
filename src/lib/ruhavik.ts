@@ -777,6 +777,23 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
   if (reportCode === 'GTTOW') {
     return { ...b, label: 'Tow Alarm', icon: 'tow', severity: 'warning', detail: 'Vehicle movement while ignition off' }
   }
+  if (reportCode === 'GTIDN') {
+    return {
+      ...b,
+      label: 'Idle Started',
+      icon: 'idle',
+      severity: 'warning',
+      detail: 'Vehicle entered idle',
+    }
+  }
+  if (reportCode === 'GTIDF') {
+    const idleSec = Number(attrs['idle.status.duration'])
+    const detail =
+      Number.isFinite(idleSec) && idleSec > 0
+        ? `Idle for ${formatDuration(Math.round(idleSec))}`
+        : 'Idle period ended'
+    return { ...b, label: 'Idle Ended', icon: 'idle', severity: 'warning', detail }
+  }
 
   if (t === 'alarm') {
     const alarmType = (attrs['alarm'] as string) || ''
@@ -794,6 +811,17 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
     }
     if (alarmType.includes('tow')) {
       return { ...b, label: 'Tow Alarm', icon: 'tow', severity: 'warning', detail: 'Vehicle movement while ignition off' }
+    }
+    if (alarmType === 'idleEnter' || alarmType.includes('idleEnter')) {
+      return { ...b, label: 'Idle Started', icon: 'idle', severity: 'warning', detail: 'Vehicle entered idle' }
+    }
+    if (alarmType === 'idleExit' || alarmType.includes('idleExit')) {
+      const idleSec = Number(attrs['idle.status.duration'])
+      const detail =
+        Number.isFinite(idleSec) && idleSec > 0
+          ? `Idle for ${formatDuration(Math.round(idleSec))}`
+          : 'Idle period ended'
+      return { ...b, label: 'Idle Ended', icon: 'idle', severity: 'warning', detail }
     }
     if (alarmType.includes('jamming')) {
       return { ...b, label: 'Signal Jamming', icon: 'generic', severity: 'warning', detail: 'GPS or cellular signal interference' }
@@ -1470,7 +1498,7 @@ function behaviorEventsFromMessages(
   fromUnix: number,
   toUnix: number
 ): TraccarEvent[] {
-  const BEHAVIOR = new Set(['GTSPD', 'GTHBM', 'GTHBE', 'GTCRA', 'GTCRD', 'GTTOW'])
+  const BEHAVIOR = new Set(['GTSPD', 'GTHBM', 'GTHBE', 'GTCRA', 'GTCRD', 'GTTOW', 'GTIDN', 'GTIDF'])
   type Cand = { ts: number; code: string; msg: RuhavikMessage }
   const cands: Cand[] = []
 
@@ -1513,6 +1541,7 @@ function behaviorEventsFromMessages(
           : undefined,
       latitude: c.msg['position.latitude'],
       longitude: c.msg['position.longitude'],
+      'idle.status.duration': c.msg['idle.status.duration'],
     }
 
     if (code === 'GTSPD') {
@@ -1524,6 +1553,10 @@ function behaviorEventsFromMessages(
       attrs.alarm = 'crash'
     } else if (code === 'GTTOW') {
       attrs.alarm = 'tow'
+    } else if (code === 'GTIDN') {
+      attrs.alarm = 'idleEnter'
+    } else if (code === 'GTIDF') {
+      attrs.alarm = 'idleExit'
     }
 
     return {

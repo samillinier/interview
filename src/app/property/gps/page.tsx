@@ -1226,60 +1226,37 @@ function DeviceTelemetry({
 
       {/* Alerts — collapsed by default; expand on click */}
       {!historyOpen && (() => {
-        const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
-        // Idle is live-only — Ruhavik keeps stale idle.status after the unit goes offline
-        const deviceOnline = device.status === 'online'
-        const idleSec = deviceOnline ? device.obdii?.idleDurationSec : undefined
-        const idleSt = deviceOnline ? device.obdii?.idleStatus : undefined
-        const hasIdle = deviceOnline && (idleSec != null || idleSt != null)
-        if (alerts.length === 0 && !hasIdle) return null
-        const alertCount = alerts.length + (hasIdle ? 1 : 0)
-        const onlyIdle = alerts.length === 0 && hasIdle
+        const alerts = events.filter(function(e) {
+          return e.severity === 'critical' || e.severity === 'warning'
+        })
+        if (alerts.length === 0) return null
         return (
-          <div className={`rounded-xl border overflow-hidden ${
-            onlyIdle ? 'border-amber-100 bg-amber-50/50' : 'border-red-100 bg-red-50/50'
-          }`}>
+          <div className="rounded-xl border border-red-100 bg-red-50/50 overflow-hidden">
             <button
               type="button"
               onClick={() => setAlertsOpen((o) => !o)}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors ${
-                onlyIdle ? 'hover:bg-amber-50' : 'hover:bg-red-50'
-              }`}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-red-50 transition-colors"
             >
               <div className="flex items-center gap-1.5">
-                <AlertTriangle className={`w-3.5 h-3.5 ${onlyIdle ? 'text-amber-500' : 'text-red-500'}`} />
-                <p className={`text-xs font-semibold ${onlyIdle ? 'text-amber-800' : 'text-red-700'}`}>
-                  Alerts ({alertCount})
-                </p>
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                <p className="text-xs font-semibold text-red-700">Alerts ({alerts.length})</p>
               </div>
               <ChevronDown
-                className={`w-4 h-4 transition-transform ${onlyIdle ? 'text-amber-400' : 'text-red-400'} ${alertsOpen ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-red-400 transition-transform ${alertsOpen ? 'rotate-180' : ''}`}
               />
             </button>
             {alertsOpen && (
-              <div className={`px-3 pb-3 space-y-1 border-t pt-2 ${
-                onlyIdle ? 'border-amber-100' : 'border-red-100'
-              }`}>
-                {hasIdle ? (
-                  <div className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg text-xs">
-                    <div className="min-w-0">
-                      <span className={`font-semibold ${idleSt ? 'text-amber-700' : 'text-slate-800'}`}>
-                        {idleSt ? 'Vehicle Idling' : 'Idle time'}
-                      </span>
-                      {idleSec != null ? (
-                        <p className="text-[10px] text-slate-400">{formatIdleDuration(idleSec)}</p>
-                      ) : null}
-                    </div>
-                    <span className="text-[10px] text-slate-400 flex-shrink-0">
-                      {idleSt ? 'Now' : 'Live'}
-                    </span>
-                  </div>
-                ) : null}
-                {alerts.slice(0, 5).map(function(event) {
+              <div className="px-3 pb-3 space-y-1 border-t border-red-100 pt-2">
+                {alerts.slice(0, 8).map(function(event) {
                   return (
-                    <div key={event.id} className="flex items-center justify-between p-1.5 bg-white rounded-lg text-xs">
-                      <span className="font-semibold text-slate-800">{event.label}</span>
-                      <span className="text-[10px] text-slate-400">{formatTimeAgo(event.eventTime)}</span>
+                    <div key={event.id} className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg text-xs">
+                      <div className="min-w-0">
+                        <span className="font-semibold text-slate-800">{event.label}</span>
+                        {event.detail ? (
+                          <p className="text-[10px] text-slate-400 truncate">{event.detail}</p>
+                        ) : null}
+                      </div>
+                      <span className="text-[10px] text-slate-400 flex-shrink-0">{formatTimeAgo(event.eventTime)}</span>
                     </div>
                   )
                 })}
@@ -1298,14 +1275,4 @@ function formatTimeAgo(dateStr: string): string {
   if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago'
   if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago'
   return Math.floor(seconds / 86400) + 'd ago'
-}
-
-function formatIdleDuration(sec: number): string {
-  const s = Math.max(0, Math.round(sec))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  if (h > 0) return `${h}h ${m}m`
-  if (m > 0) return r > 0 ? `${m}m ${r}s` : `${m}m`
-  return `${r}s`
 }

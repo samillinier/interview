@@ -277,6 +277,7 @@ export async function GET(request: NextRequest) {
               e.icon === 'harsh' ||
               e.icon === 'crash' ||
               e.icon === 'tow' ||
+              e.icon === 'idle' ||
               e.icon === 'geofence' ||
               e.icon === 'maintenance')
         )
