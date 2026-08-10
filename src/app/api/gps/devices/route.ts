@@ -357,6 +357,7 @@ export async function GET(request: NextRequest) {
           engineLoadPercent: obdii.engineLoadPercent,
           idleDurationSec: obdii.idleDurationSec,
           idleStatus: obdii.idleStatus,
+          fuelConsumptionLPer100km: obdii.fuelConsumptionLPer100km,
         } : undefined,
         recentEvents: recentEvents.length > 0 ? recentEvents : undefined,
         todaySummary,

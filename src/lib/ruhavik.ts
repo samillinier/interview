@@ -346,6 +346,8 @@ export interface ObdiiPayload {
   /** Seconds the vehicle has been idle (Ruhavik idle.status.duration) */
   idleDurationSec?: number
   idleStatus?: boolean
+  /** CAN fuel economy in litres per 100 km */
+  fuelConsumptionLPer100km?: number
 }
 
 export interface ClassifiedEvent {
@@ -722,6 +724,21 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
   }
   const idleSt = boolish(attrs['idle.status'] ?? attrs['idle'])
   if (idleSt !== undefined) payload.idleStatus = idleSt
+
+  // e.g. 18, "18", or "18 litres/100km"
+  const consumptionRaw =
+    attrs['can.fuel.consumption.distance'] ??
+    attrs['fuel.consumption.distance'] ??
+    attrs['fuel.rate']
+  if (consumptionRaw != null && consumptionRaw !== '') {
+    const n =
+      typeof consumptionRaw === 'number'
+        ? consumptionRaw
+        : Number(String(consumptionRaw).replace(/[^\d.]/g, ''))
+    if (Number.isFinite(n) && n > 0 && n < 100) {
+      payload.fuelConsumptionLPer100km = Math.round(n * 10) / 10
+    }
+  }
 
   return payload
 }

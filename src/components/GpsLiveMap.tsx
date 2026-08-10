@@ -47,6 +47,7 @@ export interface VehicleDevice {
     engineLoadPercent?: number
     idleDurationSec?: number
     idleStatus?: boolean
+    fuelConsumptionLPer100km?: number
   }
   /** Recent classified events for this device */
   recentEvents?: {

@@ -1126,9 +1126,29 @@ function DeviceTelemetry({
               </p>
             ) : null}
           </div>
-          <div className="col-span-3 flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
-            <p className="text-[10px] text-slate-400">VIN</p>
-            <p className="text-xs font-mono font-semibold text-slate-700 truncate max-w-full">{device.obdii?.vin || '--'}</p>
+          <div className="col-span-3 grid grid-cols-3 gap-2">
+            <div className="col-span-2 flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg min-w-0">
+              <p className="text-[10px] text-slate-400">VIN</p>
+              <p className="text-xs font-mono font-semibold text-slate-700 truncate max-w-full">
+                {device.obdii?.vin || '--'}
+              </p>
+            </div>
+            <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+              <p className="text-[10px] text-slate-400">Economy</p>
+              {device.obdii?.fuelConsumptionLPer100km != null ? (
+                <>
+                  <p className="text-sm font-bold text-slate-900 leading-tight">
+                    {device.obdii.fuelConsumptionLPer100km.toFixed(1)}
+                    <span className="text-[10px] font-semibold text-slate-500"> L/100km</span>
+                  </p>
+                  <p className="text-[8px] text-slate-400 tabular-nums leading-tight">
+                    ~{Math.round(235.215 / device.obdii.fuelConsumptionLPer100km)} mpg
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm font-bold text-slate-300">--</p>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
