@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
     if (!gpsDevice) {
       return NextResponse.json({ error: 'Device not found' }, { status: 404 })
     }
+    const localDevice = gpsDevice
 
     let from: string
     let to: string
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
               td.uniqueId === deviceId ||
               String(td.id) === deviceId ||
               `tc-${td.id}` === deviceId ||
-              (gpsDevice.traccarId != null && td.id === gpsDevice.traccarId)
+              (localDevice.traccarId != null && td.id === localDevice.traccarId)
           ) || null
       } catch {
         traccarDevice = null
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       try {
         const points = await traccar.fetchRoutePoints(traccarDevice.id, from, to)
         try {
-          savedCount = await saveGpsPositions(gpsDevice.id, points)
+          savedCount = await saveGpsPositions(localDevice.id, points)
         } catch (err) {
           console.warn('[gps/route] save failed', err)
         }
@@ -120,20 +121,20 @@ export async function GET(request: NextRequest) {
         historySource = 'ruhavik'
       } catch (err) {
         console.warn('[gps/route] Ruhavik route failed, trying DB', err)
-        const dbPoints = await loadGpsPositions(gpsDevice.id, from, to)
+        const dbPoints = await loadGpsPositions(localDevice.id, from, to)
         dbPointCount = dbPoints.length
         segments = traccar.buildRouteSegmentsFromPoints(dbPoints, [], from, to)
         historySource = 'db'
       }
     } else {
-      const dbPoints = await loadGpsPositions(gpsDevice.id, from, to)
+      const dbPoints = await loadGpsPositions(localDevice.id, from, to)
       dbPointCount = dbPoints.length
       segments = traccar.buildRouteSegmentsFromPoints(dbPoints, [], from, to)
       historySource = 'db'
     }
 
     if (segments.length === 0) {
-      const dbPoints = await loadGpsPositions(gpsDevice.id, from, to)
+      const dbPoints = await loadGpsPositions(localDevice.id, from, to)
       dbPointCount = dbPoints.length
       if (dbPoints.length > 0) {
         segments = traccar.buildRouteSegmentsFromPoints(dbPoints, [], from, to)
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      dbPointCount = await countGpsPositions(gpsDevice.id, from, to)
+      dbPointCount = await countGpsPositions(localDevice.id, from, to)
     } catch {
       // ignore
     }
