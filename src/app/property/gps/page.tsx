@@ -39,6 +39,7 @@ import { PropertySidebar } from '@/components/PropertySidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { openDrivingDirections } from '@/lib/maps'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
 import type { TripHistoryRow } from '@/components/GpsTripHistory'
 
@@ -102,7 +103,7 @@ export default function GPSPage() {
     sessionUserType === 'ADMIN' ||
     sessionUserType === 'SUPER_ADMIN'
 
-  function locateVehicle(device?: VehicleDevice | null) {
+  function locateVehicle(device?: VehicleDevice | null, opts?: { drive?: boolean }) {
     const target = device || selectedDevice || devices[0]
     if (!target) return
     if (!selectedDevice || selectedDevice.id !== target.id) {
@@ -111,6 +112,16 @@ export default function GPSPage() {
     // Exit history so the map focuses on the live car
     if (routePeriod) setRoutePeriod(null)
     setLocateTick((n) => n + 1)
+
+    // After coords are settled on our map, open Apple/Google Maps for turn-by-turn
+    // (destination = vehicle; start = user's current GPS location in that app).
+    if (opts?.drive !== false) {
+      openDrivingDirections(
+        target.latitude,
+        target.longitude,
+        target.vehicleName || 'Vehicle'
+      )
+    }
   }
 
   async function renameDevice(device: VehicleDevice, name: string) {
@@ -471,13 +482,23 @@ export default function GPSPage() {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => locateVehicle()}
+                      onClick={() => locateVehicle(undefined, { drive: false })}
                       disabled={devices.length === 0}
-                      title="Locate vehicle on map"
+                      title="Center map on vehicle"
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-brand-green/40 hover:text-brand-green disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       <LocateFixed className="w-3.5 h-3.5" />
                       Locate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => locateVehicle(undefined, { drive: true })}
+                      disabled={devices.length === 0}
+                      title="Open Apple/Google Maps directions to the vehicle"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-brand-green/30 bg-brand-green/5 text-brand-green hover:bg-brand-green/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      Drive there
                     </button>
                     {/* Compact history dropdown on map */}
                     <div className="relative">
