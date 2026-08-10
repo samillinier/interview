@@ -14,6 +14,15 @@ import {
   Play,
 } from 'lucide-react'
 
+export type TripBehaviorEventRow = {
+  id: number
+  label: string
+  icon: string
+  severity: string
+  detail?: string
+  eventTime: string
+}
+
 export type TripHistoryRow = {
   id: string
   type: 'trip' | 'parking'
@@ -29,6 +38,8 @@ export type TripHistoryRow = {
   endLongitude: number
   address?: string | null
   segmentIndex: number | null
+  /** Speeding / harsh accel / crash / tow during this trip or stop */
+  events?: TripBehaviorEventRow[]
 }
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
@@ -422,6 +433,26 @@ export function GpsTripHistory({
                             <span className="text-slate-400">End of parking:</span>{' '}
                             <span className="font-medium text-slate-700">{formatTripStamp(item.endTime)}</span>
                           </p>
+                          {item.events && item.events.length > 0 ? (
+                            <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                                Alerts during stop
+                              </p>
+                              {item.events.map((ev) => (
+                                <div key={`${ev.id}-${ev.eventTime}`} className="flex items-start gap-2">
+                                  <span className="text-[10px] font-mono tabular-nums text-slate-500 flex-shrink-0 pt-0.5">
+                                    {formatTripStamp(ev.eventTime, true)}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold text-slate-800 leading-snug">{ev.label}</p>
+                                    {ev.detail ? (
+                                      <p className="text-[10px] text-slate-400 leading-snug">{ev.detail}</p>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -516,6 +547,37 @@ export function GpsTripHistory({
                         </p>
                       </div>
                     </div>
+
+                    {item.events && item.events.length > 0 ? (
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                          During this trip
+                        </p>
+                        {item.events.map((ev) => (
+                          <div key={`${ev.id}-${ev.eventTime}`} className="flex items-start gap-2">
+                            <span className="text-[10px] font-mono tabular-nums text-slate-500 flex-shrink-0 pt-0.5">
+                              {formatTripStamp(ev.eventTime, true)}
+                            </span>
+                            <div className="min-w-0">
+                              <p
+                                className={`text-[11px] font-semibold leading-snug ${
+                                  ev.icon === 'crash'
+                                    ? 'text-red-600'
+                                    : ev.icon === 'speed' || ev.icon === 'harsh' || ev.icon === 'tow'
+                                      ? 'text-orange-600'
+                                      : 'text-slate-800'
+                                }`}
+                              >
+                                {ev.label}
+                              </p>
+                              {ev.detail ? (
+                                <p className="text-[10px] text-slate-400 leading-snug">{ev.detail}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}

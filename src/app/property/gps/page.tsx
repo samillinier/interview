@@ -287,6 +287,11 @@ export default function GPSPage() {
       maxSpeedMph: trip.maxSpeedMph,
       address: trip.address,
       parkingEndedAt: preceding?.endTime ?? null,
+      events: (trip.events || []).map((e) => ({
+        label: e.label,
+        detail: e.detail,
+        eventTime: e.eventTime,
+      })),
     }
   }, [selectedTripId, tripHistory])
 

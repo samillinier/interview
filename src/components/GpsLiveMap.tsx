@@ -81,6 +81,7 @@ export type SelectedTripInfo = {
   address?: string | null
   /** Preceding parking end time (when the vehicle left for this trip) */
   parkingEndedAt?: string | null
+  events?: { label: string; detail?: string; eventTime: string }[]
 }
 
 type Props = {
@@ -163,6 +164,31 @@ function buildPopup(d: VehicleDevice, trip?: SelectedTripInfo | null): string {
         '<span style="color:#475569">End of parking:</span> <span>' +
         formatPopupStamp(trip.parkingEndedAt) +
         '</span><br/>'
+    }
+    if (trip.events && trip.events.length > 0) {
+      html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
+      html +=
+        '<span style="font-size:10px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:0.04em">During this trip</span><br/>'
+      for (const ev of trip.events.slice(0, 8)) {
+        const t = formatPopupStamp(ev.eventTime).split(',')[0] || formatPopupStamp(ev.eventTime)
+        html +=
+          '<span style="color:#64748b;font-variant-numeric:tabular-nums">' +
+          t +
+          '</span> <strong style="color:#c2410c">' +
+          ev.label +
+          '</strong>'
+        if (ev.detail) {
+          html += ' <span style="color:#94a3b8;font-size:10px">(' + ev.detail + ')</span>'
+        }
+        html += '<br/>'
+      }
+      if (trip.events.length > 8) {
+        html +=
+          '<span style="color:#94a3b8;font-size:10px">+' +
+          (trip.events.length - 8) +
+          ' more</span><br/>'
+      }
+      html += '</div>'
     }
     html += '</div>'
   } else {

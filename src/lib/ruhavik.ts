@@ -246,6 +246,16 @@ export interface TraccarTrip {
   endPositionId: number
 }
 
+/** Driving-behavior event attached to a trip/parking window. */
+export interface TripBehaviorEvent {
+  id: number
+  label: string
+  icon: string
+  severity: string
+  detail?: string
+  eventTime: string
+}
+
 /** Trip or parking row for the GPS history list (Ruhavik-style). */
 export interface TripHistoryItem {
   id: string
@@ -263,6 +273,8 @@ export interface TripHistoryItem {
   address?: string | null
   /** Index into routeSegments when type is trip */
   segmentIndex: number | null
+  /** Speeding / harsh / crash / tow that fired during this window */
+  events?: TripBehaviorEvent[]
 }
 
 export interface TraccarEvent {

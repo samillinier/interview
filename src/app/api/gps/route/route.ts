@@ -115,6 +115,54 @@ export async function GET(request: NextRequest) {
       trips = []
     }
 
+    // Attach driving-behavior events (speeding, harsh, crash, tow) to each trip/parking window
+    try {
+      const rawEvents = await traccar.getEvents(traccarDevice.id, from, to)
+      const behavior = rawEvents
+        .map((e) => traccar.classifyEvent(e))
+        .filter(
+          (e): e is traccar.ClassifiedEvent =>
+            !!e &&
+            (e.icon === 'speed' ||
+              e.icon === 'harsh' ||
+              e.icon === 'crash' ||
+              e.icon === 'tow')
+        )
+        .map(
+          (e): traccar.TripBehaviorEvent => ({
+            id: e.id,
+            label: e.label,
+            icon: e.icon,
+            severity: e.severity,
+            detail: e.detail,
+            eventTime: e.eventTime,
+          })
+        )
+
+      for (const trip of trips) {
+        const startMs = new Date(trip.startTime).getTime()
+        const endMs = new Date(trip.endTime).getTime()
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+          trip.events = []
+          continue
+        }
+        // Small edge buffer so events right at start/end still count
+        const lo = startMs - 30_000
+        const hi = endMs + 30_000
+        trip.events = behavior
+          .filter((e) => {
+            const t = new Date(e.eventTime).getTime()
+            if (!Number.isFinite(t) || t < lo || t > hi) return false
+            // Tow is most relevant while parked; other behavior during driving trips
+            if (trip.type === 'parking') return e.icon === 'tow' || e.icon === 'crash'
+            return e.icon === 'speed' || e.icon === 'harsh' || e.icon === 'crash' || e.icon === 'tow'
+          })
+          .sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime())
+      }
+    } catch {
+      for (const trip of trips) trip.events = trip.events || []
+    }
+
     // Attach addresses for the feed (cap + parallel; Nominatim cache helps repeats)
     await Promise.all(
       trips.slice(0, 8).map(async (t) => {
