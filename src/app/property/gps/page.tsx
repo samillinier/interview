@@ -113,9 +113,8 @@ export default function GPSPage() {
     if (routePeriod) setRoutePeriod(null)
     setLocateTick((n) => n + 1)
 
-    // After coords are settled on our map, open Apple/Google Maps for turn-by-turn
-    // (destination = vehicle; start = user's current GPS location in that app).
-    if (opts?.drive !== false) {
+    // Drive there: open Apple/Google Maps turn-by-turn to the vehicle
+    if (opts?.drive) {
       openDrivingDirections(
         target.latitude,
         target.longitude,
@@ -953,189 +952,161 @@ function DeviceTelemetry({
 
       {/* Vehicle Vitals (includes former Diagnostics fields) */}
       <div className="mb-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Vehicle Vitals</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">Vehicle Vitals</p>
         <div className="grid grid-cols-3 gap-2">
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <div>
-              <p className="text-[10px] text-slate-400">Ignition</p>
-              <p className={`text-sm font-bold ${
-                device.obdii?.ignitionOn == null
-                  ? 'text-slate-300'
-                  : device.obdii.ignitionOn
-                    ? 'text-brand-green'
-                    : 'text-slate-700'
-              }`}>
-                {device.obdii?.ignitionOn == null ? '--' : device.obdii.ignitionOn ? 'On' : 'Off'}
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">Ignition</p>
+            <p className={`text-sm font-bold ${
+              device.obdii?.ignitionOn == null
+                ? 'text-slate-300'
+                : device.obdii.ignitionOn
+                  ? 'text-brand-green'
+                  : 'text-slate-700'
+            }`}>
+              {device.obdii?.ignitionOn == null ? '--' : device.obdii.ignitionOn ? 'On' : 'Off'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <div>
-              <p className="text-[10px] text-slate-400">Power</p>
-              <p className={`text-sm font-bold ${
-                device.obdii?.externalPowerConnected == null
-                  ? 'text-slate-300'
-                  : device.obdii.externalPowerConnected
-                    ? 'text-brand-green'
-                    : 'text-red-600'
-              }`}>
-                {device.obdii?.externalPowerConnected == null
-                  ? '--'
-                  : device.obdii.externalPowerConnected
-                    ? 'Connected'
-                    : 'Cut'}
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">Power</p>
+            <p className={`text-sm font-bold ${
+              device.obdii?.externalPowerConnected == null
+                ? 'text-slate-300'
+                : device.obdii.externalPowerConnected
+                  ? 'text-brand-green'
+                  : 'text-red-600'
+            }`}>
+              {device.obdii?.externalPowerConnected == null
+                ? '--'
+                : device.obdii.externalPowerConnected
+                  ? 'Connected'
+                  : 'Cut'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Signal className="w-4 h-4 text-sky-500 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] text-slate-400">GSM</p>
-              {(() => {
-                const gsm = formatGsmSignal(device.obdii?.gsmSignalDbm)
-                return (
-                  <>
-                    <p className="text-sm font-bold text-slate-900 leading-tight">{gsm.label}</p>
-                    {gsm.detail ? (
-                      <p className="text-[10px] text-slate-400 tabular-nums">{gsm.detail}</p>
-                    ) : null}
-                  </>
-                )
-              })()}
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Signal className="w-4 h-4 text-sky-500 mb-0.5" />
+            <p className="text-[10px] text-slate-400">GSM</p>
+            {(() => {
+              const gsm = formatGsmSignal(device.obdii?.gsmSignalDbm)
+              return (
+                <>
+                  <p className="text-sm font-bold text-slate-900 leading-tight">{gsm.label}</p>
+                  {gsm.detail ? (
+                    <p className="text-[8px] text-slate-400 tabular-nums leading-tight">{gsm.detail}</p>
+                  ) : null}
+                </>
+              )
+            })()}
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Fuel className="w-4 h-4 text-brand-green flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-slate-400">Fuel</p>
-              <p className="text-sm font-bold text-slate-900">{device.fuelLevel != null ? device.fuelLevel.toFixed(0) + '%' : '--'}</p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Fuel className="w-4 h-4 text-brand-green mb-0.5" />
+            <p className="text-[10px] text-slate-400">Fuel</p>
+            <p className="text-sm font-bold text-slate-900">{device.fuelLevel != null ? device.fuelLevel.toFixed(0) + '%' : '--'}</p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Battery className="w-4 h-4 text-brand-green flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-slate-400">Battery</p>
-              <p className="text-sm font-bold text-slate-900">{device.batteryVoltage != null ? device.batteryVoltage.toFixed(1) + 'V' : '--'}</p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Battery className="w-4 h-4 text-brand-green mb-0.5" />
+            <p className="text-[10px] text-slate-400">Battery</p>
+            <p className="text-sm font-bold text-slate-900">{device.batteryVoltage != null ? device.batteryVoltage.toFixed(1) + 'V' : '--'}</p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Battery className={`w-4 h-4 flex-shrink-0 ${
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Battery className={`w-4 h-4 mb-0.5 ${
               device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
                 ? 'text-red-500'
                 : 'text-amber-500'
             }`} />
-            <div className="min-w-0">
-              <p className="text-[10px] text-slate-400">Backup Batt</p>
-              <p className={`text-sm font-bold leading-tight ${
-                device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
-                  ? 'text-red-600'
-                  : 'text-slate-900'
-              }`}>
-                {device.obdii?.backupBatteryVoltage != null
-                  ? `${device.obdii.backupBatteryVoltage.toFixed(1)}V`
+            <p className="text-[10px] text-slate-400">Backup Batt</p>
+            <p className={`text-sm font-bold leading-tight ${
+              device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
+                ? 'text-red-600'
+                : 'text-slate-900'
+            }`}>
+              {device.obdii?.backupBatteryVoltage != null
+                ? `${device.obdii.backupBatteryVoltage.toFixed(1)}V`
+                : '--'}
+            </p>
+            {device.obdii?.batteryCharging != null ? (
+              <p className="text-[8px] text-slate-400 leading-tight">
+                {device.obdii.batteryCharging ? 'Charging' : 'Not charging'}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Thermometer className="w-4 h-4 text-red-400 mb-0.5" />
+            <p className="text-[10px] text-slate-400">Temp</p>
+            <p className="text-sm font-bold text-slate-900">{device.engineTemp != null ? device.engineTemp.toFixed(0) + '\u00B0F' : '--'}</p>
+          </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <RotateCcw className="w-4 h-4 text-slate-400 mb-0.5" />
+            <p className="text-[10px] text-slate-400">Odometer</p>
+            <p className="text-sm font-bold text-slate-900">
+              {device.odometer != null && device.odometer > 0
+                ? device.odometer.toLocaleString() + ' mi'
+                : device.obdii?.totalDistance != null && device.obdii.totalDistance > 0
+                  ? device.obdii.totalDistance.toLocaleString() + ' mi'
                   : '--'}
-              </p>
-              {device.obdii?.batteryCharging != null ? (
-                <p className="text-[10px] text-slate-400">
-                  {device.obdii.batteryCharging ? 'Charging' : 'Not charging'}
-                </p>
-              ) : null}
-            </div>
+            </p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Thermometer className="w-4 h-4 text-red-400 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-slate-400">Temp</p>
-              <p className="text-sm font-bold text-slate-900">{device.engineTemp != null ? device.engineTemp.toFixed(0) + '\u00B0F' : '--'}</p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Gauge className="w-4 h-4 text-indigo-400 mb-0.5" />
+            <p className="text-[10px] text-slate-400">RPM</p>
+            <p className="text-sm font-bold text-slate-900">{device.obdii?.rpm != null ? device.obdii.rpm.toLocaleString() : '--'}</p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <RotateCcw className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-slate-400">Odometer</p>
-              <p className="text-sm font-bold text-slate-900">
-                {device.odometer != null && device.odometer > 0
-                  ? device.odometer.toLocaleString() + ' mi'
-                  : device.obdii?.totalDistance != null && device.obdii.totalDistance > 0
-                    ? device.obdii.totalDistance.toLocaleString() + ' mi'
-                    : '--'}
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <Gauge className="w-4 h-4 text-indigo-400 mb-0.5" />
+            <p className="text-[10px] text-slate-400">OBD Speed</p>
+            <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Gauge className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-slate-400">RPM</p>
-              <p className="text-sm font-bold text-slate-900">{device.obdii?.rpm != null ? device.obdii.rpm.toLocaleString() : '--'}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <Gauge className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-slate-400">OBD Speed</p>
-              <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <AlertTriangle className={`w-4 h-4 mb-0.5 ${
               device.obdii?.milOn ? 'text-amber-500' : 'text-slate-300'
             }`} />
-            <div className="min-w-0">
-              <p className="text-[10px] text-slate-400">Check Engine</p>
-              <p className={`text-sm font-bold leading-tight ${
-                device.obdii?.milOn == null
-                  ? 'text-slate-300'
-                  : device.obdii.milOn
-                    ? 'text-amber-600'
-                    : 'text-slate-700'
-              }`}>
-                {device.obdii?.milOn == null ? '--' : device.obdii.milOn ? 'On' : 'Off'}
+            <p className="text-[10px] text-slate-400">Check Engine</p>
+            <p className={`text-sm font-bold leading-tight ${
+              device.obdii?.milOn == null
+                ? 'text-slate-300'
+                : device.obdii.milOn
+                  ? 'text-amber-600'
+                  : 'text-slate-700'
+            }`}>
+              {device.obdii?.milOn == null ? '--' : device.obdii.milOn ? 'On' : 'Off'}
+            </p>
+            {device.obdii?.milOn && device.obdii.milMileageMi != null ? (
+              <p className="text-[8px] text-slate-400 tabular-nums leading-tight">
+                {device.obdii.milMileageMi.toLocaleString()} mi since on
               </p>
-              {device.obdii?.milOn && device.obdii.milMileageMi != null ? (
-                <p className="text-[8px] text-slate-400 tabular-nums leading-tight">
-                  {device.obdii.milMileageMi.toLocaleString()} mi since on
-                </p>
-              ) : null}
-            </div>
+            ) : null}
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <div>
-              <p className="text-[10px] text-slate-400">OBD Link</p>
-              <p className={`text-sm font-bold ${
-                device.obdii?.obdConnected == null
-                  ? 'text-slate-300'
-                  : device.obdii.obdConnected
-                    ? 'text-brand-green'
-                    : 'text-red-600'
-              }`}>
-                {device.obdii?.obdConnected == null
-                  ? '--'
-                  : device.obdii.obdConnected
-                    ? 'Connected'
-                    : 'Disconnected'}
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">OBD Link</p>
+            <p className={`text-sm font-bold ${
+              device.obdii?.obdConnected == null
+                ? 'text-slate-300'
+                : device.obdii.obdConnected
+                  ? 'text-brand-green'
+                  : 'text-red-600'
+            }`}>
+              {device.obdii?.obdConnected == null
+                ? '--'
+                : device.obdii.obdConnected
+                  ? 'Connected'
+                  : 'Disconnected'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <div>
-              <p className="text-[10px] text-slate-400">Throttle</p>
-              <p className="text-sm font-bold text-slate-900">
-                {device.obdii?.throttlePercent != null ? `${device.obdii.throttlePercent}%` : '--'}
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">Throttle</p>
+            <p className="text-sm font-bold text-slate-900">
+              {device.obdii?.throttlePercent != null ? `${device.obdii.throttlePercent}%` : '--'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <div>
-              <p className="text-[10px] text-slate-400">Engine Load</p>
-              <p className="text-sm font-bold text-slate-900">
-                {device.obdii?.engineLoadPercent != null ? `${device.obdii.engineLoadPercent}%` : '--'}
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
+            <p className="text-[10px] text-slate-400">Engine Load</p>
+            <p className="text-sm font-bold text-slate-900">
+              {device.obdii?.engineLoadPercent != null ? `${device.obdii.engineLoadPercent}%` : '--'}
+            </p>
           </div>
-          <div className="p-2 bg-white rounded-lg">
+          <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
             <p className="text-[10px] text-slate-400">DTC</p>
             {device.obdii?.dtcCodes && device.obdii.dtcCodes.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mt-0.5">
+              <div className="flex flex-wrap justify-center gap-1 mt-0.5">
                 {device.obdii.dtcCodes.map(function (code: string, idx: number) {
                   const label = typeof code === 'string' ? code : String((code as any)?.code || code || '')
                   if (!label || label === '[object Object]') return null
@@ -1155,12 +1126,12 @@ function DeviceTelemetry({
               </p>
             ) : null}
           </div>
-          <div className="col-span-3 p-2 bg-white rounded-lg">
+          <div className="col-span-3 flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
             <p className="text-[10px] text-slate-400">VIN</p>
-            <p className="text-xs font-mono font-semibold text-slate-700 truncate">{device.obdii?.vin || '--'}</p>
+            <p className="text-xs font-mono font-semibold text-slate-700 truncate max-w-full">{device.obdii?.vin || '--'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
+        <div className="flex items-center justify-center gap-1.5 mt-2 pt-2 border-t border-slate-200">
           <Clock className="w-3 h-3 text-slate-400" />
           <p className="text-xs text-slate-500">Last seen: {formatTimeAgo(device.lastSeen)}</p>
         </div>
