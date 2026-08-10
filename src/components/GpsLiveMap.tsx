@@ -340,7 +340,7 @@ function routeFingerprint(
     .join('|')
 }
 
-type RouteLineColor = '#15803d' | '#ea580c' | '#dc2626' | '#ca8a04'
+type RouteLineColor = '#86efac' | '#ea580c' | '#dc2626' | '#ca8a04'
 
 function eventLineColor(icon?: string, label?: string): RouteLineColor | null {
   const i = (icon || '').toLowerCase()
@@ -371,7 +371,7 @@ function colorizeRoutePoints(
 
   const pointColors: RouteLineColor[] = points.map((p) => {
     const pt = p.time ? new Date(p.time).getTime() : NaN
-    if (!Number.isFinite(pt) || ranked.length === 0) return '#15803d'
+    if (!Number.isFinite(pt) || ranked.length === 0) return '#86efac'
     let best: { color: RouteLineColor; rank: number; dist: number } | null = null
     for (const e of ranked) {
       const dist = Math.abs(e.t - pt)
@@ -384,7 +384,7 @@ function colorizeRoutePoints(
         best = { color: e.color, rank: e.rank, dist }
       }
     }
-    return best?.color || '#15803d'
+    return best?.color || '#86efac'
   })
 
   const out: { latlngs: L.LatLng[]; color: RouteLineColor }[] = []
@@ -511,10 +511,10 @@ export function GpsLiveMap({
       trailRef.current.setLatLngs(latlngs)
     } else {
       trailRef.current = L.polyline(latlngs, {
-        color: '#15803d',
-        weight: 4,
-        opacity: 0.95,
-        dashArray: '10 8',
+        color: '#86efac',
+        weight: 3,
+        opacity: 0.55,
+        dashArray: '8 8',
         lineCap: 'butt',
         lineJoin: 'round',
       }).addTo(map)
@@ -1031,9 +1031,9 @@ export function GpsLiveMap({
         allLatLngs.push(...piece.latlngs)
         L.polyline(piece.latlngs, {
           color: piece.color,
-          weight: piece.color === '#15803d' ? 4 : 5,
-          opacity: piece.color === '#15803d' ? 0.85 : 0.95,
-          dashArray: '10 8',
+          weight: piece.color === '#86efac' ? 3 : 5,
+          opacity: piece.color === '#86efac' ? 0.55 : 0.95,
+          dashArray: '8 8',
           lineCap: 'butt',
           lineJoin: 'round',
         }).addTo(group)
