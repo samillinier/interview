@@ -944,27 +944,6 @@ function DeviceTelemetry({
             </div>
           </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
-            <div className="min-w-0">
-              <p className="text-[10px] text-slate-400">Idle</p>
-              <p className={`text-sm font-bold leading-tight ${
-                device.obdii?.idleStatus
-                  ? 'text-amber-600'
-                  : device.obdii?.idleDurationSec != null
-                    ? 'text-slate-900'
-                    : 'text-slate-300'
-              }`}>
-                {device.obdii?.idleDurationSec != null
-                  ? formatIdleDuration(device.obdii.idleDurationSec)
-                  : '--'}
-              </p>
-              {device.obdii?.idleStatus != null ? (
-                <p className="text-[10px] text-slate-400">
-                  {device.obdii.idleStatus ? 'Idling' : 'Not idle'}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <div>
               <p className="text-[10px] text-slate-400">Power</p>
               <p className={`text-sm font-bold ${
@@ -1243,29 +1222,59 @@ function DeviceTelemetry({
         onApplyCustom={applyCustomRange}
         rangeError={rangeError}
         todayStr={todayStr}
+        idleDurationSec={device.obdii?.idleDurationSec ?? null}
+        idleStatus={device.obdii?.idleStatus ?? null}
       />
 
       {/* Alerts — collapsed by default; expand on click */}
       {!historyOpen && (() => {
         const alerts = events.filter(function(e) { return e.severity === 'critical' || e.severity === 'warning' })
-        if (alerts.length === 0) return null
+        const idleSec = device.obdii?.idleDurationSec
+        const idleSt = device.obdii?.idleStatus
+        const hasIdle = idleSec != null || idleSt != null
+        if (alerts.length === 0 && !hasIdle) return null
+        const alertCount = alerts.length + (hasIdle ? 1 : 0)
+        const onlyIdle = alerts.length === 0 && hasIdle
         return (
-          <div className="rounded-xl border border-red-100 bg-red-50/50 overflow-hidden">
+          <div className={`rounded-xl border overflow-hidden ${
+            onlyIdle ? 'border-amber-100 bg-amber-50/50' : 'border-red-100 bg-red-50/50'
+          }`}>
             <button
               type="button"
               onClick={() => setAlertsOpen((o) => !o)}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-red-50 transition-colors"
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors ${
+                onlyIdle ? 'hover:bg-amber-50' : 'hover:bg-red-50'
+              }`}
             >
               <div className="flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                <p className="text-xs font-semibold text-red-700">Alerts ({alerts.length})</p>
+                <AlertTriangle className={`w-3.5 h-3.5 ${onlyIdle ? 'text-amber-500' : 'text-red-500'}`} />
+                <p className={`text-xs font-semibold ${onlyIdle ? 'text-amber-800' : 'text-red-700'}`}>
+                  Alerts ({alertCount})
+                </p>
               </div>
               <ChevronDown
-                className={`w-4 h-4 text-red-400 transition-transform ${alertsOpen ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 transition-transform ${onlyIdle ? 'text-amber-400' : 'text-red-400'} ${alertsOpen ? 'rotate-180' : ''}`}
               />
             </button>
             {alertsOpen && (
-              <div className="px-3 pb-3 space-y-1 border-t border-red-100 pt-2">
+              <div className={`px-3 pb-3 space-y-1 border-t pt-2 ${
+                onlyIdle ? 'border-amber-100' : 'border-red-100'
+              }`}>
+                {hasIdle ? (
+                  <div className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg text-xs">
+                    <div className="min-w-0">
+                      <span className={`font-semibold ${idleSt ? 'text-amber-700' : 'text-slate-800'}`}>
+                        {idleSt ? 'Vehicle Idling' : 'Idle time'}
+                      </span>
+                      {idleSec != null ? (
+                        <p className="text-[10px] text-slate-400">{formatIdleDuration(idleSec)}</p>
+                      ) : null}
+                    </div>
+                    <span className="text-[10px] text-slate-400 flex-shrink-0">
+                      {idleSt ? 'Now' : 'Live'}
+                    </span>
+                  </div>
+                ) : null}
                 {alerts.slice(0, 5).map(function(event) {
                   return (
                     <div key={event.id} className="flex items-center justify-between p-1.5 bg-white rounded-lg text-xs">
