@@ -695,8 +695,9 @@ export function GpsLiveMap({
     const LayerControl = L.Control.extend({
       options: { position: 'topright' },
       onAdd: function () {
-        const container = L.DomUtil.create('div', 'leaflet-control')
-        container.style.cssText = 'background:white;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.2);padding:3px;display:flex;gap:1px'
+        const container = L.DomUtil.create('div', 'leaflet-control gps-layer-control')
+        container.style.cssText =
+          'background:white;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.2);padding:3px;display:flex;gap:1px'
         for (const { key, label } of [
           { key: 'osm', label: 'OSM' },
           { key: 'light', label: 'Light' },
@@ -706,20 +707,32 @@ export function GpsLiveMap({
           const btn = L.DomUtil.create('a', '', container)
           btn.href = '#'
           btn.title = label
-          btn.style.cssText = 'font-size:11px;font-weight:500;padding:3px 7px;border-radius:4px;color:#64748b;text-decoration:none;display:inline-block'
+          btn.setAttribute('data-layer', key)
+          btn.style.cssText =
+            'font-size:11px;font-weight:500;padding:3px 7px;border-radius:4px;color:#64748b;text-decoration:none;display:inline-block;background:transparent'
           btn.textContent = label
           btn.onclick = (e: Event) => {
             e.preventDefault()
             e.stopPropagation()
-            setActiveLayer(key as any)
+            setActiveLayer(key as 'osm' | 'light' | 'dark' | 'satellite')
           }
-          if (key === 'light') btn.style.cssText += ';background:#f0fdf4;color:#15803d'
           ;(container as any)['_layerBtn' + key] = btn
         }
         return container
       },
     })
     map.addControl(new LayerControl())
+    // Paint initial selection after control mounts
+    queueMicrotask(() => {
+      const container = mapRef.current?.querySelector('.gps-layer-control')
+      if (!container) return
+      container.querySelectorAll('a[data-layer]').forEach((node) => {
+        const a = node as HTMLAnchorElement
+        const isActive = a.getAttribute('data-layer') === 'light'
+        a.style.background = isActive ? '#f0fdf4' : 'transparent'
+        a.style.color = isActive ? '#15803d' : '#64748b'
+      })
+    })
 
     leafletMapRef.current = map
 
@@ -882,21 +895,15 @@ export function GpsLiveMap({
       map.addLayer(active)
     }
 
-    const container = mapRef.current?.querySelector('.leaflet-control > a')?.parentElement
+    const container = mapRef.current?.querySelector('.gps-layer-control')
     if (container) {
-      const buttons = container.querySelectorAll('a')
-      for (let i = 0; i < buttons.length; i++) {
-        const a = buttons.item(i)
-        if (!a) continue
-        const key = a.textContent?.toLowerCase()
-        const isActive =
-          (key === 'osm' && activeLayer === 'osm') ||
-          (key === 'light' && activeLayer === 'light') ||
-          (key === 'dark' && activeLayer === 'dark') ||
-          (key === 'sat' && activeLayer === 'satellite')
+      container.querySelectorAll('a[data-layer]').forEach((node) => {
+        const a = node as HTMLAnchorElement
+        const key = a.getAttribute('data-layer')
+        const isActive = key === activeLayer
         a.style.background = isActive ? '#f0fdf4' : 'transparent'
         a.style.color = isActive ? '#15803d' : '#64748b'
-      }
+      })
     }
   }, [activeLayer])
 
