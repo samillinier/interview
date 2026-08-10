@@ -504,22 +504,9 @@ export function GpsLiveMap({
     }
   }, [])
 
-  const updateTrail = useCallback((latlngs: L.LatLng[]) => {
-    const map = leafletMapRef.current
-    if (!map || latlngs.length < 2) return
-    if (trailRef.current) {
-      trailRef.current.setLatLngs(latlngs)
-    } else {
-      trailRef.current = L.polyline(latlngs, {
-        color: '#86efac',
-        weight: 3,
-        opacity: 0.55,
-        dashArray: '8 8',
-        lineCap: 'butt',
-        lineJoin: 'round',
-      }).addTo(map)
-    }
-  }, [])
+  // Do not paint a second green trail during playback — it covers the
+  // dashed event-colored route (orange harsh / red crash) as the car moves.
+  const updateTrail = useCallback((_latlngs: L.LatLng[]) => {}, [])
 
   const tickPlayback = useCallback(() => {
     const segs = playbackSegsRef.current
@@ -587,12 +574,6 @@ export function GpsLiveMap({
         end.longitude,
         bearingDeg(prev.latitude, prev.longitude, end.latitude, end.longitude)
       )
-      // Final trail flush
-      const finalTrail: L.LatLng[] = []
-      for (const seg of segs) {
-        for (const p of seg.points) finalTrail.push(L.latLng(p.latitude, p.longitude))
-      }
-      updateTrail(finalTrail)
       playbackDoneRef.current = true
       playbackPausedRef.current = true
       playbackRafRef.current = null
@@ -605,24 +586,6 @@ export function GpsLiveMap({
     const pos = pointAlongSegment(segs[segIdx], dist)
     updatePlaybackMarker(pos.lat, pos.lng, pos.heading)
 
-    const trail: L.LatLng[] = []
-    for (let s = 0; s < segIdx; s++) {
-      for (const p of segs[s].points) trail.push(L.latLng(p.latitude, p.longitude))
-    }
-    const cur = segs[segIdx]
-    for (let i = 0; i < cur.points.length; i++) {
-      if (cur.cumDist[i] <= dist) {
-        trail.push(L.latLng(cur.points[i].latitude, cur.points[i].longitude))
-      } else break
-    }
-    trail.push(L.latLng(pos.lat, pos.lng))
-    // Throttle trail redraws — updating every frame makes the map stutter
-    trailUpdateAccRef.current += dt
-    if (trailUpdateAccRef.current >= 0.08) {
-      trailUpdateAccRef.current = 0
-      updateTrail(trail)
-    }
-
     const doneM = segs.slice(0, segIdx).reduce((s, seg) => s + seg.lengthM, 0) + dist
     const progress = totalM > 0 ? Math.min(1, doneM / totalM) : 0
     setPlaybackUi((u) =>
@@ -630,7 +593,7 @@ export function GpsLiveMap({
     )
 
     playbackRafRef.current = requestAnimationFrame(tickPlayback)
-  }, [updatePlaybackMarker, updateTrail])
+  }, [updatePlaybackMarker])
 
   const startPlayback = useCallback(
     (segs: PlaybackSeg[], reset = true, autoPlay = true) => {
