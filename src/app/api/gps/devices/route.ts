@@ -265,10 +265,11 @@ export async function GET(request: NextRequest) {
       // OBDII data from position attributes
       const obdii = traccar.extractObdiiData(livePos?.attributes as Record<string, unknown> | undefined)
 
-      // Recent events (last 7 days) — include Queclink GTSPD/GTHBM/GTCRA behavior msgs
+      // Recent events (last 7 days) — include Queclink GTSPD/GTHBM/GTCRA/GTCRD behavior msgs.
+      // Keep the newest rows, but always retain crashes (they can fall outside a small window).
       const tcId = traccarDevice?.id
       const deviceEvents = tcId ? (eventsByDeviceId.get(tcId) || []) : []
-      const recentEvents = deviceEvents
+      const classified = deviceEvents
         .map((e) => traccar.classifyEvent(e))
         .filter(
           (e): e is traccar.ClassifiedEvent =>
@@ -281,8 +282,14 @@ export async function GET(request: NextRequest) {
               e.icon === 'geofence' ||
               e.icon === 'maintenance')
         )
-        .slice(-40)
-        .reverse()
+      const byId = new Map<number, traccar.ClassifiedEvent>()
+      for (const e of classified.slice(-80)) byId.set(e.id, e)
+      for (const e of classified) {
+        if (e.icon === 'crash') byId.set(e.id, e)
+      }
+      const recentEvents = Array.from(byId.values()).sort(
+        (a, b) => new Date(b.eventTime).getTime() - new Date(a.eventTime).getTime()
+      )
 
       // Today's summary
       const tcSummary = tcId ? summaryByDeviceId.get(tcId) : undefined
