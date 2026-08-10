@@ -45,6 +45,8 @@ export interface VehicleDevice {
     obdConnected?: boolean
     throttlePercent?: number
     engineLoadPercent?: number
+    idleDurationSec?: number
+    idleStatus?: boolean
   }
   /** Recent classified events for this device */
   recentEvents?: {

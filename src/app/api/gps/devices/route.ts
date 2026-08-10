@@ -347,6 +347,8 @@ export async function GET(request: NextRequest) {
           obdConnected: obdii.obdConnected,
           throttlePercent: obdii.throttlePercent,
           engineLoadPercent: obdii.engineLoadPercent,
+          idleDurationSec: obdii.idleDurationSec,
+          idleStatus: obdii.idleStatus,
         } : undefined,
         recentEvents: recentEvents.length > 0 ? recentEvents : undefined,
         todaySummary,

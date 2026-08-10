@@ -944,6 +944,27 @@ function DeviceTelemetry({
             </div>
           </div>
           <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400">Idle</p>
+              <p className={`text-sm font-bold leading-tight ${
+                device.obdii?.idleStatus
+                  ? 'text-amber-600'
+                  : device.obdii?.idleDurationSec != null
+                    ? 'text-slate-900'
+                    : 'text-slate-300'
+              }`}>
+                {device.obdii?.idleDurationSec != null
+                  ? formatIdleDuration(device.obdii.idleDurationSec)
+                  : '--'}
+              </p>
+              {device.obdii?.idleStatus != null ? (
+                <p className="text-[10px] text-slate-400">
+                  {device.obdii.idleStatus ? 'Idling' : 'Not idle'}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
             <div>
               <p className="text-[10px] text-slate-400">Power</p>
               <p className={`text-sm font-bold ${
@@ -1268,4 +1289,14 @@ function formatTimeAgo(dateStr: string): string {
   if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago'
   if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago'
   return Math.floor(seconds / 86400) + 'd ago'
+}
+
+function formatIdleDuration(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return r > 0 ? `${m}m ${r}s` : `${m}m`
+  return `${r}s`
 }

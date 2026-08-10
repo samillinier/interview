@@ -340,6 +340,9 @@ export interface ObdiiPayload {
   obdConnected?: boolean
   throttlePercent?: number
   engineLoadPercent?: number
+  /** Seconds the vehicle has been idle (Ruhavik idle.status.duration) */
+  idleDurationSec?: number
+  idleStatus?: boolean
 }
 
 export interface ClassifiedEvent {
@@ -709,6 +712,13 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
 
   const load = val('can.engine.load.level') ?? val('engine.load.level') ?? val('engine.load')
   if (load !== undefined) payload.engineLoadPercent = Math.round(load)
+
+  const idleSec = val('idle.status.duration') ?? val('idle.duration')
+  if (idleSec !== undefined && Number.isFinite(idleSec) && idleSec >= 0) {
+    payload.idleDurationSec = Math.round(idleSec)
+  }
+  const idleSt = boolish(attrs['idle.status'] ?? attrs['idle'])
+  if (idleSt !== undefined) payload.idleStatus = idleSt
 
   return payload
 }
