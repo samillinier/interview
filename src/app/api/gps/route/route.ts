@@ -40,7 +40,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let gpsDevice = null
+    let gpsDevice: {
+      id: string
+      deviceId: string | null
+      traccarId: number | null
+      [key: string]: unknown
+    } | null = null
 
     if (!isAdmin) {
       const property = await (prisma as any).property.findUnique({
@@ -50,7 +55,7 @@ export async function GET(request: NextRequest) {
       if (!property) {
         return NextResponse.json({ error: 'Property not found' }, { status: 404 })
       }
-      gpsDevice = property.GpsDevice.find((d: any) => d.deviceId === deviceId)
+      gpsDevice = property.GpsDevice.find((d: any) => d.deviceId === deviceId) || null
     } else {
       gpsDevice = await (prisma as any).gpsDevice.findFirst({
         where: { deviceId },
