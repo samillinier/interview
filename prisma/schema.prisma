@@ -1050,6 +1050,7 @@ model GpsPosition {
   timestamp  DateTime
   GpsDevice  GpsDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 
+  @@unique([deviceId, timestamp])
   @@index([deviceId, timestamp])
   @@index([timestamp])
 }

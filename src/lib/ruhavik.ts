@@ -394,7 +394,7 @@ interface RuhavikMessage {
   [key: string]: unknown
 }
 
-interface RuhavikTripStop {
+export interface RuhavikTripStop {
   id?: number | string
   type?: string
   n_type?: string
@@ -1167,30 +1167,23 @@ export async function getRoute(deviceId: number, from: string, to: string): Prom
 }
 
 /**
- * Route history as separate trip segments (does not connect parking gaps).
- * Drawing one continuous polyline across overnight/parked gaps invents fake travel.
+ * All valid GPS fixes in a window (not yet split into trips).
+ * Used for local archival and segment building.
  */
-export async function getRouteSegments(
+export async function fetchRoutePoints(
   deviceId: number,
   from: string,
   to: string
-): Promise<TraccarPosition[][]> {
+): Promise<TraccarPosition[]> {
   const fromUnix = isoToUnix(from)
   const toUnix = isoToUnix(to)
 
-  const [messages, tripStops] = await Promise.all([
-    rpc<RuhavikMessage[]>('unit.messages.get', {
-      unit_id: deviceId,
-      from: fromUnix,
-      to: toUnix,
-      count: 5000,
-    }).catch(() => [] as RuhavikMessage[]),
-    rpc<RuhavikTripStop[]>('units.events.trips_stops.get', {
-      ids: [deviceId],
-      from: fromUnix,
-      to: toUnix,
-    }).catch(() => [] as RuhavikTripStop[]),
-  ])
+  const messages = await rpc<RuhavikMessage[]>('unit.messages.get', {
+    unit_id: deviceId,
+    from: fromUnix,
+    to: toUnix,
+    count: 5000,
+  }).catch(() => [] as RuhavikMessage[])
 
   const points: TraccarPosition[] = []
   ;(messages || []).forEach((msg, i) => {
@@ -1203,6 +1196,18 @@ export async function getRouteSegments(
   })
 
   points.sort((a, b) => new Date(a.deviceTime).getTime() - new Date(b.deviceTime).getTime())
+  return points
+}
+
+/** Build trip polylines from raw points (+ optional Ruhavik trip windows). */
+export function buildRouteSegmentsFromPoints(
+  points: TraccarPosition[],
+  tripStops: RuhavikTripStop[] | null | undefined,
+  from: string,
+  to: string
+): TraccarPosition[][] {
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
 
   const trips = (tripStops || [])
     .filter((e) => {
@@ -1211,7 +1216,6 @@ export async function getRouteSegments(
       const begin = Number(e.begin ?? e.event_time ?? 0)
       const endRaw = e.end
       const end = endRaw == null ? toUnix : Number(endRaw)
-      // Overlaps requested window
       return end >= fromUnix && begin <= toUnix
     })
     .sort((a, b) => Number(a.begin ?? 0) - Number(b.begin ?? 0))
@@ -1234,9 +1238,35 @@ export async function getRouteSegments(
     if (segments.length > 0) return segments
   }
 
-  // Fallback: only moving points, split on long parking gaps so days don't connect
   const moving = trimSegmentTeleports(points.filter((p) => Number(p.speed || 0) > 1))
   return splitRouteByGaps(moving, 20 * 60)
+}
+
+/**
+ * Route history as separate trip segments (does not connect parking gaps).
+ * Drawing one continuous polyline across overnight/parked gaps invents fake travel.
+ */
+export async function getRouteSegments(
+  deviceId: number,
+  from: string,
+  to: string,
+  prefetchedPoints?: TraccarPosition[]
+): Promise<TraccarPosition[][]> {
+  const fromUnix = isoToUnix(from)
+  const toUnix = isoToUnix(to)
+
+  const [points, tripStops] = await Promise.all([
+    prefetchedPoints
+      ? Promise.resolve(prefetchedPoints)
+      : fetchRoutePoints(deviceId, from, to),
+    rpc<RuhavikTripStop[]>('units.events.trips_stops.get', {
+      ids: [deviceId],
+      from: fromUnix,
+      to: toUnix,
+    }).catch(() => [] as RuhavikTripStop[]),
+  ])
+
+  return buildRouteSegmentsFromPoints(points, tripStops, from, to)
 }
 
 /** Split a track into segments when the gap between points exceeds maxGapSec */

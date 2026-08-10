@@ -5,13 +5,18 @@ import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
 import { GPS_TIMEZONE, dateRangeBounds, periodBounds } from '@/lib/gpsTime'
 import { reverseGeocode } from '@/lib/geocode'
+import {
+  countGpsPositions,
+  loadGpsPositions,
+  saveGpsPositions,
+} from '@/lib/gpsHistoryStore'
 
 /**
  * GET /api/gps/route?deviceId=GV500MAP&period=today|yesterday|week
  *   or &from=YYYY-MM-DD&to=YYYY-MM-DD (custom calendar range, max 31 days)
  *
  * Returns route positions for a device within the given time period.
- * Uses raw GPS track points (not OSRM road-snapping) so history matches Ruhavik.
+ * Archives Ruhavik fixes into GpsPosition and falls back to DB when Ruhavik is down.
  */
 
 export async function GET(request: NextRequest) {
@@ -47,7 +52,6 @@ export async function GET(request: NextRequest) {
       }
       gpsDevice = property.GpsDevice.find((d: any) => d.deviceId === deviceId)
     } else {
-      // Admin: look up device directly
       gpsDevice = await (prisma as any).gpsDevice.findFirst({
         where: { deviceId },
         include: { Vehicle: true },
@@ -56,21 +60,6 @@ export async function GET(request: NextRequest) {
 
     if (!gpsDevice) {
       return NextResponse.json({ error: 'Device not found' }, { status: 404 })
-    }
-
-    const traccarReachable = await traccar.isReachable()
-    if (!traccarReachable) {
-      return NextResponse.json({ positions: [], gpsConnected: false })
-    }
-
-    // Look up the Ruhavik unit to get the numeric ID
-    const traccarDevices = await traccar.getDevices()
-    const traccarDevice = traccarDevices.find(
-      (td) => td.uniqueId === deviceId || String(td.id) === deviceId || `tc-${td.id}` === deviceId
-    )
-
-    if (!traccarDevice) {
-      return NextResponse.json({ positions: [] })
     }
 
     let from: string
@@ -91,11 +80,66 @@ export async function GET(request: NextRequest) {
       to = bounds.to
     }
 
+    const traccarReachable = await traccar.isReachable()
+    let traccarDevice: Awaited<ReturnType<typeof traccar.getDevices>>[number] | null = null
+    if (traccarReachable) {
+      try {
+        const traccarDevices = await traccar.getDevices()
+        traccarDevice =
+          traccarDevices.find(
+            (td) =>
+              td.uniqueId === deviceId ||
+              String(td.id) === deviceId ||
+              `tc-${td.id}` === deviceId ||
+              (gpsDevice.traccarId != null && td.id === gpsDevice.traccarId)
+          ) || null
+      } catch {
+        traccarDevice = null
+      }
+    }
+
     let segments: traccar.TraccarPosition[][] = []
+    let historySource: 'ruhavik' | 'db' | 'mixed' = 'db'
+    let savedCount = 0
+    let dbPointCount = 0
+
+    if (traccarDevice) {
+      try {
+        const points = await traccar.fetchRoutePoints(traccarDevice.id, from, to)
+        try {
+          savedCount = await saveGpsPositions(gpsDevice.id, points)
+        } catch (err) {
+          console.warn('[gps/route] save failed', err)
+        }
+        segments = await traccar.getRouteSegments(traccarDevice.id, from, to, points)
+        historySource = 'ruhavik'
+      } catch (err) {
+        console.warn('[gps/route] Ruhavik route failed, trying DB', err)
+        const dbPoints = await loadGpsPositions(gpsDevice.id, from, to)
+        dbPointCount = dbPoints.length
+        segments = traccar.buildRouteSegmentsFromPoints(dbPoints, [], from, to)
+        historySource = 'db'
+      }
+    } else {
+      const dbPoints = await loadGpsPositions(gpsDevice.id, from, to)
+      dbPointCount = dbPoints.length
+      segments = traccar.buildRouteSegmentsFromPoints(dbPoints, [], from, to)
+      historySource = 'db'
+    }
+
+    if (segments.length === 0) {
+      const dbPoints = await loadGpsPositions(gpsDevice.id, from, to)
+      dbPointCount = dbPoints.length
+      if (dbPoints.length > 0) {
+        segments = traccar.buildRouteSegmentsFromPoints(dbPoints, [], from, to)
+        historySource = historySource === 'ruhavik' ? 'mixed' : 'db'
+      }
+    }
+
     try {
-      segments = await traccar.getRouteSegments(traccarDevice.id, from, to)
+      dbPointCount = await countGpsPositions(gpsDevice.id, from, to)
     } catch {
-      return NextResponse.json({ positions: [], segments: [], trips: [], error: 'Failed to fetch route from Ruhavik' })
+      // ignore
     }
 
     const toCoord = (p: traccar.TraccarPosition) => ({
@@ -110,13 +154,13 @@ export async function GET(request: NextRequest) {
 
     let trips: traccar.TripHistoryItem[] = []
     try {
-      trips = await traccar.getTripHistory(traccarDevice.id, from, to, segments)
+      trips = await traccar.getTripHistory(traccarDevice?.id ?? 0, from, to, segments)
     } catch {
       trips = []
     }
 
-    // Attach driving-behavior events (speeding, harsh, crash, tow, idle) to each trip/parking
     try {
+      if (!traccarDevice) throw new Error('no ruhavik device')
       const rawEvents = await traccar.getEvents(traccarDevice.id, from, to)
       const behavior = rawEvents
         .map((e) => traccar.classifyEvent(e))
@@ -148,7 +192,6 @@ export async function GET(request: NextRequest) {
         return { startMs, endMs }
       }
 
-      // Pass 1: events that fall inside a trip/stop window (extra buffer for crashes)
       for (const e of behavior) {
         const t = new Date(e.eventTime).getTime()
         if (!Number.isFinite(t)) continue
@@ -171,7 +214,6 @@ export async function GET(request: NextRequest) {
           const hi = endMs + bufferMs
           if (t < lo || t > hi) continue
           const dist = t < startMs ? startMs - t : t > endMs ? t - endMs : 0
-          // Prefer the containing window; for ties prefer parking for crash/tow/idle
           const prefer =
             dist < bestDist ||
             (dist === bestDist &&
@@ -196,8 +238,6 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // Always surface crashes as their own pinned cards so they aren't buried
-      // in a long newest-first trip list (edge crashes are easy to miss).
       const crashCards: traccar.TripHistoryItem[] = []
       const crashSeen = new Set<number>()
       for (const e of behavior) {
@@ -227,7 +267,6 @@ export async function GET(request: NextRequest) {
       trips.sort(
         (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       )
-      // Pinned crash cards first (newest crash first), then the rest of the day
       crashCards.sort(
         (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       )
@@ -249,7 +288,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Attach addresses for the feed (cap + parallel; Nominatim cache helps repeats)
     await Promise.all(
       trips.slice(0, 8).map(async (t) => {
         if (t.id.startsWith('crash-')) return
@@ -293,8 +331,11 @@ export async function GET(request: NextRequest) {
         behaviorCount: crashDebug?.behaviorCount ?? null,
         crashCount: crashDebug?.crashCount ?? trips.filter((t) => t.id.startsWith('crash-')).length,
         behaviorError: crashDebug?.behaviorError ?? null,
+        historySource,
+        savedCount,
+        dbPointCount,
       },
-      gpsConnected: true,
+      gpsConnected: !!traccarDevice || routeSegments.length > 0 || dbPointCount > 0,
     })
   } catch {
     return NextResponse.json({ positions: [], segments: [], trips: [], gpsConnected: false }, { status: 500 })
