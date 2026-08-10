@@ -772,7 +772,20 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
     return { ...b, label: 'Harsh Acceleration', icon: 'harsh', severity: 'warning', detail: 'Rapid acceleration detected' }
   }
   if (reportCode === 'GTCRA' || reportCode === 'GTCRD') {
-    return { ...b, label: 'Crash Detected', icon: 'crash', severity: 'critical', detail: 'Impact event recorded' }
+    const parts: string[] = []
+    const data = attrs['crash.data']
+    if (data != null && data !== '') parts.push(`code ${data}`)
+    const peak = Number(attrs.crashPeakG)
+    if (Number.isFinite(peak) && peak > 0) parts.push(`peak ${peak}g`)
+    const seq = attrs['crash.seqnum']
+    if (seq != null && seq !== '') parts.push(`#${seq}`)
+    return {
+      ...b,
+      label: 'Crash Detected',
+      icon: 'crash',
+      severity: 'critical',
+      detail: parts.length > 0 ? `Impact recorded (${parts.join(', ')})` : 'Impact event recorded',
+    }
   }
   if (reportCode === 'GTTOW') {
     return { ...b, label: 'Tow Alarm', icon: 'tow', severity: 'warning', detail: 'Vehicle movement while ignition off' }
@@ -807,7 +820,18 @@ export function classifyEvent(event: TraccarEvent): ClassifiedEvent | null {
       return { ...b, label: 'Harsh Cornering', icon: 'harsh', severity: 'warning', detail: 'Aggressive turn detected' }
     }
     if (alarmType.includes('crash') || alarmType.includes('accident')) {
-      return { ...b, label: 'Crash Detected', icon: 'crash', severity: 'critical', detail: 'Impact event recorded' }
+      const parts: string[] = []
+      const data = attrs['crash.data']
+      if (data != null && data !== '') parts.push(`code ${data}`)
+      const peak = Number(attrs.crashPeakG)
+      if (Number.isFinite(peak) && peak > 0) parts.push(`peak ${peak}g`)
+      return {
+        ...b,
+        label: 'Crash Detected',
+        icon: 'crash',
+        severity: 'critical',
+        detail: parts.length > 0 ? `Impact recorded (${parts.join(', ')})` : 'Impact event recorded',
+      }
     }
     if (alarmType.includes('tow')) {
       return { ...b, label: 'Tow Alarm', icon: 'tow', severity: 'warning', detail: 'Vehicle movement while ignition off' }
@@ -1503,7 +1527,11 @@ function behaviorEventsFromMessages(
   const cands: Cand[] = []
 
   for (const msg of messages || []) {
-    const code = String(msg['report.code'] || '').toUpperCase()
+    let code = String(msg['report.code'] || '').toUpperCase()
+    // Crash data packets sometimes carry crash.event without a clean code match
+    if (!BEHAVIOR.has(code) && (msg['crash.event'] === true || msg['crash.data'] != null)) {
+      code = 'GTCRD'
+    }
     if (!BEHAVIOR.has(code)) continue
     // Prefer device/fix time; fall back to server receive time
     const ts = Number(msg.timestamp ?? msg['position.timestamp'] ?? msg['server.timestamp'] ?? 0)
@@ -1520,11 +1548,24 @@ function behaviorEventsFromMessages(
 
   cands.sort((a, b) => a.ts - b.ts)
 
-  // Coalesce bursts (same code within 2 minutes) into one driving-behavior event
+  // Coalesce bursts: same code within 2 minutes, or same crash.seqnum across GTCRD frames
   const coalesced: Cand[] = []
   for (const c of cands) {
     const prev = coalesced[coalesced.length - 1]
-    if (prev && prev.code === c.code && c.ts - prev.ts < 120) continue
+    if (prev) {
+      const sameCrashSeq =
+        (c.code === 'GTCRD' || c.code === 'GTCRA') &&
+        (prev.code === 'GTCRD' || prev.code === 'GTCRA') &&
+        prev.msg['crash.seqnum'] != null &&
+        c.msg['crash.seqnum'] != null &&
+        Number(prev.msg['crash.seqnum']) === Number(c.msg['crash.seqnum'])
+      if (sameCrashSeq) {
+        // Prefer later / final crash frame (has full accel upload)
+        coalesced[coalesced.length - 1] = c
+        continue
+      }
+      if (prev.code === c.code && c.ts - prev.ts < 120) continue
+    }
     coalesced.push(c)
   }
 
@@ -1542,6 +1583,12 @@ function behaviorEventsFromMessages(
       latitude: c.msg['position.latitude'],
       longitude: c.msg['position.longitude'],
       'idle.status.duration': c.msg['idle.status.duration'],
+      'crash.data': c.msg['crash.data'],
+      'crash.event': c.msg['crash.event'],
+      'crash.seqnum': c.msg['crash.seqnum'],
+      'crash.frame.seqnum': c.msg['crash.frame.seqnum'],
+      'crash.frames.total': c.msg['crash.frames.total'],
+      crashPeakG: crashAccelPeakG(c.msg['acceleration.array']),
     }
 
     if (code === 'GTSPD') {
@@ -1570,6 +1617,22 @@ function behaviorEventsFromMessages(
       attributes: attrs,
     }
   })
+}
+
+/** Peak accelerometer magnitude (g) from Queclink crash accel frames */
+function crashAccelPeakG(raw: unknown): number | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  let peak = 0
+  for (const sample of raw) {
+    if (!sample || typeof sample !== 'object') continue
+    const o = sample as Record<string, unknown>
+    const x = Number(o.x) || 0
+    const y = Number(o.y) || 0
+    const z = Number(o.z) || 0
+    const mag = Math.sqrt(x * x + y * y + z * z)
+    if (mag > peak) peak = mag
+  }
+  return peak > 0 ? Math.round(peak * 1000) / 1000 : undefined
 }
 
 export async function getEvents(deviceId: number, from: string, to: string): Promise<TraccarEvent[]> {
