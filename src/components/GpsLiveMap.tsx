@@ -170,26 +170,15 @@ function buildPopup(d: VehicleDevice, trip?: SelectedTripInfo | null): string {
     }
     if (trip.events && trip.events.length > 0) {
       html += '<div style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:4px">'
-      html +=
-        '<span style="font-size:10px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:0.04em">During this trip</span><br/>'
-      for (const ev of trip.events.slice(0, 8)) {
-        const t = formatPopupStamp(ev.eventTime).split(',')[0] || formatPopupStamp(ev.eventTime)
+      const seen = new Set<string>()
+      for (const ev of trip.events) {
+        const label = (ev.label || '').trim()
+        if (!label || seen.has(label)) continue
+        seen.add(label)
         html +=
-          '<span style="color:#64748b;font-variant-numeric:tabular-nums">' +
-          t +
-          '</span> <strong style="color:#c2410c">' +
-          ev.label +
-          '</strong>'
-        if (ev.detail) {
-          html += ' <span style="color:#94a3b8;font-size:10px">(' + ev.detail + ')</span>'
-        }
-        html += '<br/>'
-      }
-      if (trip.events.length > 8) {
-        html +=
-          '<span style="color:#94a3b8;font-size:10px">+' +
-          (trip.events.length - 8) +
-          ' more</span><br/>'
+          '<strong style="color:#c2410c;font-size:12px">' +
+          label +
+          ' detected</strong><br/>'
       }
       html += '</div>'
     }
@@ -205,8 +194,10 @@ function buildPopup(d: VehicleDevice, trip?: SelectedTripInfo | null): string {
     html += '</div>'
   }
 
-  html += '<div style="margin-top:4px;font-size:10px;color:#94a3b8">' + d.deviceModel + '</div>'
-  html += '<div style="font-size:10px;color:#94a3b8">ID: ' + d.deviceId + '</div>'
+  if (!trip) {
+    html += '<div style="margin-top:4px;font-size:10px;color:#94a3b8">' + d.deviceModel + '</div>'
+    html += '<div style="font-size:10px;color:#94a3b8">ID: ' + d.deviceId + '</div>'
+  }
   html += '</div>'
   return html
 }
