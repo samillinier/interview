@@ -1071,7 +1071,7 @@ function DeviceTelemetry({
                 {device.obdii?.milOn == null ? '--' : device.obdii.milOn ? 'On' : 'Off'}
               </p>
               {device.obdii?.milOn && device.obdii.milMileageMi != null ? (
-                <p className="text-[10px] text-slate-400 tabular-nums">
+                <p className="text-[8px] text-slate-400 tabular-nums leading-tight">
                   {device.obdii.milMileageMi.toLocaleString()} mi since on
                 </p>
               ) : null}
@@ -1129,7 +1129,7 @@ function DeviceTelemetry({
               <p className="text-sm font-bold text-slate-300">None</p>
             )}
             {device.obdii?.dtcClearedMileageMi != null ? (
-              <p className="text-[10px] text-slate-400 tabular-nums mt-1 leading-snug">
+              <p className="text-[8px] text-slate-400 tabular-nums mt-1 leading-snug">
                 {device.obdii.dtcClearedMileageMi.toLocaleString()} mi since cleared
               </p>
             ) : null}
