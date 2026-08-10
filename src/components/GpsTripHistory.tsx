@@ -11,6 +11,7 @@ import {
   MapPin,
   Car,
   ParkingSquare,
+  AlertTriangle,
   Play,
 } from 'lucide-react'
 
@@ -50,7 +51,7 @@ type Props = {
   routePeriod: string | null
   isLoading: boolean
   tripHistory: TripHistoryRow[]
-  tripSummary: { tripCount: number; parkingCount: number; totalMiles: number } | null
+  tripSummary: { tripCount: number; parkingCount: number; totalMiles: number; crashCount?: number } | null
   selectedTripId: string | null
   onSelectTrip: (id: string | null) => void
   /** Force replay animation for the currently selected trip */
@@ -274,6 +275,10 @@ export function GpsTripHistory({
     return routePeriod
   })()
 
+  const crashCount =
+    tripSummary?.crashCount ??
+    tripHistory.filter((t) => t.id.startsWith('crash-')).length
+
   return (
     <div className="mb-3 rounded-2xl border border-slate-200 bg-[#f3f4f6] overflow-hidden">
       <button
@@ -288,7 +293,13 @@ export function GpsTripHistory({
             <p className="text-[10px] text-brand-green font-medium truncate">
               {isLoading
                 ? 'Loading…'
-                : `${headerLabel}${tripSummary ? ` · ${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi` : ''}`}
+                : `${headerLabel}${
+                    tripSummary
+                      ? ` · ${tripSummary.tripCount} trips · ${tripSummary.totalMiles} mi${
+                          crashCount ? ` · ${crashCount} crash` : ''
+                        }`
+                      : ''
+                  }`}
             </p>
           </div>
         </div>
@@ -389,6 +400,18 @@ export function GpsTripHistory({
               <p className="text-center text-xs text-slate-400 py-8">No trips or stops for this day.</p>
             )}
 
+            {!isLoading && crashCount > 0 && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-800 leading-snug">
+                  <span className="font-semibold">
+                    {crashCount} crash{crashCount === 1 ? '' : 'es'}
+                  </span>{' '}
+                  pinned at the top of this day.
+                </p>
+              </div>
+            )}
+
             {!isLoading && selectedTripId && (
               <button
                 type="button"
@@ -412,17 +435,21 @@ export function GpsTripHistory({
                     <div
                       key={item.id}
                       className={`rounded-2xl bg-white shadow-sm border border-slate-100/80 border-l-[3px] p-3 ${
-                        crashOnly ? 'border-l-red-500' : 'border-l-amber-400'
+                        crashOnly ? 'border-l-red-500 ring-1 ring-red-100' : 'border-l-amber-400'
                       }`}
                     >
                       <div className="flex items-start gap-2.5">
                         <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${
                           crashOnly ? 'bg-red-50' : 'bg-slate-100'
                         }`}>
-                          <ParkingSquare className={`w-4 h-4 ${crashOnly ? 'text-red-500' : 'text-slate-500'}`} />
+                          {crashOnly ? (
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                          ) : (
+                            <ParkingSquare className="w-4 h-4 text-slate-500" />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900">
+                          <p className={`text-sm font-semibold ${crashOnly ? 'text-red-700' : 'text-slate-900'}`}>
                             {crashOnly ? 'Crash' : null}
                             {crashOnly ? ' · ' : ''}
                             {formatTripStamp(item.startTime, false, true)}

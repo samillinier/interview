@@ -82,7 +82,12 @@ export default function GPSPage() {
   const [routePositions, setRoutePositions] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[]>([])
   const [routeSegments, setRouteSegments] = useState<{ latitude: number; longitude: number; speed?: number; time?: string }[][]>([])
   const [tripHistory, setTripHistory] = useState<TripHistoryRow[]>([])
-  const [tripSummary, setTripSummary] = useState<{ tripCount: number; parkingCount: number; totalMiles: number } | null>(null)
+  const [tripSummary, setTripSummary] = useState<{
+    tripCount: number
+    parkingCount: number
+    totalMiles: number
+    crashCount?: number
+  } | null>(null)
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
   const [playTick, setPlayTick] = useState(0)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
@@ -732,7 +737,7 @@ function DeviceTelemetry({
   isLoadingRoute: boolean
   onSelectHistory: (period: string | null) => void
   tripHistory: TripHistoryRow[]
-  tripSummary: { tripCount: number; parkingCount: number; totalMiles: number } | null
+  tripSummary: { tripCount: number; parkingCount: number; totalMiles: number; crashCount?: number } | null
   selectedTripId: string | null
   onSelectTrip: (id: string | null) => void
   onPlayTrip?: (id: string) => void

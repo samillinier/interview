@@ -148,8 +148,6 @@ export async function GET(request: NextRequest) {
         return { startMs, endMs }
       }
 
-      const attached = new Set<number>()
-
       // Pass 1: events that fall inside a trip/stop window (extra buffer for crashes)
       for (const e of behavior) {
         const t = new Date(e.eventTime).getTime()
@@ -189,33 +187,23 @@ export async function GET(request: NextRequest) {
         if (best) {
           best.events = best.events || []
           best.events.push(e)
-          attached.add(e.id)
         }
       }
 
-      // Pass 2: leftover crashes → nearest trip/stop within 15 minutes, else standalone card
+      for (const trip of trips) {
+        trip.events = (trip.events || []).sort(
+          (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime()
+        )
+      }
+
+      // Always surface crashes as their own pinned cards so they aren't buried
+      // in a long newest-first trip list (edge crashes are easy to miss).
+      const crashCards: traccar.TripHistoryItem[] = []
+      const crashSeen = new Set<number>()
       for (const e of behavior) {
-        if (e.icon !== 'crash' || attached.has(e.id)) continue
-        const t = new Date(e.eventTime).getTime()
-        if (!Number.isFinite(t)) continue
-        let best: traccar.TripHistoryItem | null = null
-        let bestDist = Number.POSITIVE_INFINITY
-        for (const trip of trips) {
-          const { startMs, endMs } = tripWindow(trip)
-          if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue
-          const dist = t < startMs ? startMs - t : t > endMs ? t - endMs : 0
-          if (dist < bestDist) {
-            bestDist = dist
-            best = trip
-          }
-        }
-        if (best && bestDist <= 15 * 60_000) {
-          best.events = best.events || []
-          best.events.push(e)
-          attached.add(e.id)
-          continue
-        }
-        trips.push({
+        if (e.icon !== 'crash' || crashSeen.has(e.id)) continue
+        crashSeen.add(e.id)
+        crashCards.push({
           id: `crash-${e.id}`,
           type: 'parking',
           startTime: e.eventTime,
@@ -234,24 +222,37 @@ export async function GET(request: NextRequest) {
           windowStart: e.eventTime,
           windowEnd: e.eventTime,
         })
-        attached.add(e.id)
       }
 
-      for (const trip of trips) {
-        trip.events = (trip.events || []).sort(
-          (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime()
-        )
-      }
       trips.sort(
         (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
       )
-    } catch {
+      // Pinned crash cards first (newest crash first), then the rest of the day
+      crashCards.sort(
+        (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      )
+      const withoutDupCrashCards = trips.filter((t) => !t.id.startsWith('crash-'))
+      trips.length = 0
+      trips.push(...crashCards, ...withoutDupCrashCards)
+
+      ;(globalThis as any).__gpsRouteCrashDebug = {
+        behaviorCount: behavior.length,
+        crashCount: crashCards.length,
+        behaviorError: null as string | null,
+      }
+    } catch (err) {
       for (const trip of trips) trip.events = trip.events || []
+      ;(globalThis as any).__gpsRouteCrashDebug = {
+        behaviorCount: 0,
+        crashCount: 0,
+        behaviorError: err instanceof Error ? err.message : 'behavior attach failed',
+      }
     }
 
     // Attach addresses for the feed (cap + parallel; Nominatim cache helps repeats)
     await Promise.all(
       trips.slice(0, 8).map(async (t) => {
+        if (t.id.startsWith('crash-')) return
         if (!t.startLatitude || !t.startLongitude) return
         try {
           t.address = await reverseGeocode(t.startLatitude, t.startLongitude)
@@ -265,14 +266,20 @@ export async function GET(request: NextRequest) {
       .filter((t) => t.type === 'trip')
       .reduce((s, t) => s + (t.distanceMiles || 0), 0)
 
+    const crashDebug = (globalThis as any).__gpsRouteCrashDebug as
+      | { behaviorCount: number; crashCount: number; behaviorError: string | null }
+      | undefined
+    delete (globalThis as any).__gpsRouteCrashDebug
+
     return NextResponse.json({
       positions: rawCoords,
       segments: routeSegments,
       trips,
       summary: {
         tripCount: trips.filter((t) => t.type === 'trip').length,
-        parkingCount: trips.filter((t) => t.type === 'parking').length,
+        parkingCount: trips.filter((t) => t.type === 'parking' && !t.id.startsWith('crash-')).length,
         totalMiles: Math.round(tripMiles * 10) / 10,
+        crashCount: trips.filter((t) => t.id.startsWith('crash-')).length,
       },
       roadPath: null,
       debug: {
@@ -283,6 +290,9 @@ export async function GET(request: NextRequest) {
         to,
         timeZone: GPS_TIMEZONE,
         period: resolvedPeriod,
+        behaviorCount: crashDebug?.behaviorCount ?? null,
+        crashCount: crashDebug?.crashCount ?? trips.filter((t) => t.id.startsWith('crash-')).length,
+        behaviorError: crashDebug?.behaviorError ?? null,
       },
       gpsConnected: true,
     })
