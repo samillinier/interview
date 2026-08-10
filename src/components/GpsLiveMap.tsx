@@ -84,7 +84,7 @@ export type SelectedTripInfo = {
   address?: string | null
   /** Preceding parking end time (when the vehicle left for this trip) */
   parkingEndedAt?: string | null
-  events?: { label: string; detail?: string; eventTime: string }[]
+  events?: { label: string; detail?: string; eventTime: string; icon?: string }[]
 }
 
 type Props = {
@@ -340,6 +340,74 @@ function routeFingerprint(
     .join('|')
 }
 
+type RouteLineColor = '#15803d' | '#ea580c' | '#dc2626' | '#ca8a04'
+
+function eventLineColor(icon?: string, label?: string): RouteLineColor | null {
+  const i = (icon || '').toLowerCase()
+  const l = (label || '').toLowerCase()
+  if (i === 'crash' || l.includes('crash')) return '#dc2626'
+  if (i === 'harsh' || l.includes('harsh')) return '#ea580c'
+  if (i === 'speed' || l.includes('overspeed') || l.includes('speeding')) return '#ca8a04'
+  return null
+}
+
+/** Color each GPS point from nearby trip events (crash > harsh > speed > green). */
+function colorizeRoutePoints(
+  points: RoutePoint[],
+  events?: { eventTime: string; icon?: string; label?: string }[] | null
+): { latlngs: L.LatLng[]; color: RouteLineColor }[] {
+  if (points.length < 2) return []
+
+  const windowMs = 45_000
+  const ranked = (events || [])
+    .map((e) => {
+      const t = new Date(e.eventTime).getTime()
+      const color = eventLineColor(e.icon, e.label)
+      if (!Number.isFinite(t) || !color) return null
+      const rank = color === '#dc2626' ? 3 : color === '#ea580c' ? 2 : 1
+      return { t, color, rank }
+    })
+    .filter(Boolean) as { t: number; color: RouteLineColor; rank: number }[]
+
+  const pointColors: RouteLineColor[] = points.map((p) => {
+    const pt = p.time ? new Date(p.time).getTime() : NaN
+    if (!Number.isFinite(pt) || ranked.length === 0) return '#15803d'
+    let best: { color: RouteLineColor; rank: number; dist: number } | null = null
+    for (const e of ranked) {
+      const dist = Math.abs(e.t - pt)
+      if (dist > windowMs) continue
+      if (
+        !best ||
+        e.rank > best.rank ||
+        (e.rank === best.rank && dist < best.dist)
+      ) {
+        best = { color: e.color, rank: e.rank, dist }
+      }
+    }
+    return best?.color || '#15803d'
+  })
+
+  const out: { latlngs: L.LatLng[]; color: RouteLineColor }[] = []
+  let currentColor = pointColors[0]
+  let current: L.LatLng[] = [L.latLng(points[0].latitude, points[0].longitude)]
+
+  for (let i = 1; i < points.length; i++) {
+    const ll = L.latLng(points[i].latitude, points[i].longitude)
+    const c = pointColors[i]
+    if (c !== currentColor) {
+      // include this point on both sides so the join is continuous
+      current.push(ll)
+      if (current.length >= 2) out.push({ latlngs: current, color: currentColor })
+      currentColor = c
+      current = [ll]
+    } else {
+      current.push(ll)
+    }
+  }
+  if (current.length >= 2) out.push({ latlngs: current, color: currentColor })
+  return out
+}
+
 export function GpsLiveMap({
   devices,
   selectedDevice,
@@ -446,6 +514,9 @@ export function GpsLiveMap({
         color: '#15803d',
         weight: 4,
         opacity: 0.95,
+        dashArray: '10 8',
+        lineCap: 'butt',
+        lineJoin: 'round',
       }).addTo(map)
     }
   }, [])
@@ -952,16 +1023,21 @@ export function GpsLiveMap({
 
     const group = L.layerGroup()
     const allLatLngs: L.LatLng[] = []
+    const tripEvents = selectedTripRef.current?.events || []
 
     for (const seg of segments) {
-      const latlngs = seg.map((p) => L.latLng(p.latitude, p.longitude))
-      allLatLngs.push(...latlngs)
-      L.polyline(latlngs, {
-        color: '#86efac',
-        weight: 3,
-        opacity: 0.55,
-        dashArray: '8 8',
-      }).addTo(group)
+      const colored = colorizeRoutePoints(seg, tripEvents)
+      for (const piece of colored) {
+        allLatLngs.push(...piece.latlngs)
+        L.polyline(piece.latlngs, {
+          color: piece.color,
+          weight: piece.color === '#15803d' ? 4 : 5,
+          opacity: piece.color === '#15803d' ? 0.85 : 0.95,
+          dashArray: '10 8',
+          lineCap: 'butt',
+          lineJoin: 'round',
+        }).addTo(group)
+      }
     }
 
     group.addTo(map)
@@ -970,7 +1046,7 @@ export function GpsLiveMap({
 
     // Start immediately — delayed starts were getting cancelled by effect re-runs
     startPlaybackRef.current(buildPlaybackSegs(segments), true, true)
-  }, [routePositions, routeSegments, playTick])
+  }, [routePositions, routeSegments, playTick, selectedTrip])
 
   function togglePlayPause() {
     if (!playbackUi.active) return

@@ -306,6 +306,7 @@ export default function GPSPage() {
         label: e.label,
         detail: e.detail,
         eventTime: e.eventTime,
+        icon: e.icon,
       })),
     }
   }, [selectedTripId, tripHistory])
