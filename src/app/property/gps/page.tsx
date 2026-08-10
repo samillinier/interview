@@ -1136,15 +1136,10 @@ function DeviceTelemetry({
             <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
               <p className="text-[10px] text-slate-400">Economy</p>
               {device.obdii?.fuelConsumptionLPer100km != null ? (
-                <>
-                  <p className="text-sm font-bold text-slate-900 leading-tight">
-                    {device.obdii.fuelConsumptionLPer100km.toFixed(1)}
-                    <span className="text-[10px] font-semibold text-slate-500"> L/100km</span>
-                  </p>
-                  <p className="text-[8px] text-slate-400 tabular-nums leading-tight">
-                    ~{Math.round(235.215 / device.obdii.fuelConsumptionLPer100km)} mpg
-                  </p>
-                </>
+                <p className="text-sm font-bold text-slate-900 leading-tight">
+                  {(235.215 / device.obdii.fuelConsumptionLPer100km).toFixed(1)}
+                  <span className="text-[10px] font-semibold text-slate-500"> mpg</span>
+                </p>
               ) : (
                 <p className="text-sm font-bold text-slate-300">--</p>
               )}
