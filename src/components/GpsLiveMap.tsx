@@ -448,6 +448,10 @@ export function GpsLiveMap({
   const routeFpRef = useRef('')
   const lastPlayTickRef = useRef(0)
   const playbackDurationHintRef = useRef(0)
+  /** When true, live GPS polls must not steal zoom/pan (user is inspecting the map). */
+  const userLockedViewRef = useRef(false)
+  const lastCenteredDeviceIdRef = useRef<string | null>(null)
+  const programmaticMoveRef = useRef(false)
 
   const [activeLayer, setActiveLayer] = useState<'osm' | 'light' | 'dark' | 'satellite'>('light')
   const [playbackUi, setPlaybackUi] = useState<{
@@ -761,6 +765,13 @@ export function GpsLiveMap({
 
     leafletMapRef.current = map
 
+    const unlockOnUserGesture = () => {
+      if (programmaticMoveRef.current) return
+      userLockedViewRef.current = true
+    }
+    map.on('dragstart', unlockOnUserGesture)
+    map.on('zoomstart', unlockOnUserGesture)
+
     const bounds = L.latLngBounds([])
     devices.forEach((d) => {
       const latlng = L.latLng(d.latitude, d.longitude)
@@ -773,11 +784,14 @@ export function GpsLiveMap({
     })
 
     if (bounds.isValid()) {
+      programmaticMoveRef.current = true
       if (devices.length === 1) {
         map.setView(bounds.getCenter(), 14)
       } else {
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 })
       }
+      programmaticMoveRef.current = false
+      if (devices[0]) lastCenteredDeviceIdRef.current = devices[0].id
     }
 
     setTimeout(() => map.invalidateSize(), 300)
@@ -840,11 +854,18 @@ export function GpsLiveMap({
       }
     })
 
-    if (!isViewingHistoryRef.current && bounds.isValid()) {
-      if (devices.length === 1) {
-        map.setView(bounds.getCenter(), 14)
-      } else {
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 })
+    // Keep the camera still while the user is zooming/panning to inspect surroundings.
+    // Only gently follow when the vehicle is clearly moving (and history isn't playing).
+    if (!isViewingHistoryRef.current) {
+      const focus =
+        selectedDeviceRef.current && currentIds.has(selectedDeviceRef.current.id)
+          ? selectedDeviceRef.current
+          : devices[0]
+      const moving = focus != null && Number(focus.speed) >= 3
+      if (focus && moving && !userLockedViewRef.current) {
+        programmaticMoveRef.current = true
+        map.panTo([focus.latitude, focus.longitude], { animate: true, duration: 0.4 })
+        programmaticMoveRef.current = false
       }
     }
   }, [devices])
@@ -861,24 +882,33 @@ export function GpsLiveMap({
     }
   }, [selectedTrip, selectedDevice])
 
+  // Center once when the user picks a different vehicle — not on every GPS poll.
   useEffect(() => {
     const map = leafletMapRef.current
     if (!map || !selectedDevice || isViewingHistoryRef.current) return
-    map.setView([selectedDevice.latitude, selectedDevice.longitude], 15, {
+    if (lastCenteredDeviceIdRef.current === selectedDevice.id) return
+    lastCenteredDeviceIdRef.current = selectedDevice.id
+    userLockedViewRef.current = false
+    programmaticMoveRef.current = true
+    map.setView([selectedDevice.latitude, selectedDevice.longitude], Math.max(map.getZoom(), 15), {
       animate: true,
       duration: 0.5,
     })
+    programmaticMoveRef.current = false
     const marker = markersRef.current.get(selectedDevice.id)
     if (marker) marker.openPopup()
-  }, [selectedDevice])
+  }, [selectedDevice?.id])
 
-  // Explicit Locate — fly to live vehicle position
+  // Explicit Locate — fly to live vehicle position and resume follow when moving
   useEffect(() => {
     if (!locateTick) return
     const map = leafletMapRef.current
     if (!map) return
     const device = selectedDeviceRef.current || devices[0]
     if (!device || !Number.isFinite(device.latitude) || !Number.isFinite(device.longitude)) return
+
+    userLockedViewRef.current = false
+    lastCenteredDeviceIdRef.current = device.id
 
     if (isViewingHistoryRef.current && playbackDeviceIdRef.current === device.id) {
       const marker = markersRef.current.get(device.id)
@@ -888,10 +918,12 @@ export function GpsLiveMap({
       }
     }
 
+    programmaticMoveRef.current = true
     map.setView([device.latitude, device.longitude], 16, {
       animate: true,
       duration: 0.65,
     })
+    programmaticMoveRef.current = false
     const marker = markersRef.current.get(device.id)
     if (marker) marker.openPopup()
   }, [locateTick, devices])
