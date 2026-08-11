@@ -332,6 +332,8 @@ export interface ObdiiPayload {
   externalPowerConnected?: boolean
   backupBatteryVoltage?: number
   batteryCharging?: boolean
+  /** Engine / motor hours from Ruhavik (hours) */
+  motorHours?: number
   /** GSM signal in dBm (e.g. -91) */
   gsmSignalDbm?: number
   /** Check-engine / malfunction indicator lamp */
@@ -669,6 +671,11 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     else if (s === 'false' || s === '0' || s === 'off') payload.batteryCharging = false
   } else if (chargingRaw === 1 || chargingRaw === 0) {
     payload.batteryCharging = chargingRaw === 1
+  }
+
+  const motorHours = val('engine.motorhours') ?? val('motorhours') ?? val('engine.hours')
+  if (motorHours !== undefined && Number.isFinite(motorHours) && motorHours >= 0) {
+    payload.motorHours = Math.round(motorHours * 1000) / 1000
   }
 
   const gsm =

@@ -970,26 +970,15 @@ function DeviceTelemetry({
             <p className="text-sm font-bold text-slate-900">{device.batteryVoltage != null ? device.batteryVoltage.toFixed(1) + 'V' : '--'}</p>
           </div>
           <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
-            <Battery className={`w-4 h-4 mb-0.5 ${
-              device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
-                ? 'text-red-500'
-                : 'text-amber-500'
-            }`} />
-            <p className="text-[10px] text-slate-400">Backup Batt</p>
-            <p className={`text-sm font-bold leading-tight ${
-              device.obdii?.backupBatteryVoltage != null && device.obdii.backupBatteryVoltage <= 0
-                ? 'text-red-600'
-                : 'text-slate-900'
-            }`}>
-              {device.obdii?.backupBatteryVoltage != null
-                ? `${device.obdii.backupBatteryVoltage.toFixed(1)}V`
+            <Clock className="w-4 h-4 text-violet-500 mb-0.5" />
+            <p className="text-[10px] text-slate-400">Motor Hours</p>
+            <p className="text-sm font-bold text-slate-900 leading-tight">
+              {device.obdii?.motorHours != null
+                ? `${device.obdii.motorHours < 10
+                    ? device.obdii.motorHours.toFixed(2)
+                    : device.obdii.motorHours.toFixed(1)} h`
                 : '--'}
             </p>
-            {device.obdii?.batteryCharging != null ? (
-              <p className="text-[8px] text-slate-400 leading-tight">
-                {device.obdii.batteryCharging ? 'Charging' : 'Not charging'}
-              </p>
-            ) : null}
           </div>
           <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
             <Thermometer className="w-4 h-4 text-red-400 mb-0.5" />

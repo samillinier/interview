@@ -38,6 +38,7 @@ export interface VehicleDevice {
     externalPowerConnected?: boolean
     backupBatteryVoltage?: number
     batteryCharging?: boolean
+    motorHours?: number
     gsmSignalDbm?: number
     milOn?: boolean
     milMileageMi?: number

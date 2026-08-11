@@ -348,6 +348,7 @@ export async function GET(request: NextRequest) {
           externalPowerConnected: obdii.externalPowerConnected,
           backupBatteryVoltage: obdii.backupBatteryVoltage,
           batteryCharging: obdii.batteryCharging,
+          motorHours: obdii.motorHours,
           gsmSignalDbm: obdii.gsmSignalDbm,
           milOn: obdii.milOn,
           milMileageMi: obdii.milMileageMi,
