@@ -854,15 +854,16 @@ export function GpsLiveMap({
       }
     })
 
-    // Keep the camera still while the user is zooming/panning to inspect surroundings.
-    // Only gently follow when the vehicle is clearly moving (and history isn't playing).
+    // Keep the camera still while the user zooms/pans around a parked vehicle.
+    // If the vehicle is moving (≥3 mph), gently follow without changing zoom.
     if (!isViewingHistoryRef.current) {
       const focus =
         selectedDeviceRef.current && currentIds.has(selectedDeviceRef.current.id)
           ? selectedDeviceRef.current
           : devices[0]
       const moving = focus != null && Number(focus.speed) >= 3
-      if (focus && moving && !userLockedViewRef.current) {
+      if (focus && moving) {
+        userLockedViewRef.current = false
         programmaticMoveRef.current = true
         map.panTo([focus.latitude, focus.longitude], { animate: true, duration: 0.4 })
         programmaticMoveRef.current = false
