@@ -24,7 +24,7 @@ import {
   Pause,
   Activity,
   Shield,
-  RotateCcw,
+  Milestone,
   MapPin,
   ChevronDown,
   LocateFixed,
@@ -997,7 +997,7 @@ function DeviceTelemetry({
             <p className="text-sm font-bold text-slate-900">{device.engineTemp != null ? device.engineTemp.toFixed(0) + '\u00B0F' : '--'}</p>
           </div>
           <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
-            <RotateCcw className="w-4 h-4 text-slate-400 mb-0.5" />
+            <Milestone className="w-4 h-4 text-teal-500 mb-0.5" />
             <p className="text-[10px] text-slate-400">Odometer</p>
             <p className="text-sm font-bold text-slate-900">
               {device.odometer != null && device.odometer > 0
