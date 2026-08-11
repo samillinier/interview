@@ -45,6 +45,27 @@ import type { TripHistoryRow } from '@/components/GpsTripHistory'
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
 
+/** Classic check-engine / MIL pictogram (lucide has no engine icon). */
+function EngineIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M7 9h1.5l1-2h5l1 2H17a1 1 0 0 1 1 1v1.5h1.5a.5.5 0 0 1 .5.5V15a1 1 0 0 1-1 1h-1.2l-.8 1.5H9.5L8.7 16H7a1 1 0 0 1-1-1v-1.5H4.5A.5.5 0 0 1 4 13v-1.5A1 1 0 0 1 5 10.5H6V10a1 1 0 0 1 1-1Z" />
+      <path d="M10 12h4" />
+      <path d="M12 7V5.5" />
+      <path d="M10.5 5.5h3" />
+    </svg>
+  )
+}
+
 const GpsLiveMap = dynamic(() => import('@/components/GpsLiveMap').then((mod) => mod.GpsLiveMap), {
   ssr: false,
   loading: () => <div className="h-full w-full min-h-[500px] bg-slate-100 animate-pulse rounded-b-2xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-slate-300 animate-spin" /></div>,
@@ -974,9 +995,15 @@ function DeviceTelemetry({
             <p className="text-[10px] text-slate-400">Motor Hours</p>
             <p className="text-sm font-bold text-slate-900 leading-tight">
               {device.obdii?.motorHours != null
-                ? `${device.obdii.motorHours < 10
-                    ? device.obdii.motorHours.toFixed(2)
-                    : device.obdii.motorHours.toFixed(1)} h`
+                ? (() => {
+                    const h = device.obdii.motorHours
+                    if (h < 1) return `${Math.round(h * 60)} min`
+                    const hrs = Math.floor(h)
+                    const mins = Math.round((h - hrs) * 60)
+                    if (mins === 0) return `${hrs}h`
+                    if (h < 100) return `${hrs}h ${mins}m`
+                    return `${h.toFixed(1)} h`
+                  })()
                 : '--'}
             </p>
           </div>
@@ -1007,7 +1034,7 @@ function DeviceTelemetry({
             <p className="text-sm font-bold text-slate-900">{device.obdii?.obdSpeed != null ? device.obdii.obdSpeed + ' mph' : '--'}</p>
           </div>
           <div className="flex flex-col items-center justify-center text-center p-2 bg-white rounded-lg">
-            <AlertTriangle className={`w-4 h-4 mb-0.5 ${
+            <EngineIcon className={`w-4 h-4 mb-0.5 ${
               device.obdii?.milOn ? 'text-amber-500' : 'text-slate-300'
             }`} />
             <p className="text-[10px] text-slate-400">Check Engine</p>
