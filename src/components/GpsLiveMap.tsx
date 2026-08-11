@@ -340,7 +340,7 @@ function routeFingerprint(
     .join('|')
 }
 
-type RouteLineColor = '#86efac' | '#ea580c' | '#dc2626' | '#ca8a04'
+type RouteLineColor = '#86efac' | '#15803d' | '#ea580c' | '#dc2626' | '#ca8a04'
 
 function eventLineColor(icon?: string, label?: string): RouteLineColor | null {
   const i = (icon || '').toLowerCase()
@@ -354,9 +354,11 @@ function eventLineColor(icon?: string, label?: string): RouteLineColor | null {
 /** Color each GPS point from nearby trip events (crash > harsh > speed > green). */
 function colorizeRoutePoints(
   points: RoutePoint[],
-  events?: { eventTime: string; icon?: string; label?: string }[] | null
+  events?: { eventTime: string; icon?: string; label?: string }[] | null,
+  opts?: { solidGreen?: boolean }
 ): { latlngs: L.LatLng[]; color: RouteLineColor }[] {
   if (points.length < 2) return []
+  const baseGreen: RouteLineColor = opts?.solidGreen ? '#15803d' : '#86efac'
 
   const windowMs = 45_000
   const ranked = (events || [])
@@ -371,7 +373,7 @@ function colorizeRoutePoints(
 
   const pointColors: RouteLineColor[] = points.map((p) => {
     const pt = p.time ? new Date(p.time).getTime() : NaN
-    if (!Number.isFinite(pt) || ranked.length === 0) return '#86efac'
+    if (!Number.isFinite(pt) || ranked.length === 0) return baseGreen
     let best: { color: RouteLineColor; rank: number; dist: number } | null = null
     for (const e of ranked) {
       const dist = Math.abs(e.t - pt)
@@ -384,7 +386,7 @@ function colorizeRoutePoints(
         best = { color: e.color, rank: e.rank, dist }
       }
     }
-    return best?.color || '#86efac'
+    return best?.color || baseGreen
   })
 
   const out: { latlngs: L.LatLng[]; color: RouteLineColor }[] = []
@@ -395,7 +397,6 @@ function colorizeRoutePoints(
     const ll = L.latLng(points[i].latitude, points[i].longitude)
     const c = pointColors[i]
     if (c !== currentColor) {
-      // include this point on both sides so the join is continuous
       current.push(ll)
       if (current.length >= 2) out.push({ latlngs: current, color: currentColor })
       currentColor = c
@@ -508,9 +509,30 @@ export function GpsLiveMap({
     }
   }, [])
 
-  // Do not paint a second green trail during playback — it covers the
-  // dashed event-colored route (orange harsh / red crash) as the car moves.
-  const updateTrail = useCallback((_latlngs: L.LatLng[]) => {}, [])
+  /** Solid filled trail behind the car (green / orange harsh / red crash). */
+  const updateTrail = useCallback((points: RoutePoint[]) => {
+    const map = leafletMapRef.current
+    if (!map || points.length < 2) return
+    if (trailRef.current) {
+      map.removeLayer(trailRef.current)
+      trailRef.current = null
+    }
+    const group = L.layerGroup()
+    const colored = colorizeRoutePoints(points, selectedTripRef.current?.events, {
+      solidGreen: true,
+    })
+    for (const piece of colored) {
+      L.polyline(piece.latlngs, {
+        color: piece.color,
+        weight: piece.color === '#15803d' ? 5 : 6,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(group)
+    }
+    group.addTo(map)
+    trailRef.current = group
+  }, [])
 
   const tickPlayback = useCallback(() => {
     const segs = playbackSegsRef.current
@@ -578,6 +600,11 @@ export function GpsLiveMap({
         end.longitude,
         bearingDeg(prev.latitude, prev.longitude, end.latitude, end.longitude)
       )
+      const finalTrail: RoutePoint[] = []
+      for (const seg of segs) {
+        for (const p of seg.points) finalTrail.push(p)
+      }
+      updateTrail(finalTrail)
       playbackDoneRef.current = true
       playbackPausedRef.current = true
       playbackRafRef.current = null
@@ -590,6 +617,28 @@ export function GpsLiveMap({
     const pos = pointAlongSegment(segs[segIdx], dist)
     updatePlaybackMarker(pos.lat, pos.lng, pos.heading)
 
+    const trail: RoutePoint[] = []
+    for (let s = 0; s < segIdx; s++) {
+      for (const p of segs[s].points) trail.push(p)
+    }
+    const cur = segs[segIdx]
+    for (let i = 0; i < cur.points.length; i++) {
+      if (cur.cumDist[i] <= dist) {
+        trail.push(cur.points[i])
+      } else break
+    }
+    trail.push({
+      latitude: pos.lat,
+      longitude: pos.lng,
+      speed: pos.speed,
+      time: cur.points[cur.points.length - 1]?.time,
+    })
+    trailUpdateAccRef.current += dt
+    if (trailUpdateAccRef.current >= 0.08) {
+      trailUpdateAccRef.current = 0
+      updateTrail(trail)
+    }
+
     const doneM = segs.slice(0, segIdx).reduce((s, seg) => s + seg.lengthM, 0) + dist
     const progress = totalM > 0 ? Math.min(1, doneM / totalM) : 0
     setPlaybackUi((u) =>
@@ -597,7 +646,7 @@ export function GpsLiveMap({
     )
 
     playbackRafRef.current = requestAnimationFrame(tickPlayback)
-  }, [updatePlaybackMarker])
+  }, [updatePlaybackMarker, updateTrail])
 
   const startPlayback = useCallback(
     (segs: PlaybackSeg[], reset = true, autoPlay = true) => {
@@ -1028,7 +1077,7 @@ export function GpsLiveMap({
         L.polyline(piece.latlngs, {
           color: piece.color,
           weight: piece.color === '#86efac' ? 3 : 5,
-          opacity: piece.color === '#86efac' ? 0.55 : 0.95,
+          opacity: piece.color === '#86efac' ? 0.45 : 0.75,
           dashArray: '8 8',
           lineCap: 'butt',
           lineJoin: 'round',
