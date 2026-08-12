@@ -41,8 +41,8 @@ export type TripHistoryRow = {
   segmentIndex: number | null
   /** Speeding / harsh accel / crash / tow during this trip or stop */
   events?: TripBehaviorEventRow[]
-  /** Estimated fuel use from tank % drop (% per 100 km) */
-  estimatedFuelPctPer100km?: number
+  /** Estimated fuel use from tank % drop (% per 100 mi) */
+  estimatedFuelPctPer100mi?: number
 }
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
@@ -596,11 +596,11 @@ export function GpsTripHistory({
                       </div>
                     </div>
 
-                    {item.estimatedFuelPctPer100km != null ? (
+                    {item.estimatedFuelPctPer100mi != null ? (
                       <p className="mt-2 text-xs text-slate-500">
                         Estimated fuel consumption:{' '}
                         <span className="font-medium text-slate-700">
-                          {item.estimatedFuelPctPer100km.toFixed(2)} %/100km
+                          {item.estimatedFuelPctPer100mi.toFixed(2)} %/100mi
                         </span>
                       </p>
                     ) : null}

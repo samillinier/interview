@@ -278,8 +278,8 @@ export interface TripHistoryItem {
   /** Original Ruhavik trip/stop bounds (for attaching alerts when GPS segment is shorter) */
   windowStart?: string
   windowEnd?: string
-  /** Estimated fuel use from tank % drop over trip distance (% per 100 km) */
-  estimatedFuelPctPer100km?: number
+  /** Estimated fuel use from tank % drop over trip distance (% per 100 mi) */
+  estimatedFuelPctPer100mi?: number
 }
 
 export interface TraccarEvent {
@@ -1505,20 +1505,21 @@ function segmentStats(seg: TraccarPosition[]): {
 }
 
 /**
- * Ruhavik trip fuel estimate: tank % drop normalized per 100 km.
+ * Ruhavik trip fuel estimate: tank % drop normalized per 100 miles.
  * Hidden when refueled mid-trip (fuel rose) or data is missing.
  */
-function estimatedFuelPctPer100kmFromTrip(e: RuhavikTripStop): number | undefined {
+function estimatedFuelPctPer100miFromTrip(e: RuhavikTripStop): number | undefined {
   const first = Number(e.fuel_first)
   const last = Number(e.fuel_last)
   const mileageKm = Number(e.mileage ?? 0)
   if (!Number.isFinite(first) || !Number.isFinite(last) || !Number.isFinite(mileageKm)) return undefined
-  if (mileageKm < 0.2) return undefined
+  const mileageMi = mileageKm * 0.621371
+  if (mileageMi < 0.12) return undefined
   // Refuel during trip — Ruhavik also hides estimate in this case
   if (last > first) return undefined
   const drop = first - last
   if (drop < 0) return undefined
-  const rate = (drop / mileageKm) * 100
+  const rate = (drop / mileageMi) * 100
   if (!Number.isFinite(rate) || rate < 0) return undefined
   return Math.round(rate * 100) / 100
 }
@@ -1603,7 +1604,7 @@ export async function getTripHistory(
       // Skip zero-length noise
       if (distanceMiles < 0.05 && durationSec < 60) continue
 
-      const estimatedFuelPctPer100km = estimatedFuelPctPer100kmFromTrip(e)
+      const estimatedFuelPctPer100mi = estimatedFuelPctPer100miFromTrip(e)
 
       items.push({
         id: `trip-${toEventId(e, i)}`,
@@ -1621,7 +1622,7 @@ export async function getTripHistory(
         segmentIndex: segIdx >= 0 ? segIdx : null,
         windowStart: unixToIso(begin),
         windowEnd: unixToIso(end || begin),
-        estimatedFuelPctPer100km,
+        estimatedFuelPctPer100mi,
       })
     } else if (kind === 'stop' || kind === 'parking') {
       const durationSec = Math.round(Number(e.duration ?? Math.max(0, end - begin)))
