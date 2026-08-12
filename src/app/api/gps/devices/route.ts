@@ -178,6 +178,7 @@ export async function GET(request: NextRequest) {
     // Fetch all events and summary in parallel for all traccar devices
     const allEvents: traccar.TraccarEvent[] = []
     let allSummary: traccar.TraccarReportSummary[] = []
+    const totalsByDeviceId = new Map<number, { totalMileageKm?: number; totalEngineHours?: number }>()
 
     if (traccarDevices.length > 0) {
       const eventPromises = traccarDevices.map(d =>
@@ -186,12 +187,19 @@ export async function GET(request: NextRequest) {
       const summaryPromises = traccarDevices.map(d =>
         traccar.getSummary(d.id, todayStart, nowIso).catch(() => [] as traccar.TraccarReportSummary[])
       )
-      const [eventsArrays, summaryArrays] = await Promise.all([
+      const totalsPromises = traccarDevices.map(d =>
+        traccar.getTrackerLifetimeTotals(d.id).catch(() => ({} as { totalMileageKm?: number; totalEngineHours?: number }))
+      )
+      const [eventsArrays, summaryArrays, totalsArrays] = await Promise.all([
         Promise.all(eventPromises),
         Promise.all(summaryPromises),
+        Promise.all(totalsPromises),
       ])
       allEvents.push(...eventsArrays.flat())
       allSummary.push(...summaryArrays.flat())
+      traccarDevices.forEach((d, i) => {
+        totalsByDeviceId.set(d.id, totalsArrays[i] || {})
+      })
     }
 
     // Group events by deviceId
@@ -293,6 +301,11 @@ export async function GET(request: NextRequest) {
 
       // Today's summary
       const tcSummary = tcId ? summaryByDeviceId.get(tcId) : undefined
+      const trackerTotals = tcId ? totalsByDeviceId.get(tcId) : undefined
+      const trackerMileageMi =
+        trackerTotals?.totalMileageKm != null && trackerTotals.totalMileageKm > 0
+          ? Math.round(trackerTotals.totalMileageKm * 0.621371)
+          : undefined
       const summaryOdometer = tcSummary?.endOdometer != null ? traccar.metersToMiles(tcSummary.endOdometer) : undefined
       const todaySummary = tcSummary ? {
         trips: 0,
@@ -308,6 +321,15 @@ export async function GET(request: NextRequest) {
       const linkedVehicleName = device.Vehicle?.vehicleModel
         ? `${device.Vehicle.vehicleMake || ''} ${device.Vehicle.vehicleModel}`.trim()
         : ''
+
+      // Prefer Ruhavik lifetime engine-hours counter over session motorhours
+      if (
+        trackerTotals?.totalEngineHours != null &&
+        trackerTotals.totalEngineHours > 0 &&
+        (obdii.motorHours == null || trackerTotals.totalEngineHours >= obdii.motorHours)
+      ) {
+        obdii.motorHours = trackerTotals.totalEngineHours
+      }
 
       return {
         id: device.id,
@@ -326,7 +348,7 @@ export async function GET(request: NextRequest) {
         fuelLevel: obdii.fuelLevel ?? device.fuelLevel ?? undefined,
         engineTemp: obdii.engineTemp ?? device.engineTemp ?? undefined,
         batteryVoltage: obdii.batteryVoltage ?? device.batteryVoltage ?? undefined,
-        odometer: obdii.odometer ?? summaryOdometer ?? device.odometer ?? 0,
+        odometer: trackerMileageMi ?? obdii.odometer ?? summaryOdometer ?? device.odometer ?? 0,
         satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
         signalStrength:
           obdii.gsmSignalDbm != null

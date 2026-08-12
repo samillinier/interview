@@ -428,6 +428,84 @@ interface RuhavikMileageInterval {
   speed_average?: number
   speed_max?: number
   total_mileage?: number
+  total_duration?: number
+}
+
+interface RuhavikEngineHoursInterval {
+  unit_id: number
+  begin?: number
+  end?: number
+  duration?: number
+  total_duration?: number
+  total_mileage?: number
+}
+
+const trackerTotalsCache = new Map<
+  number,
+  { at: number; totalMileageKm?: number; totalEngineHours?: number }
+>()
+const TRACKER_TOTALS_TTL_MS = 60_000
+
+/**
+ * Ruhavik unit counters: cumulative GPS mileage (km) + engine-on time (hours).
+ * Same totals shown in Ruhavik as "Total mileage" / "Total engine hours".
+ */
+export async function getTrackerLifetimeTotals(
+  deviceId: number
+): Promise<{ totalMileageKm?: number; totalEngineHours?: number }> {
+  const cached = trackerTotalsCache.get(deviceId)
+  if (cached && Date.now() - cached.at < TRACKER_TOTALS_TTL_MS) {
+    return {
+      totalMileageKm: cached.totalMileageKm,
+      totalEngineHours: cached.totalEngineHours,
+    }
+  }
+
+  const to = Math.floor(Date.now() / 1000)
+  // Counters are cumulative on each interval — a short lookback is enough if the
+  // unit moved recently; fall back to a wider window when empty.
+  const tryRanges = [14 * 86400, 90 * 86400, to]
+
+  let totalMileageKm: number | undefined
+  let totalEngineHours: number | undefined
+
+  for (const span of tryRanges) {
+    const from = Math.max(0, to - span)
+    const [mileageIntervals, engineIntervals] = await Promise.all([
+      rpc<RuhavikMileageInterval[]>('units.mileage.intervals.get', {
+        ids: [deviceId],
+        from,
+        to,
+      }).catch(() => [] as RuhavikMileageInterval[]),
+      rpc<RuhavikEngineHoursInterval[]>('units.engine_hours.intervals.get', {
+        ids: [deviceId],
+        from,
+        to,
+      }).catch(() => [] as RuhavikEngineHoursInterval[]),
+    ])
+
+    let bestM = 0
+    for (const i of mileageIntervals || []) {
+      const t = Number(i.total_mileage ?? 0)
+      if (Number.isFinite(t) && t > bestM) bestM = t
+    }
+    let bestSec = 0
+    for (const i of engineIntervals || []) {
+      const t = Number(i.total_duration ?? 0)
+      if (Number.isFinite(t) && t > bestSec) bestSec = t
+    }
+
+    if (bestM > 0) totalMileageKm = Math.round(bestM * 1000) / 1000
+    if (bestSec > 0) totalEngineHours = Math.round((bestSec / 3600) * 1000) / 1000
+    if (totalMileageKm != null || totalEngineHours != null) break
+  }
+
+  trackerTotalsCache.set(deviceId, {
+    at: Date.now(),
+    totalMileageKm,
+    totalEngineHours,
+  })
+  return { totalMileageKm, totalEngineHours }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
