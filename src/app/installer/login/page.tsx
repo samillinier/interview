@@ -135,7 +135,7 @@ function InstallerLoginContent() {
               Subcontractor Login
             </h1>
             <p className="text-primary-500">
-              Sign in to manage your profile and view your interview results
+              Sign in to manage your profile
             </p>
           </div>
 
