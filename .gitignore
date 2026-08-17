@@ -45,6 +45,9 @@ public/uploads/
 .idea
 .vscode
 
+# Local Android build toolchain
+.android-toolchain/
+
 
 
 
@@ -54,3 +57,4 @@ public/uploads/
 .env*.local
 .env*.bak*
 .env.vercel-prod
+.ruhavik-access-token.tmp

@@ -3,15 +3,52 @@
 
 /* Phone + tablet (incl. iPad Pro). Desktop shell starts at 1536px (2xl). */
 @media (max-width: 1535px) {
-  /* Keep accordion gutters equal — avoid wide right-only empty band on iPad */
-  .ios-installer-profile main {
+  /*
+   * App Store 2.1(a): reviewers on iPad could not scroll to / tap Account.
+   * Causes: fixed Edit bar covering the last row + Maps iframe stealing touch scroll.
+   */
+  .ios-installer-profile {
+    overflow-x: clip;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ios-installer-profile .ios-profile-main {
     width: 100% !important;
     max-width: 100% !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
+    /* Beat Tailwind pb utilities; clear Edit bar + safe area */
+    padding-bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom, 0px))) !important;
     box-sizing: border-box !important;
+    scroll-padding-bottom: max(5rem, calc(4rem + env(safe-area-inset-bottom, 0px)));
   }
 
+  /* Only the Edit Profile button — not the page content */
+  @media (min-width: 640px) {
+    .ios-installer-profile .ios-edit-bar .ios-edit-bar-inner {
+      max-width: 420px;
+    }
+  }
+
+  .ios-installer-profile .ios-profile-account {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 0.5rem;
+  }
+
+  .ios-installer-profile .ios-profile-scroll-spacer {
+    width: 100%;
+    height: 0;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+
+  /* Maps embed captures vertical pan in iOS WKWebView — keep preview, use Open in Maps for interaction */
+  .ios-installer-profile .ios-profile-map-embed iframe {
+    pointer-events: none !important;
+  }
+
+  /* Keep accordion gutters equal — avoid wide right-only empty band on iPad */
   .ios-installer-profile .ios-profile-section {
     width: 100% !important;
     max-width: 100% !important;
@@ -100,15 +137,17 @@
     line-height: 1.2 !important;
   }
 
-  /* Field values — compact body */
+  /* Field values — a bit larger than before, still under the 16px section title */
   .ios-installer-profile .ios-profile-section-body .font-semibold.text-slate-900,
   .ios-installer-profile .ios-profile-section-body p.font-semibold,
   .ios-installer-profile .ios-profile-section-body .text-base,
   .ios-installer-profile .ios-profile-section-body .text-lg,
   .ios-installer-profile .ios-profile-section-body .sm\:text-lg,
   .ios-installer-profile .ios-profile-section-body .sm\:text-base {
-    font-size: 13px !important;
+    font-family: inherit !important;
+    font-size: 15px !important;
     font-weight: 400 !important;
+    font-style: normal !important;
     letter-spacing: -0.2px !important;
     line-height: 1.3 !important;
     color: #1c1c1e !important;
@@ -116,7 +155,7 @@
 
   .ios-installer-profile .ios-profile-section-body .text-slate-400,
   .ios-installer-profile .ios-profile-section-body .italic {
-    font-size: 13px !important;
+    font-size: 15px !important;
     font-weight: 400 !important;
     color: #c7c7cc !important;
   }
@@ -149,7 +188,7 @@
 
   .ios-installer-profile .ios-profile-section-body label,
   .ios-installer-profile .ios-profile-section-body span.text-slate-900 {
-    font-size: 13px !important;
+    font-size: 15px !important;
     font-weight: 400 !important;
     letter-spacing: -0.2px !important;
   }

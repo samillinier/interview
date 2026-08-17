@@ -2,14 +2,18 @@ import UIKit
 import WebKit
 import AVKit
 
-class WebViewController: UIViewController, WKNavigationDelegate {
+class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
     private let webView = WKWebView()
     private let baseURL = "https://job.floorinteriorservices.com/installer/login"
     private var splashPlayer: AVPlayer?
     private var splashLayer: AVPlayerLayer?
     private var splashLabel: UILabel?
-    private var videoLoaded = false
+    private var splashLogoView: UIImageView?
+
+    private var isTablet: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -20,9 +24,16 @@ class WebViewController: UIViewController, WKNavigationDelegate {
         webView.frame = view.bounds
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.navigationDelegate = self
+        webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = false
         webView.scrollView.bounces = true
-        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        // Web UI owns safe-area padding (viewport-fit=cover). Automatic insets
+        // shortened scroll range on iPad so Profile → Account could not be reached.
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        if #available(iOS 11.0, *) {
+            webView.scrollView.contentInset = .zero
+            webView.scrollView.scrollIndicatorInsets = .zero
+        }
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
@@ -34,48 +45,10 @@ class WebViewController: UIViewController, WKNavigationDelegate {
         let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         webView.configuration.userContentController.addUserScript(script)
 
-        // Pre-load video
-        if let videoURL = Bundle.main.url(forResource: "splash", withExtension: "mp4") {
-            let player = AVPlayer(url: videoURL)
-            player.isMuted = true
-            splashPlayer = player
-
-            let layer = AVPlayerLayer(player: player)
-            layer.frame = view.bounds
-            layer.videoGravity = .resizeAspect
-            layer.backgroundColor = UIColor.white.cgColor
-            splashLayer = layer
-            view.layer.addSublayer(layer)
-
-            // Small URL label at bottom
-            let label = UILabel()
-            label.text = "floorinteriorservices.com"
-            label.font = UIFont.systemFont(ofSize: 10, weight: .light)
-            label.textColor = .darkGray
-            label.textAlignment = .center
-            label.translatesAutoresizingMaskIntoConstraints = false
-
-            view.addSubview(label)
-            splashLabel = label
-
-            NSLayoutConstraint.activate([
-                label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                label.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16)
-            ])
-
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(splashVideoDidFinish),
-                name: .AVPlayerItemDidPlayToEndTime,
-                object: player.currentItem
-            )
-
-            // Play as soon as app is ready
-            DispatchQueue.main.async {
-                player.play()
-            }
+        if isTablet {
+            showLogoSplash()
         } else {
-            showWebContent()
+            showVideoSplash()
         }
     }
 
@@ -83,6 +56,75 @@ class WebViewController: UIViewController, WKNavigationDelegate {
         super.viewDidLayoutSubviews()
         webView.frame = view.bounds
         splashLayer?.frame = view.bounds
+    }
+
+    private func showLogoSplash() {
+        addSiteLabel()
+
+        let imageView = UIImageView(image: UIImage(named: "SplashLogo"))
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(imageView)
+        splashLogoView = imageView
+
+        NSLayoutConstraint.activate([
+            imageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            imageView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: 220),
+            imageView.heightAnchor.constraint(equalToConstant: 220)
+        ])
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.showWebContent()
+        }
+    }
+
+    private func showVideoSplash() {
+        guard let videoURL = Bundle.main.url(forResource: "splash", withExtension: "mp4") else {
+            showWebContent()
+            return
+        }
+
+        let player = AVPlayer(url: videoURL)
+        player.isMuted = true
+        splashPlayer = player
+
+        let layer = AVPlayerLayer(player: player)
+        layer.frame = view.bounds
+        layer.videoGravity = .resizeAspect
+        layer.backgroundColor = UIColor.white.cgColor
+        splashLayer = layer
+        view.layer.addSublayer(layer)
+
+        addSiteLabel()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(splashVideoDidFinish),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem
+        )
+
+        DispatchQueue.main.async {
+            player.play()
+        }
+    }
+
+    private func addSiteLabel() {
+        let label = UILabel()
+        label.text = "floorinteriorservices.com"
+        label.font = UIFont.systemFont(ofSize: 10, weight: .light)
+        label.textColor = .darkGray
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(label)
+        splashLabel = label
+
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16)
+        ])
     }
 
     @objc private func splashVideoDidFinish() {
@@ -96,6 +138,7 @@ class WebViewController: UIViewController, WKNavigationDelegate {
             self.webView.alpha = 1
             self.splashLayer?.opacity = 0
             self.splashLabel?.alpha = 0
+            self.splashLogoView?.alpha = 0
         }, completion: { _ in
             self.splashLayer?.removeFromSuperlayer()
             self.splashLayer = nil
@@ -103,6 +146,8 @@ class WebViewController: UIViewController, WKNavigationDelegate {
             self.splashPlayer = nil
             self.splashLabel?.removeFromSuperview()
             self.splashLabel = nil
+            self.splashLogoView?.removeFromSuperview()
+            self.splashLogoView = nil
         })
 
         if let url = URL(string: baseURL) {
@@ -142,5 +187,17 @@ class WebViewController: UIViewController, WKNavigationDelegate {
             openExternally(url)
         }
         return nil
+    }
+
+    // Allow getUserMedia / in-page camera after Info.plist usage strings are present
+    @available(iOS 15.0, *)
+    func webView(
+        _ webView: WKWebView,
+        requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        type: WKMediaCaptureType,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        decisionHandler(.grant)
     }
 }

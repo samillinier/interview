@@ -951,7 +951,7 @@ export async function PATCH(
         if (!alreadyHasSystemNote) {
           const installerName = `${currentInstaller?.firstName || ''} ${currentInstaller?.lastName || ''}`.trim()
           const installerEmail = currentInstaller?.email || ''
-          const note = `SYSTEM: Installer deactivated. Please deactivate this installer’s ProjectForce account and disable access for any associated staff/team members. (${installerName || installerId}${installerEmail ? ` • ${installerEmail}` : ''})`
+          const note = `SYSTEM: Installer deactivated. Please deactivate this installer’s cilio account and disable access for any associated staff/team members. (${installerName || installerId}${installerEmail ? ` • ${installerEmail}` : ''})`
           remarksArr.unshift({ note, createdAt: new Date().toISOString() })
           cleanedData.remarks = JSON.stringify(remarksArr)
         }

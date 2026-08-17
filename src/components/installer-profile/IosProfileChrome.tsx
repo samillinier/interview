@@ -180,8 +180,9 @@ export function IosProfileEditBar({
     <div
       className="ios-edit-bar 2xl:hidden fixed bottom-0 inset-x-0 z-40 bg-[#f2f2f7]/94 backdrop-blur-xl border-t border-black/[0.08]"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 12px), 12px)' }}
+      data-ios-edit-bar
     >
-      <div className="px-4 pt-2 pb-1.5 flex gap-2">
+      <div className="ios-edit-bar-inner mx-auto w-full max-w-[420px] px-4 pt-2 pb-1.5 flex gap-2">
         {!isEditing ? (
           <button
             type="button"

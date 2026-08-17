@@ -437,7 +437,7 @@ export function GpsLiveMap({
   const playbackDistRef = useRef(0)
   const playbackLastTsRef = useRef(0)
   const playbackPausedRef = useRef(false)
-  const playbackSpeedRef = useRef(1)
+  const playbackSpeedRef = useRef(4)
   const playbackDoneRef = useRef(false)
   const playbackPauseUntilRef = useRef(0)
   const playbackHeadingRef = useRef<number | null>(null)
@@ -462,7 +462,7 @@ export function GpsLiveMap({
     done: boolean
     speed: number
     progress: number
-  }>({ active: false, playing: false, done: false, speed: 1, progress: 0 })
+  }>({ active: false, playing: false, done: false, speed: 4, progress: 0 })
 
   const stopPlaybackLoop = useCallback(() => {
     if (playbackRafRef.current != null) {
@@ -653,7 +653,7 @@ export function GpsLiveMap({
     (segs: PlaybackSeg[], reset = true, autoPlay = true) => {
       stopPlaybackLoop()
       if (!segs.length) {
-        setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
+        setPlaybackUi({ active: false, playing: false, done: false, speed: 4, progress: 0 })
         return
       }
       playbackSegsRef.current = segs
@@ -681,7 +681,7 @@ export function GpsLiveMap({
         active: true,
         playing: autoPlay,
         done: false,
-        speed: playbackSpeedRef.current || u.speed || 1,
+        speed: playbackSpeedRef.current || u.speed || 4,
         progress: reset ? 0 : u.progress,
       }))
       if (autoPlay) {
@@ -708,7 +708,7 @@ export function GpsLiveMap({
     playbackHeadingRef.current = null
     playbackIconReadyRef.current = false
     routeFpRef.current = ''
-    setPlaybackUi({ active: false, playing: false, done: false, speed: 1, progress: 0 })
+    setPlaybackUi({ active: false, playing: false, done: false, speed: 4, progress: 0 })
     const device = selectedDeviceRef.current
     if (device) {
       const marker = markersRef.current.get(device.id)
@@ -1112,7 +1112,7 @@ export function GpsLiveMap({
   }
 
   function cycleSpeed() {
-    const next = playbackSpeedRef.current === 1 ? 2 : playbackSpeedRef.current === 2 ? 4 : 1
+    const next = playbackSpeedRef.current === 4 ? 1 : playbackSpeedRef.current === 1 ? 2 : 4
     playbackSpeedRef.current = next
     setPlaybackUi((u) => ({ ...u, speed: next }))
   }

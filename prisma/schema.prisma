@@ -281,6 +281,8 @@ model Installer {
   passwordHash                         String?
   passwordResetToken                   String?
   passwordResetTokenExpiresAt          DateTime?
+  loginToken                           String?
+  loginTokenExpiresAt                  DateTime?
   paymentAccountName                   String?
   paymentAccountNumber                 String?
   paymentAccountType                   String?

@@ -857,7 +857,10 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen interview-gradient flex flex-col relative">
       {/* Header - Fixed at top */}
-      <header className="border-b border-primary-100 bg-white/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 shadow-sm">
+      <header
+        className="border-b border-primary-100 bg-white/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 shadow-sm"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="font-bold text-primary-900">Prescreening Interview</h1>
@@ -891,7 +894,11 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
       {/* Messages - Scrollable area with padding for fixed header and footer */}
       {/* Newest messages appear at top, scroll to top to see latest */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto pt-24 pb-40">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto pb-40"
+        style={{ paddingTop: 'calc(6rem + env(safe-area-inset-top, 0px))' }}
+      >
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
           <div ref={messagesStartRef} />
 
@@ -949,7 +956,10 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Input area - Fixed at bottom */}
-      <div className="border-t border-primary-100/30 bg-gradient-to-t from-white/80 via-white/60 to-transparent backdrop-blur-md fixed bottom-0 left-0 right-0 z-50">
+      <div
+        className="border-t border-primary-100/30 bg-gradient-to-t from-white/80 via-white/60 to-transparent backdrop-blur-md fixed bottom-0 left-0 right-0 z-50"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         <div className="max-w-3xl mx-auto px-4 py-6">
           
           {/* Flooring Skills Selection UI */}

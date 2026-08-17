@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Loader2, Globe } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
-export default function InterviewStartPage() {
+function InterviewStartContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const referralCode = searchParams.get('ref')
   const [step, setStep] = useState<'welcome' | 'language' | 'email'>('welcome')
   const [language, setLanguage] = useState<'en' | 'es'>('en')
   const [email, setEmail] = useState('')
@@ -31,7 +34,7 @@ export default function InterviewStartPage() {
       const response = await fetch('/api/interview/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, firstName, lastName, phone, language }),
+        body: JSON.stringify({ email, firstName, lastName, phone, language, referralCode }),
       })
 
       const data = await response.json()
@@ -399,5 +402,17 @@ export default function InterviewStartPage() {
         </AnimatePresence>
       </motion.div>
     </div>
+  )
+}
+
+export default function InterviewStartPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center">
+        <LogoHeartbeatLoader messageClassName="text-primary-500" />
+      </div>
+    }>
+      <InterviewStartContent />
+    </Suspense>
   )
 }

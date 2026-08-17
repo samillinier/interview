@@ -1940,7 +1940,7 @@ export default function InstallerProfilePage() {
         </header>
 
         {/* Content Area */}
-        <main className="px-4 py-4 sm:py-6 2xl:p-8 pb-28 2xl:pb-8 w-full max-w-full box-border">
+        <main className="ios-profile-main px-4 py-4 sm:py-6 2xl:p-8 2xl:pb-8 w-full max-w-full box-border">
           {/* Complete Profile Notice */}
           {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div
@@ -5825,7 +5825,8 @@ export default function InstallerProfilePage() {
                   </h3>
                   <OpenInMapsLinks address={addressForMap} wrapperClassName="ios-maps-actions w-full sm:w-auto" />
                 </div>
-                <div className="w-full h-56 lg:h-96 rounded-xl overflow-hidden border border-slate-200 relative">
+                {/* pointer-events-none on phone/tablet: embedded Maps steals touch scroll in WKWebView */}
+                <div className="ios-profile-map-embed w-full h-56 lg:h-96 rounded-xl overflow-hidden border border-slate-200 relative">
                   <iframe
                     width="100%"
                     height="100%"
@@ -5835,6 +5836,7 @@ export default function InstallerProfilePage() {
                     referrerPolicy="no-referrer-when-downgrade"
                     src={mapsUrl}
                     title="Location Map"
+                    tabIndex={-1}
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2 text-center">{addressForMap}</p>
@@ -5843,7 +5845,12 @@ export default function InstallerProfilePage() {
           })()}
           </IosProfileSection>
 
-          <DeleteAccountSection installerEmail={installer?.email} />
+          <div id="account" className="ios-profile-account scroll-mt-24">
+            <DeleteAccountSection installerEmail={installer?.email} />
+          </div>
+
+          {/* Extra scroll runway past fixed Edit bar (App Store iPad rejection) */}
+          <div className="ios-profile-scroll-spacer 2xl:hidden" aria-hidden="true" />
 
         </main>
 

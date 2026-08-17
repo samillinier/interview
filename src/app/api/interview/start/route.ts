@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { generateSpeech } from '@/lib/openai'
 import { getInterviewQuestions } from '@/lib/questions'
+import { resolveReferrerInstallerId } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
   console.log('Starting interview API called')
   
   try {
     const body = await request.json()
-    const { email, firstName, lastName, phone, language = 'en' } = body
+    const { email, firstName, lastName, phone, language = 'en', referralCode } = body
     console.log('Request body:', { email, firstName, lastName, phone, language })
 
     // Check if installer already exists
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
     console.log('Existing installer:', installer?.id || 'none')
 
     if (!installer) {
+      const referredByInstallerId = await resolveReferrerInstallerId(referralCode)
       // Create new installer
       installer = await prisma.installer.create({
         data: {
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
           lastName: lastName || '',
           phone: phone || null,
           status: 'pending',
+          referredByInstallerId,
         },
       })
       console.log('Created new installer:', installer.id)

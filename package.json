@@ -15,13 +15,17 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:status": "prisma migrate status"
+    "db:status": "prisma migrate status",
+    "android:sync": "cap sync android",
+    "android:build": "./android/build-for-device.sh",
+    "android:bundle": "./android/build-release-aab.sh"
   },
   "dependencies": {
     "@aws-sdk/client-textract": "^3.1037.0",
+    "@capacitor/android": "8.4.2",
     "@capacitor/cli": "^7.6.8",
-    "@capacitor/core": "^8.4.2",
-    "@capacitor/ios": "^8.4.2",
+    "@capacitor/core": "8.4.2",
+    "@capacitor/ios": "8.4.2",
     "@prisma/client": "^5.22.0",
     "@tesseract.js-data/eng": "^1.0.0",
     "@types/jsbarcode": "^3.11.4",

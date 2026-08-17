@@ -7,7 +7,13 @@ import InstallerSidebar from '@/components/InstallerSidebar'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
 
 // Public pages that don't need auth
-const PUBLIC_PAGES = ['/installer/login', '/installer/forgot-password', '/installer/reset-password']
+const PUBLIC_PAGES = [
+  '/installer/login',
+  '/installer/forgot-password',
+  '/installer/reset-password',
+  '/installer/magic-link',
+  '/installer/account-deletion',
+]
 
 interface InstallerUser {
   firstName?: string

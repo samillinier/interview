@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
 import { Resend } from 'resend'
-import { ensureInstallerReferralCode, resolveReferrerInstallerId } from '@/lib/referrals'
+import { ensureInstallerReferralCode } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, installerId, referralCode } = await request.json()
+    const { email, installerId } = await request.json()
     const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!normalizedEmail && !installerId) {
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find installer by email or ID, or create new one if not found
+    // Find installer by email or ID — account creation requires an existing installer
+    // (typically created via the AI interview). Do not auto-create here.
     let installer
     if (installerId) {
       installer = await prisma.installer.findUnique({
@@ -26,35 +27,145 @@ export async function POST(request: NextRequest) {
       installer = await prisma.installer.findFirst({
         where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
       })
-      
-      // If installer doesn't exist, create a new one
-      if (!installer) {
-        const referredByInstallerId = await resolveReferrerInstallerId(referralCode)
-        installer = await prisma.installer.create({
-          data: {
-            email: normalizedEmail,
-            firstName: '',
-            lastName: '',
-            status: 'pending',
-            referredByInstallerId,
-          },
-        })
-      }
     }
 
     if (!installer) {
+      if (!normalizedEmail && !installerId) {
+        return NextResponse.json(
+          { error: 'Email is required' },
+          { status: 400 }
+        )
+      }
       return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
+        {
+          success: false,
+          requiresInterview: true,
+          error:
+            "We don't have this email in our system yet. Please complete the AI interview first to create your installer profile.",
+        },
+        { status: 404 }
       )
     }
 
-    // Check if account already exists
+    // Existing account → email a one-click sign-in link instead of an error.
     if (installer.passwordHash) {
-      return NextResponse.json(
-        { error: 'Account already exists. Please log in instead.' },
-        { status: 400 }
-      )
+      const loginToken = crypto.randomBytes(32).toString('hex')
+      const loginExpiresAt = new Date()
+      loginExpiresAt.setMinutes(loginExpiresAt.getMinutes() + 30)
+
+      await prisma.installer.update({
+        where: { id: installer.id },
+        data: {
+          loginToken,
+          loginTokenExpiresAt: loginExpiresAt,
+        },
+      })
+
+      const isDevelopment = process.env.NODE_ENV === 'development'
+      const baseUrl = isDevelopment
+        ? 'http://localhost:3000'
+        : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app')
+      const signInUrl = `${baseUrl}/installer/magic-link?token=${loginToken}&email=${encodeURIComponent(installer.email)}`
+      const logoUrl = process.env.EMAIL_LOGO_URL || `${baseUrl}/logo.png`
+
+      const resendApiKey = process.env.RESEND_API_KEY
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+      const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+      let emailSent = false
+      let emailError: string | null = null
+
+      if (resendApiKey) {
+        try {
+          const resend = new Resend(resendApiKey)
+          const emailResult = await resend.emails.send({
+            from: `${fromName} <${fromEmail}>`,
+            to: installer.email,
+            subject: 'Sign in to your installer account',
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                </head>
+                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+                  <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
+                    <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
+                  </div>
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Sign In</h1>
+                  </div>
+                  <p>Hi ${installer.firstName || 'there'},</p>
+                  <p>We found an existing installer account for this email. Click the button below to sign in — no password needed.</p>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${signInUrl}" style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                      Sign In
+                    </a>
+                  </div>
+                  <p>Or copy and paste this link into your browser:</p>
+                  <p style="word-break: break-all; color: #666; font-size: 12px;">${signInUrl}</p>
+                  <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                    This sign-in link will expire in 30 minutes. If you didn't request this email, please ignore it.
+                  </p>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                  <p style="color: #999; font-size: 12px; text-align: center;">
+                    Floor Interior Service - Installer Portal
+                  </p>
+                </body>
+              </html>
+            `,
+            text: `
+Hi ${installer.firstName || 'there'},
+
+We found an existing installer account for this email. Click the link below to sign in — no password needed:
+
+${signInUrl}
+
+This sign-in link will expire in 30 minutes.
+
+If you didn't request this email, please ignore it.
+
+Floor Interior Service - Installer Portal
+            `,
+          })
+
+          if (emailResult && typeof emailResult === 'object') {
+            if ('error' in emailResult) {
+              const error = (emailResult as any).error
+              emailError = error.message || JSON.stringify(error)
+              console.error('❌ Resend API returned error (sign-in link):', error)
+            } else if ('id' in emailResult) {
+              console.log('✅ Sign-in link sent successfully via Resend!')
+              emailSent = true
+            } else {
+              emailSent = true
+            }
+          } else {
+            emailSent = true
+          }
+        } catch (err: any) {
+          emailError = err.message || 'Unknown error'
+          console.error('❌ Error sending sign-in link via Resend:', err.message)
+        }
+      } else {
+        console.log('⚠️  Resend API Key not configured')
+        console.log('📧 Sign-in Link (Development Mode):')
+        console.log('   To:', installer.email)
+        console.log('   Sign-in Link:', signInUrl)
+      }
+
+      return NextResponse.json({
+        success: true,
+        accountExists: true,
+        message: emailSent
+          ? 'Sign-in link sent! Check your inbox.'
+          : emailError
+            ? `Email sending failed: ${emailError}`
+            : 'Sign-in link generated.',
+        email: installer.email,
+        emailSent,
+        emailError: emailError || undefined,
+      })
     }
 
     // Ensure this installer has a referral code for sharing
