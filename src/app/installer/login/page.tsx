@@ -132,7 +132,7 @@ function InstallerLoginContent() {
               />
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-primary-900 mb-2">
-              Installer Login
+              Subcontractor Login
             </h1>
             <p className="text-primary-500">
               Sign in to manage your profile and view your interview results
