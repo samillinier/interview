@@ -2679,6 +2679,42 @@ export default function InstallerProfileViewPage() {
     }
   }
 
+  const handleRemovePhoto = async () => {
+    if (!installer || !(photoUrl || installer.photoUrl)) return
+    if (!confirm('Remove this profile photo? This cannot be undone.')) return
+
+    setIsUploadingPhoto(true)
+    setError('')
+
+    try {
+      const response = await fetch(`/api/installers/upload-photo?installerId=${encodeURIComponent(installer.id)}`, {
+        method: 'DELETE',
+      })
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('Server error: could not remove photo.')
+        return
+      }
+
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to remove photo')
+        return
+      }
+
+      setPhotoUrl(null)
+      setInstaller({ ...installer, photoUrl: undefined })
+      setSuccess('Photo removed successfully')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      console.error('Error removing photo:', err)
+      setError('Failed to remove photo. Please try again.')
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !installer) return
@@ -3419,6 +3455,25 @@ export default function InstallerProfileViewPage() {
                             >
                               <Pencil className="w-3 h-3" />
                               Change
+                            </button>
+                          )}
+                          {!isManager && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemovePhoto()
+                              }}
+                              disabled={isUploadingPhoto}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-red-600 rounded-md hover:bg-red-50 transition-colors text-xs font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Remove installer photo"
+                            >
+                              {isUploadingPhoto ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                              Remove
                             </button>
                           )}
                         </div>
