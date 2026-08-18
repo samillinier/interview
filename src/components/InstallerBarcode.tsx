@@ -58,7 +58,7 @@ export function InstallerBarcode({ installerId, className = '' }: InstallerBarco
 
   const size =
     viewport === 'mobile'
-      ? { width: 2.0, height: 60, fontSize: 11, textMargin: 4, margin: 0 }
+      ? { width: 2.0, height: 60, fontSize: 11, textMargin: 8, margin: 0 }
       : viewport === 'tablet'
         ? { width: 1.35, height: 38, fontSize: 10, textMargin: 3, margin: 2 }
         : { width: 2.0, height: 65, fontSize: 12, textMargin: 5, margin: 6 }
@@ -76,7 +76,7 @@ export function InstallerBarcode({ installerId, className = '' }: InstallerBarco
         ref={barcodeRef}
         className={
           viewport === 'mobile'
-            ? 'w-full max-w-full overflow-hidden bg-white p-3 rounded-2xl border border-slate-200 shadow-sm'
+            ? 'w-full max-w-full overflow-visible bg-white pt-3 px-3 pb-5 rounded-2xl border border-slate-200 shadow-sm'
             : viewport === 'tablet'
               ? 'w-full max-w-[200px] overflow-hidden bg-white p-1.5'
               : 'flex flex-col items-center justify-center bg-white p-2'
@@ -96,6 +96,7 @@ export function InstallerBarcode({ installerId, className = '' }: InstallerBarco
             textPosition="bottom"
             textMargin={size.textMargin}
             margin={size.margin}
+            marginBottom={viewport === 'mobile' ? 10 : size.margin}
             background="#ffffff"
             lineColor="#1e293b"
           />
