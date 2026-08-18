@@ -63,6 +63,60 @@ import {
 import { DeleteAccountSection } from '@/components/installer-profile/DeleteAccountSection'
 import './installer-profile-mobile.css'
 
+const US_STATES: { value: string; label: string }[] = [
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' },
+  { value: 'DC', label: 'District of Columbia' },
+]
+
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: string | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
   if (!expiryDate || expiryDate === '' || expiryDate === 'null' || expiryDate === 'undefined') return 'none'
@@ -2128,6 +2182,28 @@ export default function InstallerProfilePage() {
           )}
         </motion.div>
 
+          {(hasPendingApproval || success) && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-4 bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl text-success-700 text-sm font-medium flex items-center gap-2"
+            >
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+              {success || 'Changes submitted for admin approval'}
+            </motion.div>
+          )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-4 bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl text-danger-700 text-sm font-medium flex items-center gap-2"
+            >
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              {error}
+            </motion.div>
+          )}
+
           {/* Profile Information */}
           <IosProfileSection title="Profile Information">
           <motion.div
@@ -2240,28 +2316,6 @@ export default function InstallerProfilePage() {
               </div>
             )}
           </div>
-
-          {(hasPendingApproval || success) && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl text-success-700 text-sm font-medium flex items-center gap-2"
-            >
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-              {success || 'Changes submitted for admin approval'}
-            </motion.div>
-          )}
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-gradient-to-r from-danger-50 to-danger-100 border border-danger-200 rounded-xl text-danger-700 text-sm font-medium flex items-center gap-2"
-            >
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              {error}
-            </motion.div>
-          )}
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
@@ -2691,57 +2745,9 @@ export default function InstallerProfilePage() {
                       className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     >
                     <option value="">Select a state</option>
-                    <option value="AL">Alabama</option>
-                    <option value="AK">Alaska</option>
-                    <option value="AZ">Arizona</option>
-                    <option value="AR">Arkansas</option>
-                    <option value="CA">California</option>
-                    <option value="CO">Colorado</option>
-                    <option value="CT">Connecticut</option>
-                    <option value="DE">Delaware</option>
-                    <option value="FL">Florida</option>
-                    <option value="GA">Georgia</option>
-                    <option value="HI">Hawaii</option>
-                    <option value="ID">Idaho</option>
-                    <option value="IL">Illinois</option>
-                    <option value="IN">Indiana</option>
-                    <option value="IA">Iowa</option>
-                    <option value="KS">Kansas</option>
-                    <option value="KY">Kentucky</option>
-                    <option value="LA">Louisiana</option>
-                    <option value="ME">Maine</option>
-                    <option value="MD">Maryland</option>
-                    <option value="MA">Massachusetts</option>
-                    <option value="MI">Michigan</option>
-                    <option value="MN">Minnesota</option>
-                    <option value="MS">Mississippi</option>
-                    <option value="MO">Missouri</option>
-                    <option value="MT">Montana</option>
-                    <option value="NE">Nebraska</option>
-                    <option value="NV">Nevada</option>
-                    <option value="NH">New Hampshire</option>
-                    <option value="NJ">New Jersey</option>
-                    <option value="NM">New Mexico</option>
-                    <option value="NY">New York</option>
-                    <option value="NC">North Carolina</option>
-                    <option value="ND">North Dakota</option>
-                    <option value="OH">Ohio</option>
-                    <option value="OK">Oklahoma</option>
-                    <option value="OR">Oregon</option>
-                    <option value="PA">Pennsylvania</option>
-                    <option value="RI">Rhode Island</option>
-                    <option value="SC">South Carolina</option>
-                    <option value="SD">South Dakota</option>
-                    <option value="TN">Tennessee</option>
-                    <option value="TX">Texas</option>
-                    <option value="UT">Utah</option>
-                    <option value="VT">Vermont</option>
-                    <option value="VA">Virginia</option>
-                    <option value="WA">Washington</option>
-                    <option value="WV">West Virginia</option>
-                    <option value="WI">Wisconsin</option>
-                    <option value="WY">Wyoming</option>
-                    <option value="DC">District of Columbia</option>
+                    {US_STATES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
                   </select>
                   ) : (
                     <p className="font-semibold text-slate-900 text-base sm:text-lg">
@@ -5804,12 +5810,14 @@ export default function InstallerProfilePage() {
             if (zipTrimmed) addressForMap = `${addressForMap}${addressForMap ? ' ' : ''}${zipTrimmed}`
             addressForMap = addressForMap.trim() || fallback.trim()
 
-            if (!addressForMap) return null
+            if (!addressForMap && !isEditing) return null
 
-            const mapsUrl = googleMapsEmbedUrl(
-              addressForMap,
-              process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-            )
+            const mapsUrl = addressForMap
+              ? googleMapsEmbedUrl(
+                  addressForMap,
+                  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+                )
+              : ''
 
             return (
               <motion.div
@@ -5818,28 +5826,94 @@ export default function InstallerProfilePage() {
                 transition={{ delay: 0.95 }}
                 className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                  <h3 className="hidden 2xl:flex text-lg font-bold text-slate-900 items-center gap-2 shrink-0">
-                    <MapPin className="w-5 h-5 text-brand-green" />
-                    Location Map
-                  </h3>
-                  <OpenInMapsLinks address={addressForMap} wrapperClassName="ios-maps-actions w-full sm:w-auto" />
-                </div>
-                {/* pointer-events-none on phone/tablet: embedded Maps steals touch scroll in WKWebView */}
-                <div className="ios-profile-map-embed w-full h-56 lg:h-96 rounded-xl overflow-hidden border border-slate-200 relative">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={mapsUrl}
-                    title="Location Map"
-                    tabIndex={-1}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-2 text-center">{addressForMap}</p>
+                {isEditing && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Street Address</label>
+                      <input
+                        type="text"
+                        value={companyStreetAddress}
+                        onChange={(e) => setCompanyStreetAddress(e.target.value)}
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Street address"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">City</label>
+                      <input
+                        type="text"
+                        value={companyCity}
+                        onChange={(e) => setCompanyCity(e.target.value)}
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="City"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">State</label>
+                      <select
+                        value={companyState}
+                        onChange={(e) => setCompanyState(e.target.value)}
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
+                      >
+                        <option value="">Select a state</option>
+                        {US_STATES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Zip Code</label>
+                      <input
+                        type="text"
+                        value={companyZipCode}
+                        onChange={(e) => setCompanyZipCode(e.target.value)}
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="Zip code"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">County</label>
+                      <input
+                        type="text"
+                        value={companyCounty}
+                        onChange={(e) => setCompanyCounty(e.target.value)}
+                        className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
+                        placeholder="County"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {mapsUrl ? (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                      <h3 className="hidden 2xl:flex text-lg font-bold text-slate-900 items-center gap-2 shrink-0">
+                        <MapPin className="w-5 h-5 text-brand-green" />
+                        Location Map
+                      </h3>
+                      <OpenInMapsLinks address={addressForMap} wrapperClassName="ios-maps-actions w-full sm:w-auto" />
+                    </div>
+                    {/* pointer-events-none on phone/tablet: embedded Maps steals touch scroll in WKWebView */}
+                    <div className="ios-profile-map-embed w-full h-56 lg:h-96 rounded-xl overflow-hidden border border-slate-200 relative">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={mapsUrl}
+                        title="Location Map"
+                        tabIndex={-1}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2 text-center">{addressForMap}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-400 italic text-center">
+                    Enter your address above to see your location on the map.
+                  </p>
+                )}
               </motion.div>
             )
           })()}
