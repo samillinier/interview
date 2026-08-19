@@ -18,6 +18,7 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { saveInstallerSignup } from '@/lib/installerSignup'
 import { getInterviewQuestions, WORKROOM_OPTIONS, FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { getSupportedMimeType, isMobile, resumeAudioContext, isMediaRecorderSupported, isIOS } from '@/lib/utils'
+import { encodeWav, mergeFloat32 } from '@/lib/wavRecorder'
 
 interface Message {
   id: string
@@ -35,6 +36,10 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   const audioContextRef = useRef<AudioContext | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const wavChunksRef = useRef<Float32Array[]>([])
+  const wavProcessorRef = useRef<ScriptProcessorNode | null>(null)
+  const wavSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const wavStreamRef = useRef<MediaStream | null>(null)
   const audioEnabledRef = useRef<boolean>(false)
 
   const [isLoading, setIsLoading] = useState(true)
@@ -440,29 +445,42 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         await audioContextRef.current.resume()
       }
 
+      chunksRef.current = []
+      wavChunksRef.current = []
+      setTranscribeError('')
+
+      // iPhone MediaRecorder files are often rejected by speech-to-text.
+      // Capture PCM and send WAV instead.
+      if (isIOS()) {
+        wavStreamRef.current = stream
+        const source = audioContextRef.current.createMediaStreamSource(stream)
+        const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1)
+        const mute = audioContextRef.current.createGain()
+        mute.gain.value = 0
+        processor.onaudioprocess = (event) => {
+          wavChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+        }
+        source.connect(processor)
+        processor.connect(mute)
+        mute.connect(audioContextRef.current.destination)
+        wavSourceRef.current = source
+        wavProcessorRef.current = processor
+        setIsRecording(true)
+        return
+      }
+
       // Check if MediaRecorder is supported
       if (!isMediaRecorderSupported()) {
         throw new Error('MediaRecorder is not supported on this device. Please use text input instead.')
       }
 
-      // Get supported MIME type for this device
       const mimeType = getSupportedMimeType()
-      
-      // Set up media recorder with device-compatible codec
       const options: MediaRecorderOptions = {}
       if (MediaRecorder.isTypeSupported(mimeType)) {
         options.mimeType = mimeType
       }
 
-      // For iOS, collect chunks often so the recording is not empty when stopping
-      if (isIOS()) {
-        mediaRecorderRef.current = new MediaRecorder(stream, options)
-      } else {
-        mediaRecorderRef.current = new MediaRecorder(stream, options)
-      }
-
-      chunksRef.current = []
-      setTranscribeError('')
+      mediaRecorderRef.current = new MediaRecorder(stream, options)
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -477,7 +495,6 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         await transcribeAndPreview(audioBlob)
       }
 
-      // Timeslice keeps data flowing on iOS Safari / WKWebView
       mediaRecorderRef.current.start(250)
       setIsRecording(true)
     } catch (error: any) {
@@ -494,6 +511,29 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   }
 
   const stopRecording = () => {
+    if (isIOS() && wavProcessorRef.current) {
+      const processor = wavProcessorRef.current
+      const source = wavSourceRef.current
+      const stream = wavStreamRef.current
+      const sampleRate = audioContextRef.current?.sampleRate || 44100
+      try {
+        processor.disconnect()
+        source?.disconnect()
+      } catch {
+        // already disconnected
+      }
+      stream?.getTracks().forEach((track) => track.stop())
+      wavProcessorRef.current = null
+      wavSourceRef.current = null
+      wavStreamRef.current = null
+      setIsRecording(false)
+      const samples = mergeFloat32(wavChunksRef.current)
+      wavChunksRef.current = []
+      const wavBlob = encodeWav(samples, sampleRate)
+      void transcribeAndPreview(wavBlob)
+      return
+    }
+
     const recorder = mediaRecorderRef.current
     if (recorder && isRecording) {
       try {
@@ -515,29 +555,27 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     setIsProcessing(true)
     setTranscribeError('')
     try {
-      if (!audioBlob || audioBlob.size < 1500) {
+      if (!audioBlob || audioBlob.size < 500) {
         setTranscribeError('We could not hear your answer. Tap the mic and try again.')
         return
       }
 
-      // Determine file extension based on MIME type
-      const mimeType = audioBlob.type || (isIOS() ? 'audio/mp4' : 'audio/webm')
+      const mimeType = audioBlob.type || (isIOS() ? 'audio/wav' : 'audio/webm')
       let extension = 'webm'
-      if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+      if (mimeType.includes('wav')) {
+        extension = 'wav'
+      } else if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
         extension = 'm4a'
       } else if (mimeType.includes('aac')) {
         extension = 'aac'
       } else if (mimeType.includes('ogg')) {
         extension = 'ogg'
-      } else if (mimeType.includes('wav')) {
-        extension = 'wav'
       } else if (mimeType.includes('mp3')) {
         extension = 'mp3'
       }
       
       const formData = new FormData()
-      const file = new File([audioBlob], `audio.${extension}`, { type: mimeType })
-      formData.append('audio', file)
+      formData.append('audio', audioBlob, `audio.${extension}`)
       formData.append('language', language)
 
       const response = await fetch('/api/interview/transcribe', {

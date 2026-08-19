@@ -5,27 +5,36 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const audioFile = formData.get('audio')
     const language = (formData.get('language') as string) || 'en'
+    const filename = audioFile instanceof File ? audioFile.name : ''
 
     if (!(audioFile instanceof Blob) || audioFile.size === 0) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
 
-    const mimeType = audioFile.type || (typeof audioFile === 'object' && 'name' in audioFile && String((audioFile as File).name).endsWith('.m4a') ? 'audio/mp4' : 'audio/webm')
+    const mimeType = audioFile.type || ''
     let extension = 'webm'
-    if (mimeType.includes('mp4') || mimeType.includes('m4a') || (audioFile instanceof File && audioFile.name.endsWith('.m4a'))) {
+    if (mimeType.includes('wav') || filename.endsWith('.wav')) {
+      extension = 'wav'
+    } else if (mimeType.includes('mp4') || mimeType.includes('m4a') || filename.endsWith('.m4a')) {
       extension = 'm4a'
     } else if (mimeType.includes('aac')) {
       extension = 'aac'
     } else if (mimeType.includes('ogg')) {
       extension = 'ogg'
-    } else if (mimeType.includes('wav')) {
-      extension = 'wav'
     } else if (mimeType.includes('mp3')) {
       extension = 'mp3'
     }
 
+    const typeByExt: Record<string, string> = {
+      wav: 'audio/wav',
+      m4a: 'audio/mp4',
+      aac: 'audio/aac',
+      ogg: 'audio/ogg',
+      mp3: 'audio/mpeg',
+      webm: 'audio/webm',
+    }
     const bytes = Buffer.from(await audioFile.arrayBuffer())
-    const file = new File([bytes], `audio.${extension}`, { type: mimeType || `audio/${extension === 'm4a' ? 'mp4' : extension}` })
+    const file = new File([bytes], `audio.${extension}`, { type: typeByExt[extension] || 'audio/wav' })
 
     const openaiFormData = new FormData()
     openaiFormData.append('file', file)
