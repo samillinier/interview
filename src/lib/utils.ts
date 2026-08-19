@@ -88,7 +88,8 @@ export function determinePassFail(score: number, data: {
 
 // Mobile audio compatibility utilities
 export function getSupportedMimeType(): string {
-  const types = [
+  const iosTypes = ['audio/mp4', 'audio/aac', 'audio/wav', 'audio/webm']
+  const otherTypes = [
     'audio/webm;codecs=opus',
     'audio/webm',
     'audio/mp4',
@@ -96,20 +97,23 @@ export function getSupportedMimeType(): string {
     'audio/ogg;codecs=opus',
     'audio/wav',
   ]
+  const types = isIOS() ? iosTypes : otherTypes
 
   for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
       return type
     }
   }
 
-  // Fallback to default
-  return 'audio/webm'
+  return isIOS() ? 'audio/mp4' : 'audio/webm'
 }
 
 export function isIOS(): boolean {
   if (typeof window === 'undefined') return false
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+  const ua = navigator.userAgent
+  const iPhoneLike = /iPad|iPhone|iPod/.test(ua)
+  const iPadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+  return (iPhoneLike || iPadOs) && !(window as any).MSStream
 }
 
 export function isMobile(): boolean {

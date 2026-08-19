@@ -3,17 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
-    const audioFile = formData.get('audio') as Blob | null
+    const audioFile = formData.get('audio')
     const language = (formData.get('language') as string) || 'en'
 
-    if (!audioFile) {
+    if (!(audioFile instanceof Blob) || audioFile.size === 0) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
 
-    // Determine file extension based on MIME type
-    const mimeType = audioFile.type || 'audio/webm'
+    const mimeType = audioFile.type || (typeof audioFile === 'object' && 'name' in audioFile && String((audioFile as File).name).endsWith('.m4a') ? 'audio/mp4' : 'audio/webm')
     let extension = 'webm'
-    if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+    if (mimeType.includes('mp4') || mimeType.includes('m4a') || (audioFile instanceof File && audioFile.name.endsWith('.m4a'))) {
       extension = 'm4a'
     } else if (mimeType.includes('aac')) {
       extension = 'aac'
@@ -25,9 +24,11 @@ export async function POST(request: NextRequest) {
       extension = 'mp3'
     }
 
-    // Create form data for OpenAI
+    const bytes = Buffer.from(await audioFile.arrayBuffer())
+    const file = new File([bytes], `audio.${extension}`, { type: mimeType || `audio/${extension === 'm4a' ? 'mp4' : extension}` })
+
     const openaiFormData = new FormData()
-    openaiFormData.append('file', audioFile, `audio.${extension}`)
+    openaiFormData.append('file', file)
     openaiFormData.append('model', 'whisper-1')
     openaiFormData.append('language', language === 'es' ? 'es' : 'en')
 

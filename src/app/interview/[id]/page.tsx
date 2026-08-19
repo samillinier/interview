@@ -65,6 +65,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   // Pending response for review/edit
   const [pendingResponse, setPendingResponse] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [transcribeError, setTranscribeError] = useState('')
 
   // Installation Experience state
   const [installationExperience, setInstallationExperience] = useState<Record<string, { canDo: boolean; capacity: string; isSkilled: boolean }>>({
@@ -452,38 +453,31 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         options.mimeType = mimeType
       }
 
-      // For iOS, we might need to use timeslice for better compatibility
+      // For iOS, collect chunks often so the recording is not empty when stopping
       if (isIOS()) {
-        // iOS Safari works better with timeslice
         mediaRecorderRef.current = new MediaRecorder(stream, options)
       } else {
         mediaRecorderRef.current = new MediaRecorder(stream, options)
       }
 
       chunksRef.current = []
+      setTranscribeError('')
 
       mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           chunksRef.current.push(event.data)
         }
       }
 
       mediaRecorderRef.current.onstop = async () => {
-        // Use the actual MIME type from the recorder or fallback
         const blobType = mediaRecorderRef.current?.mimeType || mimeType || 'audio/webm'
         const audioBlob = new Blob(chunksRef.current, { type: blobType })
         stream.getTracks().forEach((track) => track.stop())
-        // Transcribe audio first and show for review
         await transcribeAndPreview(audioBlob)
       }
 
-      // Start recording with timeslice for iOS compatibility
-      if (isIOS()) {
-        // iOS Safari requires timeslice for better compatibility
-        mediaRecorderRef.current.start(1000) // Collect data every second
-      } else {
-        mediaRecorderRef.current.start()
-      }
+      // Timeslice keeps data flowing on iOS Safari / WKWebView
+      mediaRecorderRef.current.start(250)
       setIsRecording(true)
     } catch (error: any) {
       console.error('Error accessing microphone:', error)
@@ -499,8 +493,18 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
+    const recorder = mediaRecorderRef.current
+    if (recorder && isRecording) {
+      try {
+        if (recorder.state === 'recording') {
+          recorder.requestData()
+        }
+      } catch {
+        // Some browsers throw if there is no data yet
+      }
+      if (recorder.state !== 'inactive') {
+        recorder.stop()
+      }
       setIsRecording(false)
     }
   }
@@ -508,9 +512,15 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   // Transcribe audio and show for review
   const transcribeAndPreview = async (audioBlob: Blob) => {
     setIsProcessing(true)
+    setTranscribeError('')
     try {
+      if (!audioBlob || audioBlob.size < 1500) {
+        setTranscribeError('We could not hear your answer. Tap the mic and try again.')
+        return
+      }
+
       // Determine file extension based on MIME type
-      const mimeType = audioBlob.type || 'audio/webm'
+      const mimeType = audioBlob.type || (isIOS() ? 'audio/mp4' : 'audio/webm')
       let extension = 'webm'
       if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
         extension = 'm4a'
@@ -525,7 +535,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       }
       
       const formData = new FormData()
-      formData.append('audio', audioBlob, `audio.${extension}`)
+      const file = new File([audioBlob], `audio.${extension}`, { type: mimeType })
+      formData.append('audio', file)
       formData.append('language', language)
 
       const response = await fetch('/api/interview/transcribe', {
@@ -534,18 +545,17 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       })
 
       const data = await response.json()
-      if (data.text) {
-        setPendingResponse(data.text)
+      const text = typeof data.text === 'string' ? data.text.trim() : ''
+      if (text) {
+        setPendingResponse(text)
         setIsEditing(false)
       } else {
         console.error('Transcription failed:', data.error)
-        setPendingResponse('')
-        setIsEditing(true)
+        setTranscribeError('We could not transcribe that recording. Tap the mic and try again.')
       }
     } catch (error) {
       console.error('Error transcribing:', error)
-      setPendingResponse('')
-      setIsEditing(true)
+      setTranscribeError('We could not transcribe that recording. Tap the mic and try again.')
     } finally {
       setIsProcessing(false)
     }
@@ -1288,11 +1298,14 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                         {isRecording
                           ? 'Click to stop recording'
                           : isSpeaking
-                          ? 'Listening to AI response...'
+                          ? 'Listening to Alice...'
                           : isProcessing
                           ? 'Transcribing...'
                           : 'Click to start recording'}
                       </p>
+                      {transcribeError && (
+                        <p className="mt-2 text-sm text-danger-600 text-center max-w-xs">{transcribeError}</p>
+                      )}
                     </>
                   )}
 
