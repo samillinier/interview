@@ -20,7 +20,7 @@ export const FLOORING_SURFACE_OPTIONS = [
 export const INTERVIEW_QUESTIONS_EN = [
   {
     id: 'intro',
-    text: "Hello, I'm Alice from Floor Interior Service. Thank you for your interest in becoming an installer with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
+    text: "Hello, I'm Alice from Floor Interior Services. Thank you for your interest in becoming an installer with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
     field: 'name',
     required: true,
   },
@@ -150,7 +150,7 @@ export const INTERVIEW_QUESTIONS_EN = [
   },
   {
     id: 'closing',
-    text: "Thank you for completing this qualification screening. We appreciate your time and interest in partnering with Floor Interior Service. Our team will review your responses and contact you regarding next steps. Is there anything else you would like to add about your qualifications?",
+    text: "Thank you for completing this qualification screening. We appreciate your time and interest in partnering with Floor Interior Services. Our team will review your responses and contact you regarding next steps. Is there anything else you would like to add about your qualifications?",
     field: 'additionalInfo',
     required: false,
   },
@@ -159,7 +159,7 @@ export const INTERVIEW_QUESTIONS_EN = [
 export const INTERVIEW_QUESTIONS_ES = [
   {
     id: 'intro',
-    text: "Hola, soy Alice de Floor Interior Service. Gracias por su interés en convertirse en instalador con nosotros. Realizaré una breve evaluación de calificación para conocer su experiencia, certificaciones, equipo, capacidades de instalación y disponibilidad. Esto tomará solo unos minutos. Comencemos con su nombre y apellido.",
+    text: "Hola, soy Alice de Floor Interior Services. Gracias por su interés en convertirse en instalador con nosotros. Realizaré una breve evaluación de calificación para conocer su experiencia, certificaciones, equipo, capacidades de instalación y disponibilidad. Esto tomará solo unos minutos. Comencemos con su nombre y apellido.",
     field: 'name',
     required: true,
   },
@@ -289,7 +289,7 @@ export const INTERVIEW_QUESTIONS_ES = [
   },
   {
     id: 'closing',
-    text: "Gracias por completar esta evaluación de calificación. Apreciamos su tiempo e interés en asociarse con Floor Interior Service. Nuestro equipo revisará sus respuestas y se comunicará con usted sobre los próximos pasos. ¿Hay algo más que le gustaría agregar sobre sus calificaciones?",
+    text: "Gracias por completar esta evaluación de calificación. Apreciamos su tiempo e interés en asociarse con Floor Interior Services. Nuestro equipo revisará sus respuestas y se comunicará con usted sobre los próximos pasos. ¿Hay algo más que le gustaría agregar sobre sus calificaciones?",
     field: 'additionalInfo',
     required: false,
   },

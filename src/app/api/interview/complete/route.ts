@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { extractInterviewData } from '@/lib/openai'
 import { calculateScore, determinePassFail } from '@/lib/utils'
 import { Resend } from 'resend'
+import { companyDisplayName } from '@/lib/publicAppUrl'
 
 const QUALIFIED_LOGIN_URL = 'https://job.floorinteriorservices.com/installer/login'
 
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
       if (resendApiKey) {
         const resend = new Resend(resendApiKey)
         const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-        const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Services'
+        const fromName = companyDisplayName()
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
         const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
 

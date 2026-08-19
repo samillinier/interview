@@ -37,7 +37,7 @@ export default function HomePage() {
             <div className="flex items-center">
               <Image
                 src={logo}
-                alt="Floor Interior Service"
+                alt="Floor Interior Services"
                 width={48}
                 height={48}
                 className="w-12 h-12 object-contain"

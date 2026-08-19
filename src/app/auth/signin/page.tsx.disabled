@@ -160,7 +160,7 @@ export default function SignInPage() {
             <Link href="/">
               <Image
                 src={logo}
-                alt="Floor Interior Service"
+                alt="Floor Interior Services"
                 width={64}
                 height={64}
                 className="w-16 h-16 object-contain"
@@ -251,7 +251,7 @@ export default function SignInPage() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          Floor Interior Service © {new Date().getFullYear()}
+          Floor Interior Services © {new Date().getFullYear()}
         </p>
       </motion.div>
     </div>

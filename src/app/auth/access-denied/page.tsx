@@ -26,7 +26,7 @@ export default function AccessDeniedPage() {
             <Link href="/">
               <Image
                 src={logo}
-                alt="Floor Interior Service"
+                alt="Floor Interior Services"
                 width={56}
                 height={56}
                 className="w-14 h-14 object-contain"
@@ -79,7 +79,7 @@ export default function AccessDeniedPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 mt-6">
-          Floor Interior Service © {new Date().getFullYear()}
+          Floor Interior Services © {new Date().getFullYear()}
         </p>
       </motion.div>
     </div>

@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { Resend } from 'resend'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { companyDisplayName } from '@/lib/publicAppUrl'
 
 function escapeHtml(value: string) {
   return value
@@ -81,7 +82,7 @@ async function sendInstallerMessageEmails(args: {
 
   const resend = new Resend(resendApiKey)
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-  const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Services'
+  const fromName = companyDisplayName()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
   const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
 

@@ -82,7 +82,7 @@ function PropertyPortalContent() {
             <Link href="/">
               <Image
                 src={logo}
-                alt="Floor Interior Service"
+                alt="Floor Interior Services"
                 width={72}
                 height={72}
                 className="w-18 h-18 object-contain hover:opacity-80 transition-opacity"
@@ -186,7 +186,7 @@ function PropertyPortalContent() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 mt-6">
-          Floor Interior Service © {new Date().getFullYear()}
+          Floor Interior Services © {new Date().getFullYear()}
         </p>
       </motion.div>
     </div>

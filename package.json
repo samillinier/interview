@@ -1,7 +1,7 @@
 {
   "name": "floor-interior-service",
   "version": "1.0.0",
-  "description": "Floor Interior Service - AI-powered prescreening system for flooring installers",
+  "description": "Floor Interior Services - AI-powered prescreening system for flooring installers",
   "private": true,
   "scripts": {
     "dev": "prisma generate && next dev --turbo",

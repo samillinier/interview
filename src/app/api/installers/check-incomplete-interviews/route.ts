@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import prisma from '@/lib/db'
+import { companyDisplayName } from '@/lib/publicAppUrl'
 
 export const dynamic = 'force-dynamic'
 
@@ -127,7 +128,7 @@ async function sendIncompleteInterviewReminders(request: NextRequest) {
 
   const resend = new Resend(resendApiKey)
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-  const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Services'
+  const fromName = companyDisplayName()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
   const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
   const html = buildReminderEmailHtml(appUrl, logoUrl)

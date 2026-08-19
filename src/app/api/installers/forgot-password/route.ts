@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { Resend } from 'resend'
 import crypto from 'crypto'
+import { companyDisplayName } from '@/lib/publicAppUrl'
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Try to send email via Resend
     const resendApiKey = process.env.RESEND_API_KEY
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-    const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+    const fromName = companyDisplayName()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app'
     
     // Use URL for logo to prevent email clipping
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
               <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
                 <!-- Logo/Header Section -->
                 <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-                  <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto; border: none; outline: none;" />
+                  <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto; border: none; outline: none;" />
                 </div>
                 
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                 
                 <p style="color: #999; font-size: 12px; text-align: center;">
-                  Floor Interior Service<br>
+                  Floor Interior Services<br>
                   If you have any questions, please contact support.
                 </p>
               </body>

@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'Floor Interior Service | Automated Prescreening',
+  title: 'Floor Interior Services | Automated Prescreening',
   description: 'Automated prescreening system for flooring installers powered by Automation',
   icons: {
     icon: [

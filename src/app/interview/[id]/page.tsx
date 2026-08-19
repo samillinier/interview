@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Mic,
   MicOff,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import MessageBubble from '@/components/MessageBubble'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import alicePhoto from '@/images/alice-interviewer.png'
 import { getInterviewQuestions, WORKROOM_OPTIONS, FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { getSupportedMimeType, isMobile, resumeAudioContext, isMediaRecorderSupported, isIOS } from '@/lib/utils'
 
@@ -862,12 +864,21 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-primary-900">Prescreening Interview</h1>
-            <p className="text-sm text-primary-500">
-              Question {Math.min(currentQuestionIndex + 1, questions.length)} of{' '}
-              {questions.length}
-            </p>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-brand-green/30 flex-shrink-0">
+              <Image
+                src={alicePhoto}
+                alt="Alice"
+                className="w-full h-full object-cover object-top"
+              />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-bold text-primary-900">Alice</h1>
+              <p className="text-sm text-primary-500">
+                Question {Math.min(currentQuestionIndex + 1, questions.length)} of{' '}
+                {questions.length}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {isSpeaking && (

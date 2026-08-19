@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
 import { Resend } from 'resend'
-import { publicAppUrl } from '@/lib/publicAppUrl'
+import { companyDisplayName, publicAppUrl } from '@/lib/publicAppUrl'
 import { ensureInstallerReferralCode } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
       const resendApiKey = process.env.RESEND_API_KEY
       const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-      const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+      const fromName = companyDisplayName()
       let emailSent = false
       let emailError: string | null = null
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
                 </head>
                 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
                   <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-                    <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
+                    <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
                   </div>
                   <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                     <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Sign In</h1>
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
                   </p>
                   <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                   <p style="color: #999; font-size: 12px; text-align: center;">
-                    Floor Interior Service - Installer Portal
+                    Floor Interior Services - Installer Portal
                   </p>
                 </body>
               </html>
@@ -123,7 +123,7 @@ This sign-in link will expire in 30 minutes.
 
 If you didn't request this email, please ignore it.
 
-Floor Interior Service - Installer Portal
+Floor Interior Services - Installer Portal
             `,
           })
 
@@ -208,7 +208,7 @@ Floor Interior Service - Installer Portal
         const resend = new Resend(resendApiKey)
         // Use onboarding@resend.dev for free tier, or allow custom domain
         const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-        const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+        const fromName = companyDisplayName()
         
         console.log('   From:', `${fromName} <${fromEmail}>`)
         console.log('   Sending email via Resend...')
@@ -227,7 +227,7 @@ Floor Interior Service - Installer Portal
               <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
                 <!-- Logo/Header Section -->
                 <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-                  <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
+                  <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 200px; height: auto; display: block; margin: 0 auto;" />
                 </div>
                 
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -258,7 +258,7 @@ Floor Interior Service - Installer Portal
                 
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                 <p style="color: #999; font-size: 12px; text-align: center;">
-                  Floor Interior Service - Installer Portal
+                  Floor Interior Services - Installer Portal
                 </p>
               </body>
             </html>
@@ -274,7 +274,7 @@ This verification link will expire in 24 hours.
 
 If you didn't request this verification email, please ignore this message.
 
-Floor Interior Service - Installer Portal
+Floor Interior Services - Installer Portal
           `,
         })
 

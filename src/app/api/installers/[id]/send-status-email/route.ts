@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Resend } from 'resend'
+import { companyDisplayName } from '@/lib/publicAppUrl'
 
 export async function POST(
   request: NextRequest,
@@ -52,7 +53,7 @@ export async function POST(
 
     const resend = new Resend(resendApiKey)
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-    const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Services'
+    const fromName = companyDisplayName()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
     const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
 

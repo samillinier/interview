@@ -173,7 +173,7 @@ function LoginForm() {
           <div className="flex justify-center mb-6 lg:hidden">
             <Image
               src={logo}
-              alt="Floor Interior Service"
+              alt="Floor Interior Services"
               width={56}
               height={56}
               className="w-14 h-14 object-contain"
@@ -246,7 +246,7 @@ function LoginForm() {
           </div>
 
           <p className="shrink-0 pt-8 pb-2 text-center text-xs text-slate-400">
-            Floor Interior Service &copy; {new Date().getFullYear()}
+            Floor Interior Services &copy; {new Date().getFullYear()}
           </p>
         </motion.div>
       </div>

@@ -66,7 +66,7 @@ export async function generateInterviewResponse(
   const isLastQuestion = actualNextIndex >= questions.length
 
   const systemPrompt = language === 'es' 
-    ? `Eres Alice, una entrevistadora profesional de Floor Interior Service. Tu trabajo es conducir una entrevista de calificación breve y eficiente.
+    ? `Eres Alice, una entrevistadora profesional de Floor Interior Services. Tu trabajo es conducir una entrevista de calificación breve y eficiente.
     
 REGLAS IMPORTANTES:
 - Mantén tus respuestas MUY BREVES (máximo 1-2 frases)
@@ -78,7 +78,7 @@ REGLAS IMPORTANTES:
 - Sé profesional pero amigable y natural
 - NO des cumplidos largos ni agradecimientos extensos`
 
-    : `You are Alice, a professional interviewer for Floor Interior Service. Your job is to conduct a brief and efficient qualification screening.
+    : `You are Alice, a professional interviewer for Floor Interior Services. Your job is to conduct a brief and efficient qualification screening.
 
 IMPORTANT RULES:
 - Keep your responses VERY BRIEF (maximum 1-2 sentences)

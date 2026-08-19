@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { extractLikelyPhone } from '@/lib/phone'
 import { writeAdminAuditLog } from '@/lib/audit'
+import { companyDisplayName } from '@/lib/publicAppUrl'
 
 // Helper function to categorize fields by section
 function getSectionsFromFields(fields: string[]): string[] {
@@ -1130,7 +1131,7 @@ export async function PATCH(
             if (resendApiKey) {
               const resend = new Resend(resendApiKey)
               const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-              const fromName = process.env.RESEND_FROM_NAME || 'Floor Interior Service'
+              const fromName = companyDisplayName()
               const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app'
               
               // Use URL for logo to prevent email clipping (base64 makes emails too large)
@@ -1211,7 +1212,7 @@ export async function PATCH(
                     </head>
                     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
                       <div style="text-align: center; margin-bottom: 30px; padding: 20px 0;">
-                        <img src="${logoUrl}" alt="Floor Interior Service" style="max-width: 180px; height: auto; display: block; margin: 0 auto; border-radius: 8px;" />
+                        <img src="${logoUrl}" alt="Floor Interior Services" style="max-width: 180px; height: auto; display: block; margin: 0 auto; border-radius: 8px;" />
                       </div>
                       
                       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -1244,7 +1245,7 @@ export async function PATCH(
                       
                       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                       <p style="color: #999; font-size: 12px; text-align: center;">
-                        Floor Interior Service - Installer Portal
+                        Floor Interior Services - Installer Portal
                       </p>
                     </body>
                   </html>
@@ -1261,7 +1262,7 @@ View your profile: ${appUrl}/installer/profile
 If you have any questions, please don't hesitate to reach out to our support team.
 
 Best regards,
-Floor Interior Service Team
+Floor Interior Services Team
                 `,
               })
 

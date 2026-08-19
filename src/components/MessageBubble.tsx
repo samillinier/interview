@@ -1,8 +1,10 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import alicePhoto from '@/images/alice-interviewer.png'
 
 interface MessageBubbleProps {
   role: 'user' | 'assistant'
@@ -28,11 +30,15 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
       <div
         className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
-          isAssistant ? 'bg-brand-green ring-2 ring-brand-green/20' : 'bg-brand-green/20 ring-2 ring-brand-green/30'
+          isAssistant ? 'bg-primary-100 ring-2 ring-brand-green/30' : 'bg-brand-green/20 ring-2 ring-brand-green/30'
         )}
       >
         {isAssistant ? (
-          <User className="w-5 h-5 text-white" />
+          <Image
+            src={alicePhoto}
+            alt="Alice"
+            className="w-full h-full object-cover object-top"
+          />
         ) : (
           <User className="w-5 h-5 text-brand-green" />
         )}
