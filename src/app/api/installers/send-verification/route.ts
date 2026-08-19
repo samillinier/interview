@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
 import { Resend } from 'resend'
+import { publicAppUrl } from '@/lib/publicAppUrl'
 import { ensureInstallerReferralCode } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
@@ -61,10 +62,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      const isDevelopment = process.env.NODE_ENV === 'development'
-      const baseUrl = isDevelopment
-        ? 'http://localhost:3000'
-        : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app')
+      const baseUrl = publicAppUrl()
       const signInUrl = `${baseUrl}/installer/magic-link?token=${loginToken}&email=${encodeURIComponent(installer.email)}`
       const logoUrl = process.env.EMAIL_LOGO_URL || `${baseUrl}/logo.png`
 
@@ -188,11 +186,7 @@ Floor Interior Service - Installer Portal
       },
     })
 
-    // Generate verification URL - use production URL, never localhost in production
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    const baseUrl = isDevelopment 
-      ? 'http://localhost:3000'
-      : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app')
+    const baseUrl = publicAppUrl()
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(installer.email)}`
     
     // Use URL for logo to prevent email clipping

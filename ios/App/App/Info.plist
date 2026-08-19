@@ -58,5 +58,18 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.fis.installer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fis-installer</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

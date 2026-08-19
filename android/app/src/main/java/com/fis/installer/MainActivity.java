@@ -1,5 +1,6 @@
 package com.fis.installer;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -45,9 +46,68 @@ public class MainActivity extends BridgeActivity {
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
+        String userAgent = settings.getUserAgentString();
+        if (userAgent == null || !userAgent.contains("FISInstallerApp")) {
+            settings.setUserAgentString((userAgent == null ? "" : userAgent) + " FISInstallerApp");
+        }
         webView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
 
         showSplash();
+        handleIncomingIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingIntent(intent);
+    }
+
+    private void handleIncomingIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        Uri data = intent.getData();
+        if (data == null) {
+            return;
+        }
+        String httpsUrl = toHttpsUrl(data);
+        if (httpsUrl == null) {
+            return;
+        }
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            webView.loadUrl(httpsUrl);
+        }
+    }
+
+    private String toHttpsUrl(Uri data) {
+        String scheme = data.getScheme();
+        if ("https".equals(scheme) && "job.floorinteriorservices.com".equals(data.getHost())) {
+            return data.toString();
+        }
+        if (!"fis-installer".equals(scheme)) {
+            return null;
+        }
+        String host = data.getHost();
+        String path = data.getPath();
+        StringBuilder dest = new StringBuilder("https://job.floorinteriorservices.com");
+        if (host != null && !host.isEmpty()) {
+            dest.append("/").append(host);
+        }
+        if (path != null && !path.isEmpty() && !"/".equals(path)) {
+            if (!path.startsWith("/")) {
+                dest.append("/");
+            }
+            dest.append(path);
+        }
+        if (dest.toString().equals("https://job.floorinteriorservices.com")) {
+            dest.append("/installer/login");
+        }
+        if (data.getQuery() != null && !data.getQuery().isEmpty()) {
+            dest.append("?").append(data.getQuery());
+        }
+        return dest.toString();
     }
 
     private boolean isTablet() {

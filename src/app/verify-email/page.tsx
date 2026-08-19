@@ -6,6 +6,7 @@ import { CheckCircle2, XCircle, AlertCircle, ArrowRight } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { tryOpenInstallerApp } from '@/lib/installerNativeApp'
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -24,7 +25,7 @@ function VerifyEmailContent() {
       return
     }
 
-    // Verify the email
+    // Prefer the native app when installed; otherwise verify on the website.
     const verifyEmail = async () => {
       try {
         const response = await fetch('/api/installers/verify-email', {
@@ -49,7 +50,16 @@ function VerifyEmailContent() {
       }
     }
 
-    verifyEmail()
+    let cancelled = false
+    ;(async () => {
+      const openedApp = await tryOpenInstallerApp(`/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`)
+      if (cancelled || openedApp) return
+      await verifyEmail()
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [token, email])
 
   if (status === 'verifying') {

@@ -4,7 +4,15 @@ import AVKit
 
 class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
-    private let webView = WKWebView()
+    static var pendingDeepLink: URL?
+
+    private let webView: WKWebView = {
+        let config = WKWebViewConfiguration()
+        config.applicationNameForUserAgent = "FISInstallerApp"
+        let source = "var meta = document.createElement('meta'); meta.name = 'viewport'; meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'; document.getElementsByTagName('head')[0].appendChild(meta);"
+        config.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        return WKWebView(frame: .zero, configuration: config)
+    }()
     private let baseURL = "https://job.floorinteriorservices.com/installer/login"
     private var splashPlayer: AVPlayer?
     private var splashLayer: AVPlayerLayer?
@@ -40,10 +48,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.alpha = 0
         view.addSubview(webView)
 
-        // Prevent zooming
-        let source = "var meta = document.createElement('meta'); meta.name = 'viewport'; meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'; document.getElementsByTagName('head')[0].appendChild(meta);"
-        let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
-        webView.configuration.userContentController.addUserScript(script)
+        // Prevent zooming is handled via WKUserScript on the web view configuration.
 
         if isTablet {
             showLogoSplash()
@@ -150,8 +155,17 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             self.splashLogoView = nil
         })
 
-        if let url = URL(string: baseURL) {
+        if let url = WebViewController.pendingDeepLink ?? URL(string: baseURL) {
+            WebViewController.pendingDeepLink = nil
             webView.load(URLRequest(url: url))
+        }
+    }
+
+    func openDeepLink(_ url: URL) {
+        if isViewLoaded && webView.alpha > 0 {
+            webView.load(URLRequest(url: url))
+        } else {
+            WebViewController.pendingDeepLink = url
         }
     }
 
