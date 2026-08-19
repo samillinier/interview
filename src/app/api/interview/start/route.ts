@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { generateSpeech } from '@/lib/openai'
 import { getInterviewQuestions } from '@/lib/questions'
 import { resolveReferrerInstallerId } from '@/lib/referrals'
+import { extractLikelyPhone } from '@/lib/phone'
 
 export async function POST(request: NextRequest) {
   console.log('Starting interview API called')
@@ -11,6 +12,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, firstName, lastName, phone, language = 'en', referralCode } = body
     console.log('Request body:', { email, firstName, lastName, phone, language })
+
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email address is required' },
+        { status: 400 }
+      )
+    }
+
+    const normalizedPhone = extractLikelyPhone(String(phone || ''))
+    if (!normalizedPhone) {
+      return NextResponse.json(
+        { error: 'Phone number is required' },
+        { status: 400 }
+      )
+    }
 
     // Check if installer already exists
     let installer = await prisma.installer.findUnique({
@@ -26,12 +42,17 @@ export async function POST(request: NextRequest) {
           email,
           firstName: firstName || '',
           lastName: lastName || '',
-          phone: phone || null,
+          phone: normalizedPhone,
           status: 'pending',
           referredByInstallerId,
         },
       })
       console.log('Created new installer:', installer.id)
+    } else if (!installer.phone) {
+      installer = await prisma.installer.update({
+        where: { id: installer.id },
+        data: { phone: normalizedPhone },
+      })
     }
 
     // Create new interview

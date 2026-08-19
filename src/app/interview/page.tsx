@@ -27,6 +27,11 @@ function InterviewStartContent() {
       return
     }
 
+    if (!phone.trim()) {
+      setError(language === 'es' ? 'Por favor ingrese su número de teléfono' : 'Please enter your phone number')
+      return
+    }
+
     setIsLoading(true)
     setError('')
 
@@ -354,13 +359,14 @@ function InterviewStartContent() {
 
                 <div>
                   <label className="block text-sm font-medium text-primary-700 mb-1">
-                    {t.phone}
+                    {t.phone} *
                   </label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder={language === 'es' ? '+1 (555) 123-4567' : '+1 (555) 123-4567'}
+                    required
                     className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
                   />
                 </div>
