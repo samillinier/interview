@@ -2,11 +2,12 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle2, XCircle, AlertCircle, ArrowRight } from 'lucide-react'
+import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
-import { tryOpenInstallerApp } from '@/lib/installerNativeApp'
+import { installerAppDeepLink, isInstallerNativeApp, isMobileBrowser } from '@/lib/installerNativeApp'
+import { saveInstallerSignup } from '@/lib/installerSignup'
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -25,7 +26,6 @@ function VerifyEmailContent() {
       return
     }
 
-    // Prefer the native app when installed; otherwise verify on the website.
     const verifyEmail = async () => {
       try {
         const response = await fetch('/api/installers/verify-email', {
@@ -39,6 +39,7 @@ function VerifyEmailContent() {
         if (data.success) {
           setStatus('success')
           setInstallerId(data.installerId)
+          saveInstallerSignup({ email, installerId: data.installerId })
         } else {
           setStatus('error')
           setError(data.error || 'Failed to verify email')
@@ -50,17 +51,21 @@ function VerifyEmailContent() {
       }
     }
 
-    let cancelled = false
-    ;(async () => {
-      const openedApp = await tryOpenInstallerApp(`/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`)
-      if (cancelled || openedApp) return
-      await verifyEmail()
-    })()
-
-    return () => {
-      cancelled = true
-    }
+    verifyEmail()
   }, [token, email])
+
+  const setupPasswordHref = (() => {
+    const params = new URLSearchParams()
+    if (installerId) params.set('installerId', installerId)
+    if (email) params.set('email', email)
+    return `/setup-password?${params.toString()}`
+  })()
+
+  useEffect(() => {
+    if (status !== 'success') return
+    if (!isInstallerNativeApp()) return
+    router.replace(setupPasswordHref)
+  }, [status, setupPasswordHref, router])
 
   if (status === 'verifying') {
     return (
@@ -96,7 +101,11 @@ function VerifyEmailContent() {
           
           <div className="space-y-3">
             <button
-              onClick={() => router.push('/create-account')}
+              onClick={() => {
+                const params = new URLSearchParams()
+                if (email) params.set('email', email)
+                router.push(`/create-account?${params.toString()}`)
+              }}
               className="w-full py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
             >
               Request New Verification Email
@@ -113,7 +122,7 @@ function VerifyEmailContent() {
     )
   }
 
-  // Success - redirect to password setup
+  // Success - continue to password setup
   return (
     <div className="min-h-screen interview-gradient grid-pattern flex items-center justify-center p-4">
       <motion.div
@@ -128,21 +137,31 @@ function VerifyEmailContent() {
           Email Verified!
         </h1>
         <p className="text-primary-500 mb-6">
-          Your email has been verified. Now let's create your password.
+          Your email has been verified. Now let&apos;s create your password.
         </p>
-        
-        <button
-          onClick={() => {
-            const params = new URLSearchParams()
-            if (installerId) params.set('installerId', installerId)
-            if (email) params.set('email', email)
-            router.push(`/setup-password?${params.toString()}`)
-          }}
-          className="w-full py-4 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2"
-        >
-          Create Password
-          <ArrowRight className="w-5 h-5" />
-        </button>
+
+        <div className="space-y-3">
+          {isMobileBrowser() && !isInstallerNativeApp() && (
+            <a
+              href={installerAppDeepLink(setupPasswordHref)}
+              className="w-full py-4 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2"
+            >
+              Open Installer App
+              <ArrowRight className="w-5 h-5" />
+            </a>
+          )}
+          <button
+            onClick={() => router.push(setupPasswordHref)}
+            className={`w-full py-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+              isMobileBrowser() && !isInstallerNativeApp()
+                ? 'border border-primary-300 text-primary-700 hover:bg-primary-50'
+                : 'bg-brand-green text-white hover:bg-brand-green-dark'
+            }`}
+          >
+            Create Password
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
       </motion.div>
     </div>
   )

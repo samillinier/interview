@@ -21,11 +21,14 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        'flex gap-3 max-w-[85%]',
-        isAssistant ? 'self-start' : 'self-end flex-row-reverse'
-      )}
+      className={cn('flex w-full', isAssistant ? 'justify-start' : 'justify-end')}
     >
+      <div
+        className={cn(
+          'flex gap-3 max-w-[85%]',
+          isAssistant ? '' : 'flex-row-reverse'
+        )}
+      >
       {/* Avatar */}
       <div
         className={cn(
@@ -64,6 +67,7 @@ export default function MessageBubble({ role, content, timestamp }: MessageBubbl
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
         )}
+      </div>
       </div>
     </motion.div>
   )

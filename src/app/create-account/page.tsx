@@ -8,15 +8,18 @@ import Link from 'next/link'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { loadInstallerSignup, saveInstallerSignup } from '@/lib/installerSignup'
 
 function CreateAccountContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const installerId = searchParams.get('installerId')
+  const installerIdParam = searchParams.get('installerId')
   const emailParam = searchParams.get('email')
   const ref = searchParams.get('ref')
   
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState((emailParam || '').trim())
+  const [installerId, setInstallerId] = useState(installerIdParam || '')
+  const [emailLocked, setEmailLocked] = useState(Boolean(emailParam?.trim()))
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -26,28 +29,22 @@ function CreateAccountContent() {
   const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
-    // Fetch installer info if we have installerId
-    if (installerId) {
-      fetch(`/api/installers/${installerId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.installer) {
-            const info = {
-              firstName: data.installer.firstName,
-              lastName: data.installer.lastName,
-              email: data.installer.email
-            }
-            setInstallerInfo(info)
-            setEmail(data.installer.email)
-          }
-        })
-        .catch(err => console.error('Error fetching installer:', err))
-    } else if (emailParam) {
-      setInstallerInfo({ email: emailParam })
-      setEmail(emailParam)
+    const stored = loadInstallerSignup()
+    const nextEmail = (emailParam || stored?.email || '').trim()
+    const nextInstallerId = installerIdParam || stored?.installerId || ''
+
+    if (nextEmail) {
+      setEmail(nextEmail)
+      setEmailLocked(true)
+      setInstallerInfo((prev) => ({ ...prev, email: nextEmail }))
     }
-    // If no installerId or email, allow user to enter email manually
-  }, [installerId, emailParam, router])
+    if (nextInstallerId) {
+      setInstallerId(nextInstallerId)
+    }
+    if (nextEmail || nextInstallerId) {
+      saveInstallerSignup({ email: nextEmail, installerId: nextInstallerId })
+    }
+  }, [installerIdParam, emailParam])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,7 +70,7 @@ function CreateAccountContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          installerId,
+          installerId: installerId || undefined,
           email,
           referralCode: ref,
         }),
@@ -251,37 +248,45 @@ function CreateAccountContent() {
               Create Your Account
             </h1>
             <p className="text-primary-500">
-              {installerInfo?.firstName 
+              {emailLocked && email
+                ? `We'll send a verification link to ${email}.`
+                : installerInfo?.firstName 
                 ? `Welcome, ${installerInfo.firstName}! Verify your email to get started.`
                 : "Enter your email to create your installer account. We'll send you a verification link."}
             </p>
           </div>
 
-          {installerInfo?.email && (
-            <div className="bg-primary-50 rounded-xl p-4 mb-6">
-              <p className="text-sm text-primary-600">
-                <span className="font-medium">Email on file:</span> {installerInfo.email}
-              </p>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">
-                Email Address *
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
-              />
-              <p className="text-xs text-primary-400 mt-1">
-                We'll send a verification link to this email address
-              </p>
-            </div>
+            {emailLocked && email ? (
+              <div className="bg-primary-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-primary-500 mb-1">Email</p>
+                <p className="text-primary-900 font-medium break-all">{email}</p>
+                <button
+                  type="button"
+                  onClick={() => setEmailLocked(false)}
+                  className="text-xs text-brand-green hover:underline mt-2"
+                >
+                  Use a different email
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
+                />
+                <p className="text-xs text-primary-400 mt-1">
+                  We&apos;ll send a verification link to this email address
+                </p>
+              </div>
+            )}
 
             {error && (
               <motion.div

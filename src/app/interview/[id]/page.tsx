@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import MessageBubble from '@/components/MessageBubble'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { saveInstallerSignup } from '@/lib/installerSignup'
 import { getInterviewQuestions, WORKROOM_OPTIONS, FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { getSupportedMimeType, isMobile, resumeAudioContext, isMediaRecorderSupported, isIOS } from '@/lib/utils'
 
@@ -728,6 +729,10 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
       if (data.success) {
         setResult(data.result)
         setIsComplete(true)
+        saveInstallerSignup({
+          email: data.result?.email,
+          installerId: data.result?.installerId,
+        })
       }
     } catch (error) {
       console.error('Error completing interview:', error)
@@ -827,10 +832,14 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
           {result.passed && (
             <div className="bg-brand-green/10 border border-brand-green/20 rounded-2xl p-4 mb-6 text-left">
               <p className="text-sm text-primary-700 mb-3">
-                <strong>Next step:</strong> create your account to manage your profile and continue onboarding. Please use the same email address you used for this interview so we can match your account to your application.
+                <strong>Next step:</strong> create your account to manage your profile and continue onboarding. We&apos;ll use the email from your interview.
               </p>
               <button
                 onClick={() => {
+                  saveInstallerSignup({
+                    email: result.email,
+                    installerId: result.installerId,
+                  })
                   const params = new URLSearchParams()
                   if (result.installerId) params.set('installerId', result.installerId)
                   if (result.email) params.set('email', result.email)

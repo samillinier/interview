@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { saveInstallerSignup } from '@/lib/installerSignup'
 
 function InterviewStartContent() {
   const router = useRouter()
@@ -46,8 +47,8 @@ function InterviewStartContent() {
       console.log('API Response:', data)
 
       if (data.success) {
-        // Store interview data and redirect
-        sessionStorage.setItem('interviewData', JSON.stringify({ ...data, language }))
+        sessionStorage.setItem('interviewData', JSON.stringify({ ...data, language, email }))
+        saveInstallerSignup({ email, installerId: data.installerId })
         console.log('Stored data, redirecting to:', `/interview/${data.interviewId}`)
         router.push(`/interview/${data.interviewId}`)
       } else {

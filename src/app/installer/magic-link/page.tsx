@@ -6,7 +6,6 @@ import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
-import { tryOpenInstallerApp } from '@/lib/installerNativeApp'
 
 function MagicLinkContent() {
   const router = useRouter()
@@ -54,13 +53,7 @@ function MagicLinkContent() {
       }
     }
 
-    ;(async () => {
-      const openedApp = await tryOpenInstallerApp(
-        `/installer/magic-link?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
-      )
-      if (cancelled || openedApp) return
-      await signIn()
-    })()
+    signIn()
 
     return () => {
       cancelled = true
