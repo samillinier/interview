@@ -132,7 +132,7 @@ export function unreadBadgeWhere(installerId: string) {
   return {
     installerId,
     isRead: false,
-    type: { in: ['notification', 'message', 'news'] as const },
+    type: { in: ['notification', 'message', 'news'] },
     OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
   }
 }
