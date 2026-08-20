@@ -8,11 +8,46 @@ function getFirebaseApp(): App | null {
   const existing = getApps()
   if (existing.length > 0) return existing[0]
 
-  const projectId = process.env.FIREBASE_PROJECT_ID
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY
+  // Prefer the full service-account JSON (most reliable on Vercel).
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()
+  if (serviceAccountJson) {
+    try {
+      const parsed = JSON.parse(serviceAccountJson)
+      return initializeApp({
+        credential: cert(parsed),
+      })
+    } catch (error) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:', error)
+      return null
+    }
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim()
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim()
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY?.trim()
+
+  // If someone pasted the whole JSON into PRIVATE_KEY by mistake, accept it.
+  if (privateKey?.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(privateKey)
+      return initializeApp({
+        credential: cert(parsed),
+      })
+    } catch (error) {
+      console.error('Failed to parse FIREBASE_PRIVATE_KEY as JSON:', error)
+      return null
+    }
+  }
 
   if (projectId && clientEmail && privateKey) {
+    // Strip wrapping quotes that Vercel/UI paste sometimes adds.
+    if (
+      (privateKey.startsWith('"') && privateKey.endsWith('"')) ||
+      (privateKey.startsWith("'") && privateKey.endsWith("'"))
+    ) {
+      privateKey = privateKey.slice(1, -1)
+    }
+
     return initializeApp({
       credential: cert({
         projectId,
@@ -22,37 +57,39 @@ function getFirebaseApp(): App | null {
     })
   }
 
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-  if (serviceAccountJson) {
-    try {
-      return initializeApp({
-        credential: cert(JSON.parse(serviceAccountJson)),
-      })
-    } catch (error) {
-      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:', error)
-      return null
-    }
-  }
-
   return null
 }
 
 export function isPushConfigured(): boolean {
-  return Boolean(
-    (process.env.FIREBASE_PROJECT_ID &&
-      process.env.FIREBASE_CLIENT_EMAIL &&
-      process.env.FIREBASE_PRIVATE_KEY) ||
-      process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+  const hasJson = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim())
+  const hasTriplet = Boolean(
+    process.env.FIREBASE_PROJECT_ID?.trim() &&
+      process.env.FIREBASE_CLIENT_EMAIL?.trim() &&
+      process.env.FIREBASE_PRIVATE_KEY?.trim()
   )
+  return hasJson || hasTriplet
+}
+
+export function getPushEnvStatus() {
+  return {
+    FIREBASE_PROJECT_ID: Boolean(process.env.FIREBASE_PROJECT_ID?.trim()),
+    FIREBASE_CLIENT_EMAIL: Boolean(process.env.FIREBASE_CLIENT_EMAIL?.trim()),
+    FIREBASE_PRIVATE_KEY: Boolean(process.env.FIREBASE_PRIVATE_KEY?.trim()),
+    FIREBASE_SERVICE_ACCOUNT_JSON: Boolean(
+      process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()
+    ),
+    configured: isPushConfigured(),
+  }
 }
 
 function getPushConfigGap(): string {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return ''
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()) return ''
   const missing: string[] = []
-  if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID')
-  if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL')
-  if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY')
-  return missing.length ? `missing ${missing.join(', ')}` : 'not-configured'
+  if (!process.env.FIREBASE_PROJECT_ID?.trim()) missing.push('FIREBASE_PROJECT_ID')
+  if (!process.env.FIREBASE_CLIENT_EMAIL?.trim()) missing.push('FIREBASE_CLIENT_EMAIL')
+  if (!process.env.FIREBASE_PRIVATE_KEY?.trim()) missing.push('FIREBASE_PRIVATE_KEY')
+  if (missing.length === 0) return 'not-configured'
+  return `missing ${missing.join(', ')} — set FIREBASE_SERVICE_ACCOUNT_JSON to the full service-account JSON (easiest), then Redeploy Production`
 }
 
 export async function sendPushToInstaller(args: {
