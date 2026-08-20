@@ -181,7 +181,40 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <section className="pb-8 bg-brand-green overflow-hidden flex-1" />
+      <section className="bg-brand-green overflow-hidden flex-1 flex items-center justify-center px-4 py-10">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+          <a
+            href="https://apps.apple.com/us/app/fis-fasttrack/id6793172089"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Download on the App Store"
+            className="transition-opacity hover:opacity-90"
+          >
+            <Image
+              src="/app-store-badge.png"
+              alt="Download on the App Store"
+              width={180}
+              height={60}
+              className="h-12 w-auto sm:h-14"
+            />
+          </a>
+          <a
+            href="https://play.google.com/store/apps/details?id=com.fis.installer"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Get it on Google Play"
+            className="transition-opacity hover:opacity-90"
+          >
+            <Image
+              src="/google-play-badge.png"
+              alt="Get it on Google Play"
+              width={200}
+              height={60}
+              className="h-12 w-auto sm:h-14"
+            />
+          </a>
+        </div>
+      </section>
 
     </div>
   )
