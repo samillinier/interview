@@ -182,37 +182,42 @@ export default function HomePage() {
 
       {/* Footer */}
       <section className="bg-brand-green overflow-hidden flex-1 flex items-center justify-center px-4 py-10">
-        <div className="flex flex-row items-center justify-center gap-3 sm:gap-6">
-          <a
-            href="https://apps.apple.com/us/app/fis-fasttrack/id6793172089"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Download on the App Store"
-            className="transition-opacity hover:opacity-90"
-          >
-            <Image
-              src="/app-store-badge.png"
-              alt="Download on the App Store"
-              width={180}
-              height={60}
-              className="h-10 w-auto sm:h-14"
-            />
-          </a>
-          <a
-            href="https://play.google.com/store/apps/details?id=com.fis.installer"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Get it on Google Play"
-            className="transition-opacity hover:opacity-90"
-          >
-            <Image
-              src="/google-play-badge.png"
-              alt="Get it on Google Play"
-              width={200}
-              height={60}
-              className="h-10 w-auto sm:h-14"
-            />
-          </a>
+        <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 max-w-xl text-center">
+          <p className="text-white text-base sm:text-lg font-medium leading-snug px-2">
+            Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
+          </p>
+          <div className="flex flex-row items-center justify-center gap-3 sm:gap-6">
+            <a
+              href="https://apps.apple.com/us/app/fis-fasttrack/id6793172089"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Download on the App Store"
+              className="transition-opacity hover:opacity-90"
+            >
+              <Image
+                src="/app-store-badge.png"
+                alt="Download on the App Store"
+                width={180}
+                height={60}
+                className="h-10 w-auto sm:h-14"
+              />
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=com.fis.installer"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Get it on Google Play"
+              className="transition-opacity hover:opacity-90"
+            >
+              <Image
+                src="/google-play-badge.png"
+                alt="Get it on Google Play"
+                width={200}
+                height={60}
+                className="h-10 w-auto sm:h-14"
+              />
+            </a>
+          </div>
         </div>
       </section>
 
