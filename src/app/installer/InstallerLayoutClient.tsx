@@ -41,11 +41,17 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
       try {
         const notifResponse = await fetch(`/api/installers/${installerId}/notifications`, {
           headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
         })
         if (notifResponse.ok) {
           const notifData = await notifResponse.json()
           if (notifData.notifications) {
-            const unread = notifData.notifications.filter((n: any) => !n.readAt).length
+            const unread = notifData.notifications.filter(
+              (n: any) =>
+                !n.isRead &&
+                n.senderType !== 'installer' &&
+                ['notification', 'message', 'news'].includes(n.type)
+            ).length
             setNotificationCount(unread)
           }
         }
@@ -73,6 +79,26 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
     window.addEventListener(PUSH_RECEIVED_EVENT, handler)
     return () => window.removeEventListener(PUSH_RECEIVED_EVENT, handler)
   }, [loadNotificationCount])
+
+  // Keep sidebar/mobile badge fresh while browsing other pages (same as admin).
+  useEffect(() => {
+    if (isPublicPage) return
+    const token = localStorage.getItem('installerToken')
+    const installerId = localStorage.getItem('installerId')
+    if (!token || !installerId) return
+
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void loadNotificationCount(installerId, token)
+    }
+
+    const interval = window.setInterval(refresh, 30000)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [isPublicPage, pathname, loadNotificationCount])
 
   // Register service worker for offline support (all installer pages)
   useEffect(() => {

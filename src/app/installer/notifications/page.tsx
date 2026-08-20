@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Bell,
@@ -19,6 +19,7 @@ import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import { PUSH_RECEIVED_EVENT } from '@/hooks/usePushNotifications'
 import './installer-notifications-mobile.css'
 
 interface Notification {
@@ -54,10 +55,92 @@ export default function NotificationsPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const activeTabRef = useRef(activeTab)
+  const notificationsSigRef = useRef('')
+
+  activeTabRef.current = activeTab
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
   }
+
+  const setNativeAppBadge = (count: number) => {
+    try {
+      const w = window as any
+      if (typeof w.fisSetAppBadge === 'function') {
+        w.fisSetAppBadge(count)
+      }
+    } catch {
+      // Not running inside the native iOS app bridge.
+    }
+  }
+
+  const syncBadgeFromUnread = (list: Notification[]) => {
+    const unread = list.filter((n) => !n.isRead && n.senderType !== 'installer').length
+    setNativeAppBadge(unread)
+  }
+
+  const listSignature = (list: Notification[]) =>
+    list.map((n) => `${n.id}:${n.isRead ? 1 : 0}:${n.content?.length || 0}`).join('|')
+
+  const loadNotifications = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!installer?.id) return
+
+    try {
+      const response = await fetch(`/api/installers/${installer.id}/notifications`, {
+        cache: 'no-store',
+      })
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json()
+        const list: Notification[] = data.notifications || []
+        const sig = listSignature(list)
+        if (sig !== notificationsSigRef.current) {
+          notificationsSigRef.current = sig
+          setNotifications(list)
+          syncBadgeFromUnread(list)
+        }
+
+        // While viewing Messages, clear unread as new ones arrive (same as opening the tab).
+        if (activeTabRef.current === 'message') {
+          const hasUnreadMessages = list.some(
+            (n) => n.type === 'message' && !n.isRead && n.senderType !== 'installer'
+          )
+          if (hasUnreadMessages) {
+            const installerToken = localStorage.getItem('installerToken')
+            const res = await fetch(`/api/installers/${installer.id}/notifications/mark-all-read`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(installerToken ? { Authorization: `Bearer ${installerToken}` } : {}),
+              },
+              body: JSON.stringify({ type: 'message' }),
+            })
+            if (res.ok) {
+              const markData = await res.json().catch(() => ({}))
+              const next = list.map((n) =>
+                n.type === 'message' ? { ...n, isRead: true, readAt: n.readAt || new Date().toISOString() } : n
+              )
+              notificationsSigRef.current = listSignature(next)
+              setNotifications(next)
+              if (typeof markData.unreadCount === 'number') {
+                setNativeAppBadge(markData.unreadCount)
+              } else {
+                syncBadgeFromUnread(next)
+              }
+            }
+          }
+        }
+      } else if (!opts?.quiet) {
+        console.error('Non-JSON response from notifications API')
+      }
+    } catch (err: any) {
+      console.error('Error loading notifications:', err)
+      if (!opts?.quiet) {
+        setError('Failed to load notifications. Please try again.')
+      }
+    }
+  }, [installer?.id])
 
   useEffect(() => {
     checkAuthAndLoadData()
@@ -65,9 +148,36 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (installer) {
-      loadNotifications()
+      void loadNotifications()
     }
-  }, [installer, activeTab])
+  }, [installer, activeTab, loadNotifications])
+
+  // Live updates while this page stays open (same idea as admin approval badges).
+  useEffect(() => {
+    if (!installer?.id) return
+
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void loadNotifications({ quiet: true })
+    }
+
+    const interval = window.setInterval(refresh, 10000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    const onPush = () => refresh()
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener(PUSH_RECEIVED_EVENT, onPush)
+    window.addEventListener('focus', refresh)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener(PUSH_RECEIVED_EVENT, onPush)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [installer?.id, loadNotifications])
 
   // Only when the installer opens the Messages tab, automatically mark all unread messages as read
   useEffect(() => {
@@ -96,8 +206,7 @@ export default function NotificationsPage() {
     }
 
     markMessagesAsRead()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [installer?.id, activeTab])
+  }, [installer?.id, activeTab, loadNotifications])
 
   useEffect(() => {
     if (activeTab === 'message') {
@@ -107,22 +216,6 @@ export default function NotificationsPage() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const setNativeAppBadge = (count: number) => {
-    try {
-      const w = window as any
-      if (typeof w.fisSetAppBadge === 'function') {
-        w.fisSetAppBadge(count)
-      }
-    } catch {
-      // Not running inside the native iOS app bridge.
-    }
-  }
-
-  const syncBadgeFromUnread = (list: Notification[] = notifications) => {
-    const unread = list.filter((n) => !n.isRead).length
-    setNativeAppBadge(unread)
   }
 
   const checkAuthAndLoadData = async () => {
@@ -186,27 +279,6 @@ export default function NotificationsPage() {
       setError(err.message || 'Failed to load data')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const loadNotifications = async () => {
-    if (!installer) return
-
-    try {
-      // Load all notifications (not filtered by type) so we can show unread counts
-      const response = await fetch(`/api/installers/${installer.id}/notifications`)
-      const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json()
-        const list = data.notifications || []
-        setNotifications(list)
-        syncBadgeFromUnread(list)
-      } else {
-        console.error('Non-JSON response from notifications API')
-      }
-    } catch (err: any) {
-      console.error('Error loading notifications:', err)
-      setError('Failed to load notifications. Please try again.')
     }
   }
 
@@ -423,6 +495,12 @@ export default function NotificationsPage() {
     if (activeTab === 'message') return n.type === 'message'
     if (activeTab === 'news') return n.type === 'news'
     return false
+  })
+
+  // Messages: oldest → newest (chat). Notifications/News: newest first.
+  const displayNotifications = [...filteredNotifications].sort((a, b) => {
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    return activeTab === 'message' ? diff : -diff
   })
 
   const unreadCount = {
@@ -650,7 +728,7 @@ export default function NotificationsPage() {
                   animate={{ opacity: 1 }}
                   className="space-y-4"
                 >
-                  {filteredNotifications.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((message, index) => {
+                  {displayNotifications.map((message, index) => {
                     const isFromAdmin = !message.senderId || message.senderId === 'admin' || message.senderType === 'admin'
                     const attachmentUrl = message.attachmentUrl || null
                     const attachmentName = message.attachmentName || null
@@ -660,8 +738,8 @@ export default function NotificationsPage() {
                           /\.(png|jpe?g|gif|webp|svg)(\?|#|$)/i.test(attachmentUrl))
                     )
                     const showAvatar = index === 0 || 
-                      filteredNotifications[index - 1]?.senderId !== message.senderId ||
-                      filteredNotifications[index - 1]?.senderType !== message.senderType
+                      displayNotifications[index - 1]?.senderId !== message.senderId ||
+                      displayNotifications[index - 1]?.senderType !== message.senderType
                     return (
                       <motion.div
                         key={message.id}
@@ -904,7 +982,7 @@ export default function NotificationsPage() {
           </motion.div>
         ) : (
           <div className="ios-notif-list space-y-4">
-            {filteredNotifications.map((notification) => (
+            {displayNotifications.map((notification) => (
               <motion.div
                 key={notification.id}
                 initial={{ opacity: 0, y: 20 }}
