@@ -113,6 +113,26 @@ export async function sendPushToInstallers(args: {
     },
     android: {
       priority: 'high',
+      notification: {
+        channelId: 'default',
+        sound: 'default',
+      },
+    },
+    apns: {
+      headers: {
+        'apns-priority': '10',
+      },
+      payload: {
+        aps: {
+          alert: {
+            title: args.title,
+            body: args.body,
+          },
+          sound: 'default',
+          badge: 1,
+          'content-available': 1,
+        },
+      },
     },
     tokens: uniqueTokens,
   }
@@ -123,8 +143,14 @@ export async function sendPushToInstallers(args: {
 
     // Remove tokens that FCM reported as invalid/expired so they don't keep failing.
     const invalidTokens: string[] = []
+    const failureCodes: string[] = []
     result.responses.forEach((response, index) => {
-      const code = (response as { error?: { code?: string } }).error?.code
+      const code = (response as { error?: { code?: string; message?: string } }).error?.code
+      const messageText = (response as { error?: { message?: string } }).error?.message
+      if (!response.success) {
+        if (code) failureCodes.push(code)
+        console.error('FCM send failure:', code, messageText, uniqueTokens[index]?.slice(0, 12))
+      }
       if (!response.success && code && INVALID_TOKEN_ERROR_CODES.has(code)) {
         invalidTokens.push(uniqueTokens[index])
       }
@@ -140,6 +166,7 @@ export async function sendPushToInstallers(args: {
       sent: result.successCount,
       failed: result.failureCount,
       skipped: false,
+      reason: failureCodes[0],
     }
   } catch (error) {
     console.error('Failed to send push notifications:', error)
