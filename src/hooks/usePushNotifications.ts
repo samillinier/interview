@@ -36,9 +36,24 @@ async function sendTokenToBackend(tokenValue: string) {
   }
 }
 
-export function usePushNotifications(enabled: boolean) {
+async function registerIosFcmToken() {
+  try {
+    const result = await FCM.getToken()
+    if (result?.token) {
+      await sendTokenToBackend(result.token)
+    }
+  } catch (error) {
+    console.error('Failed to obtain FCM token on iOS:', error)
+  }
+}
+
+/**
+ * Shows the iOS/Android "Allow Notifications" system dialog and registers
+ * the device for push. Runs on any native app open (including the login
+ * screen) so the permission prompt is not gated behind sign-in.
+ */
+export function usePushNotifications(enabled: boolean = true) {
   useEffect(() => {
-    // Push is only available inside the native Capacitor app.
     if (!enabled || !Capacitor.isNativePlatform()) return
 
     let mounted = true
@@ -46,11 +61,11 @@ export function usePushNotifications(enabled: boolean) {
     const setup = async () => {
       try {
         await PushNotifications.addListener('registration', (token) => {
-          // On Android this token is already an FCM token. On iOS the
-          // push-notifications plugin emits an APNs token, so we use FCM.getToken()
-          // there instead (see below).
           if (Capacitor.getPlatform() === 'android') {
             void sendTokenToBackend(token.value)
+          } else if (Capacitor.getPlatform() === 'ios') {
+            // APNs registration succeeded — FCM can now mint an FCM token.
+            void registerIosFcmToken()
           }
         })
 
@@ -84,13 +99,17 @@ export function usePushNotifications(enabled: boolean) {
           }
         )
 
+        // This is what triggers the iOS "Would Like to Send You Notifications"
+        // Allow / Don't Allow system dialog.
         let permission = await PushNotifications.checkPermissions()
-        if (permission.receive === 'prompt') {
+        if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
           permission = await PushNotifications.requestPermissions()
         }
-        if (permission.receive !== 'granted') return
+        if (permission.receive !== 'granted') {
+          console.warn('Push notification permission not granted:', permission.receive)
+          return
+        }
 
-        // Ensure a stable channel so Android 8+ shows notifications reliably.
         if (Capacitor.getPlatform() === 'android') {
           try {
             await PushNotifications.createChannel({
@@ -108,17 +127,13 @@ export function usePushNotifications(enabled: boolean) {
 
         await PushNotifications.register()
 
-        // iOS: the push-notifications plugin only yields an APNs token. Use the
-        // FCM plugin (Firebase iOS SDK) to obtain the FCM token the server sends to.
+        // Fallback for iOS in case the registration event already fired
+        // before we attached the listener, or FCM already has a token.
         if (Capacitor.getPlatform() === 'ios') {
-          try {
-            const result = await FCM.getToken()
-            if (result?.token) {
-              await sendTokenToBackend(result.token)
-            }
-          } catch (error) {
-            console.error('Failed to obtain FCM token on iOS:', error)
-          }
+          // Small delay so APNs token can reach Firebase Messaging first.
+          window.setTimeout(() => {
+            if (mounted) void registerIosFcmToken()
+          }, 1500)
         }
       } catch (error) {
         console.error('Push notifications setup failed:', error)

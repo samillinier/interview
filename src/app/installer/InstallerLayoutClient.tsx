@@ -56,8 +56,10 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
     []
   )
 
-  // Native push notifications (Android/iOS via Capacitor)
-  usePushNotifications(isAuthenticated)
+  // Native push: show the iOS "Allow Notifications" dialog as soon as the
+  // Capacitor app opens (including the login screen). Token is only saved
+  // to the backend once the installer is signed in.
+  usePushNotifications(true)
 
   // Refresh the unread badge whenever a push arrives in the foreground.
   useEffect(() => {

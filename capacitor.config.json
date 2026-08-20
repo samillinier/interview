@@ -38,5 +38,8 @@
 			"overlaysWebView": false
 		}
 	},
-	"packageClassList": []
+	"packageClassList": [
+		"PushNotificationsPlugin",
+		"FCMPlugin"
+	]
 }

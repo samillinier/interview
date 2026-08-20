@@ -5,6 +5,8 @@ PODS:
     - Capacitor
     - FirebaseMessaging
   - CapacitorCordova (8.4.2)
+  - CapacitorPushNotifications (8.1.2):
+    - Capacitor
   - FirebaseCore (12.18.0):
     - FirebaseCoreInternal (~> 12.18.0)
     - GoogleUtilities/Environment (~> 8.1)
@@ -63,6 +65,7 @@ DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorCommunityFcm (from `../../node_modules/@capacitor-community/fcm`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
 
 SPEC REPOS:
   trunk:
@@ -82,11 +85,14 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor-community/fcm"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorPushNotifications:
+    :path: "../../node_modules/@capacitor/push-notifications"
 
 SPEC CHECKSUMS:
   Capacitor: 7a1ef4c3b846b5f32437a2b3e11803c1c702a6c5
   CapacitorCommunityFcm: 702e42dc1dd85f1d4fffa54a64a03ca98b30e079
   CapacitorCordova: 345eacdc4c8282415446aea4acd8c77d82480bd4
+  CapacitorPushNotifications: b31cc60c5ecbed763d26c57fb29e4a87fb65c6ca
   FirebaseCore: 96787d19ee32dc2242cc487b301bc616afeb398b
   FirebaseCoreInternal: 93b2d5f9e184c6818a04433891c358b0720a6a38
   FirebaseInstallations: 933b2747e8594084c9117b65e8358fce29d7ced7
@@ -96,6 +102,6 @@ SPEC CHECKSUMS:
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
 
-PODFILE CHECKSUM: 50ab4c1f9b4c22537cc59be3531c1b4bcdc13014
+PODFILE CHECKSUM: c9beee94ad751b7966e63167c348aa77afdbb97a
 
 COCOAPODS: 1.17.0
