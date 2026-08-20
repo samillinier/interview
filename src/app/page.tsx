@@ -182,24 +182,24 @@ export default function HomePage() {
 
       {/* Footer */}
       <section className="bg-brand-green overflow-hidden flex-1 flex items-center justify-center px-4 py-10">
-        <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 max-w-xl text-center">
-          <p className="text-primary-500 text-xs sm:text-sm font-medium leading-none whitespace-nowrap px-2">
+        <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 w-full max-w-2xl text-center">
+          <p className="text-black text-[11px] sm:text-sm font-medium leading-snug px-1 sm:whitespace-nowrap">
             Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
           </p>
-          <div className="flex flex-row items-center justify-center gap-3 sm:gap-6">
+          <div className="flex flex-row flex-wrap items-center justify-center gap-3 sm:gap-6">
             <a
               href="https://apps.apple.com/us/app/fis-fasttrack/id6793172089"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Download on the App Store"
-              className="transition-opacity hover:opacity-90"
+              className="transition-opacity hover:opacity-90 shrink-0"
             >
               <Image
                 src="/app-store-badge.png"
                 alt="Download on the App Store"
                 width={180}
                 height={60}
-                className="h-10 w-auto sm:h-14"
+                className="h-9 w-auto sm:h-14"
               />
             </a>
             <a
@@ -207,14 +207,14 @@ export default function HomePage() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Get it on Google Play"
-              className="transition-opacity hover:opacity-90"
+              className="transition-opacity hover:opacity-90 shrink-0"
             >
               <Image
                 src="/google-play-badge.png"
                 alt="Get it on Google Play"
                 width={200}
                 height={60}
-                className="h-10 w-auto sm:h-14"
+                className="h-9 w-auto sm:h-14"
               />
             </a>
           </div>
