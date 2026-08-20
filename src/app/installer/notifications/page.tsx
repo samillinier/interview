@@ -77,7 +77,7 @@ export default function NotificationsPage() {
     const markMessagesAsRead = async () => {
       try {
         const installerToken = localStorage.getItem('installerToken')
-        await fetch(`/api/installers/${installer.id}/notifications/mark-all-read`, {
+        const res = await fetch(`/api/installers/${installer.id}/notifications/mark-all-read`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -85,7 +85,11 @@ export default function NotificationsPage() {
           },
           body: JSON.stringify({ type: 'message' }),
         })
+        const data = res.ok ? await res.json().catch(() => ({})) : {}
         await loadNotifications()
+        if (typeof data.unreadCount === 'number') {
+          setNativeAppBadge(data.unreadCount)
+        }
       } catch (e) {
         console.error('Error marking messages as read:', e)
       }
@@ -103,6 +107,22 @@ export default function NotificationsPage() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const setNativeAppBadge = (count: number) => {
+    try {
+      const w = window as any
+      if (typeof w.fisSetAppBadge === 'function') {
+        w.fisSetAppBadge(count)
+      }
+    } catch {
+      // Not running inside the native iOS app bridge.
+    }
+  }
+
+  const syncBadgeFromUnread = (list: Notification[] = notifications) => {
+    const unread = list.filter((n) => !n.isRead).length
+    setNativeAppBadge(unread)
   }
 
   const checkAuthAndLoadData = async () => {
@@ -178,7 +198,9 @@ export default function NotificationsPage() {
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('application/json')) {
         const data = await response.json()
-        setNotifications(data.notifications || [])
+        const list = data.notifications || []
+        setNotifications(list)
+        syncBadgeFromUnread(list)
       } else {
         console.error('Non-JSON response from notifications API')
       }
@@ -198,11 +220,18 @@ export default function NotificationsPage() {
       })
 
       if (response.ok) {
-        setNotifications(notifications.map(n => 
-          n.id === notificationId 
+        const data = await response.json().catch(() => ({}))
+        const next = notifications.map(n =>
+          n.id === notificationId
             ? { ...n, isRead: true, readAt: new Date().toISOString() }
             : n
-        ))
+        )
+        setNotifications(next)
+        if (typeof data.unreadCount === 'number') {
+          setNativeAppBadge(data.unreadCount)
+        } else {
+          syncBadgeFromUnread(next)
+        }
       }
     } catch (err: any) {
       console.error('Error marking as read:', err)

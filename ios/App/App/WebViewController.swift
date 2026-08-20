@@ -2,17 +2,11 @@ import UIKit
 import WebKit
 import AVKit
 
-class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
 
     static var pendingDeepLink: URL?
 
-    private let webView: WKWebView = {
-        let config = WKWebViewConfiguration()
-        config.applicationNameForUserAgent = "FISInstallerApp"
-        let source = "var meta = document.createElement('meta'); meta.name = 'viewport'; meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'; document.getElementsByTagName('head')[0].appendChild(meta);"
-        config.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
-        return WKWebView(frame: .zero, configuration: config)
-    }()
+    private var webView: WKWebView!
     private let baseURL = "https://job.floorinteriorservices.com/installer/login"
     private var splashPlayer: AVPlayer?
     private var splashLayer: AVPlayerLayer?
@@ -28,15 +22,31 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
 
         view.backgroundColor = .white
 
-        // Setup webview (hidden initially)
-        webView.frame = view.bounds
+        let config = WKWebViewConfiguration()
+        config.applicationNameForUserAgent = "FISInstallerApp"
+        let viewport = "var meta = document.createElement('meta'); meta.name = 'viewport'; meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'; document.getElementsByTagName('head')[0].appendChild(meta);"
+        config.userContentController.addUserScript(WKUserScript(source: viewport, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+
+        // Bridge so the website can set/clear the home-screen badge immediately.
+        let badgeBridge = """
+        window.fisSetAppBadge = function(n) {
+          try {
+            var count = Math.max(0, parseInt(n, 10) || 0);
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.fisBadge) {
+              window.webkit.messageHandlers.fisBadge.postMessage({ badge: count });
+            }
+          } catch (e) {}
+        };
+        """
+        config.userContentController.addUserScript(WKUserScript(source: badgeBridge, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        config.userContentController.add(self, name: "fisBadge")
+
+        webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = false
         webView.scrollView.bounces = true
-        // Web UI owns safe-area padding (viewport-fit=cover). Automatic insets
-        // shortened scroll range on iPad so Profile → Account could not be reached.
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         if #available(iOS 11.0, *) {
             webView.scrollView.contentInset = .zero
@@ -48,7 +58,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.alpha = 0
         view.addSubview(webView)
 
-        // Prevent zooming is handled via WKUserScript on the web view configuration.
+        PushNotificationManager.shared.attach(webView: webView)
 
         if isTablet {
             showLogoSplash()
@@ -57,9 +67,35 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    deinit {
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: "fisBadge")
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "fisBadge" else { return }
+        var count = 0
+        if let body = message.body as? [String: Any] {
+            if let n = body["badge"] as? Int {
+                count = n
+            } else if let n = body["badge"] as? Double {
+                count = Int(n)
+            } else if let n = body["badge"] as? String {
+                count = Int(n) ?? 0
+            }
+        } else if let n = message.body as? Int {
+            count = n
+        } else if let n = message.body as? Double {
+            count = Int(n)
+        }
+        DispatchQueue.main.async {
+            UIApplication.shared.applicationIconBadgeNumber = max(0, count)
+            print("App badge set via bridge to \(max(0, count))")
+        }
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        webView.frame = view.bounds
+        webView?.frame = view.bounds
         splashLayer?.frame = view.bounds
     }
 
@@ -137,10 +173,10 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func showWebContent() {
-        guard webView.alpha == 0 else { return }
+        guard let webView = webView, webView.alpha == 0 else { return }
 
         UIView.animate(withDuration: 0.4, animations: {
-            self.webView.alpha = 1
+            webView.alpha = 1
             self.splashLayer?.opacity = 0
             self.splashLabel?.alpha = 0
             self.splashLogoView?.alpha = 0
@@ -162,7 +198,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
 
     func openDeepLink(_ url: URL) {
-        if isViewLoaded && webView.alpha > 0 {
+        if isViewLoaded, let webView = webView, webView.alpha > 0 {
             webView.load(URLRequest(url: url))
         } else {
             WebViewController.pendingDeepLink = url
@@ -178,7 +214,6 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 
-    // Open external links (Apple Maps, Google Maps, etc.) in the system handler
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else {
             decisionHandler(.cancel)
@@ -187,7 +222,6 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         if isAppHost(url) {
             decisionHandler(.allow)
         } else if navigationAction.navigationType == .linkActivated || navigationAction.targetFrame == nil {
-            // targetFrame == nil covers target="_blank" map links
             openExternally(url)
             decisionHandler(.cancel)
         } else {
@@ -195,7 +229,6 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    // Required so target="_blank" links (maps) open instead of being ignored
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url, !isAppHost(url) {
             openExternally(url)
@@ -203,7 +236,6 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         return nil
     }
 
-    // Allow getUserMedia / in-page camera after Info.plist usage strings are present
     @available(iOS 15.0, *)
     func webView(
         _ webView: WKWebView,
@@ -213,5 +245,10 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         decisionHandler: @escaping (WKPermissionDecision) -> Void
     ) {
         decisionHandler(.grant)
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        PushNotificationManager.shared.syncTokenWithBackendIfPossible()
+        PushNotificationManager.shared.refreshAppBadge()
     }
 }

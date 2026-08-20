@@ -43,11 +43,14 @@ export async function POST(
     })
 
     // Lower / clear the home-screen badge after reading.
-    void syncInstallerAppBadge(installerId).catch(() => {})
+    const unreadCount = await syncInstallerAppBadge(installerId).catch(() =>
+      prisma.notification.count({ where: { installerId, isRead: false } })
+    )
 
     return NextResponse.json({
       success: true,
       notification: updated,
+      unreadCount,
     })
   } catch (error: any) {
     console.error('Error marking notification as read:', error)

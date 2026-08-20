@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import FirebaseCore
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,6 +8,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Configure Firebase first so Messaging/FCM never logs "app has not yet been configured".
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+
+        // Native push (custom WKWebView has no Capacitor bridge on iOS).
+        // This shows the system Allow Notifications dialog on first launch.
+        PushNotificationManager.shared.setup()
+
         if let url = launchOptions?[.url] as? URL {
             WebViewController.pendingDeepLink = AppDeepLink.httpsURL(from: url)
         }
@@ -14,10 +24,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        PushNotificationManager.shared.setAPNsToken(deviceToken)
         NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("APNs registration failed: \(error.localizedDescription)")
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
@@ -27,7 +39,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillEnterForeground(_ application: UIApplication) {}
 
-    func applicationDidBecomeActive(_ application: UIApplication) {}
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        PushNotificationManager.shared.syncTokenWithBackendIfPossible()
+        PushNotificationManager.shared.refreshAppBadge()
+    }
 
     func applicationWillTerminate(_ application: UIApplication) {}
 
