@@ -26,8 +26,8 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
-  const params = context.params
-  const installerId = params instanceof Promise ? await params : params.id
+  const resolvedParams = context.params instanceof Promise ? await context.params : context.params
+  const installerId = resolvedParams.id
 
   const authorizedId = getAuthorizedInstallerId(request, installerId)
   if (!authorizedId) {
@@ -66,8 +66,8 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
-  const params = context.params
-  const installerId = params instanceof Promise ? await params : params.id
+  const resolvedParams = context.params instanceof Promise ? await context.params : context.params
+  const installerId = resolvedParams.id
 
   const authorizedId = getAuthorizedInstallerId(request, installerId)
   if (!authorizedId) {
