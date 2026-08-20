@@ -182,12 +182,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <section className="bg-brand-green overflow-hidden flex-1 flex items-center justify-center px-4 py-10">
-        <div className="flex flex-col items-center justify-center gap-4 sm:gap-5 w-full max-w-2xl text-center">
-          <h2 className="text-black text-2xl sm:text-3xl md:text-4xl font-extralight tracking-tight leading-[1.15]">
-            Discover jobs on
-            <br />
-            the FastTrack app
-          </h2>
+        <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 w-full max-w-2xl text-center">
           <p className="text-black text-[11px] sm:text-sm font-medium leading-snug px-1 sm:whitespace-nowrap">
             Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
           </p>
