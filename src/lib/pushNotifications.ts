@@ -46,6 +46,15 @@ export function isPushConfigured(): boolean {
   )
 }
 
+function getPushConfigGap(): string {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return ''
+  const missing: string[] = []
+  if (!process.env.FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID')
+  if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push('FIREBASE_CLIENT_EMAIL')
+  if (!process.env.FIREBASE_PRIVATE_KEY) missing.push('FIREBASE_PRIVATE_KEY')
+  return missing.length ? `missing ${missing.join(', ')}` : 'not-configured'
+}
+
 export async function sendPushToInstaller(args: {
   installerId: string
   title: string
@@ -85,7 +94,7 @@ export async function sendPushToInstallers(args: {
   data?: Record<string, string>
 }): Promise<PushSendResult> {
   if (!isPushConfigured()) {
-    return { sent: 0, failed: 0, skipped: true, reason: 'not-configured' }
+    return { sent: 0, failed: 0, skipped: true, reason: getPushConfigGap() }
   }
 
   const app = getFirebaseApp()
