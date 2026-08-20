@@ -67,6 +67,7 @@ export type PushSendResult = {
   failed: number
   skipped: boolean
   reason?: string
+  errors?: string[]
 }
 
 const INVALID_TOKEN_ERROR_CODES = new Set([
@@ -121,6 +122,7 @@ export async function sendPushToInstallers(args: {
     apns: {
       headers: {
         'apns-priority': '10',
+        'apns-push-type': 'alert',
       },
       payload: {
         aps: {
@@ -130,7 +132,7 @@ export async function sendPushToInstallers(args: {
           },
           sound: 'default',
           badge: 1,
-          'content-available': 1,
+          contentAvailable: true,
         },
       },
     },
@@ -143,15 +145,15 @@ export async function sendPushToInstallers(args: {
 
     // Remove tokens that FCM reported as invalid/expired so they don't keep failing.
     const invalidTokens: string[] = []
-    const failureCodes: string[] = []
+    const errors: string[] = []
     result.responses.forEach((response, index) => {
-      const code = (response as { error?: { code?: string; message?: string } }).error?.code
-      const messageText = (response as { error?: { message?: string } }).error?.message
-      if (!response.success) {
-        if (code) failureCodes.push(code)
-        console.error('FCM send failure:', code, messageText, uniqueTokens[index]?.slice(0, 12))
-      }
-      if (!response.success && code && INVALID_TOKEN_ERROR_CODES.has(code)) {
+      if (response.success) return
+      const err = response.error
+      const code = err?.code || 'unknown'
+      const msg = err?.message || 'no message'
+      errors.push(`${code}: ${msg}`)
+      console.error('FCM send failure:', code, msg, uniqueTokens[index]?.slice(0, 16))
+      if (INVALID_TOKEN_ERROR_CODES.has(code)) {
         invalidTokens.push(uniqueTokens[index])
       }
     })
@@ -166,15 +168,17 @@ export async function sendPushToInstallers(args: {
       sent: result.successCount,
       failed: result.failureCount,
       skipped: false,
-      reason: failureCodes[0],
+      reason: errors[0],
+      errors: errors.length ? errors : undefined,
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to send push notifications:', error)
     return {
       sent: 0,
       failed: uniqueTokens.length,
       skipped: false,
-      reason: 'send-error',
+      reason: error?.message || 'send-error',
+      errors: [error?.message || 'send-error'],
     }
   }
 }

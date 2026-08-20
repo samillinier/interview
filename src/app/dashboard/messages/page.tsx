@@ -438,14 +438,26 @@ export default function MessagesPage() {
         throw new Error(data.error || 'Failed to send message.')
       }
 
+      const push = data.push
+      if (push?.sent > 0) {
+        setSuccess(`Message sent! Push delivered to ${push.sent} device(s).`)
+      } else if (push?.skipped) {
+        setSuccess(`Message saved, but push skipped (${push.reason || 'unknown'}).`)
+      } else if (push?.failed > 0) {
+        setSuccess(
+          `Message saved, but push failed: ${push.reason || push.errors?.[0] || 'unknown error'}`
+        )
+      } else {
+        setSuccess('Message sent!')
+      }
+      setTimeout(() => setSuccess(''), 8000)
+
       setMessageContent('')
       setSelectedFile(null)
       setFilePreview(null)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      setSuccess('Message sent!')
-      setTimeout(() => setSuccess(''), 3000)
       
       // Refresh messages
       await fetchMessagesForInstaller(selectedInstaller.id)
