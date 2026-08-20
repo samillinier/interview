@@ -183,7 +183,7 @@ export default function HomePage() {
       {/* Footer */}
       <section className="bg-brand-green overflow-hidden flex-1 flex items-center justify-center px-4 py-10">
         <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 max-w-xl text-center">
-          <p className="text-primary-900 text-xs sm:text-sm font-medium leading-none whitespace-nowrap px-2">
+          <p className="text-primary-500 text-xs sm:text-sm font-medium leading-none whitespace-nowrap px-2">
             Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
           </p>
           <div className="flex flex-row items-center justify-center gap-3 sm:gap-6">
