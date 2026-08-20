@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { syncInstallerAppBadge } from '@/lib/pushNotifications'
 
 export async function POST(
   request: NextRequest,
@@ -40,6 +41,9 @@ export async function POST(
         readAt: new Date(),
       },
     })
+
+    // Lower / clear the home-screen badge after reading.
+    void syncInstallerAppBadge(installerId).catch(() => {})
 
     return NextResponse.json({
       success: true,

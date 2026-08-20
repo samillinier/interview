@@ -240,3 +240,48 @@ export async function sendPushToInstallers(args: {
     errors: errors.length ? errors : undefined,
   }
 }
+
+/** Silently update the home-screen badge to the installer's current unread count. */
+export async function syncInstallerAppBadge(installerId: string): Promise<void> {
+  if (!isPushConfigured()) return
+
+  const app = getFirebaseApp()
+  if (!app) return
+
+  const [tokens, unreadCount] = await Promise.all([
+    prisma.deviceToken.findMany({
+      where: { installerId },
+      select: { token: true },
+    }),
+    prisma.notification.count({
+      where: { installerId, isRead: false },
+    }),
+  ])
+
+  if (tokens.length === 0) return
+
+  const messaging = getMessaging(app)
+  await Promise.all(
+    tokens.map(async ({ token }) => {
+      try {
+        await messaging.send({
+          token,
+          // Badge-only update — no banner/sound.
+          apns: {
+            payload: {
+              aps: {
+                badge: unreadCount,
+              },
+            },
+          },
+          data: {
+            type: 'badge-sync',
+            badge: String(unreadCount),
+          },
+        })
+      } catch (error) {
+        console.error('Badge sync failed:', error)
+      }
+    })
+  )
+}
