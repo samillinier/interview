@@ -4,6 +4,7 @@ import { Resend } from 'resend'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { sendPushToInstallers } from '@/lib/pushNotifications'
 
 function escapeHtml(value: string) {
   return value
@@ -168,11 +169,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let pushResult: any = null
+    try {
+      pushResult = await sendPushToInstallers({
+        installerIds,
+        title,
+        body: content || (attachmentName ? `Sent ${attachmentName}` : 'You have a new message'),
+        link: link || '/installer/notifications',
+        data: { type: type || 'notification' },
+      })
+    } catch (pushError) {
+      console.error('Failed to send push notifications:', pushError)
+      pushResult = { sent: 0, skipped: true }
+    }
+
     return NextResponse.json({
       success: true,
       notifications,
       count: notifications.length,
       email: emailResult,
+      push: pushResult,
     })
   } catch (error: any) {
     console.error('Error creating notifications:', error)

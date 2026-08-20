@@ -335,6 +335,7 @@ model Installer {
   CilioJobRecord                       CilioJobRecord[]
   Claim                                Claim[]
   Communication                        Communication[]
+  DeviceToken                          DeviceToken[]
   Document                             Document[]
   Installer                            Installer?               @relation("InstallerToInstaller", fields: [referredByInstallerId], references: [id])
   other_Installer                      Installer[]              @relation("InstallerToInstaller")
@@ -801,6 +802,18 @@ model Notification {
   @@index([installerId])
   @@index([isRead])
   @@index([type])
+}
+
+model DeviceToken {
+  id          String    @id @default(cuid())
+  installerId String
+  token       String    @unique
+  platform    String    @default("android")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Installer   Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([installerId])
 }
 
 model Property {

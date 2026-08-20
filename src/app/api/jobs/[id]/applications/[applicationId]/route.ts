@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { sendPushToInstaller } from '@/lib/pushNotifications'
 
 // Update application status (accept/reject)
 export async function PATCH(
@@ -86,6 +87,14 @@ export async function PATCH(
         senderId: 'admin',
         senderType: 'admin',
       },
+    })
+
+    await sendPushToInstaller({
+      installerId: updatedApplication.installerId,
+      title: status === 'accepted' ? 'Application Accepted' : 'Application Update',
+      body: statusMessage,
+      link: '/installer/jobs',
+      data: { type: 'notification' },
     })
 
     return NextResponse.json({

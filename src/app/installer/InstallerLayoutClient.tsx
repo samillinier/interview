@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import InstallerSidebar from '@/components/InstallerSidebar'
 import { InstallerMobileMenu } from '@/components/InstallerMobileMenu'
+import {
+  usePushNotifications,
+  PUSH_RECEIVED_EVENT,
+} from '@/hooks/usePushNotifications'
 
 // Public pages that don't need auth
 const PUBLIC_PAGES = [
@@ -26,10 +30,47 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
   const pathname = usePathname()
   const [installer, setInstaller] = useState<InstallerUser | null>(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [notificationCount, setNotificationCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const isPublicPage = PUBLIC_PAGES.includes(pathname)
+
+  const loadNotificationCount = useCallback(
+    async (installerId: string, token: string) => {
+      try {
+        const notifResponse = await fetch(`/api/installers/${installerId}/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (notifResponse.ok) {
+          const notifData = await notifResponse.json()
+          if (notifData.notifications) {
+            const unread = notifData.notifications.filter((n: any) => !n.readAt).length
+            setNotificationCount(unread)
+          }
+        }
+      } catch {
+        // Non-critical
+      }
+    },
+    []
+  )
+
+  // Native push notifications (Android/iOS via Capacitor)
+  usePushNotifications(isAuthenticated)
+
+  // Refresh the unread badge whenever a push arrives in the foreground.
+  useEffect(() => {
+    const handler = () => {
+      const token = localStorage.getItem('installerToken')
+      const installerId = localStorage.getItem('installerId')
+      if (token && installerId) {
+        void loadNotificationCount(installerId, token)
+      }
+    }
+    window.addEventListener(PUSH_RECEIVED_EVENT, handler)
+    return () => window.removeEventListener(PUSH_RECEIVED_EVENT, handler)
+  }, [loadNotificationCount])
 
   // Register service worker for offline support (all installer pages)
   useEffect(() => {
@@ -100,21 +141,10 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
         // Non-critical — sidebar just won't show user info
       }
 
+      setIsAuthenticated(true)
+
       // Load notification count
-      try {
-        const notifResponse = await fetch(`/api/installers/${installerId}/notifications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (notifResponse.ok) {
-          const notifData = await notifResponse.json()
-          if (notifData.notifications) {
-            const unread = notifData.notifications.filter((n: any) => !n.readAt).length
-            setNotificationCount(unread)
-          }
-        }
-      } catch {
-        // Non-critical
-      }
+      await loadNotificationCount(installerId, token)
     } catch {
       // Silently proceed — page-level auth will handle
     } finally {

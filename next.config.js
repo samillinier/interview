@@ -4,7 +4,8 @@ const nextConfig = {
   // Note: Vercel Blob storage handles large files directly, so this limit mainly affects form data
   experimental: {
     // pdf-parse v1 is server-only (btrExpiry); avoid bundling its embedded PDF.js
-    serverComponentsExternalPackages: ['pdf-parse'],
+    // firebase-admin is server-only and should not be bundled into the serverless function
+    serverComponentsExternalPackages: ['pdf-parse', 'firebase-admin'],
     optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns'],
     serverActions: {
       bodySizeLimit: '10mb',

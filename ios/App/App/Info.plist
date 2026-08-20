@@ -18,21 +18,37 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.fis.installer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fis-installer</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- Required: file inputs offer "Take Photo"; missing this key crashes on tap -->
 	<key>NSCameraUsageDescription</key>
 	<string>FIS Installer needs camera access so you can take photos for your profile and required documents.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FIS Installer needs photo library access so you can upload existing photos for your profile and required documents.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>FIS Installer may save photos you capture for your profile and document uploads.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>FIS Installer needs microphone access when recording audio as part of supported features.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>FIS Installer may save photos you capture for your profile and document uploads.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FIS Installer needs photo library access so you can upload existing photos for your profile and required documents.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -58,18 +74,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.fis.installer</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>fis-installer</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>

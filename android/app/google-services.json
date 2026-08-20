@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925426020173",
+    "project_id": "fis-fastrack",
+    "storage_bucket": "fis-fastrack.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925426020173:android:cc5fe6a68213756b065104",
+        "android_client_info": {
+          "package_name": "com.fis.installer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBY2DkePxfZrw4_fRuEfB3McwwP7WMat6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

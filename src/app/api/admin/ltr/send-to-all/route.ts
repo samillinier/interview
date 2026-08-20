@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { activeLtrBatchFilter } from '@/lib/ltrSoftDelete'
+import { sendPushToInstaller } from '@/lib/pushNotifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,16 +116,25 @@ export async function POST(req: NextRequest) {
           update: { sentByEmail: adminEmail },
         })
 
+        const surveyContent = `A survey report was shared with you for ${workroom} • ${company}.`
         await prisma.notification.create({
           data: {
             installerId: best.id,
             type: 'survey',
             title: 'New survey available',
-            content: `A survey report was shared with you for ${workroom} • ${company}.`,
+            content: surveyContent,
             link: '/installer/survey',
             senderId: admin.id,
             senderType: 'admin',
           },
+        })
+
+        void sendPushToInstaller({
+          installerId: best.id,
+          title: 'New survey available',
+          body: surveyContent,
+          link: '/installer/survey',
+          data: { type: 'survey' },
         })
 
         sent += 1

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { sendPushToInstaller } from '@/lib/pushNotifications'
 
 // Helper function to get expiration status
 function getExpirationStatus(expiryDate: Date | null | undefined): 'valid' | 'expiring' | 'expired' | 'none' {
@@ -227,6 +228,14 @@ export async function POST(request: NextRequest) {
             senderId: 'system',
             senderType: 'admin',
           },
+        })
+
+        await sendPushToInstaller({
+          installerId: installer.id,
+          title,
+          body: content,
+          link: '/installer/profile',
+          data: { type: 'notification' },
         })
       }
 
@@ -478,6 +487,14 @@ export async function GET(request: NextRequest) {
               senderId: 'system',
               senderType: 'admin',
             },
+          })
+
+          void sendPushToInstaller({
+            installerId: installer.id,
+            title,
+            body: content,
+            link: '/installer/profile',
+            data: { type: 'notification' },
           })
         }
 

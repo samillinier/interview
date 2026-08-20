@@ -23,6 +23,9 @@
 		"webContentsDebuggingEnabled": false
 	},
 	"plugins": {
+		"PushNotifications": {
+			"presentationOptions": ["badge", "sound", "alert", "banner", "list"]
+		},
 		"SplashScreen": {
 			"launchShowDuration": 0,
 			"launchAutoHide": true,

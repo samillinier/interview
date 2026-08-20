@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { sendPushToInstallers } from '@/lib/pushNotifications'
 
 // Get all jobs (for admin and installers)
 export async function GET(request: NextRequest) {
@@ -143,6 +144,14 @@ export async function POST(request: NextRequest) {
           })
         )
       )
+
+      await sendPushToInstallers({
+        installerIds: eligibleInstallers.map((i) => i.id),
+        title: 'New Job Opportunity',
+        body: `A new ${jobType} job has been posted: ${title} in ${location}`,
+        link: '/installer/jobs',
+        data: { type: 'job' },
+      })
     }
 
     return NextResponse.json({
