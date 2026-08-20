@@ -76,9 +76,13 @@ export default function NotificationsPage() {
 
     const markMessagesAsRead = async () => {
       try {
+        const installerToken = localStorage.getItem('installerToken')
         await fetch(`/api/installers/${installer.id}/notifications/mark-all-read`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(installerToken ? { Authorization: `Bearer ${installerToken}` } : {}),
+          },
           body: JSON.stringify({ type: 'message' }),
         })
         await loadNotifications()
@@ -300,10 +304,15 @@ export default function NotificationsPage() {
 
       let response: Response
       try {
+        const installerToken = localStorage.getItem('installerToken')
+        if (!installerToken) {
+          throw new Error('Unauthorized')
+        }
         response = await fetch(`/api/installers/${installer.id}/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${installerToken}`,
           },
           body: JSON.stringify({
             content: messageContent.trim(),
