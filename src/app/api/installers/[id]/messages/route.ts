@@ -101,6 +101,7 @@ export async function POST(
     }
     
     // Create notification - matching the exact pattern from /api/notifications/route.ts
+    // Mark the installer's own outbound message as read so it doesn't inflate their badge.
     const notification = await prisma.notification.create({
       data: {
         installerId,
@@ -111,6 +112,8 @@ export async function POST(
         link: null,
         senderId: installerId,
         senderType: 'installer',
+        isRead: true,
+        readAt: new Date(),
         attachmentUrl: trimmedAttachmentUrl || null,
         attachmentName: trimmedAttachmentName || null,
       },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { syncInstallerAppBadge } from '@/lib/pushNotifications'
+import { syncInstallerAppBadge, unreadBadgeWhere } from '@/lib/pushNotifications'
 
 export async function POST(
   request: NextRequest,
@@ -44,7 +44,7 @@ export async function POST(
 
     // Lower / clear the home-screen badge after reading.
     const unreadCount = await syncInstallerAppBadge(installerId).catch(() =>
-      prisma.notification.count({ where: { installerId, isRead: false } })
+      prisma.notification.count({ where: unreadBadgeWhere(installerId) })
     )
 
     return NextResponse.json({

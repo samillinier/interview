@@ -15,14 +15,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const installerId = searchParams.get('installerId')
     
-    // If installerId is provided, get count for that installer
-    // Otherwise, get count for all installers (admin view)
+    // Match home-screen badge: notification/message/news only, never installer’s own sends
     const where: any = {
       isRead: false,
-      // Include notification, message, and news types (exclude 'job' as it's handled separately)
       type: {
         in: ['notification', 'message', 'news']
-      }
+      },
+      OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
     }
     
     if (installerId) {

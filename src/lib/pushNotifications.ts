@@ -122,6 +122,21 @@ const INVALID_TOKEN_ERROR_CODES = new Set([
   'messaging/mismatched-credential',
 ])
 
+/**
+ * Unread items that should appear on the home-screen / in-app badge.
+ * - notification + message + news (what the installer tabs show)
+ * - never the installer's own outbound messages (those used to add a phantom +1)
+ * - never survey (handled separately in the UI)
+ */
+export function unreadBadgeWhere(installerId: string) {
+  return {
+    installerId,
+    isRead: false,
+    type: { in: ['notification', 'message', 'news'] as const },
+    OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
+  }
+}
+
 export async function sendPushToInstallers(args: {
   installerIds: string[]
   title: string
@@ -153,6 +168,8 @@ export async function sendPushToInstallers(args: {
     where: {
       installerId: { in: args.installerIds },
       isRead: false,
+      type: { in: ['notification', 'message', 'news'] },
+      OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
     },
     _count: { _all: true },
   })
@@ -244,7 +261,7 @@ export async function sendPushToInstallers(args: {
 /** Silently update the home-screen badge to the installer's current unread count. */
 export async function syncInstallerAppBadge(installerId: string): Promise<number> {
   const unreadCount = await prisma.notification.count({
-    where: { installerId, isRead: false },
+    where: unreadBadgeWhere(installerId),
   })
 
   if (!isPushConfigured()) return unreadCount
