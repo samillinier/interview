@@ -1,7 +1,6 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import type { App } from 'firebase-admin/app'
 import { getMessaging } from 'firebase-admin/messaging'
-import type { MulticastMessage } from 'firebase-admin/messaging'
 import prisma from '@/lib/db'
 
 function getFirebaseApp(): App | null {
@@ -141,90 +140,103 @@ export async function sendPushToInstallers(args: {
 
   const tokens = await prisma.deviceToken.findMany({
     where: { installerId: { in: args.installerIds } },
-    select: { token: true },
+    select: { token: true, installerId: true },
   })
 
-  const uniqueTokens = Array.from(new Set(tokens.map((t) => t.token)))
-  if (uniqueTokens.length === 0) {
+  if (tokens.length === 0) {
     return { sent: 0, failed: 0, skipped: true, reason: 'no-tokens' }
   }
 
-  const message: MulticastMessage = {
-    notification: {
-      title: args.title,
-      body: args.body,
+  // Badge should reflect real unread count (not a hardcoded 1).
+  const unreadGroups = await prisma.notification.groupBy({
+    by: ['installerId'],
+    where: {
+      installerId: { in: args.installerIds },
+      isRead: false,
     },
-    data: {
-      ...(args.link ? { link: args.link } : {}),
-      ...(args.data || {}),
-    },
-    android: {
-      priority: 'high',
-      notification: {
-        channelId: 'default',
-        sound: 'default',
-      },
-    },
-    apns: {
-      headers: {
-        'apns-priority': '10',
-        'apns-push-type': 'alert',
-      },
-      payload: {
-        aps: {
-          alert: {
+    _count: { _all: true },
+  })
+  const unreadByInstaller = new Map(
+    unreadGroups.map((row) => [row.installerId, row._count._all])
+  )
+
+  const messaging = getMessaging(app)
+  const dataPayload: Record<string, string> = {
+    ...(args.link ? { link: args.link } : {}),
+    ...(args.data || {}),
+  }
+
+  // Send per token so each installer gets their own badge count.
+  const invalidTokens: string[] = []
+  const errors: string[] = []
+  let sent = 0
+  let failed = 0
+
+  await Promise.all(
+    tokens.map(async ({ token, installerId }) => {
+      const badge = unreadByInstaller.get(installerId) ?? 1
+      try {
+        await messaging.send({
+          token,
+          notification: {
             title: args.title,
             body: args.body,
           },
-          sound: 'default',
-          badge: 1,
-          contentAvailable: true,
-        },
-      },
-    },
-    tokens: uniqueTokens,
-  }
-
-  try {
-    const messaging = getMessaging(app)
-    const result = await messaging.sendEachForMulticast(message)
-
-    // Remove tokens that FCM reported as invalid/expired so they don't keep failing.
-    const invalidTokens: string[] = []
-    const errors: string[] = []
-    result.responses.forEach((response, index) => {
-      if (response.success) return
-      const err = response.error
-      const code = err?.code || 'unknown'
-      const msg = err?.message || 'no message'
-      errors.push(`${code}: ${msg}`)
-      console.error('FCM send failure:', code, msg, uniqueTokens[index]?.slice(0, 16))
-      if (INVALID_TOKEN_ERROR_CODES.has(code)) {
-        invalidTokens.push(uniqueTokens[index])
+          data: {
+            ...dataPayload,
+            badge: String(badge),
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'default',
+              sound: 'default',
+              notificationCount: badge,
+            },
+          },
+          apns: {
+            headers: {
+              'apns-priority': '10',
+              'apns-push-type': 'alert',
+            },
+            payload: {
+              aps: {
+                alert: {
+                  title: args.title,
+                  body: args.body,
+                },
+                sound: 'default',
+                badge,
+                contentAvailable: true,
+              },
+            },
+          },
+        })
+        sent += 1
+      } catch (error: any) {
+        failed += 1
+        const code = error?.code || 'unknown'
+        const msg = error?.message || 'no message'
+        errors.push(`${code}: ${msg}`)
+        console.error('FCM send failure:', code, msg, token.slice(0, 16))
+        if (INVALID_TOKEN_ERROR_CODES.has(code)) {
+          invalidTokens.push(token)
+        }
       }
     })
+  )
 
-    if (invalidTokens.length > 0) {
-      await prisma.deviceToken
-        .deleteMany({ where: { token: { in: invalidTokens } } })
-        .catch(() => {})
-    }
+  if (invalidTokens.length > 0) {
+    await prisma.deviceToken
+      .deleteMany({ where: { token: { in: invalidTokens } } })
+      .catch(() => {})
+  }
 
-    return {
-      sent: result.successCount,
-      failed: result.failureCount,
-      skipped: false,
-      reason: errors[0],
-      errors: errors.length ? errors : undefined,
-    }
-  } catch (error: any) {
-    console.error('Failed to send push notifications:', error)
-    return {
-      sent: 0,
-      failed: uniqueTokens.length,
-      skipped: false,
-      reason: error?.message || 'send-error',
-      errors: [error?.message || 'send-error'],
-    }
+  return {
+    sent,
+    failed,
+    skipped: false,
+    reason: errors[0],
+    errors: errors.length ? errors : undefined,
   }
 }
