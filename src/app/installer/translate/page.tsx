@@ -73,6 +73,10 @@ export default function InstallerTranslatePage() {
   const wavProcessorRef = useRef<ScriptProcessorNode | null>(null)
   const wavSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const recordingSideRef = useRef<'a' | 'b' | null>(null)
+  const startingRef = useRef(false)
+  const pendingStopRef = useRef(false)
+  const playBase64AudioRef = useRef<(base64: string) => Promise<void>>(async () => {})
+  const translateBlobRef = useRef<(blob: Blob, side: 'a' | 'b') => Promise<void>>(async () => {})
 
   useEffect(() => {
     const token = localStorage.getItem('installerToken')
@@ -170,9 +174,16 @@ export default function InstallerTranslatePage() {
 
     let objectUrl: string | null = null
     try {
-      await unlockAudio()
+      // Resume context only — do NOT reset the audio element to silent here
+      // (that breaks playback right after translation).
+      try {
+        if (audioCtxRef.current?.state === 'suspended') {
+          await audioCtxRef.current.resume()
+        }
+      } catch {
+        // ignore
+      }
 
-      // Prefer blob URLs — large data: URLs often fail on iOS WKWebView.
       objectUrl = base64ToBlobUrl(base64)
       const audio = audioRef.current || document.createElement('audio')
       if (!audioRef.current) {
@@ -187,16 +198,16 @@ export default function InstallerTranslatePage() {
       audio.pause()
       audio.src = objectUrl
       audio.volume = 1
-
       await new Promise<void>((resolve, reject) => {
-        const onEnded = () => {
+        let settled = false
+        const finish = (fn: () => void) => {
+          if (settled) return
+          settled = true
           cleanup()
-          resolve()
+          fn()
         }
-        const onError = () => {
-          cleanup()
-          reject(new Error('audio element error'))
-        }
+        const onEnded = () => finish(() => resolve())
+        const onError = () => finish(() => reject(new Error('audio element error')))
         const cleanup = () => {
           audio.removeEventListener('ended', onEnded)
           audio.removeEventListener('error', onError)
@@ -205,7 +216,7 @@ export default function InstallerTranslatePage() {
         audio.addEventListener('error', onError)
         const playPromise = audio.play()
         if (playPromise) {
-          playPromise.catch(reject)
+          playPromise.catch((err) => finish(() => reject(err)))
         }
       })
     } catch (err) {
@@ -214,7 +225,6 @@ export default function InstallerTranslatePage() {
         await playViaWebAudio(base64)
       } catch (err2) {
         console.error('Could not play translation audio:', err2)
-        // Soft prompt — don't scare with a hard error; Play still works on tap.
         setStatus('Tap Play on the message to hear it')
         setAliceSpeaking(false)
         if (objectUrl) URL.revokeObjectURL(objectUrl)
@@ -222,16 +232,22 @@ export default function InstallerTranslatePage() {
       }
     }
 
-    if (objectUrl) URL.revokeObjectURL(objectUrl)
+    if (objectUrl) {
+      try {
+        URL.revokeObjectURL(objectUrl)
+      } catch {
+        // ignore
+      }
+    }
     setAliceSpeaking(false)
     setStatus('')
   }
+  playBase64AudioRef.current = playBase64Audio
 
   const askAliceToSpeak = async (text: string, toLang: LangCode) => {
     const token = localStorage.getItem('installerToken')
     if (!token || !text.trim()) return null
     try {
-      setAliceSpeaking(true)
       setStatus('Speaking…')
       const res = await fetch('/api/installer/translate', {
         method: 'POST',
@@ -248,7 +264,7 @@ export default function InstallerTranslatePage() {
       })
       const data = await res.json().catch(() => ({}))
       if (data.audioBase64) {
-        await playBase64Audio(data.audioBase64)
+        await playBase64AudioRef.current(data.audioBase64)
         return data.audioBase64 as string
       }
       if (data.speakError) {
@@ -256,20 +272,21 @@ export default function InstallerTranslatePage() {
       }
     } catch (err) {
       console.error(err)
-    } finally {
-      if (!audioRef.current || audioRef.current.paused) {
-        setAliceSpeaking(false)
-        setStatus('')
-      }
     }
     return null
   }
 
   const replayAlice = async (turn: Turn) => {
     if (aliceSpeaking || processing || recordingSide) return
-    await unlockAudio()
+    try {
+      if (audioCtxRef.current?.state === 'suspended') {
+        await audioCtxRef.current.resume()
+      }
+    } catch {
+      // ignore
+    }
     if (turn.audioBase64) {
-      await playBase64Audio(turn.audioBase64)
+      await playBase64AudioRef.current(turn.audioBase64)
       return
     }
     const audio = await askAliceToSpeak(turn.translated, turn.toLang)
@@ -350,16 +367,15 @@ export default function InstallerTranslatePage() {
         setTurns((prev) => [...prev, turn])
 
         if (data.audioBase64) {
-          await playBase64Audio(data.audioBase64)
+          await playBase64AudioRef.current(data.audioBase64)
         } else if (data.translated) {
-          // Fallback: ask Alice to speak the line if the first TTS pass failed
           const audio = await askAliceToSpeak(data.translated, toLang)
           if (audio) {
             setTurns((prev) =>
               prev.map((t) => (t.id === turn.id ? { ...t, audioBase64: audio } : t))
             )
           } else {
-            setStatus('Translation ready — tap the speaker to hear it')
+            setStatus('Translation ready — tap Play to hear it')
           }
         } else {
           setStatus('')
@@ -373,14 +389,58 @@ export default function InstallerTranslatePage() {
     },
     [langA, langB, router]
   )
+  translateBlobRef.current = translateBlob
+
+  const finishIosRecording = () => {
+    const processor = wavProcessorRef.current
+    const source = wavSourceRef.current
+    const sampleRate = audioCtxRef.current?.sampleRate || 44100
+    const recordedSide = recordingSideRef.current
+    try {
+      processor?.disconnect()
+      source?.disconnect()
+    } catch {
+      // already disconnected
+    }
+    stopStream()
+    wavProcessorRef.current = null
+    wavSourceRef.current = null
+    recordingSideRef.current = null
+    setRecordingSide(null)
+    startingRef.current = false
+    pendingStopRef.current = false
+
+    const samples = mergeFloat32(wavChunksRef.current)
+    wavChunksRef.current = []
+    if (!recordedSide) return
+    if (samples.length < 8000) {
+      setStatus('Hold a little longer, then release.')
+      return
+    }
+    const wavBlob = encodeWav(samples, sampleRate)
+    void translateBlobRef.current(wavBlob, recordedSide)
+  }
 
   const startRecording = async (side: 'a' | 'b') => {
-    if (processing || recordingSide) return
+    if (processing || recordingSideRef.current || startingRef.current) return
+
+    startingRef.current = true
+    pendingStopRef.current = false
+    recordingSideRef.current = side
+    setRecordingSide(side)
     setError('')
     setStatus('Listening…')
 
     try {
       await unlockAudio()
+      if (pendingStopRef.current) {
+        recordingSideRef.current = null
+        setRecordingSide(null)
+        startingRef.current = false
+        pendingStopRef.current = false
+        setStatus('Hold a little longer, then release.')
+        return
+      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -389,11 +449,20 @@ export default function InstallerTranslatePage() {
           autoGainControl: true,
         },
       })
+
+      if (pendingStopRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        recordingSideRef.current = null
+        setRecordingSide(null)
+        startingRef.current = false
+        pendingStopRef.current = false
+        setStatus('Hold a little longer, then release.')
+        return
+      }
+
       streamRef.current = stream
       chunksRef.current = []
       wavChunksRef.current = []
-      recordingSideRef.current = side
-      setRecordingSide(side)
 
       // iPhone MediaRecorder files are often rejected by Whisper — capture PCM → WAV.
       if (isIOS()) {
@@ -412,6 +481,10 @@ export default function InstallerTranslatePage() {
         mute.connect(audioCtxRef.current.destination)
         wavSourceRef.current = source
         wavProcessorRef.current = processor
+        startingRef.current = false
+        if (pendingStopRef.current) {
+          finishIosRecording()
+        }
         return
       }
 
@@ -440,19 +513,32 @@ export default function InstallerTranslatePage() {
         const recordedSide = recordingSideRef.current
         recordingSideRef.current = null
         setRecordingSide(null)
+        startingRef.current = false
+        pendingStopRef.current = false
         if (!recordedSide) return
         if (blob.size < 800) {
           setStatus('Hold a little longer, then release.')
           return
         }
-        await translateBlob(blob, recordedSide)
+        await translateBlobRef.current(blob, recordedSide)
       }
 
       recorder.start(250)
+      startingRef.current = false
+      if (pendingStopRef.current) {
+        try {
+          recorder.requestData()
+        } catch {
+          // ignore
+        }
+        recorder.stop()
+      }
     } catch (err: any) {
       stopStream()
       recordingSideRef.current = null
       setRecordingSide(null)
+      startingRef.current = false
+      pendingStopRef.current = false
       setStatus('')
       setError(
         err?.name === 'NotAllowedError'
@@ -463,33 +549,14 @@ export default function InstallerTranslatePage() {
   }
 
   const stopRecording = () => {
-    // iOS WAV capture path
-    if (isIOS() && wavProcessorRef.current) {
-      const processor = wavProcessorRef.current
-      const source = wavSourceRef.current
-      const sampleRate = audioCtxRef.current?.sampleRate || 44100
-      const recordedSide = recordingSideRef.current
-      try {
-        processor.disconnect()
-        source?.disconnect()
-      } catch {
-        // already disconnected
-      }
-      stopStream()
-      wavProcessorRef.current = null
-      wavSourceRef.current = null
-      recordingSideRef.current = null
-      setRecordingSide(null)
+    // Finger released before mic finished starting — finish as soon as ready.
+    if (startingRef.current || (recordingSideRef.current && !wavProcessorRef.current && !mediaRecorderRef.current)) {
+      pendingStopRef.current = true
+      return
+    }
 
-      const samples = mergeFloat32(wavChunksRef.current)
-      wavChunksRef.current = []
-      if (!recordedSide) return
-      if (samples.length < 1600) {
-        setStatus('Hold a little longer, then release.')
-        return
-      }
-      const wavBlob = encodeWav(samples, sampleRate)
-      void translateBlob(wavBlob, recordedSide)
+    if (isIOS() && wavProcessorRef.current) {
+      finishIosRecording()
       return
     }
 
@@ -501,10 +568,12 @@ export default function InstallerTranslatePage() {
         // ignore
       }
       recorder.stop()
-    } else {
+    } else if (recordingSideRef.current) {
+      // Nothing captured yet
       recordingSideRef.current = null
       setRecordingSide(null)
       stopStream()
+      setStatus('Hold a little longer, then release.')
     }
   }
 
@@ -648,13 +717,15 @@ export default function InstallerTranslatePage() {
             disabled={processing || (recordingSide !== null && recordingSide !== 'a')}
             onPointerDown={(e) => {
               e.preventDefault()
+              try {
+                ;(e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId)
+              } catch {
+                // ignore
+              }
               void startRecording('a')
             }}
             onPointerUp={stopRecording}
             onPointerCancel={stopRecording}
-            onPointerLeave={() => {
-              if (recordingSide === 'a') stopRecording()
-            }}
             className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
               recordingSide === 'a'
                 ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
@@ -671,13 +742,15 @@ export default function InstallerTranslatePage() {
             disabled={processing || (recordingSide !== null && recordingSide !== 'b')}
             onPointerDown={(e) => {
               e.preventDefault()
+              try {
+                ;(e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId)
+              } catch {
+                // ignore
+              }
               void startRecording('b')
             }}
             onPointerUp={stopRecording}
             onPointerCancel={stopRecording}
-            onPointerLeave={() => {
-              if (recordingSide === 'b') stopRecording()
-            }}
             className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
               recordingSide === 'b'
                 ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
