@@ -481,15 +481,15 @@ export default function InstallerTranslatePage() {
             onPointerLeave={() => {
               if (recordingSide === 'a') stopRecording()
             }}
-            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
+            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none border-2 ${
               recordingSide === 'a'
-                ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
-                : 'bg-slate-900 text-white active:bg-slate-800 disabled:opacity-40'
+                ? 'border-red-500 bg-red-50 text-red-600 scale-[1.02]'
+                : 'border-slate-300 bg-white text-slate-800 active:bg-slate-50 disabled:opacity-40'
             }`}
           >
             {recordingSide === 'a' ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
             <span className="text-sm leading-tight text-center">Hold · {langLabel(langA)}</span>
-            <span className="text-[11px] font-normal opacity-70">→ {langLabel(langB)}</span>
+            <span className="text-[11px] font-normal text-slate-500">→ {langLabel(langB)}</span>
           </button>
 
           <button
@@ -504,15 +504,15 @@ export default function InstallerTranslatePage() {
             onPointerLeave={() => {
               if (recordingSide === 'b') stopRecording()
             }}
-            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
+            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none border-2 ${
               recordingSide === 'b'
-                ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
-                : 'bg-brand-green text-white active:bg-brand-green-dark disabled:opacity-40'
+                ? 'border-red-500 bg-red-50 text-red-600 scale-[1.02]'
+                : 'border-brand-green bg-white text-brand-green active:bg-brand-green/5 disabled:opacity-40'
             }`}
           >
             {recordingSide === 'b' ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
             <span className="text-sm leading-tight text-center">Hold · {langLabel(langB)}</span>
-            <span className="text-[11px] font-normal opacity-70">→ {langLabel(langA)}</span>
+            <span className="text-[11px] font-normal text-brand-green/70">→ {langLabel(langA)}</span>
           </button>
         </div>
         <button
