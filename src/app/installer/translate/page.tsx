@@ -110,7 +110,7 @@ export default function InstallerTranslatePage() {
         audioRef.current = null
       }
       setAliceSpeaking(true)
-      setStatus('Alice is speaking…')
+      setStatus('Speaking…')
       const audio = new Audio(`data:audio/mpeg;base64,${base64}`)
       audioRef.current = audio
       audio.onended = () => {
@@ -123,10 +123,10 @@ export default function InstallerTranslatePage() {
       }
       await audio.play()
     } catch (err) {
-      console.error('Could not play Alice audio:', err)
+      console.error('Could not play translation audio:', err)
       setAliceSpeaking(false)
       setStatus('')
-      setError('Alice could not play audio. Tap the speaker on a message to try again.')
+      setError('Could not play audio. Tap the speaker on a message to try again.')
     }
   }
 
@@ -135,7 +135,7 @@ export default function InstallerTranslatePage() {
     if (!token || !text.trim()) return null
     try {
       setAliceSpeaking(true)
-      setStatus('Alice is speaking…')
+      setStatus('Speaking…')
       const res = await fetch('/api/installer/translate', {
         method: 'POST',
         headers: {
@@ -195,7 +195,7 @@ export default function InstallerTranslatePage() {
       const toLang = side === 'a' ? langB : langA
 
       setProcessing(true)
-      setStatus('Alice is listening…')
+      setStatus('Listening…')
       setError('')
 
       try {
@@ -249,7 +249,7 @@ export default function InstallerTranslatePage() {
               prev.map((t) => (t.id === turn.id ? { ...t, audioBase64: audio } : t))
             )
           } else {
-            setStatus('Translation ready — tap speaker for Alice to say it')
+            setStatus('Translation ready — tap the speaker to hear it')
           }
         } else {
           setStatus('')
@@ -356,8 +356,8 @@ export default function InstallerTranslatePage() {
             <Languages className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg font-bold leading-tight">Alice Translator</h1>
-            <p className="text-xs text-white/80 truncate">Alice listens, then speaks the other language</p>
+            <h1 className="text-lg font-bold leading-tight">Translator</h1>
+            <p className="text-xs text-white/80 truncate">Hold to talk — translation plays out loud</p>
           </div>
         </div>
 
@@ -412,9 +412,9 @@ export default function InstallerTranslatePage() {
         {turns.length === 0 && !processing && (
           <div className="bg-white border border-slate-200/70 rounded-2xl p-5 text-center shadow-sm">
             <Volume2 className="w-8 h-8 text-brand-green mx-auto mb-2" />
-            <p className="text-sm font-semibold text-slate-900">Alice stands between both of you</p>
+            <p className="text-sm font-semibold text-slate-900">Stand between both people</p>
             <p className="text-sm text-slate-500 mt-1">
-              Hold the mic for who is speaking. Alice hears them, translates, and speaks it aloud in the other language.
+              Hold the mic for who is speaking. It translates and plays the other language out loud.
             </p>
           </div>
         )}
@@ -447,10 +447,10 @@ export default function InstallerTranslatePage() {
                         ? 'bg-brand-green/10 text-brand-green'
                         : 'bg-white/15 text-white'
                     }`}
-                    aria-label="Hear Alice say this again"
+                    aria-label="Play translation again"
                   >
                     <Volume2 className="w-3.5 h-3.5" />
-                    Alice
+                    Play
                   </button>
                 </div>
                 <p className={`text-sm ${turn.side === 'a' ? 'text-slate-600' : 'text-white/85'}`}>{turn.original}</p>
@@ -465,7 +465,7 @@ export default function InstallerTranslatePage() {
         {(processing || aliceSpeaking) && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 className="w-4 h-4 animate-spin" />
-            {aliceSpeaking ? 'Alice is speaking…' : 'Alice is translating…'}
+            {aliceSpeaking ? 'Speaking…' : 'Translating…'}
           </div>
         )}
 

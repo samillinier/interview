@@ -60,9 +60,9 @@ async function translateText(text: string, fromLang: string, toLang: string) {
     messages: [
       {
         role: 'system',
-        content: `You are Alice, the live conversation interpreter for Floor Interior Services.
+        content: `You are a live conversation interpreter for Floor Interior Services.
 You stand between two people and translate what one person just said from ${fromName} into ${toName}.
-Return ONLY the natural spoken translation Alice would say out loud — no quotes, no labels, no "they said", no explanations.
+Return ONLY the natural spoken translation — no quotes, no labels, no "they said", no explanations.
 Keep meaning, tone, and short conversational style. If the input is empty or unclear noise, return an empty string.`,
       },
       { role: 'user', content: text },
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
           const audioBuffer = await generateSpeech(originalText)
           audioBase64 = audioBuffer.toString('base64')
         } catch (err: any) {
-          speakError = err?.message || 'Alice could not speak this line'
+          speakError = err?.message || 'Could not generate speech'
         }
       }
       return NextResponse.json({
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         fromLang,
         toLang,
         audioBase64,
-        speaker: 'Alice',
+        speaker: 'tts',
         speakError,
       })
     }
@@ -202,12 +202,12 @@ export async function POST(request: NextRequest) {
     let speakError: string | null = null
     if (speak && translated) {
       try {
-        // Same Alice voice used in the installer interview (OpenAI "nova")
+        // Same voice used in the installer interview (OpenAI "nova")
         const audioBuffer = await generateSpeech(translated)
         audioBase64 = audioBuffer.toString('base64')
       } catch (err: any) {
-        console.error('Alice TTS failed (translation still returned):', err)
-        speakError = err?.message || 'Alice could not speak this line'
+        console.error('TTS failed (translation still returned):', err)
+        speakError = err?.message || 'Could not generate speech'
       }
     }
 
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
       fromLang,
       toLang,
       audioBase64,
-      speaker: 'Alice',
+      speaker: 'tts',
       speakError,
     })
   } catch (error: any) {

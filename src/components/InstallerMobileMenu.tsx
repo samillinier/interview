@@ -61,7 +61,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
       { href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount },
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
-      { href: '/installer/translate', label: 'Alice Translator', icon: Languages },
+      { href: '/installer/translate', label: 'Translator', icon: Languages },
       { href: '/installer/help', label: 'Help', icon: HelpCircle },
     ],
     [notificationCount, surveyCount]
