@@ -72,7 +72,11 @@ export default function InstallerTranslatePage() {
   const wavChunksRef = useRef<Float32Array[]>([])
   const wavProcessorRef = useRef<ScriptProcessorNode | null>(null)
   const wavSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const wavMuteRef = useRef<GainNode | null>(null)
   const recordingSideRef = useRef<'a' | 'b' | null>(null)
+  const pendingSideRef = useRef<'a' | 'b' | null>(null)
+  const collectingRef = useRef(false)
+  const stopRecordingRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     const token = localStorage.getItem('installerToken')
@@ -99,6 +103,55 @@ export default function InstallerTranslatePage() {
       // ignore
     }
   }
+
+  const ensureMicStream = async () => {
+    const existing = streamRef.current
+    if (existing && existing.getTracks().some((t) => t.readyState === 'live')) {
+      return existing
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    })
+    streamRef.current = stream
+    return stream
+  }
+
+  // Warm mic + audio after first tap anywhere so hold feels instant.
+  useEffect(() => {
+    const warm = () => {
+      void unlockAudio()
+      void ensureMicStream().catch(() => {})
+    }
+    window.addEventListener('pointerdown', warm, { once: true, passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', warm)
+      try {
+        wavProcessorRef.current?.disconnect()
+        wavSourceRef.current?.disconnect()
+        wavMuteRef.current?.disconnect()
+      } catch {
+        // ignore
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+  }, [])
+
+  // Keep release snappy even if the button re-renders mid-press.
+  useEffect(() => {
+    if (!recordingSide) return
+    const onUp = () => stopRecordingRef.current()
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [recordingSide])
 
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -282,43 +335,49 @@ export default function InstallerTranslatePage() {
   )
 
   const startRecording = async (side: 'a' | 'b') => {
-    if (processing || recordingSide) return
+    if (processing || recordingSideRef.current || collectingRef.current) return
+
+    // Paint the button red immediately — don't wait for mic setup.
+    recordingSideRef.current = side
+    pendingSideRef.current = side
+    setRecordingSide(side)
     setError('')
     setStatus('Listening…')
+    chunksRef.current = []
+    wavChunksRef.current = []
+    collectingRef.current = true
 
     try {
-      await unlockAudio()
+      void unlockAudio()
+      const stream = await ensureMicStream()
+      if (!collectingRef.current || recordingSideRef.current !== side) {
+        // User already released during setup.
+        return
+      }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      })
-      streamRef.current = stream
-      chunksRef.current = []
-      wavChunksRef.current = []
-      recordingSideRef.current = side
-      setRecordingSide(side)
-
-      // iPhone MediaRecorder files are often rejected by Whisper — capture PCM → WAV.
       if (isIOS()) {
         const AC = window.AudioContext || (window as any).webkitAudioContext
         if (!audioCtxRef.current) audioCtxRef.current = new AC()
-        await audioCtxRef.current.resume()
-        const source = audioCtxRef.current.createMediaStreamSource(stream)
-        const processor = audioCtxRef.current.createScriptProcessor(4096, 1, 1)
-        const mute = audioCtxRef.current.createGain()
-        mute.gain.value = 0
-        processor.onaudioprocess = (event) => {
-          wavChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+        if (audioCtxRef.current.state === 'suspended') {
+          void audioCtxRef.current.resume()
         }
-        source.connect(processor)
-        processor.connect(mute)
-        mute.connect(audioCtxRef.current.destination)
-        wavSourceRef.current = source
-        wavProcessorRef.current = processor
+
+        if (!wavProcessorRef.current || !wavSourceRef.current) {
+          const source = audioCtxRef.current.createMediaStreamSource(stream)
+          const processor = audioCtxRef.current.createScriptProcessor(2048, 1, 1)
+          const mute = audioCtxRef.current.createGain()
+          mute.gain.value = 0
+          processor.onaudioprocess = (event) => {
+            if (!collectingRef.current) return
+            wavChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+          }
+          source.connect(processor)
+          processor.connect(mute)
+          mute.connect(audioCtxRef.current.destination)
+          wavSourceRef.current = source
+          wavProcessorRef.current = processor
+          wavMuteRef.current = mute
+        }
         return
       }
 
@@ -339,25 +398,23 @@ export default function InstallerTranslatePage() {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data)
       }
 
-      recorder.onstop = async () => {
+      recorder.onstop = () => {
         const blobType = recorder.mimeType || mimeType || 'audio/webm'
         const blob = new Blob(chunksRef.current, { type: blobType })
-        stopStream()
         mediaRecorderRef.current = null
-        const recordedSide = recordingSideRef.current
-        recordingSideRef.current = null
-        setRecordingSide(null)
-        if (!recordedSide) return
+        const recordedSide = pendingSideRef.current || side
+        pendingSideRef.current = null
+        // Keep mic stream warm for the next press.
         if (blob.size < 800) {
           setStatus('Hold a little longer, then release.')
           return
         }
-        await translateBlob(blob, recordedSide)
+        void translateBlob(blob, recordedSide)
       }
 
-      recorder.start(250)
+      recorder.start(100)
     } catch (err: any) {
-      stopStream()
+      collectingRef.current = false
       recordingSideRef.current = null
       setRecordingSide(null)
       setStatus('')
@@ -370,33 +427,28 @@ export default function InstallerTranslatePage() {
   }
 
   const stopRecording = () => {
-    // iOS WAV capture path
-    if (isIOS() && wavProcessorRef.current) {
-      const processor = wavProcessorRef.current
-      const source = wavSourceRef.current
-      const sampleRate = audioCtxRef.current?.sampleRate || 44100
-      const recordedSide = recordingSideRef.current
-      try {
-        processor.disconnect()
-        source?.disconnect()
-      } catch {
-        // already disconnected
-      }
-      stopStream()
-      wavProcessorRef.current = null
-      wavSourceRef.current = null
-      recordingSideRef.current = null
-      setRecordingSide(null)
+    if (!recordingSideRef.current && !collectingRef.current) return
 
+    const recordedSide = recordingSideRef.current
+    collectingRef.current = false
+    // Clear red state immediately on release.
+    recordingSideRef.current = null
+    setRecordingSide(null)
+
+    // iOS WAV capture path — keep stream/graph warm; just stop collecting.
+    if (isIOS()) {
+      const sampleRate = audioCtxRef.current?.sampleRate || 44100
       const samples = mergeFloat32(wavChunksRef.current)
       wavChunksRef.current = []
-      if (!recordedSide) return
+      const side = recordedSide || pendingSideRef.current
+      pendingSideRef.current = null
+      if (!side) return
       if (samples.length < 1600) {
         setStatus('Hold a little longer, then release.')
         return
       }
       const wavBlob = encodeWav(samples, sampleRate)
-      void translateBlob(wavBlob, recordedSide)
+      void translateBlob(wavBlob, side)
       return
     }
 
@@ -408,12 +460,10 @@ export default function InstallerTranslatePage() {
         // ignore
       }
       recorder.stop()
-    } else {
-      recordingSideRef.current = null
-      setRecordingSide(null)
-      stopStream()
     }
   }
+
+  stopRecordingRef.current = stopRecording
 
   const swapLanguages = () => {
     setLangA(langB)
@@ -557,12 +607,7 @@ export default function InstallerTranslatePage() {
               e.preventDefault()
               void startRecording('a')
             }}
-            onPointerUp={stopRecording}
-            onPointerCancel={stopRecording}
-            onPointerLeave={() => {
-              if (recordingSide === 'a') stopRecording()
-            }}
-            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
+            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold select-none touch-none ${
               recordingSide === 'a'
                 ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
                 : 'bg-slate-900 text-white active:bg-slate-800 disabled:opacity-40'
@@ -580,12 +625,7 @@ export default function InstallerTranslatePage() {
               e.preventDefault()
               void startRecording('b')
             }}
-            onPointerUp={stopRecording}
-            onPointerCancel={stopRecording}
-            onPointerLeave={() => {
-              if (recordingSide === 'b') stopRecording()
-            }}
-            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
+            className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold select-none touch-none ${
               recordingSide === 'b'
                 ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
                 : 'bg-brand-green text-white active:bg-brand-green-dark disabled:opacity-40'
