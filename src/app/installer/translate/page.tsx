@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertCircle,
   ArrowLeftRight,
-  Languages,
   Loader2,
   Mic,
   Square,
@@ -350,18 +349,8 @@ export default function InstallerTranslatePage() {
 
   return (
     <div className="ios-installer-translate min-h-screen bg-slate-50 flex flex-col">
-      <header className="sticky top-0 z-20 bg-brand-green text-white px-4 pb-4 pt-[max(env(safe-area-inset-top),12px)] shadow-md">
-        <div className="flex items-center gap-3 mb-4 pr-14">
-          <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-            <Languages className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold leading-tight">Translator</h1>
-            <p className="text-xs text-white/80 truncate">Hold to talk — translation plays out loud</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-3 text-slate-900 shadow-sm">
+      <header className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur px-4 pb-3 pt-[max(env(safe-area-inset-top),12px)] border-b border-slate-200/80">
+        <div className="bg-white rounded-2xl p-3 text-slate-900 shadow-sm border border-slate-200/70">
           <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
             <label className="block">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">From</span>
@@ -383,7 +372,7 @@ export default function InstallerTranslatePage() {
               type="button"
               onClick={swapLanguages}
               disabled={!!recordingSide || processing}
-              className="mb-0.5 p-2.5 rounded-xl bg-brand-green/10 text-brand-green hover:bg-brand-green/15 disabled:opacity-50"
+              className="mb-0.5 p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
               aria-label="Swap languages"
             >
               <ArrowLeftRight className="w-5 h-5" />
