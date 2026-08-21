@@ -349,7 +349,7 @@ export default function InstallerTranslatePage() {
 
   return (
     <div className="ios-installer-translate min-h-screen bg-slate-50 flex flex-col">
-      <header className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur px-4 pb-3 pt-[max(env(safe-area-inset-top),12px)] border-b border-slate-200/80">
+      <header className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur px-4 pb-3 pt-[max(calc(env(safe-area-inset-top)+64px),118px)] border-b border-slate-200/80">
         <div className="bg-white rounded-2xl p-3 text-slate-900 shadow-sm border border-slate-200/70">
           <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
             <label className="block">
