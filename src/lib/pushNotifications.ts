@@ -162,6 +162,18 @@ export async function sendPushToInstallers(args: {
     return { sent: 0, failed: 0, skipped: true, reason: 'no-tokens' }
   }
 
+  // Prevent phantom badge from any leftover installer-outbound rows.
+  await prisma.notification
+    .updateMany({
+      where: {
+        installerId: { in: args.installerIds },
+        senderType: 'installer',
+        isRead: false,
+      },
+      data: { isRead: true, readAt: new Date() },
+    })
+    .catch(() => {})
+
   // Badge should reflect real unread count (not a hardcoded 1).
   const unreadGroups = await prisma.notification.groupBy({
     by: ['installerId'],
@@ -191,7 +203,7 @@ export async function sendPushToInstallers(args: {
 
   await Promise.all(
     tokens.map(async ({ token, installerId }) => {
-      const badge = unreadByInstaller.get(installerId) ?? 1
+      const badge = unreadByInstaller.get(installerId) ?? 0
       try {
         await messaging.send({
           token,
@@ -260,6 +272,14 @@ export async function sendPushToInstallers(args: {
 
 /** Silently update the home-screen badge to the installer's current unread count. */
 export async function syncInstallerAppBadge(installerId: string): Promise<number> {
+  // Clear any leftover "own send" rows that used to inflate the badge.
+  await prisma.notification
+    .updateMany({
+      where: { installerId, senderType: 'installer', isRead: false },
+      data: { isRead: true, readAt: new Date() },
+    })
+    .catch(() => {})
+
   const unreadCount = await prisma.notification.count({
     where: unreadBadgeWhere(installerId),
   })

@@ -189,7 +189,13 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate,
                   let notifications = obj["notifications"] as? [[String: Any]]
             else { return }
 
-            let unread = notifications.filter { ($0["isRead"] as? Bool) == false }.count
+            let unread = notifications.filter { item in
+                let isRead = (item["isRead"] as? Bool) ?? false
+                let senderType = (item["senderType"] as? String) ?? ""
+                let type = (item["type"] as? String) ?? ""
+                let isTabType = (type == "notification" || type == "message" || type == "news")
+                return !isRead && senderType != "installer" && isTabType
+            }.count
             DispatchQueue.main.async {
                 UIApplication.shared.applicationIconBadgeNumber = unread
                 print("App badge set to \(unread)")

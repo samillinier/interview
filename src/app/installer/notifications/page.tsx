@@ -76,7 +76,12 @@ export default function NotificationsPage() {
   }
 
   const syncBadgeFromUnread = (list: Notification[]) => {
-    const unread = list.filter((n) => !n.isRead && n.senderType !== 'installer').length
+    const unread = list.filter(
+      (n) =>
+        !n.isRead &&
+        n.senderType !== 'installer' &&
+        (n.type === 'notification' || n.type === 'message' || n.type === 'news')
+    ).length
     setNativeAppBadge(unread)
   }
 
