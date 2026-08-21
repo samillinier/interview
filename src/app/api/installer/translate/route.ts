@@ -73,32 +73,53 @@ Keep meaning, tone, and short conversational style. If the input is empty or unc
 }
 
 async function transcribeAudio(audio: Blob, filename: string, language: string) {
-  const mimeType = audio.type || ''
+  const name = (filename || '').toLowerCase()
+  const mime = (audio.type || '').toLowerCase()
+  const bytes = Buffer.from(await audio.arrayBuffer())
+
   let extension = 'webm'
-  if (mimeType.includes('wav') || filename.endsWith('.wav')) extension = 'wav'
-  else if (mimeType.includes('mp4') || mimeType.includes('m4a') || filename.endsWith('.m4a')) extension = 'm4a'
-  else if (mimeType.includes('aac')) extension = 'aac'
-  else if (mimeType.includes('ogg')) extension = 'ogg'
-  else if (mimeType.includes('mp3')) extension = 'mp3'
+  if (name.endsWith('.wav') || mime.includes('wav')) extension = 'wav'
+  else if (name.endsWith('.mp3') || mime.includes('mpeg') || mime.includes('mp3')) extension = 'mp3'
+  else if (name.endsWith('.ogg') || name.endsWith('.oga') || mime.includes('ogg')) extension = 'ogg'
+  else if (
+    name.endsWith('.m4a') ||
+    name.endsWith('.mp4') ||
+    name.endsWith('.aac') ||
+    mime.includes('mp4') ||
+    mime.includes('m4a') ||
+    mime.includes('aac')
+  ) {
+    // Whisper accepts m4a/mp4 — not a bare "aac" extension.
+    extension = 'm4a'
+  } else if (name.endsWith('.flac') || mime.includes('flac')) extension = 'flac'
+  else if (name.endsWith('.webm') || mime.includes('webm')) extension = 'webm'
+  else if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WAVE') {
+    extension = 'wav'
+  } else if (bytes.length >= 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
+    extension = 'webm'
+  } else if (bytes.length >= 8 && bytes.toString('ascii', 4, 8) === 'ftyp') {
+    extension = 'm4a'
+  } else {
+    // Safe default for odd mobile MIME types (common on iPhone).
+    extension = 'wav'
+  }
 
   const typeByExt: Record<string, string> = {
     wav: 'audio/wav',
     m4a: 'audio/mp4',
-    aac: 'audio/aac',
     ogg: 'audio/ogg',
     mp3: 'audio/mpeg',
+    flac: 'audio/flac',
     webm: 'audio/webm',
   }
 
-  const bytes = Buffer.from(await audio.arrayBuffer())
   const file = new File([bytes], `audio.${extension}`, {
-    type: typeByExt[extension] || 'audio/webm',
+    type: typeByExt[extension] || 'audio/wav',
   })
 
   const form = new FormData()
   form.append('file', file)
   form.append('model', 'whisper-1')
-  // Whisper expects ISO-639-1; Haitian Creole is "ht"
   form.append('language', language)
 
   const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {

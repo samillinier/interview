@@ -17,6 +17,7 @@ import {
   isIOS,
   isMediaRecorderSupported,
 } from '@/lib/utils'
+import { encodeWav, mergeFloat32 } from '@/lib/wavRecorder'
 import './installer-translate-mobile.css'
 
 type LangCode = 'en' | 'es' | 'pt' | 'fr' | 'ht' | 'zh' | 'vi' | 'ar' | 'hi' | 'ko' | 'tl'
@@ -68,6 +69,10 @@ export default function InstallerTranslatePage() {
   const listRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const wavChunksRef = useRef<Float32Array[]>([])
+  const wavProcessorRef = useRef<ScriptProcessorNode | null>(null)
+  const wavSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const recordingSideRef = useRef<'a' | 'b' | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('installerToken')
@@ -199,14 +204,27 @@ export default function InstallerTranslatePage() {
 
       try {
         const form = new FormData()
-        const mime = blob.type || (isIOS() ? 'audio/mp4' : 'audio/webm')
+        const mime = blob.type || (isIOS() ? 'audio/wav' : 'audio/webm')
         let ext = 'webm'
         if (mime.includes('wav')) ext = 'wav'
-        else if (mime.includes('mp4') || mime.includes('m4a')) ext = 'm4a'
+        else if (mime.includes('mp4') || mime.includes('m4a') || mime.includes('aac')) ext = 'm4a'
         else if (mime.includes('ogg')) ext = 'ogg'
-        else if (mime.includes('mp3')) ext = 'mp3'
+        else if (mime.includes('mp3') || mime.includes('mpeg')) ext = 'mp3'
+        else if (isIOS()) ext = 'wav'
 
-        form.append('audio', blob, `speech.${ext}`)
+        // Always send a Whisper-supported filename + type (iPhone MediaRecorder formats often fail).
+        const uploadType =
+          ext === 'wav'
+            ? 'audio/wav'
+            : ext === 'm4a'
+              ? 'audio/mp4'
+              : ext === 'mp3'
+                ? 'audio/mpeg'
+                : ext === 'ogg'
+                  ? 'audio/ogg'
+                  : 'audio/webm'
+        const file = new File([blob], `speech.${ext}`, { type: uploadType })
+        form.append('audio', file)
         form.append('fromLang', fromLang)
         form.append('toLang', toLang)
         form.append('speak', '1')
@@ -270,9 +288,6 @@ export default function InstallerTranslatePage() {
 
     try {
       await unlockAudio()
-      if (!isMediaRecorderSupported()) {
-        throw new Error('Recording is not supported on this device.')
-      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -283,6 +298,33 @@ export default function InstallerTranslatePage() {
       })
       streamRef.current = stream
       chunksRef.current = []
+      wavChunksRef.current = []
+      recordingSideRef.current = side
+      setRecordingSide(side)
+
+      // iPhone MediaRecorder files are often rejected by Whisper — capture PCM → WAV.
+      if (isIOS()) {
+        const AC = window.AudioContext || (window as any).webkitAudioContext
+        if (!audioCtxRef.current) audioCtxRef.current = new AC()
+        await audioCtxRef.current.resume()
+        const source = audioCtxRef.current.createMediaStreamSource(stream)
+        const processor = audioCtxRef.current.createScriptProcessor(4096, 1, 1)
+        const mute = audioCtxRef.current.createGain()
+        mute.gain.value = 0
+        processor.onaudioprocess = (event) => {
+          wavChunksRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)))
+        }
+        source.connect(processor)
+        processor.connect(mute)
+        mute.connect(audioCtxRef.current.destination)
+        wavSourceRef.current = source
+        wavProcessorRef.current = processor
+        return
+      }
+
+      if (!isMediaRecorderSupported()) {
+        throw new Error('Recording is not supported on this device.')
+      }
 
       const mimeType = getSupportedMimeType()
       const options: MediaRecorderOptions = {}
@@ -302,18 +344,21 @@ export default function InstallerTranslatePage() {
         const blob = new Blob(chunksRef.current, { type: blobType })
         stopStream()
         mediaRecorderRef.current = null
+        const recordedSide = recordingSideRef.current
+        recordingSideRef.current = null
         setRecordingSide(null)
+        if (!recordedSide) return
         if (blob.size < 800) {
           setStatus('Hold a little longer, then release.')
           return
         }
-        await translateBlob(blob, side)
+        await translateBlob(blob, recordedSide)
       }
 
       recorder.start(250)
-      setRecordingSide(side)
     } catch (err: any) {
       stopStream()
+      recordingSideRef.current = null
       setRecordingSide(null)
       setStatus('')
       setError(
@@ -325,10 +370,46 @@ export default function InstallerTranslatePage() {
   }
 
   const stopRecording = () => {
+    // iOS WAV capture path
+    if (isIOS() && wavProcessorRef.current) {
+      const processor = wavProcessorRef.current
+      const source = wavSourceRef.current
+      const sampleRate = audioCtxRef.current?.sampleRate || 44100
+      const recordedSide = recordingSideRef.current
+      try {
+        processor.disconnect()
+        source?.disconnect()
+      } catch {
+        // already disconnected
+      }
+      stopStream()
+      wavProcessorRef.current = null
+      wavSourceRef.current = null
+      recordingSideRef.current = null
+      setRecordingSide(null)
+
+      const samples = mergeFloat32(wavChunksRef.current)
+      wavChunksRef.current = []
+      if (!recordedSide) return
+      if (samples.length < 1600) {
+        setStatus('Hold a little longer, then release.')
+        return
+      }
+      const wavBlob = encodeWav(samples, sampleRate)
+      void translateBlob(wavBlob, recordedSide)
+      return
+    }
+
     const recorder = mediaRecorderRef.current
     if (recorder && recorder.state !== 'inactive') {
+      try {
+        if (recorder.state === 'recording') recorder.requestData()
+      } catch {
+        // ignore
+      }
       recorder.stop()
     } else {
+      recordingSideRef.current = null
       setRecordingSide(null)
       stopStream()
     }
