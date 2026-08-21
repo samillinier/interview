@@ -75,8 +75,10 @@ export default function InstallerTranslatePage() {
   const recordingSideRef = useRef<'a' | 'b' | null>(null)
   const startingRef = useRef(false)
   const pendingStopRef = useRef(false)
+  const pressStartedAtRef = useRef(0)
   const playBase64AudioRef = useRef<(base64: string) => Promise<void>>(async () => {})
   const translateBlobRef = useRef<(blob: Blob, side: 'a' | 'b') => Promise<void>>(async () => {})
+  const stopRecordingRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     const token = localStorage.getItem('installerToken')
@@ -90,6 +92,33 @@ export default function InstallerTranslatePage() {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [turns, processing])
+
+  // Hold-to-talk: listen on window so release still stops even if the button re-renders
+  // (common on iPhone when the button turns red mid-press).
+  useEffect(() => {
+    if (!recordingSide) return
+
+    const onRelease = (e: Event) => {
+      // Ignore release events that aren't from a primary finger/button
+      if ('button' in e && typeof (e as PointerEvent).button === 'number' && (e as PointerEvent).button !== 0) {
+        return
+      }
+      stopRecordingRef.current()
+    }
+
+    window.addEventListener('pointerup', onRelease)
+    window.addEventListener('pointercancel', onRelease)
+    window.addEventListener('mouseup', onRelease)
+    window.addEventListener('touchend', onRelease)
+    window.addEventListener('touchcancel', onRelease)
+    return () => {
+      window.removeEventListener('pointerup', onRelease)
+      window.removeEventListener('pointercancel', onRelease)
+      window.removeEventListener('mouseup', onRelease)
+      window.removeEventListener('touchend', onRelease)
+      window.removeEventListener('touchcancel', onRelease)
+    }
+  }, [recordingSide])
 
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -413,7 +442,7 @@ export default function InstallerTranslatePage() {
     const samples = mergeFloat32(wavChunksRef.current)
     wavChunksRef.current = []
     if (!recordedSide) return
-    if (samples.length < 8000) {
+    if (samples.length < 4000) {
       setStatus('Hold a little longer, then release.')
       return
     }
@@ -549,6 +578,16 @@ export default function InstallerTranslatePage() {
   }
 
   const stopRecording = () => {
+    // Already idle
+    if (
+      !recordingSideRef.current &&
+      !startingRef.current &&
+      !wavProcessorRef.current &&
+      !mediaRecorderRef.current
+    ) {
+      return
+    }
+
     // Finger released before mic finished starting — finish as soon as ready.
     if (startingRef.current || (recordingSideRef.current && !wavProcessorRef.current && !mediaRecorderRef.current)) {
       pendingStopRef.current = true
@@ -569,12 +608,18 @@ export default function InstallerTranslatePage() {
       }
       recorder.stop()
     } else if (recordingSideRef.current) {
-      // Nothing captured yet
       recordingSideRef.current = null
       setRecordingSide(null)
       stopStream()
       setStatus('Hold a little longer, then release.')
     }
+  }
+  stopRecordingRef.current = stopRecording
+
+  const beginHold = (side: 'a' | 'b') => {
+    if (processing) return
+    pressStartedAtRef.current = Date.now()
+    void startRecording(side)
   }
 
   const swapLanguages = () => {
@@ -716,16 +761,15 @@ export default function InstallerTranslatePage() {
             type="button"
             disabled={processing || (recordingSide !== null && recordingSide !== 'a')}
             onPointerDown={(e) => {
+              if (e.button !== 0) return
               e.preventDefault()
               try {
                 ;(e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId)
               } catch {
                 // ignore
               }
-              void startRecording('a')
+              beginHold('a')
             }}
-            onPointerUp={stopRecording}
-            onPointerCancel={stopRecording}
             className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
               recordingSide === 'a'
                 ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
@@ -733,7 +777,9 @@ export default function InstallerTranslatePage() {
             }`}
           >
             {recordingSide === 'a' ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-            <span className="text-sm leading-tight text-center">Hold · {langLabel(langA)}</span>
+            <span className="text-sm leading-tight text-center">
+              {recordingSide === 'a' ? 'Release to stop' : `Hold · ${langLabel(langA)}`}
+            </span>
             <span className="text-[11px] font-normal opacity-70">→ {langLabel(langB)}</span>
           </button>
 
@@ -741,16 +787,15 @@ export default function InstallerTranslatePage() {
             type="button"
             disabled={processing || (recordingSide !== null && recordingSide !== 'b')}
             onPointerDown={(e) => {
+              if (e.button !== 0) return
               e.preventDefault()
               try {
                 ;(e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId)
               } catch {
                 // ignore
               }
-              void startRecording('b')
+              beginHold('b')
             }}
-            onPointerUp={stopRecording}
-            onPointerCancel={stopRecording}
             className={`rounded-2xl px-3 py-4 min-h-[96px] flex flex-col items-center justify-center gap-2 font-semibold transition-colors select-none touch-none ${
               recordingSide === 'b'
                 ? 'bg-red-500 text-white shadow-lg scale-[1.02]'
@@ -758,7 +803,9 @@ export default function InstallerTranslatePage() {
             }`}
           >
             {recordingSide === 'b' ? <Square className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-            <span className="text-sm leading-tight text-center">Hold · {langLabel(langB)}</span>
+            <span className="text-sm leading-tight text-center">
+              {recordingSide === 'b' ? 'Release to stop' : `Hold · ${langLabel(langB)}`}
+            </span>
             <span className="text-[11px] font-normal opacity-70">→ {langLabel(langA)}</span>
           </button>
         </div>
