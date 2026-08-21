@@ -87,6 +87,19 @@ export default function InstallerTranslatePage() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
   }, [turns, processing])
 
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+  }
+
+  const base64ToBlobUrl = (base64: string, mime = 'audio/mpeg') => {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: mime })
+    return URL.createObjectURL(blob)
+  }
+
   const unlockAudio = async () => {
     try {
       const AC = window.AudioContext || (window as any).webkitAudioContext
@@ -95,43 +108,123 @@ export default function InstallerTranslatePage() {
       if (audioCtxRef.current.state === 'suspended') {
         await audioCtxRef.current.resume()
       }
+
+      // Unlock HTMLAudioElement playback inside the user gesture (required on iPhone).
+      if (!audioRef.current) {
+        const audio = document.createElement('audio')
+        audio.setAttribute('playsinline', 'true')
+        audio.setAttribute('webkit-playsinline', 'true')
+        audio.preload = 'auto'
+        audio.style.display = 'none'
+        document.body.appendChild(audio)
+        audioRef.current = audio
+      }
+
+      // Tiny silent wav — must play during the hold gesture.
+      const silent =
+        'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA=='
+      const el = audioRef.current
+      el.src = silent
+      el.volume = 0.01
+      try {
+        await el.play()
+        el.pause()
+        el.currentTime = 0
+      } catch {
+        // ignore unlock failures; Play button still works with a fresh gesture
+      }
     } catch {
       // ignore
     }
   }
 
-  const stopStream = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
+  const playViaWebAudio = async (base64: string) => {
+    const AC = window.AudioContext || (window as any).webkitAudioContext
+    if (!AC) throw new Error('No AudioContext')
+    if (!audioCtxRef.current) audioCtxRef.current = new AC()
+    const ctx = audioCtxRef.current
+    if (ctx.state === 'suspended') await ctx.resume()
+
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const audioBuffer = await ctx.decodeAudioData(bytes.buffer.slice(0))
+    const source = ctx.createBufferSource()
+    source.buffer = audioBuffer
+    source.connect(ctx.destination)
+    await new Promise<void>((resolve, reject) => {
+      source.onended = () => resolve()
+      try {
+        source.start(0)
+      } catch (err) {
+        reject(err)
+      }
+    })
   }
 
   const playBase64Audio = async (base64: string) => {
+    if (!base64) return
+    setAliceSpeaking(true)
+    setStatus('Speaking…')
+    setError('')
+
+    let objectUrl: string | null = null
     try {
       await unlockAudio()
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.src = ''
-        audioRef.current = null
+
+      // Prefer blob URLs — large data: URLs often fail on iOS WKWebView.
+      objectUrl = base64ToBlobUrl(base64)
+      const audio = audioRef.current || document.createElement('audio')
+      if (!audioRef.current) {
+        audio.setAttribute('playsinline', 'true')
+        audio.setAttribute('webkit-playsinline', 'true')
+        audio.preload = 'auto'
+        audio.style.display = 'none'
+        document.body.appendChild(audio)
+        audioRef.current = audio
       }
-      setAliceSpeaking(true)
-      setStatus('Speaking…')
-      const audio = new Audio(`data:audio/mpeg;base64,${base64}`)
-      audioRef.current = audio
-      audio.onended = () => {
-        setAliceSpeaking(false)
-        setStatus('')
-      }
-      audio.onerror = () => {
-        setAliceSpeaking(false)
-        setStatus('')
-      }
-      await audio.play()
+
+      audio.pause()
+      audio.src = objectUrl
+      audio.volume = 1
+
+      await new Promise<void>((resolve, reject) => {
+        const onEnded = () => {
+          cleanup()
+          resolve()
+        }
+        const onError = () => {
+          cleanup()
+          reject(new Error('audio element error'))
+        }
+        const cleanup = () => {
+          audio.removeEventListener('ended', onEnded)
+          audio.removeEventListener('error', onError)
+        }
+        audio.addEventListener('ended', onEnded)
+        audio.addEventListener('error', onError)
+        const playPromise = audio.play()
+        if (playPromise) {
+          playPromise.catch(reject)
+        }
+      })
     } catch (err) {
-      console.error('Could not play translation audio:', err)
-      setAliceSpeaking(false)
-      setStatus('')
-      setError('Could not play audio. Tap the speaker on a message to try again.')
+      console.warn('HTML audio play failed, trying Web Audio:', err)
+      try {
+        await playViaWebAudio(base64)
+      } catch (err2) {
+        console.error('Could not play translation audio:', err2)
+        // Soft prompt — don't scare with a hard error; Play still works on tap.
+        setStatus('Tap Play on the message to hear it')
+        setAliceSpeaking(false)
+        if (objectUrl) URL.revokeObjectURL(objectUrl)
+        return
+      }
     }
+
+    if (objectUrl) URL.revokeObjectURL(objectUrl)
+    setAliceSpeaking(false)
+    setStatus('')
   }
 
   const askAliceToSpeak = async (text: string, toLang: LangCode) => {
