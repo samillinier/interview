@@ -1,9 +1,0 @@
-/* Installer Live Translator — mobile SF font (phone + tablet). */
-
-@media (max-width: 1535px) {
-  .ios-installer-translate,
-  .ios-installer-translate *:not(svg):not(path):not(canvas) {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-  }
-}
