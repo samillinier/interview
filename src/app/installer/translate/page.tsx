@@ -29,6 +29,7 @@ type Turn = {
   toLang: LangCode
   original: string
   translated: string
+  audioBase64?: string | null
   createdAt: number
 }
 
@@ -59,6 +60,7 @@ export default function InstallerTranslatePage() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [recordingSide, setRecordingSide] = useState<'a' | 'b' | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [aliceSpeaking, setAliceSpeaking] = useState(false)
   const [status, setStatus] = useState('')
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -104,13 +106,80 @@ export default function InstallerTranslatePage() {
       await unlockAudio()
       if (audioRef.current) {
         audioRef.current.pause()
+        audioRef.current.src = ''
         audioRef.current = null
       }
+      setAliceSpeaking(true)
+      setStatus('Alice is speaking…')
       const audio = new Audio(`data:audio/mpeg;base64,${base64}`)
       audioRef.current = audio
+      audio.onended = () => {
+        setAliceSpeaking(false)
+        setStatus('')
+      }
+      audio.onerror = () => {
+        setAliceSpeaking(false)
+        setStatus('')
+      }
       await audio.play()
     } catch (err) {
-      console.error('Could not play translation audio:', err)
+      console.error('Could not play Alice audio:', err)
+      setAliceSpeaking(false)
+      setStatus('')
+      setError('Alice could not play audio. Tap the speaker on a message to try again.')
+    }
+  }
+
+  const askAliceToSpeak = async (text: string, toLang: LangCode) => {
+    const token = localStorage.getItem('installerToken')
+    if (!token || !text.trim()) return null
+    try {
+      setAliceSpeaking(true)
+      setStatus('Alice is speaking…')
+      const res = await fetch('/api/installer/translate', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          fromLang: toLang,
+          toLang,
+          speak: true,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.audioBase64) {
+        await playBase64Audio(data.audioBase64)
+        return data.audioBase64 as string
+      }
+      if (data.speakError) {
+        setError(data.speakError)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      if (!audioRef.current || audioRef.current.paused) {
+        setAliceSpeaking(false)
+        setStatus('')
+      }
+    }
+    return null
+  }
+
+  const replayAlice = async (turn: Turn) => {
+    if (aliceSpeaking || processing || recordingSide) return
+    await unlockAudio()
+    if (turn.audioBase64) {
+      await playBase64Audio(turn.audioBase64)
+      return
+    }
+    const audio = await askAliceToSpeak(turn.translated, turn.toLang)
+    if (audio) {
+      setTurns((prev) =>
+        prev.map((t) => (t.id === turn.id ? { ...t, audioBase64: audio } : t))
+      )
     }
   }
 
@@ -126,7 +195,7 @@ export default function InstallerTranslatePage() {
       const toLang = side === 'a' ? langB : langA
 
       setProcessing(true)
-      setStatus('Listening… translating…')
+      setStatus('Alice is listening…')
       setError('')
 
       try {
@@ -165,13 +234,25 @@ export default function InstallerTranslatePage() {
           toLang,
           original: data.original || '',
           translated: data.translated || '',
+          audioBase64: data.audioBase64 || null,
           createdAt: Date.now(),
         }
         setTurns((prev) => [...prev, turn])
-        setStatus('')
 
         if (data.audioBase64) {
           await playBase64Audio(data.audioBase64)
+        } else if (data.translated) {
+          // Fallback: ask Alice to speak the line if the first TTS pass failed
+          const audio = await askAliceToSpeak(data.translated, toLang)
+          if (audio) {
+            setTurns((prev) =>
+              prev.map((t) => (t.id === turn.id ? { ...t, audioBase64: audio } : t))
+            )
+          } else {
+            setStatus('Translation ready — tap speaker for Alice to say it')
+          }
+        } else {
+          setStatus('')
         }
       } catch (err: any) {
         setError(err?.message || 'Translation failed')
@@ -275,8 +356,8 @@ export default function InstallerTranslatePage() {
             <Languages className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg font-bold leading-tight">Live Translator</h1>
-            <p className="text-xs text-white/80 truncate">AI listens between both of you</p>
+            <h1 className="text-lg font-bold leading-tight">Alice Translator</h1>
+            <p className="text-xs text-white/80 truncate">Alice listens, then speaks the other language</p>
           </div>
         </div>
 
@@ -331,9 +412,9 @@ export default function InstallerTranslatePage() {
         {turns.length === 0 && !processing && (
           <div className="bg-white border border-slate-200/70 rounded-2xl p-5 text-center shadow-sm">
             <Volume2 className="w-8 h-8 text-brand-green mx-auto mb-2" />
-            <p className="text-sm font-semibold text-slate-900">Stand between both people</p>
+            <p className="text-sm font-semibold text-slate-900">Alice stands between both of you</p>
             <p className="text-sm text-slate-500 mt-1">
-              Hold the mic for who is speaking. AI hears them, translates, and reads it aloud in the other language.
+              Hold the mic for who is speaking. Alice hears them, translates, and speaks it aloud in the other language.
             </p>
           </div>
         )}
@@ -353,9 +434,25 @@ export default function InstallerTranslatePage() {
                     : 'bg-brand-green text-white border-brand-green'
                 }`}
               >
-                <p className={`text-[11px] font-semibold mb-1 ${turn.side === 'a' ? 'text-slate-400' : 'text-white/70'}`}>
-                  {langLabel(turn.fromLang)} → {langLabel(turn.toLang)}
-                </p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className={`text-[11px] font-semibold ${turn.side === 'a' ? 'text-slate-400' : 'text-white/70'}`}>
+                    {langLabel(turn.fromLang)} → {langLabel(turn.toLang)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void replayAlice(turn)}
+                    disabled={aliceSpeaking || processing || !!recordingSide || !turn.translated}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold disabled:opacity-40 ${
+                      turn.side === 'a'
+                        ? 'bg-brand-green/10 text-brand-green'
+                        : 'bg-white/15 text-white'
+                    }`}
+                    aria-label="Hear Alice say this again"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    Alice
+                  </button>
+                </div>
                 <p className={`text-sm ${turn.side === 'a' ? 'text-slate-600' : 'text-white/85'}`}>{turn.original}</p>
                 <p className={`text-base font-semibold mt-2 ${turn.side === 'a' ? 'text-slate-900' : 'text-white'}`}>
                   {turn.translated}
@@ -365,10 +462,10 @@ export default function InstallerTranslatePage() {
           ))}
         </AnimatePresence>
 
-        {processing && (
+        {(processing || aliceSpeaking) && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Translating with AI…
+            {aliceSpeaking ? 'Alice is speaking…' : 'Alice is translating…'}
           </div>
         )}
 

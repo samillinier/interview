@@ -60,10 +60,10 @@ async function translateText(text: string, fromLang: string, toLang: string) {
     messages: [
       {
         role: 'system',
-        content: `You are a live conversation interpreter standing between two people.
-Translate the user's message from ${fromName} into ${toName}.
-Return ONLY the translation — no quotes, no labels, no explanations.
-Keep meaning, tone, and short spoken style. If the input is empty or unclear noise, return an empty string.`,
+        content: `You are Alice, the live conversation interpreter for Floor Interior Services.
+You stand between two people and translate what one person just said from ${fromName} into ${toName}.
+Return ONLY the natural spoken translation Alice would say out loud — no quotes, no labels, no "they said", no explanations.
+Keep meaning, tone, and short conversational style. If the input is empty or unclear noise, return an empty string.`,
       },
       { role: 'user', content: text },
     ],
@@ -162,13 +162,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (fromLang === toLang) {
+      let audioBase64: string | null = null
+      let speakError: string | null = null
+      if (speak && originalText) {
+        try {
+          const audioBuffer = await generateSpeech(originalText)
+          audioBase64 = audioBuffer.toString('base64')
+        } catch (err: any) {
+          speakError = err?.message || 'Alice could not speak this line'
+        }
+      }
       return NextResponse.json({
         success: true,
         original: originalText,
         translated: originalText,
         fromLang,
         toLang,
-        audioBase64: null,
+        audioBase64,
+        speaker: 'Alice',
+        speakError,
       })
     }
 
@@ -187,12 +199,15 @@ export async function POST(request: NextRequest) {
     const translated = await translateText(originalText, fromLang, toLang)
 
     let audioBase64: string | null = null
+    let speakError: string | null = null
     if (speak && translated) {
       try {
+        // Same Alice voice used in the installer interview (OpenAI "nova")
         const audioBuffer = await generateSpeech(translated)
         audioBase64 = audioBuffer.toString('base64')
-      } catch (err) {
-        console.error('TTS failed (translation still returned):', err)
+      } catch (err: any) {
+        console.error('Alice TTS failed (translation still returned):', err)
+        speakError = err?.message || 'Alice could not speak this line'
       }
     }
 
@@ -203,6 +218,8 @@ export async function POST(request: NextRequest) {
       fromLang,
       toLang,
       audioBase64,
+      speaker: 'Alice',
+      speakError,
     })
   } catch (error: any) {
     console.error('Installer translate error:', error)
