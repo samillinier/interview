@@ -171,11 +171,16 @@ export default function UpdatesPage() {
       const photoUrls: string[] = []
       for (const photoFile of photoFiles) {
         const safeName = photoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-        const blob = await upload(`updates/${Date.now()}-${safeName}`, photoFile, {
-          access: 'public',
-          handleUploadUrl: '/api/blob/upload',
-        })
-        photoUrls.push(blob.url)
+        try {
+          const blob = await upload(`updates/${Date.now()}-${safeName}`, photoFile, {
+            access: 'public',
+            handleUploadUrl: '/api/blob/upload',
+          })
+          photoUrls.push(blob.url)
+        } catch (uploadErr: any) {
+          const detail = uploadErr?.message || 'upload failed'
+          throw new Error(`Could not upload "${photoFile.name}" (${detail})`)
+        }
       }
 
       const res = await fetch('/api/admin/updates', {
@@ -207,7 +212,7 @@ export default function UpdatesPage() {
       dispatchDashboardUpdatesChanged()
     } catch (err: any) {
       setError(err.message || 'Failed to create update')
-      setTimeout(() => setError(''), 5000)
+      setTimeout(() => setError(''), 10000)
     } finally {
       setSaving(false)
     }

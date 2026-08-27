@@ -49,8 +49,12 @@ export async function POST(request: Request) {
             'image/jpeg',
             'image/png',
             'image/jpg',
+            'image/webp',
+            'image/gif',
+            'image/heic',
+            'image/heif',
           ],
-          maximumSizeInBytes: 10 * 1024 * 1024, // 10MB
+          maximumSizeInBytes: 15 * 1024 * 1024, // 15MB
           tokenPayload: JSON.stringify({ pathname }),
         }
       },
