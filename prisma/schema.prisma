@@ -71,6 +71,15 @@ model CilioSyncState {
   message         String?
 }
 
+model RuhavikAuthState {
+  key                String    @id
+  accessToken        String?
+  tokenFetchedAt     DateTime?
+  lastLoginAttemptAt DateTime?
+  loginBlockedUntil  DateTime?
+  updatedAt          DateTime  @updatedAt
+}
+
 model CilioJobRecord {
   id                       String     @id @default(cuid())
   createdAt                DateTime   @default(now())

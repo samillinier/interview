@@ -8,6 +8,8 @@
  * Data: POST https://ruhavik.gurtam.space/api/platform (JSON-RPC 2.0)
  */
 
+import prisma from '@/lib/db'
+
 const RUHAVIK_USER = process.env.RUHAVIK_USERNAME || process.env.TRACCAR_USERNAME || ''
 const RUHAVIK_PASS = process.env.RUHAVIK_PASSWORD || process.env.TRACCAR_PASSWORD || ''
 const RUHAVIK_CLIENT_ID = process.env.RUHAVIK_CLIENT_ID || '00010000000000000300'
@@ -29,6 +31,53 @@ let lastLoginAttemptAt = 0
 let loginBlockedUntil = 0
 const MIN_LOGIN_GAP_MS = 60_000
 const LOGIN_LOCKOUT_MS = 15 * 60_000
+const AUTH_STATE_KEY = 'ruhavik'
+
+/**
+ * Serverless functions lose in-memory state on every cold start. Without a
+ * shared store, an expired env token makes each poll (10s) attempt a fresh
+ * Ruhavik login — a storm that trips Ruhavik's "strange activity" account lock.
+ * Persist token + lockout in the DB so every instance shares one login state.
+ */
+interface PersistedAuthState {
+  accessToken: string | null
+  tokenFetchedAt: number
+  lastLoginAttemptAt: number
+  loginBlockedUntil: number
+}
+
+async function readAuthState(): Promise<PersistedAuthState> {
+  try {
+    const row = await (prisma as any).ruhavikAuthState.findUnique({
+      where: { key: AUTH_STATE_KEY },
+    })
+    return {
+      accessToken: row?.accessToken ?? null,
+      tokenFetchedAt: row?.tokenFetchedAt ? new Date(row.tokenFetchedAt).getTime() : 0,
+      lastLoginAttemptAt: row?.lastLoginAttemptAt ? new Date(row.lastLoginAttemptAt).getTime() : 0,
+      loginBlockedUntil: row?.loginBlockedUntil ? new Date(row.loginBlockedUntil).getTime() : 0,
+    }
+  } catch {
+    return { accessToken: null, tokenFetchedAt: 0, lastLoginAttemptAt: 0, loginBlockedUntil: 0 }
+  }
+}
+
+async function writeAuthState(patch: {
+  accessToken?: string | null
+  tokenFetchedAt?: Date | null
+  lastLoginAttemptAt?: Date | null
+  loginBlockedUntil?: Date | null
+}): Promise<void> {
+  try {
+    await (prisma as any).ruhavikAuthState.upsert({
+      where: { key: AUTH_STATE_KEY },
+      create: { key: AUTH_STATE_KEY, ...patch },
+      update: patch,
+    })
+  } catch (e) {
+    console.error('[ruhavik] failed to persist auth state:', e)
+  }
+}
 
 function parseSetCookies(res: Response): string[] {
   const anyHeaders = res.headers as Headers & { getSetCookie?: () => string[] }
@@ -54,14 +103,29 @@ async function loginForToken(): Promise<string> {
   }
 
   const now = Date.now()
-  if (now < loginBlockedUntil) {
-    const mins = Math.ceil((loginBlockedUntil - now) / 60_000)
+  // Honor a lockout/rate-limit set by another serverless instance via the DB.
+  let persistedAttempt = 0
+  let persistedBlocked = 0
+  try {
+    const p = await readAuthState()
+    persistedAttempt = p.lastLoginAttemptAt
+    persistedBlocked = p.loginBlockedUntil
+  } catch {
+    /* fall through to in-memory state */
+  }
+  const lastAttempt = Math.max(lastLoginAttemptAt, persistedAttempt)
+  const blockedUntil = Math.max(loginBlockedUntil, persistedBlocked)
+
+  if (now < blockedUntil) {
+    const mins = Math.ceil((blockedUntil - now) / 60_000)
     throw new Error(`Ruhavik login temporarily paused (${mins}m) after account lock / rate limit`)
   }
-  if (now - lastLoginAttemptAt < MIN_LOGIN_GAP_MS) {
+  if (now - lastAttempt < MIN_LOGIN_GAP_MS) {
     throw new Error('Ruhavik login rate limited — retry in about a minute')
   }
+
   lastLoginAttemptAt = now
+  await writeAuthState({ lastLoginAttemptAt: new Date(now) })
 
   const loginUrl =
     `${LOGIN_BASE}/auth/login` +
@@ -100,7 +164,9 @@ async function loginForToken(): Promise<string> {
       code === '2001' ||
       /strange activity|locked|too many|rate/i.test(reason)
     ) {
-      loginBlockedUntil = Date.now() + LOGIN_LOCKOUT_MS
+      const until = Date.now() + LOGIN_LOCKOUT_MS
+      loginBlockedUntil = until
+      await writeAuthState({ loginBlockedUntil: new Date(until) })
       console.error('[ruhavik] login locked/rate-limited — pausing retries for 15m:', reason)
     }
     throw new Error(`Ruhavik login failed: ${reason}`)
@@ -127,6 +193,20 @@ async function getAccessToken(force = false): Promise<string> {
     return cachedToken
   }
 
+  // Shared cached token from the DB — avoids re-login on every cold start.
+  if (!force) {
+    const persisted = await readAuthState()
+    if (
+      persisted.accessToken &&
+      persisted.tokenFetchedAt &&
+      Date.now() - persisted.tokenFetchedAt < TOKEN_TTL_MS
+    ) {
+      cachedToken = persisted.accessToken
+      tokenFetchedAt = persisted.tokenFetchedAt
+      return persisted.accessToken
+    }
+  }
+
   // Optional static token — only for the first attempt. Once it 401s we switch
   // to username/password for the rest of the process lifetime.
   const envToken = process.env.RUHAVIK_ACCESS_TOKEN
@@ -137,6 +217,11 @@ async function getAccessToken(force = false): Promise<string> {
   cachedToken = await loginForToken()
   tokenFetchedAt = Date.now()
   preferLoginOverEnv = true
+  await writeAuthState({
+    accessToken: cachedToken,
+    tokenFetchedAt: new Date(tokenFetchedAt),
+    loginBlockedUntil: null,
+  })
   return cachedToken
 }
 
