@@ -39,6 +39,7 @@ import { AdminSidebar } from '@/components/AdminSidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { LinkifiedText } from '@/components/LinkifiedText'
+import { toYoutubeEmbedUrl } from '@/lib/youtube'
 
 type DashboardUpdate = {
   id: string
@@ -47,6 +48,7 @@ type DashboardUpdate = {
   title: string
   description: string
   photoUrl?: string | null
+  videoUrl?: string | null
   createdByEmail?: string | null
   createdByName?: string | null
   showNavBadge?: boolean
@@ -110,6 +112,7 @@ export default function UpdatesPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
+  const [videoUrl, setVideoUrl] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [navBadgeCount, setNavBadgeCount] = useState('')
@@ -157,6 +160,13 @@ export default function UpdatesPage() {
       return
     }
 
+    const trimmedVideo = videoUrl.trim()
+    if (trimmedVideo && !toYoutubeEmbedUrl(trimmedVideo)) {
+      setError('Please enter a valid YouTube link (or paste the YouTube iframe code).')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
     setSaving(true)
     setError('')
     setSuccess('')
@@ -179,6 +189,7 @@ export default function UpdatesPage() {
           title: trimmedTitle,
           description: text,
           photoUrls,
+          videoUrl: trimmedVideo || null,
           showNavBadge,
           navBadgeCount: showNavBadge && navBadgeCount.trim() ? navBadgeCount.trim() : null,
         }),
@@ -190,6 +201,7 @@ export default function UpdatesPage() {
       setTitle('')
       setDescription('')
       setPhotoFiles([])
+      setVideoUrl('')
       setShowNavBadge(false)
       setNavBadgeCount('')
       setSuccess('Update posted')
@@ -398,6 +410,30 @@ export default function UpdatesPage() {
                   ) : null}
                 </div>
               </div>
+              <div className="mt-4">
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">YouTube video (optional)</label>
+                <input
+                  type="text"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="Paste a YouTube link or iframe embed code"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                />
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Supports youtube.com, youtu.be, Shorts, or a full iframe snippet from YouTube Share → Embed.
+                </p>
+                {toYoutubeEmbedUrl(videoUrl) ? (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-black aspect-video max-w-2xl">
+                    <iframe
+                      src={toYoutubeEmbedUrl(videoUrl) || undefined}
+                      title="YouTube preview"
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : null}
+              </div>
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div className="select-none flex-1">
@@ -468,6 +504,7 @@ export default function UpdatesPage() {
             ) : (
               updates.map((update) => {
                 const photoUrls = getUpdatePhotoUrls(update)
+                const embedUrl = toYoutubeEmbedUrl(update.videoUrl || '')
                 return (
                 <article key={update.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="p-5">
@@ -503,6 +540,17 @@ export default function UpdatesPage() {
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                       <LinkifiedText text={update.description} />
                     </p>
+                    {embedUrl ? (
+                      <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-black aspect-video max-w-3xl">
+                        <iframe
+                          src={embedUrl}
+                          title={`${update.title} video`}
+                          className="h-full w-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : null}
                     {canCreate ? (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Navigation badge</div>

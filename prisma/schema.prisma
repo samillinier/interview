@@ -167,6 +167,7 @@ model DashboardUpdate {
   title          String
   description    String
   photoUrl       String?
+  videoUrl       String?
   createdByEmail String?
   createdByName  String?
   isActive       Boolean  @default(true)
@@ -283,6 +284,8 @@ model Installer {
   passwordResetTokenExpiresAt          DateTime?
   loginToken                           String?
   loginTokenExpiresAt                  DateTime?
+  lastPlatform                         String?
+  lastSeenAt                           DateTime?
   paymentAccountName                   String?
   paymentAccountNumber                 String?
   paymentAccountType                   String?
@@ -798,10 +801,25 @@ model Notification {
   attachmentName String?
   attachmentUrl  String?
   Installer      Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+  MessageReaction MessageReaction[]
 
   @@index([installerId])
   @@index([isRead])
   @@index([type])
+}
+
+model MessageReaction {
+  id             String       @id @default(cuid())
+  notificationId String
+  reactorId      String
+  reactorType    String       // 'admin' | 'installer'
+  reactorName    String?
+  emoji          String
+  createdAt      DateTime     @default(now())
+  Notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, reactorId, reactorType, emoji])
+  @@index([notificationId])
 }
 
 model DeviceToken {
@@ -966,6 +984,55 @@ model InventoryCycle {
   @@index([createdAt])
   @@index([cycleCountDate])
   @@index([workroom])
+}
+
+model TravelRequest {
+  id                String    @id @default(cuid())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // General
+  dateOfRequest     DateTime
+  travelerName      String
+  travelReason      String
+  chargeWorkroom    String
+
+  // Stays (hotel / airbnb)
+  stayType          String?
+  destinationCity   String?
+  checkInDate       DateTime?
+  checkOutDate      DateTime?
+  stayComments      String?
+
+  // Flights
+  departingFrom     String?
+  arrivingAt        String?
+  departureDate     DateTime?
+  arrivalDate       DateTime?
+  flightComments    String?
+
+  // Cars
+  vehiclePickupLocation  String?
+  vehicleReturnLocation  String?
+  vehiclePickupDate      DateTime?
+  vehicleReturnDate      DateTime?
+  licenseState           String?
+  licenseNumber          String?
+  carComments            String?
+  rideshareBudget        String?
+
+  // Review
+  status            String    @default("pending")
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  reviewNote        String?
+  createdByEmail    String?
+  createdByName     String?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([chargeWorkroom])
+  @@index([createdByEmail])
 }
 
 model Vehicle {

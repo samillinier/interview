@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { toYoutubeEmbedUrl } from '@/lib/youtube'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,6 +71,14 @@ export async function POST(request: NextRequest) {
       ? body.photoUrls.map((url: unknown) => String(url || '').trim()).filter(Boolean)
       : []
     const photoUrl = photoUrls.length > 1 ? JSON.stringify(photoUrls) : photoUrls[0] || String(body.photoUrl || '').trim()
+    const videoUrlRaw = String(body.videoUrl || '').trim()
+    const videoUrl = videoUrlRaw ? toYoutubeEmbedUrl(videoUrlRaw) : null
+    if (videoUrlRaw && !videoUrl) {
+      return NextResponse.json(
+        { error: 'Invalid YouTube URL. Paste a YouTube link or iframe embed code.' },
+        { status: 400, headers: noStoreHeaders }
+      )
+    }
     const showNavBadge = Boolean(body.showNavBadge)
     const navBadgeCountRaw = body.navBadgeCount
     const navBadgeCount =
@@ -91,6 +100,7 @@ export async function POST(request: NextRequest) {
         title,
         description,
         photoUrl: photoUrl || null,
+        videoUrl,
         createdByEmail: email || null,
         createdByName: session?.user?.name || null,
         showNavBadge,
