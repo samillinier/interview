@@ -50,6 +50,9 @@ import {
   ClipboardList,
   ClipboardCheck,
   Megaphone,
+  Smartphone,
+  Monitor,
+  Globe,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -188,6 +191,8 @@ interface Installer {
   automobileLiabilityExpiry?: string | null
   employersLiabilityExpiry?: string | null
   complianceStatus?: 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | null
+  lastPlatform?: string | null
+  lastSeenAt?: string | null
 }
 
 function formatPrimarySurfaceLabel(surface: string | null | undefined): string | null {
@@ -2235,6 +2240,19 @@ function DashboardPageContent() {
                         {installer.workroom ? (
                           <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
                             {installer.workroom}
+                          </span>
+                        ) : null}
+                        {installer.lastPlatform === 'native-app' ? (
+                          <span title="Using the mobile app" className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                            <Smartphone className="w-3 h-3" />App
+                          </span>
+                        ) : installer.lastPlatform === 'mobile-web' ? (
+                          <span title="Using mobile web" className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                            <Globe className="w-3 h-3" />Mobile Web
+                          </span>
+                        ) : installer.lastPlatform === 'desktop-web' ? (
+                          <span title="Using desktop web" className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                            <Monitor className="w-3 h-3" />Web
                           </span>
                         ) : null}
                         {formatPrimarySurfaceLabel(installer.primaryFlooringSurface) ? (

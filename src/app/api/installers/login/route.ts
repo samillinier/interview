@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import { classifyDevice } from '@/lib/deviceDetection'
 
 function getTokenSecret(): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
@@ -88,6 +89,17 @@ export async function POST(request: NextRequest) {
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
     }
     const token = generateToken(payload)
+
+    // Record how the installer is accessing the app (native app vs web).
+    const lastPlatform = classifyDevice(request.headers.get('user-agent'))
+    try {
+      await prisma.installer.update({
+        where: { id: installer.id },
+        data: { lastPlatform, lastSeenAt: new Date() },
+      })
+    } catch (err) {
+      console.error('Failed to record installer platform:', err)
+    }
 
     return NextResponse.json({
       success: true,

@@ -62,7 +62,10 @@ import {
   MoreVertical,
   Upload,
   Megaphone,
-  AlertTriangle
+  AlertTriangle,
+  Smartphone,
+  Monitor,
+  Globe
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -287,6 +290,8 @@ interface InstallerProfile {
   remarks?: string  // JSON array of admin remarks
   managerRemarks?: string  // JSON array of manager remarks
   photoUrl?: string
+  lastPlatform?: string | null
+  lastSeenAt?: string | null
   companyName?: string
   companyTitle?: string
   companyStreetAddress?: string
@@ -3506,6 +3511,32 @@ export default function InstallerProfileViewPage() {
                   >
                     {installer.firstName} {installer.lastName}
                   </motion.h2>
+                  {installer.lastPlatform && (
+                    <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
+                      {installer.lastPlatform === 'native-app' ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold">
+                          <Smartphone className="w-3.5 h-3.5" />
+                          App
+                        </span>
+                      ) : installer.lastPlatform === 'mobile-web' ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-xs font-bold">
+                          <Globe className="w-3.5 h-3.5" />
+                          Mobile Web
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-slate-100 text-slate-600 text-xs font-bold">
+                          <Monitor className="w-3.5 h-3.5" />
+                          Web
+                        </span>
+                      )}
+                      {installer.lastSeenAt && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
+                          <Clock className="w-3.5 h-3.5" />
+                          Last seen {new Date(installer.lastSeenAt).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {(() => {
                     const companyNameToShow = (isEditing ? companyName : installer.companyName) || ''
                     const workroomToShow = (isEditing ? workroom : installer.workroom) || ''
