@@ -38,6 +38,7 @@ import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { LinkifiedText } from '@/components/LinkifiedText'
 
 type DashboardUpdate = {
   id: string
@@ -499,7 +500,9 @@ export default function UpdatesPage() {
                       ) : null}
                       <h2 className="text-xl font-bold text-slate-900">{update.title}</h2>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{update.description}</p>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                      <LinkifiedText text={update.description} />
+                    </p>
                     {canCreate ? (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Navigation badge</div>
