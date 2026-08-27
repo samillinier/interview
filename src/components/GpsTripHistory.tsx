@@ -177,12 +177,9 @@ function TripRoutePreview({ points }: { points?: RoutePoint[] }) {
       })
       mapRef.current = map
 
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-        {
-          maxZoom: 19,
-        }
-      ).addTo(map)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+      }).addTo(map)
 
       const step = Math.max(1, Math.floor(points.length / 120))
       const latlngs: [number, number][] = points
