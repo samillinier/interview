@@ -160,12 +160,9 @@ export default function UpdatesPage() {
       return
     }
 
+    // Video is optional and must never block posting photos/text.
     const trimmedVideo = videoUrl.trim()
-    if (trimmedVideo && !toYoutubeEmbedUrl(trimmedVideo)) {
-      setError('Please enter a valid YouTube link (or paste the YouTube iframe code).')
-      setTimeout(() => setError(''), 5000)
-      return
-    }
+    const videoEmbedUrl = trimmedVideo ? toYoutubeEmbedUrl(trimmedVideo) : null
 
     setSaving(true)
     setError('')
@@ -189,7 +186,7 @@ export default function UpdatesPage() {
           title: trimmedTitle,
           description: text,
           photoUrls,
-          videoUrl: trimmedVideo || null,
+          videoUrl: videoEmbedUrl || null,
           showNavBadge,
           navBadgeCount: showNavBadge && navBadgeCount.trim() ? navBadgeCount.trim() : null,
         }),
@@ -422,6 +419,11 @@ export default function UpdatesPage() {
                 <p className="mt-1.5 text-xs text-slate-500">
                   Supports youtube.com, youtu.be, Shorts, or a full iframe snippet from YouTube Share → Embed.
                 </p>
+                {videoUrl.trim() && !toYoutubeEmbedUrl(videoUrl) ? (
+                  <p className="mt-1.5 text-xs font-medium text-amber-600">
+                    This link couldn't be recognized as a YouTube video. The update will still post, but without a video.
+                  </p>
+                ) : null}
                 {toYoutubeEmbedUrl(videoUrl) ? (
                   <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-black aspect-video max-w-2xl">
                     <iframe

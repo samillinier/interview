@@ -71,14 +71,10 @@ export async function POST(request: NextRequest) {
       ? body.photoUrls.map((url: unknown) => String(url || '').trim()).filter(Boolean)
       : []
     const photoUrl = photoUrls.length > 1 ? JSON.stringify(photoUrls) : photoUrls[0] || String(body.photoUrl || '').trim()
+    // Store a normalized embed URL when possible; otherwise skip the video.
+    // Never reject the whole update just because the optional video link is unparseable.
     const videoUrlRaw = String(body.videoUrl || '').trim()
     const videoUrl = videoUrlRaw ? toYoutubeEmbedUrl(videoUrlRaw) : null
-    if (videoUrlRaw && !videoUrl) {
-      return NextResponse.json(
-        { error: 'Invalid YouTube URL. Paste a YouTube link or iframe embed code.' },
-        { status: 400, headers: noStoreHeaders }
-      )
-    }
     const showNavBadge = Boolean(body.showNavBadge)
     const navBadgeCountRaw = body.navBadgeCount
     const navBadgeCount =
