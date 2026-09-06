@@ -2562,7 +2562,7 @@ function DashboardPageContent() {
                 <span className="font-semibold text-slate-900">
                   {Math.min(currentPage * itemsPerPage, totalCount)}
                 </span>{' '}
-                of <span className="font-semibold text-slate-900">{totalCount}</span> installers
+                of <span className="font-semibold text-slate-900">{totalCount}</span>
               </div>
               
               <div className="flex w-full justify-center overflow-x-auto lg:col-start-2">
