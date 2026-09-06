@@ -23,6 +23,7 @@ interface InstallerUser {
   firstName?: string
   lastName?: string
   email: string
+  accountType?: string
 }
 
 export default function InstallerLayoutClient({ children }: { children: React.ReactNode }) {
@@ -215,6 +216,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
       <InstallerMobileMenu
         pathname={pathname}
         notificationCount={notificationCount}
+        accountType={installer?.accountType}
         onLogout={handleLogout}
       />
       <div className={`flex-1 min-w-0 transition-all duration-300 ${sidebarOpen ? '2xl:ml-64' : '2xl:ml-20'} w-full max-w-full`}>

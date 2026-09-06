@@ -18,6 +18,7 @@
 		B92AFC4BE6B083DFD7142CAF /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 476B64B00C9333F1D5FB4B14 /* Pods_App.framework */; };
 		BBB000010000000100000001 /* splash.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = BBB000020000000200000002 /* splash.mp4 */; };
 		CCC000010000000100000001 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = CCC000020000000200000002 /* GoogleService-Info.plist */; };
+		DDD000010000000100000001 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD000020000000200000002 /* PushNotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		AAA000020000000200000002 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		BBB000020000000200000002 /* splash.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = splash.mp4; sourceTree = "<group>"; };
 		CCC000020000000200000002 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		DDD000020000000200000002 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		E9B3EFE9FDC5D3658F3520D1 /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -82,6 +84,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				AAA000020000000200000002 /* WebViewController.swift */,
+				DDD000020000000200000002 /* PushNotificationManager.swift */,
 				BBB000020000000200000002 /* splash.mp4 */,
 				CCC000020000000200000002 /* GoogleService-Info.plist */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -224,6 +227,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				AAA000010000000100000001 /* WebViewController.swift in Sources */,
+				DDD000010000000100000001 /* PushNotificationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -371,7 +375,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "FIS FastTrack";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fis.installer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -400,7 +404,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "FIS FastTrack";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fis.installer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

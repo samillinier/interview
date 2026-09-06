@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -19,14 +19,14 @@ import {
 const corporateGroups = [
   {
     title: 'Corporate Tools',
-    description: 'Open dedicated workspaces for claims and each corporate document section (BTR, firm lead, licence, LRRP, liability).',
+    description: '',
     cards: [
       {
         title: 'Claims',
         description: 'Manage claim records, loss details, installer links, status updates, and notes.',
         href: '/dashboard/corporate/claims',
         icon: FileText,
-        cta: 'Open claims',
+        cta: 'Claims',
         highlights: ['Claim queue', 'Loss tracking', 'Status updates'],
       },
       {
@@ -34,7 +34,7 @@ const corporateGroups = [
         description: 'Create pad orders and bill of lading — track items, quantities, and warehouse receipts by workroom.',
         href: '/dashboard/corporate/bol',
         icon: Truck,
-        cta: 'Open BOL',
+        cta: 'BOL',
         highlights: [] as string[],
       },
       {
@@ -42,7 +42,7 @@ const corporateGroups = [
         description: 'Request pad transfers between workrooms — track requestor, receiving, fulfillment, method, and costs.',
         href: '/dashboard/corporate/pad-transfer',
         icon: ArrowLeftRight,
-        cta: 'Open Pad Transfer',
+        cta: 'Pad Transfer',
         highlights: [] as string[],
       },
       {
@@ -50,8 +50,16 @@ const corporateGroups = [
         description: 'Track cycle counts — log full roll and linear feet counts by pad type and workroom.',
         href: '/dashboard/corporate/inventory-cycle',
         icon: ClipboardList,
-        cta: 'Open Inventory Cycle',
+        cta: 'Inventory Cycle',
         highlights: [] as string[],
+      },
+      {
+        title: 'Travel Request',
+        description: 'Submit and review employee business travel, hotel, flight, and car rental requests by workroom.',
+        href: '/dashboard/corporate/travel-request',
+        icon: Plane,
+        cta: 'Travel Request',
+        highlights: ['Hotel & flights', 'Car rentals', 'Review & approve'],
       },
       ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
         title: section.title,
@@ -77,18 +85,21 @@ export default function CorporatePage() {
   const [pendingBolCount, setPendingBolCount] = useState(0)
   const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
+  const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
 
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [bolRes, ptRes, icRes] = await Promise.all([
+        const [bolRes, ptRes, icRes, travelRes] = await Promise.all([
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
+          fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
         ])
         if (bolRes.ok) { const d = await bolRes.json(); setPendingBolCount(Number(d?.count ?? 0)) }
         if (ptRes.ok) { const d = await ptRes.json(); setPendingPadTransferCount(Number(d?.count ?? 0)) }
         if (icRes.ok) { const d = await icRes.json(); setPendingInventoryCycleCount(Number(d?.count ?? 0)) }
+        if (travelRes.ok) { const d = await travelRes.json(); setPendingTravelRequestCount(Number(d?.count ?? 0)) }
       } catch {}
     }
     loadCounts()
@@ -204,9 +215,9 @@ export default function CorporatePage() {
 
                           <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
                             {card.cta}
-                            {(card.title === 'BOL' && pendingBolCount > 0) || (card.title === 'Pad Transfer' && pendingPadTransferCount > 0) || (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) ? (
+                            {(card.title === 'BOL' && pendingBolCount > 0) || (card.title === 'Pad Transfer' && pendingPadTransferCount > 0) || (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) || (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ? (
                               <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
-                                {card.title === 'BOL' ? pendingBolCount : card.title === 'Pad Transfer' ? pendingPadTransferCount : pendingInventoryCycleCount}
+                                {card.title === 'BOL' ? pendingBolCount : card.title === 'Pad Transfer' ? pendingPadTransferCount : card.title === 'Inventory Cycle' ? pendingInventoryCycleCount : pendingTravelRequestCount}
                               </span>
                             ) : null}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

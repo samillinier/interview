@@ -170,12 +170,15 @@
     border: none !important;
     box-shadow: none !important;
     border-radius: 10px !important;
-    height: calc(100vh - 280px) !important;
-    min-height: 420px !important;
+    height: calc(100dvh - 280px) !important;
+    min-height: 380px !important;
+    max-height: none !important;
   }
 
   .ios-installer-notifications .ios-notif-chat .custom-scrollbar {
     padding: 12px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
   }
 
   .ios-installer-notifications .ios-notif-chat .rounded-3xl {

@@ -37,6 +37,7 @@ export async function GET(
             photoUrl: true,
           },
         },
+        MessageReaction: true,
       },
       orderBy: {
         createdAt: 'asc', // Oldest first for chat view

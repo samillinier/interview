@@ -32,7 +32,10 @@ import {
   ClipboardList,
   ClipboardCheck,
   FileText,
-  Megaphone
+  Megaphone,
+  CheckSquare,
+  MoreVertical,
+  CreditCard
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -40,8 +43,14 @@ import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import {
+  MessageReactions,
+  MessageReactionButton,
+  type MessageReaction,
+} from '@/components/MessageReactions'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { LinkifiedText } from '@/components/LinkifiedText'
 
 interface Installer {
   id: string
@@ -66,12 +75,13 @@ interface Message {
   senderType?: string
   attachmentUrl?: string
   attachmentName?: string
-  installer: {
+  MessageReaction?: MessageReaction[]
+  Installer: {
     id: string
     firstName: string
     lastName: string
     email: string
-    photoUrl?: string
+    photoUrl?: string | null
   }
 }
 
@@ -96,6 +106,7 @@ export default function MessagesPage() {
   const [updatesCount, setUpdatesCount] = useState(0)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
+  const [reactionOverrides, setReactionOverrides] = useState<Record<string, MessageReaction[]>>({})
   const [isSending, setIsSending] = useState(false)
   const [isUploadingFile, setIsUploadingFile] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -106,6 +117,7 @@ export default function MessagesPage() {
   const [composerMode, setComposerMode] = useState<'installer' | 'email'>('installer')
   const [composerSearchQuery, setComposerSearchQuery] = useState('')
   const [composerInstaller, setComposerInstaller] = useState<Installer | null>(null)
+  const [composerSelectAll, setComposerSelectAll] = useState(false)
   const [composerEmail, setComposerEmail] = useState('')
   const [composerSubject, setComposerSubject] = useState('Message from Floor Interior Services')
   const [composerContent, setComposerContent] = useState('')
@@ -115,6 +127,8 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -226,6 +240,17 @@ export default function MessagesPage() {
     scrollToBottom()
   }, [messages])
 
+  // Close the profile menu when clicking outside of it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -274,12 +299,12 @@ export default function MessagesPage() {
         
         if (!conversationMap.has(installerId)) {
           const installer = installersList.find((i: any) => i.id === installerId) || {
-            id: message.installer.id,
-            firstName: message.installer.firstName,
-            lastName: message.installer.lastName,
-            email: message.installer.email,
+            id: message.Installer.id,
+            firstName: message.Installer.firstName,
+            lastName: message.Installer.lastName,
+            email: message.Installer.email,
             status: 'pending',
-            photoUrl: message.installer.photoUrl
+            photoUrl: message.Installer.photoUrl
           }
           conversationMap.set(installerId, {
             installer,
@@ -477,6 +502,7 @@ export default function MessagesPage() {
     setComposerMode('installer')
     setComposerSearchQuery('')
     setComposerInstaller(null)
+    setComposerSelectAll(false)
     setComposerEmail('')
     setComposerSubject('Message from Floor Interior Services')
     setComposerContent('')
@@ -490,8 +516,8 @@ export default function MessagesPage() {
       return
     }
 
-    if (composerMode === 'installer' && !composerInstaller) {
-      setError('Please choose an installer.')
+    if (composerMode === 'installer' && !composerInstaller && !composerSelectAll) {
+      setError('Please choose an installer or select all installers.')
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -515,7 +541,7 @@ export default function MessagesPage() {
         body: JSON.stringify(
           composerMode === 'installer'
             ? {
-                installerIds: [composerInstaller!.id],
+                installerIds: composerSelectAll ? installers.map((i) => i.id) : [composerInstaller!.id],
                 type: 'message',
                 title: 'Message',
                 content: composerContent.trim(),
@@ -538,13 +564,20 @@ export default function MessagesPage() {
       }
 
       const sentInstaller = composerInstaller
+      const sentToAll = composerSelectAll
       resetComposer()
       if (composerMode === 'installer' && sentInstaller) {
         setSelectedInstaller(sentInstaller)
         await fetchMessagesForInstaller(sentInstaller.id)
         await fetchAllMessages()
       }
-      setSuccess(composerMode === 'installer' ? 'Message and email sent!' : 'Email sent!')
+      setSuccess(
+        composerMode === 'installer'
+          ? sentToAll
+            ? `Message sent to all ${installers.length} installers!`
+            : 'Message and email sent!'
+          : 'Email sent!'
+      )
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       console.error('Error sending composer message:', err)
@@ -561,6 +594,10 @@ export default function MessagesPage() {
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+  }
+
+  const handleReactionsToggled = (id: string) => (reactions: MessageReaction[]) => {
+    setReactionOverrides((prev) => ({ ...prev, [id]: reactions }))
   }
 
   const formatTime = (dateString: string) => {
@@ -689,7 +726,30 @@ export default function MessagesPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                       To
                     </label>
-                    {composerInstaller ? (
+                    {composerSelectAll ? (
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-brand-green/30 bg-brand-green/5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-brand-green text-white flex items-center justify-center font-semibold flex-shrink-0">
+                            <CheckSquare className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900">
+                              All installers
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {installers.length} installer{installers.length === 1 ? '' : 's'} will receive this message
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setComposerSelectAll(false)}
+                          className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : composerInstaller ? (
                       <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-brand-green/30 bg-brand-green/5">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-full bg-brand-green text-white flex items-center justify-center font-semibold flex-shrink-0">
@@ -712,15 +772,32 @@ export default function MessagesPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setComposerSelectAll(true)
+                            setComposerInstaller(null)
+                          }}
+                          className="w-full flex items-center gap-3 p-3 rounded-2xl border border-brand-green/30 bg-brand-green/5 text-left hover:bg-brand-green/10 transition-colors"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-brand-green text-white flex items-center justify-center font-semibold flex-shrink-0">
+                            <CheckSquare className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900">Select all installers</p>
+                            <p className="text-sm text-slate-500">
+                              Send to every installer ({installers.length} total)
+                            </p>
+                          </div>
+                        </button>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                           <input
                             type="text"
                             value={composerSearchQuery}
                             onChange={(e) => setComposerSearchQuery(e.target.value)}
-                            placeholder="Search installer by name or email..."
+                            placeholder="Or search installer by name or email..."
                             className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
-                            autoFocus
                           />
                         </div>
                         <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-200 divide-y divide-slate-100">
@@ -807,7 +884,7 @@ export default function MessagesPage() {
                   disabled={
                     isComposerSending ||
                     !composerContent.trim() ||
-                    (composerMode === 'installer' && !composerInstaller) ||
+                    (composerMode === 'installer' && !composerInstaller && !composerSelectAll) ||
                     (composerMode === 'email' && (!composerEmail.trim() || !composerSubject.trim()))
                   }
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -981,6 +1058,63 @@ export default function MessagesPage() {
                   </p>
                   <p className="text-sm text-slate-500">{selectedInstaller.email}</p>
                 </div>
+                <div className="relative flex-shrink-0" ref={profileMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileMenu((prev) => !prev)}
+                    className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
+                    aria-label="Installer options"
+                    title="More options"
+                  >
+                    <MoreVertical className="w-5 h-5 text-slate-600" />
+                  </button>
+
+                  <AnimatePresence>
+                    {showProfileMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-20"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProfileMenu(false)
+                            router.push(`/dashboard/installers/${selectedInstaller.id}`)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                        >
+                          <User className="w-4 h-4 text-slate-500" />
+                          <span className="text-sm font-semibold text-slate-800">View Installer Profile</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProfileMenu(false)
+                            router.push(`/dashboard/installers/${selectedInstaller.id}#digital-id`)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+                        >
+                          <CreditCard className="w-4 h-4 text-slate-500" />
+                          <span className="text-sm font-semibold text-slate-800">View Digital Badge</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProfileMenu(false)
+                            router.push(`/dashboard/installers/${selectedInstaller.id}#team-members`)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+                        >
+                          <Users className="w-4 h-4 text-slate-500" />
+                          <span className="text-sm font-semibold text-slate-800">View Team Members</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
               {/* Messages */}
@@ -997,11 +1131,9 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   <AnimatePresence>
-                    {messages.map((message, index) => {
+                    {messages.map((message) => {
                       const isFromAdmin = !message.senderId || message.senderId === 'admin'
-                      const showAvatar = index === 0 || 
-                        (isFromAdmin && messages[index - 1].senderId !== message.senderId) ||
-                        (!isFromAdmin && messages[index - 1].senderId !== message.senderId)
+                      const showAvatar = true
                       return (
                         <motion.div
                           key={message.id}
@@ -1011,34 +1143,17 @@ export default function MessagesPage() {
                             duration: 0.3,
                             ease: [0.4, 0, 0.2, 1]
                           }}
-                          className={`flex items-end gap-3 mb-4 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}
+                          className={`flex flex-col mb-4 ${isFromAdmin ? 'items-end' : 'items-start'}`}
                         >
-                          {/* Avatar for admin messages (company logo) */}
-                          {isFromAdmin && (
-                            <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
-                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-white">
-                                <Image
-                                  src={logo}
-                                  alt="Company Logo"
-                                  width={40}
-                                  height={40}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
-
+                          <div className={`flex items-end gap-3 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
                           {/* Avatar for installer messages */}
                             {!isFromAdmin && (
                             <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                               <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
-                                {message.installer?.photoUrl ? (
+                                {message.Installer?.photoUrl ? (
                                   <Image
-                                    src={message.installer.photoUrl}
-                                    alt={`${message.installer.firstName} ${message.installer.lastName}`}
+                                    src={message.Installer.photoUrl}
+                                    alt={`${message.Installer.firstName} ${message.Installer.lastName}`}
                                     width={40}
                                     height={40}
                                     className="w-full h-full object-cover relative z-10"
@@ -1055,10 +1170,10 @@ export default function MessagesPage() {
                                   />
                                 ) : null}
                                 <div className={`w-full h-full flex items-center justify-center initials-fallback ${
-                                  message.installer?.photoUrl ? 'absolute inset-0 z-0' : ''
-                                }`} style={{ display: message.installer?.photoUrl ? 'none' : 'flex' }}>
+                                  message.Installer?.photoUrl ? 'absolute inset-0 z-0' : ''
+                                }`} style={{ display: message.Installer?.photoUrl ? 'none' : 'flex' }}>
                                   <span className="text-white font-bold text-sm">
-                                    {message.installer ? getInitials(message.installer.firstName, message.installer.lastName) : 'I'}
+                                    {message.Installer ? getInitials(message.Installer.firstName, message.Installer.lastName) : 'I'}
                                   </span>
                                 </div>
                               </div>
@@ -1094,7 +1209,7 @@ export default function MessagesPage() {
                                     ? 'text-white font-medium' 
                                     : 'text-slate-800 font-normal'
                                 }`}>
-                                  {message.content}
+                                  <LinkifiedText text={message.content} />
                                 </p>
                               )}
                               
@@ -1148,22 +1263,52 @@ export default function MessagesPage() {
                                 </a>
                               )}
                             </motion.div>
-
-                            {/* Timestamp and Read Status */}
-                            <div className={`flex items-center gap-2 mt-1.5 px-2 ${isFromAdmin ? 'flex-row-reverse' : ''}`}>
-                              <span className="text-xs text-slate-500 font-medium">
-                                {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              {isFromAdmin && message.isRead && (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-brand-green" />
-                              )}
-                            </div>
                           </div>
 
-                          {/* Spacer for admin messages to align properly */}
+                          {/* Avatar for admin messages (company logo) - on the right */}
                           {isFromAdmin && (
-                            <div className="w-10 flex-shrink-0" />
+                            <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-white">
+                                <Image
+                                  src={logo}
+                                  alt="Company Logo"
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                            </div>
                           )}
+                          </div>
+
+                          {/* Timestamp and Read Status */}
+                          <div className={`flex items-center gap-2 mt-1.5 px-2 ${isFromAdmin ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-xs text-slate-500 font-medium">
+                              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {isFromAdmin && message.isRead && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-brand-green" />
+                            )}
+                          </div>
+
+                          {/* Reactions */}
+                          <div className={`flex items-center gap-1.5 mt-1.5 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
+                            <MessageReactionButton
+                              messageId={message.id}
+                              align={isFromAdmin ? 'right' : 'left'}
+                              onToggled={handleReactionsToggled(message.id)}
+                            />
+                            <MessageReactions
+                              messageId={message.id}
+                              reactions={reactionOverrides[message.id] || message.MessageReaction || []}
+                              viewer={{ id: (session?.user?.email || '').toLowerCase(), type: 'admin' }}
+                              align={isFromAdmin ? 'right' : 'left'}
+                              onToggled={handleReactionsToggled(message.id)}
+                            />
+                          </div>
                         </motion.div>
                       )
                     })}

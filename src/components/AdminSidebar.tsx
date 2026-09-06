@@ -23,6 +23,7 @@ import {
   Package,
   PanelLeftClose,
   PanelLeftOpen,
+  Plane,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -84,12 +85,13 @@ export function AdminSidebar({ pathname }: Props) {
   const [pendingBolCount, setPendingBolCount] = useState(0)
   const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
+  const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, messagesRes, bolRes, padTransferRes, invCycleRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, messagesRes, bolRes, padTransferRes, invCycleRes, travelRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
@@ -97,6 +99,7 @@ export function AdminSidebar({ pathname }: Props) {
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
+          fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
         ])
 
         if (cancelled) return
@@ -146,6 +149,12 @@ export function AdminSidebar({ pathname }: Props) {
           const count = Number(data?.count ?? 0)
           if (Number.isFinite(count)) setPendingInventoryCycleCount(count)
         }
+
+        if (travelRes.ok) {
+          const data = await travelRes.json().catch(() => null)
+          const count = Number(data?.count ?? 0)
+          if (Number.isFinite(count)) setPendingTravelRequestCount(count)
+        }
       } catch {
         // Badges are helpful, but navigation should still render if a count fails.
       }
@@ -184,6 +193,7 @@ export function AdminSidebar({ pathname }: Props) {
             { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
             { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
             { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
+            { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
@@ -220,7 +230,7 @@ export function AdminSidebar({ pathname }: Props) {
       })
     }
     if (normalizedRole === 'SUPER_ADMIN') {
-      const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount
+      const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount
       portalNav.push({
         href: '/dashboard/corporate',
         label: 'Corporate',
@@ -233,7 +243,7 @@ export function AdminSidebar({ pathname }: Props) {
     if (portalNav.length === 0) return filtered
 
     return [...filtered, ...portalNav]
-  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount])
+  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount])
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 

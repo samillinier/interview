@@ -19,7 +19,13 @@ import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
+import {
+  MessageReactions,
+  MessageReactionButton,
+  type MessageReaction,
+} from '@/components/MessageReactions'
 import { PUSH_RECEIVED_EVENT } from '@/hooks/usePushNotifications'
+import { LinkifiedText } from '@/components/LinkifiedText'
 import './installer-notifications-mobile.css'
 
 interface Notification {
@@ -36,6 +42,7 @@ interface Notification {
   priority: 'low' | 'normal' | 'high' | 'urgent'
   attachmentUrl?: string | null
   attachmentName?: string | null
+  MessageReaction?: MessageReaction[]
 }
 
 export default function NotificationsPage() {
@@ -53,8 +60,10 @@ export default function NotificationsPage() {
   const [filePreview, setFilePreview] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [reactionOverrides, setReactionOverrides] = useState<Record<string, MessageReaction[]>>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const activeTabRef = useRef(activeTab)
   const notificationsSigRef = useRef('')
 
@@ -62,6 +71,10 @@ export default function NotificationsPage() {
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+  }
+
+  const handleReactionsToggled = (id: string) => (reactions: MessageReaction[]) => {
+    setReactionOverrides((prev) => ({ ...prev, [id]: reactions }))
   }
 
   const setNativeAppBadge = (count: number) => {
@@ -467,6 +480,9 @@ export default function NotificationsPage() {
 
       // Clear input and refresh messages
       setMessageContent('')
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto'
+      }
       handleRemoveFile()
       await loadNotifications()
       
@@ -510,7 +526,7 @@ export default function NotificationsPage() {
 
   const unreadCount = {
     notification: notifications.filter(n => n.type === 'notification' && !n.isRead).length,
-    message: notifications.filter(n => n.type === 'message' && !n.isRead).length,
+    message: notifications.filter(n => n.type === 'message' && !n.isRead && n.senderType !== 'installer').length,
     news: notifications.filter(n => n.type === 'news' && !n.isRead).length,
   }
 
@@ -717,9 +733,9 @@ export default function NotificationsPage() {
 
         {activeTab === 'message' ? (
           // Chat UI for Messages
-          <div className="ios-notif-chat bg-white rounded-2xl shadow-lg border border-slate-200/60 flex flex-col" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
+          <div className="ios-notif-chat bg-white rounded-2xl shadow-lg border border-slate-200/60 flex flex-col" style={{ height: 'calc(100dvh - 300px)', minHeight: '440px' }}>
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {filteredNotifications.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
@@ -750,8 +766,9 @@ export default function NotificationsPage() {
                         key={message.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`flex ${isFromAdmin ? 'justify-start' : 'justify-end'} items-end gap-3` }
+                        className={`flex flex-col ${isFromAdmin ? 'items-start' : 'items-end'}`}
                       >
+                        <div className={`flex items-end gap-1.5 w-full ${isFromAdmin ? 'justify-start' : 'justify-end'}`}>
                         {/* Admin: avatar left, bubble right of it */}
                         {isFromAdmin && (
                           <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
@@ -770,6 +787,15 @@ export default function NotificationsPage() {
                           </div>
                         )}
 
+                        {/* Installer: reaction button on the outer (left) side */}
+                        {!isFromAdmin && (
+                          <MessageReactionButton
+                            messageId={message.id}
+                            align="right"
+                            onToggled={handleReactionsToggled(message.id)}
+                          />
+                        )}
+
                         <div className="max-w-[70%]">
                           <div className={`rounded-3xl px-6 py-5 shadow-lg ${
                               isFromAdmin
@@ -778,7 +804,7 @@ export default function NotificationsPage() {
                             }`}>
                               <p className={`text-lg leading-relaxed whitespace-pre-wrap font-medium ${
                                 isFromAdmin ? 'text-slate-900' : 'text-white'
-                              }`}>{message.content}</p>
+                              }`}><LinkifiedText text={message.content} /></p>
 
                               {attachmentUrl && (
                                 <div className={`mt-4 rounded-2xl p-4 border ${
@@ -842,14 +868,18 @@ export default function NotificationsPage() {
                                 </div>
                               )}
                             </div>
-                            <div className={`flex items-center gap-2 mt-2 px-3 ${isFromAdmin ? 'justify-start' : 'justify-end'}`}>
-                              <span className="text-sm text-slate-500 font-medium">
-                                {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
+                        </div>
 
-                        {/* Installer: bubble then photo on the far right */}
+                        {/* Admin: reaction button on the outer (right) side */}
+                        {isFromAdmin && (
+                          <MessageReactionButton
+                            messageId={message.id}
+                            align="left"
+                            onToggled={handleReactionsToggled(message.id)}
+                          />
+                        )}
+
+                        {/* Installer: avatar on the far right */}
                         {!isFromAdmin && (
                           <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                             <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
@@ -882,6 +912,23 @@ export default function NotificationsPage() {
                             </div>
                           </div>
                         )}
+                      </div>
+
+                        {/* Reactions + timestamp below the bubble */}
+                        <div className={`flex flex-col ${isFromAdmin ? 'items-start pl-[46px]' : 'items-end pr-[46px]'}`}>
+                          <MessageReactions
+                            messageId={message.id}
+                            reactions={reactionOverrides[message.id] || message.MessageReaction || []}
+                            viewer={installer?.id ? { id: installer.id, type: 'installer' } : undefined}
+                            align={isFromAdmin ? 'left' : 'right'}
+                            onToggled={handleReactionsToggled(message.id)}
+                          />
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm text-slate-500 font-medium">
+                              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
                       </motion.div>
                     )
                   })}
@@ -945,11 +992,17 @@ export default function NotificationsPage() {
                     </div>
                   )}
                   <textarea
+                    ref={textareaRef}
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
+                    onInput={(e) => {
+                      const el = e.currentTarget
+                      el.style.height = 'auto'
+                      el.style.height = `${Math.min(el.scrollHeight, 140)}px`
+                    }}
                     placeholder="Type a message..."
                     rows={1}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none overflow-y-auto"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()

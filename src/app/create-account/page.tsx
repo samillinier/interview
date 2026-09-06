@@ -16,9 +16,13 @@ function CreateAccountContent() {
   const installerIdParam = searchParams.get('installerId')
   const emailParam = searchParams.get('email')
   const ref = searchParams.get('ref')
+  const typeParam = searchParams.get('type')
+  const isEstimator = typeParam === 'estimator'
   
   const [email, setEmail] = useState((emailParam || '').trim())
   const [installerId, setInstallerId] = useState(installerIdParam || '')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [emailLocked, setEmailLocked] = useState(Boolean(emailParam?.trim()))
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,6 +67,11 @@ function CreateAccountContent() {
       return
     }
 
+    if (isEstimator && (!firstName.trim() || !lastName.trim())) {
+      setError('Please enter your first and last name')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -73,6 +82,9 @@ function CreateAccountContent() {
           installerId: installerId || undefined,
           email,
           referralCode: ref,
+          accountType: isEstimator ? 'estimator' : undefined,
+          firstName: isEstimator ? firstName.trim() : undefined,
+          lastName: isEstimator ? lastName.trim() : undefined,
         }),
       })
 
@@ -245,11 +257,13 @@ function CreateAccountContent() {
               />
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-primary-900 mb-2">
-              Create Your Account
+              {isEstimator ? 'Create Estimator Account' : 'Create Your Account'}
             </h1>
             <p className="text-primary-500">
               {emailLocked && email
                 ? `We'll send a verification link to ${email}.`
+                : isEstimator
+                ? 'Create your estimator account.'
                 : installerInfo?.firstName 
                 ? `Welcome, ${installerInfo.firstName}! Verify your email to get started.`
                 : "Enter your email to create your installer account. We'll send you a verification link."}
@@ -257,6 +271,36 @@ function CreateAccountContent() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isEstimator && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-900 focus:ring-0 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            )}
             {emailLocked && email ? (
               <div className="bg-primary-50 rounded-xl p-4">
                 <p className="text-xs font-medium text-primary-500 mb-1">Email</p>
@@ -327,6 +371,27 @@ function CreateAccountContent() {
               Sign in here
             </Link>
           </p>
+
+          {!isEstimator && (
+            <p className="text-xs text-center mt-3">
+              <Link
+                href="/create-account?type=estimator"
+                className="text-brand-green hover:underline"
+              >
+                Create Estimator Account
+              </Link>
+            </p>
+          )}
+          {isEstimator && (
+            <p className="text-xs text-primary-400 text-center mt-3 md:hidden">
+              <Link
+                href="/create-account"
+                className="text-primary-700 hover:underline"
+              >
+                Subcontractor? Create account here
+              </Link>
+            </p>
+          )}
         </div>
       </motion.div>
     </div>

@@ -233,6 +233,7 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
+        MessageReaction: true,
       },
       orderBy: {
         createdAt: 'desc',

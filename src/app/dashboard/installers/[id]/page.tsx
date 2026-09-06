@@ -53,6 +53,7 @@ import {
   Pencil,
   Trash2,
   Save,
+  Send,
   Users,
   Activity,
   ExternalLink,
@@ -292,6 +293,7 @@ interface InstallerProfile {
   photoUrl?: string
   lastPlatform?: string | null
   lastSeenAt?: string | null
+  accountType?: string | null
   companyName?: string
   companyTitle?: string
   companyStreetAddress?: string
@@ -399,6 +401,105 @@ export default function InstallerProfileViewPage() {
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
   const [isGeneratingContract, setIsGeneratingContract] = useState(false)
   const [isTogglingIcsSign, setIsTogglingIcsSign] = useState<string | null>(null) // agreement id being toggled
+  // Send Message / Notification from the profile "more options" menu
+  const [showSendMessageModal, setShowSendMessageModal] = useState(false)
+  const [showSendNotificationModal, setShowSendNotificationModal] = useState(false)
+  const [showRemarkModal, setShowRemarkModal] = useState(false)
+  const [messageContent, setMessageContent] = useState('')
+  const [notificationTitle, setNotificationTitle] = useState('')
+  const [notificationContent, setNotificationContent] = useState('')
+  const [notificationPriority, setNotificationPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal')
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [isSendingNotification, setIsSendingNotification] = useState(false)
+  const [messageHistory, setMessageHistory] = useState<any[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [messageInlineStatus, setMessageInlineStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const fetchMessageHistory = async (installerId: string) => {
+    setIsLoadingHistory(true)
+    try {
+      const response = await fetch(`/api/installers/${installerId}/notifications?type=message`)
+      const data = await response.json()
+      const list = (data.notifications || []).sort((a: any, b: any) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      setMessageHistory(list)
+    } catch (err) {
+      console.error('Error fetching message history:', err)
+      setMessageHistory([])
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!installer || !messageContent.trim()) return
+    setIsSendingMessage(true)
+    setError('')
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          installerIds: [installer.id],
+          type: 'message',
+          title: 'Message',
+          content: messageContent.trim(),
+          priority: 'normal',
+          senderId: 'admin',
+          senderType: 'admin',
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message.')
+      }
+      setMessageContent('')
+      setMessageInlineStatus({ type: 'success', text: 'Message sent!' })
+      setTimeout(() => setMessageInlineStatus(null), 4000)
+      // Refresh the conversation history so the new message appears immediately
+      await fetchMessageHistory(installer.id)
+    } catch (err: any) {
+      setMessageInlineStatus({ type: 'error', text: err.message || 'Failed to send message.' })
+      setTimeout(() => setMessageInlineStatus(null), 5000)
+    } finally {
+      setIsSendingMessage(false)
+    }
+  }
+
+  const handleSendNotification = async () => {
+    if (!installer || !notificationTitle.trim() || !notificationContent.trim()) return
+    setIsSendingNotification(true)
+    setError('')
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          installerIds: [installer.id],
+          type: 'notification',
+          title: notificationTitle.trim(),
+          content: notificationContent.trim(),
+          priority: notificationPriority,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send notification.')
+      }
+      setSuccess('Notification sent!')
+      setNotificationTitle('')
+      setNotificationContent('')
+      setNotificationPriority('normal')
+      setShowSendNotificationModal(false)
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err: any) {
+      setError(err.message || 'Failed to send notification.')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setIsSendingNotification(false)
+    }
+  }
   
   // Editable fields
   const [status, setStatus] = useState<string>('pending')
@@ -662,17 +763,21 @@ export default function InstallerProfileViewPage() {
     }
   }, [sessionStatus, installerId, router])
 
-  // Handle scrolling to attachments section when hash is present
+  // Handle scrolling to a specific section when a hash is present
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash === '#attachments') {
-      // Wait for content to load, then scroll
-      setTimeout(() => {
-        const element = document.getElementById('attachments')
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-      }, 500)
-    }
+    if (typeof window === 'undefined') return
+    const validHashes = ['#attachments', '#digital-id', '#team-members']
+    const hash = window.location.hash
+    if (!hash || !validHashes.includes(hash)) return
+
+    const targetId = hash.replace('#', '')
+    // Wait for content to load, then scroll
+    setTimeout(() => {
+      const element = document.getElementById(targetId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 500)
   }, [installer, isLoading])
 
   const fetchPendingApprovalsCount = async () => {
@@ -2334,6 +2439,7 @@ export default function InstallerProfileViewPage() {
       setRemarkNote('')
       setShowRemarkDate(false)
       setShowAddRemarkForm(false)
+      setShowRemarkModal(false)
       setSuccess('Remark saved successfully!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
@@ -2599,27 +2705,15 @@ export default function InstallerProfileViewPage() {
 
       let photoUrl = staffForm.photoUrl
 
-      // Upload photo if a new file is selected
+      // Upload photo if a new file is selected (direct-to-Blob to avoid serverless body limits)
       if (staffPhotoFile) {
         setIsUploadingStaffPhoto(true)
-        const formData = new FormData()
-        formData.append('photo', staffPhotoFile)
-        formData.append('installerId', installerId)
-        if (editingStaff) {
-          formData.append('staffMemberId', editingStaff.id)
-        }
-
-        const uploadResponse = await fetch(`/api/installers/${installerId}/staff/upload-photo`, {
-          method: 'POST',
-          body: formData,
+        const safeName = staffPhotoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+        const blob = await upload(`staff/${installerId}-${Date.now()}-${safeName}`, staffPhotoFile, {
+          access: 'public',
+          handleUploadUrl: '/api/blob/upload',
         })
-
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          photoUrl = uploadData.photoUrl
-        } else {
-          throw new Error('Failed to upload photo')
-        }
+        photoUrl = blob.url
         setIsUploadingStaffPhoto(false)
       }
 
@@ -2740,13 +2834,16 @@ export default function InstallerProfileViewPage() {
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('photo', file)
-      formData.append('installerId', installer.id)
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const blob = await upload(`profile-photos/${installer.id}-${Date.now()}-${safeName}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
+      })
 
       const response = await fetch('/api/installers/upload-photo', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ installerId: installer.id, photoUrl: blob.url }),
       })
 
       // Check if response is actually JSON
@@ -2921,6 +3018,7 @@ export default function InstallerProfileViewPage() {
   const remarkTitle = isManager ? 'Manager Remarks' : 'Admin Remarks'
   const remarkButtonTitle = isManager ? 'Manager Remark' : 'Admin Remark'
   const canShowManagerRemarksToAdmin = !isManager && managerRemarks.length > 0
+  const isEstimator = installer.accountType === 'estimator'
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -3271,6 +3369,46 @@ export default function InstallerProfileViewPage() {
                                   <Share2 className="w-4 h-4 text-slate-500" />
                                   <span className="font-medium">Share Profile</span>
                                 </button>
+                                <button
+                                  onClick={() => {
+                                    setShowShareDropdown(false)
+                                    setMessageContent('')
+                                    setMessageHistory([])
+                                    setMessageInlineStatus(null)
+                                    setShowSendMessageModal(true)
+                                    if (installer?.id) fetchMessageHistory(installer.id)
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                >
+                                  <MessageSquare className="w-4 h-4 text-slate-500" />
+                                  <span className="font-medium">Message</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowShareDropdown(false)
+                                    setNotificationTitle('')
+                                    setNotificationContent('')
+                                    setNotificationPriority('normal')
+                                    setShowSendNotificationModal(true)
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                >
+                                  <Bell className="w-4 h-4 text-slate-500" />
+                                  <span className="font-medium">Notification</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowShareDropdown(false)
+                                    setRemarkNote('')
+                                    setRemarkDate('')
+                                    setShowRemarkDate(false)
+                                    setShowRemarkModal(true)
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                >
+                                  <StickyNote className="w-4 h-4 text-slate-500" />
+                                  <span className="font-medium">Remark</span>
+                                </button>
                                 {false && (<button
                                   onClick={async () => {
                                     await handleGenerateIndependentContractorContract()
@@ -3511,6 +3649,14 @@ export default function InstallerProfileViewPage() {
                   >
                     {installer.firstName} {installer.lastName}
                   </motion.h2>
+                  {installer.accountType === 'estimator' && (
+                    <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold">
+                        <ClipboardList className="w-3.5 h-3.5" />
+                        Estimator
+                      </span>
+                    </div>
+                  )}
                   {installer.lastPlatform && (
                     <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
                       {installer.lastPlatform === 'native-app' ? (
@@ -3898,7 +4044,7 @@ export default function InstallerProfileViewPage() {
                 </div>
               </div>
 
-              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
+              <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50" id="digital-id">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
                     <CreditCard className="w-5 h-5 text-brand-green" />
@@ -3911,7 +4057,7 @@ export default function InstallerProfileViewPage() {
                         value={digitalId}
                         onChange={(e) => setDigitalId(e.target.value)}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
-                        placeholder="e.g., Installer ID, Badge #"
+                        placeholder="FADV wallet URL or dbId"
                       />
                     ) : (
                       installer.digitalId ? (
@@ -3964,6 +4110,7 @@ export default function InstallerProfileViewPage() {
                 </div>
               </div>
 
+              {!isEstimator && (
               <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -3992,6 +4139,7 @@ export default function InstallerProfileViewPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {installer.username && (
                 <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
@@ -4032,6 +4180,7 @@ export default function InstallerProfileViewPage() {
                 </div>
               </div>
 
+              {!isEstimator && (
               <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -4084,6 +4233,7 @@ export default function InstallerProfileViewPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               <div className="group relative p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 bg-slate-50/50">
                 <div className="flex items-start gap-3">
@@ -4356,11 +4506,13 @@ export default function InstallerProfileViewPage() {
           </motion.div>
 
           {/* Staff/Crew Members Section */}
+          {!isEstimator && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6"
+            id="team-members"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -4497,6 +4649,7 @@ export default function InstallerProfileViewPage() {
               </div>
             )}
           </motion.div>
+          )}
 
           {/* Assigned Jobs */}
           {scheduledJobs.length > 0 && (
@@ -6830,6 +6983,7 @@ export default function InstallerProfileViewPage() {
           </motion.div>
 
           {/* Carpet Installation Information */}
+          {!isEstimator && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -7024,8 +7178,10 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Hardwood Installation Information */}
+          {!isEstimator && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -7220,8 +7376,10 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Laminate Installation Information */}
+          {!isEstimator && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -7367,8 +7525,10 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Vinyl Installation Information */}
+          {!isEstimator && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -7690,8 +7850,10 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Tile Installation Information */}
+          {!isEstimator && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -8120,6 +8282,7 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
+          )}
 
           {/* Additional Work Information */}
           <motion.div
@@ -9327,13 +9490,64 @@ export default function InstallerProfileViewPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">State</label>
-                      <input
-                        type="text"
+                      <select
                         value={historyForm.companyState || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyState: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                        placeholder="State"
-                      />
+                      >
+                        <option value="">Select a state</option>
+                        <option value="AL">Alabama</option>
+                        <option value="AK">Alaska</option>
+                        <option value="AZ">Arizona</option>
+                        <option value="AR">Arkansas</option>
+                        <option value="CA">California</option>
+                        <option value="CO">Colorado</option>
+                        <option value="CT">Connecticut</option>
+                        <option value="DE">Delaware</option>
+                        <option value="FL">Florida</option>
+                        <option value="GA">Georgia</option>
+                        <option value="HI">Hawaii</option>
+                        <option value="ID">Idaho</option>
+                        <option value="IL">Illinois</option>
+                        <option value="IN">Indiana</option>
+                        <option value="IA">Iowa</option>
+                        <option value="KS">Kansas</option>
+                        <option value="KY">Kentucky</option>
+                        <option value="LA">Louisiana</option>
+                        <option value="ME">Maine</option>
+                        <option value="MD">Maryland</option>
+                        <option value="MA">Massachusetts</option>
+                        <option value="MI">Michigan</option>
+                        <option value="MN">Minnesota</option>
+                        <option value="MS">Mississippi</option>
+                        <option value="MO">Missouri</option>
+                        <option value="MT">Montana</option>
+                        <option value="NE">Nebraska</option>
+                        <option value="NV">Nevada</option>
+                        <option value="NH">New Hampshire</option>
+                        <option value="NJ">New Jersey</option>
+                        <option value="NM">New Mexico</option>
+                        <option value="NY">New York</option>
+                        <option value="NC">North Carolina</option>
+                        <option value="ND">North Dakota</option>
+                        <option value="OH">Ohio</option>
+                        <option value="OK">Oklahoma</option>
+                        <option value="OR">Oregon</option>
+                        <option value="PA">Pennsylvania</option>
+                        <option value="RI">Rhode Island</option>
+                        <option value="SC">South Carolina</option>
+                        <option value="SD">South Dakota</option>
+                        <option value="TN">Tennessee</option>
+                        <option value="TX">Texas</option>
+                        <option value="UT">Utah</option>
+                        <option value="VT">Vermont</option>
+                        <option value="VA">Virginia</option>
+                        <option value="WA">Washington</option>
+                        <option value="WV">West Virginia</option>
+                        <option value="WI">Wisconsin</option>
+                        <option value="WY">Wyoming</option>
+                        <option value="DC">District of Columbia</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Zip Code</label>
@@ -11167,6 +11381,314 @@ export default function InstallerProfileViewPage() {
                   <>
                     <Trash2 className="w-4 h-4" />
                     Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Send Message Modal */}
+      {showSendMessageModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="bg-gradient-to-r from-brand-green to-brand-green-dark px-6 py-5 border-b border-slate-200 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Send Message</h3>
+                  <p className="text-sm text-white/80 mt-0.5">
+                    To {installer?.firstName} {installer?.lastName}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Conversation History */}
+            <div className="px-6 pt-5 pb-2 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-slate-400" />
+                <h4 className="text-sm font-semibold text-slate-700">Conversation history</h4>
+                {isLoadingHistory && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+              </div>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1 min-h-0 bg-slate-50/50">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-brand-green" />
+                </div>
+              ) : messageHistory.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">
+                  No messages yet. Start the conversation below.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {messageHistory.map((msg: any) => {
+                    const isFromAdmin = !msg.senderId || msg.senderId === 'admin' || msg.senderType === 'admin'
+                    return (
+                      <div key={msg.id} className={`flex flex-col ${isFromAdmin ? 'items-end' : 'items-start'}`}>
+                        <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                          isFromAdmin
+                            ? 'bg-gradient-to-br from-brand-green to-brand-green-dark text-white rounded-br-md'
+                            : 'bg-white text-slate-800 border border-slate-200 rounded-bl-md'
+                        }`}>
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                        <span className="text-[11px] text-slate-400 mt-1 px-1">
+                          {new Date(msg.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Composer */}
+            <div className="px-6 py-4 border-t border-slate-200 flex-shrink-0">
+              {messageInlineStatus && (
+                <div className={`mb-3 p-3 rounded-xl flex items-center gap-2 text-sm ${
+                  messageInlineStatus.type === 'success'
+                    ? 'bg-green-50 border border-green-200 text-green-800'
+                    : 'bg-red-50 border border-red-200 text-red-800'
+                }`}>
+                  {messageInlineStatus.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  )}
+                  <span>{messageInlineStatus.text}</span>
+                </div>
+              )}
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Message <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+                placeholder="Type your message..."
+                rows={3}
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none"
+              />
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3 flex-shrink-0">
+              <button
+                onClick={() => setShowSendMessageModal(false)}
+                disabled={isSendingMessage}
+                className="px-5 py-2.5 border-2 border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleSendMessage}
+                disabled={isSendingMessage || !messageContent.trim()}
+                className="px-5 py-2.5 bg-brand-green text-white rounded-lg font-medium hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-brand-green/20"
+              >
+                {isSendingMessage ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send Message
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Send Notification Modal */}
+      {showSendNotificationModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-5 border-b border-slate-200">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Bell className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Send Notification</h3>
+                  <p className="text-sm text-white/80 mt-0.5">
+                    To {installer?.firstName} {installer?.lastName}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={notificationTitle}
+                  onChange={(e) => setNotificationTitle(e.target.value)}
+                  placeholder="Enter notification title"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Content <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={notificationContent}
+                  onChange={(e) => setNotificationContent(e.target.value)}
+                  placeholder="Enter notification content"
+                  rows={4}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Priority
+                </label>
+                <select
+                  value={notificationPriority}
+                  onChange={(e) => setNotificationPriority(e.target.value as 'low' | 'normal' | 'high' | 'urgent')}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green bg-white"
+                >
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowSendNotificationModal(false)}
+                disabled={isSendingNotification}
+                className="px-5 py-2.5 border-2 border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendNotification}
+                disabled={isSendingNotification || !notificationTitle.trim() || !notificationContent.trim()}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-blue-600/20"
+              >
+                {isSendingNotification ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send Notification
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Remark Modal */}
+      {showRemarkModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 border-b border-slate-200">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <StickyNote className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Add Remark</h3>
+                  <p className="text-sm text-white/80 mt-0.5">
+                    {installer?.firstName} {installer?.lastName}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-6 space-y-4">
+              {/* Date field - optional */}
+              {showRemarkDate ? (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={remarkDate}
+                    onChange={(e) => setRemarkDate(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowRemarkDate(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-brand-green hover:text-brand-green hover:bg-brand-green/5 transition-all"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Add Date (Optional)
+                </button>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Note <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={remarkNote}
+                  onChange={(e) => setRemarkNote(e.target.value)}
+                  placeholder={isManager ? 'Enter manager note...' : 'Enter admin note...'}
+                  rows={5}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowRemarkModal(false)
+                  setRemarkDate('')
+                  setRemarkNote('')
+                  setShowRemarkDate(false)
+                }}
+                disabled={isSavingRemark}
+                className="px-5 py-2.5 border-2 border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRemark}
+                disabled={isSavingRemark || !remarkNote.trim()}
+                className="px-5 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              >
+                {isSavingRemark ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Remark
                   </>
                 )}
               </button>

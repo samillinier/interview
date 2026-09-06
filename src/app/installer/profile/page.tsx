@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { upload } from '@vercel/blob/client'
 import { motion } from 'framer-motion'
 import { 
   User, 
@@ -52,7 +53,7 @@ import Image from 'next/image'
 import { MultiExpirationDatePicker } from '@/components/MultiExpirationDatePicker'
 import { InstallerBarcode } from '@/components/InstallerBarcode'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
-import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
+import { DigitalIdDisplay, isDigitalIdUrl } from '@/components/DigitalIdDisplay'
 import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
 import { IosProfileSection } from '@/components/installer-profile/IosProfileSection'
@@ -61,6 +62,7 @@ import {
   IosProfileEditBar,
 } from '@/components/installer-profile/IosProfileChrome'
 import { DeleteAccountSection } from '@/components/installer-profile/DeleteAccountSection'
+import { InstallerDigitalIdQuickAccess } from '@/components/installer-profile/InstallerDigitalIdQuickAccess'
 import './installer-profile-mobile.css'
 
 const US_STATES: { value: string; label: string }[] = [
@@ -288,6 +290,7 @@ interface InstallerProfile {
   workroom?: string
   username?: string
   status: string
+  accountType?: string
   trackerStage?: string
   yearsOfExperience?: number
   flooringSpecialties?: string
@@ -1306,24 +1309,19 @@ export default function InstallerProfilePage() {
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('photo', file)
-      formData.append('installerId', installer.id)
-
-      const response = await fetch('/api/installers/upload-photo', {
-        method: 'POST',
-        body: formData,
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const blob = await upload(`staff/${installer.id}-${Date.now()}-${safeName}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
       })
 
-      const data = await response.json()
-
-      if (data.success && data.photoUrl) {
-        setStaffForm({ ...staffForm, photoUrl: data.photoUrl })
+      if (blob?.url) {
+        setStaffForm({ ...staffForm, photoUrl: blob.url })
         setStaffFormImageError(false) // Reset error state when new photo is uploaded
         setSuccess('Photo uploaded successfully!')
         setTimeout(() => setSuccess(''), 3000)
       } else {
-        setError(data.error || 'Failed to upload photo')
+        setError('Failed to upload photo')
       }
     } catch (err: any) {
       console.error('Error uploading staff photo:', err)
@@ -1509,13 +1507,16 @@ export default function InstallerProfilePage() {
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('photo', file)
-      formData.append('installerId', installer.id)
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const blob = await upload(`profile-photos/${installer.id}-${Date.now()}-${safeName}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob/upload',
+      })
 
       const response = await fetch('/api/installers/upload-photo', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ installerId: installer.id, photoUrl: blob.url }),
       })
 
       // Check if response is actually JSON
@@ -1943,6 +1944,8 @@ export default function InstallerProfilePage() {
     )
   }
 
+  const isEstimator = installer?.accountType === 'estimator'
+
   return (
     <IosProfileRoot>
       {/* Main Content */}
@@ -1956,36 +1959,25 @@ export default function InstallerProfilePage() {
                 
                 {/* Profile Completion Progress */}
                 <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 border border-slate-200/60 shadow-sm">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-semibold text-slate-700">Profile Completion</p>
-                        <p className="text-lg font-bold bg-gradient-to-br from-brand-green to-brand-green-dark bg-clip-text text-transparent leading-tight">
-                          {profilePoints.percent}%
-                        </p>
-                      </div>
-                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${profilePoints.percent}%` }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
-                          className={`h-full rounded-full ${
-                            profilePoints.percent < 30
-                              ? 'bg-gradient-to-r from-red-400 to-red-500'
-                              : profilePoints.percent < 60
-                              ? 'bg-gradient-to-r from-amber-400 to-amber-500'
-                              : 'bg-gradient-to-r from-brand-green to-brand-green-dark'
-                          } shadow-lg`}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {profilePoints.percent === 100 && (
-                        <div className="w-12 h-12 rounded-full bg-success-100 flex items-center justify-center">
-                          <CheckCircle2 className="w-6 h-6 text-success-600" />
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-slate-700">Profile Completion</p>
+                    <p className="text-lg font-bold bg-gradient-to-br from-brand-green to-brand-green-dark bg-clip-text text-transparent leading-tight">
+                      {profilePoints.percent}%
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${profilePoints.percent}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className={`h-full rounded-full ${
+                        profilePoints.percent < 30
+                          ? 'bg-gradient-to-r from-red-400 to-red-500'
+                          : profilePoints.percent < 60
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                          : 'bg-gradient-to-r from-brand-green to-brand-green-dark'
+                      } shadow-lg`}
+                    />
                   </div>
                 </div>
               </div>
@@ -1995,6 +1987,19 @@ export default function InstallerProfilePage() {
 
         {/* Content Area */}
         <main className="ios-profile-main px-4 py-4 sm:py-6 2xl:p-8 2xl:pb-8 w-full max-w-full box-border">
+          {/* Digital Wallet — only when a badge link is saved on the profile */}
+          {isDigitalIdUrl(installer?.digitalId || '') && (
+            <InstallerDigitalIdQuickAccess
+              installerId={installer?.id || ''}
+              digitalId={installer?.digitalId}
+              name={installer && (installer.firstName || installer.lastName)
+                ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
+                : (installer?.email?.split('@')[0] || 'Installer')}
+              companyName={installer?.companyName}
+              photoUrl={installer?.photoUrl}
+            />
+          )}
+
           {/* Complete Profile Notice */}
           {installer && (!installer.firstName || !installer.lastName) && (
             <motion.div
@@ -2409,7 +2414,7 @@ export default function InstallerProfilePage() {
                       value={digitalId}
                       onChange={(e) => setDigitalId(e.target.value)}
                       className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 placeholder:text-slate-400"
-                      placeholder="e.g., Installer ID, Badge #"
+                      placeholder="FADV wallet URL or dbId"
                     />
                   ) : (
                     installer?.digitalId ? (
@@ -2827,6 +2832,34 @@ export default function InstallerProfilePage() {
 
         </motion.div>
           </IosProfileSection>
+
+          {isEstimator && (
+          <IosProfileSection title="Attachments">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-1">Attachments</h2>
+                  <p className="text-sm text-slate-500">Upload insurance certificates, licenses, and other documents</p>
+                </div>
+                <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                  <FileCheck className="w-6 h-6 text-brand-green" />
+                </div>
+              </div>
+              <button
+                onClick={() => router.push('/installer/attachments')}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
+              >
+                <Upload className="w-5 h-5" />
+                Manage Attachments
+              </button>
+            </motion.div>
+          </IosProfileSection>
+          )}
 
           {/* Insurance & Registration Information */}
           <IosProfileSection title="Insurance & Registration">
@@ -3379,6 +3412,8 @@ export default function InstallerProfilePage() {
           </motion.div>
           </IosProfileSection>
 
+          {!isEstimator && (
+          <>
           {/* Team Members Section - Standalone */}
           <IosProfileSection title="Team Members">
           <motion.div
@@ -3754,6 +3789,8 @@ export default function InstallerProfilePage() {
             </div>
           </motion.div>
           </IosProfileSection>
+          </>
+          )}
 
           {/* Tools & Equipment */}
           <IosProfileSection title="Tools & Equipment">
@@ -3905,6 +3942,8 @@ export default function InstallerProfilePage() {
           </motion.div>
           </IosProfileSection>
 
+          {!isEstimator && (
+          <>
           {/* Work History & Service Areas */}
           <IosProfileSection title="Work History">
           {installer && (installer.previousEmployers || installer.serviceAreas) && (
@@ -4012,6 +4051,8 @@ export default function InstallerProfilePage() {
             </motion.div>
           )}
           </IosProfileSection>
+          </>
+          )}
 
           {/* Travel & Start Date Information */}
           <IosProfileSection title="Travel & Start Date">
@@ -4188,6 +4229,8 @@ export default function InstallerProfilePage() {
           </motion.div>
           </IosProfileSection>
 
+          {!isEstimator && (
+          <>
           {/* Additional Information (Notes & Follow-up) */}
           <IosProfileSection title="Additional Information">
           {installer && (installer.notes || installer.followUpDate || installer.followUpReason) && (
@@ -5561,6 +5604,8 @@ export default function InstallerProfilePage() {
             </div>
           </motion.div>
           </IosProfileSection>
+          </>
+          )}
 
           {/* Additional Work Information */}
           <IosProfileSection title="Additional Work">
@@ -5798,11 +5843,19 @@ export default function InstallerProfilePage() {
           {/* Location Map (uses saved Address) */}
           <IosProfileSection title="Location">
           {(() => {
-            const street = (isEditing ? companyStreetAddress : installer?.companyStreetAddress) || ''
-            const city = (isEditing ? companyCity : installer?.companyCity) || ''
-            const state = (isEditing ? companyState : installer?.companyState) || ''
-            const zip = (isEditing ? companyZipCode : installer?.companyZipCode) || ''
-            const fallback = (isEditing ? companyAddress : installer?.companyAddress) || ''
+            // Estimators create accounts without an interview, so they start with no
+            // saved address. Show the address form inline so they can enter their
+            // location and see the map immediately (same as everyone else once filled).
+            const showAddressForm =
+              isEditing ||
+              (isEstimator &&
+                !(installer?.companyStreetAddress || installer?.companyCity || installer?.companyState || installer?.companyZipCode || installer?.companyAddress))
+
+            const street = (showAddressForm ? companyStreetAddress : installer?.companyStreetAddress) || ''
+            const city = (showAddressForm ? companyCity : installer?.companyCity) || ''
+            const state = (showAddressForm ? companyState : installer?.companyState) || ''
+            const zip = (showAddressForm ? companyZipCode : installer?.companyZipCode) || ''
+            const fallback = (showAddressForm ? companyAddress : installer?.companyAddress) || ''
 
             const parts = [street, city, state].map((p) => (p || '').trim()).filter(Boolean)
             let addressForMap = parts.join(', ')
@@ -5810,7 +5863,7 @@ export default function InstallerProfilePage() {
             if (zipTrimmed) addressForMap = `${addressForMap}${addressForMap ? ' ' : ''}${zipTrimmed}`
             addressForMap = addressForMap.trim() || fallback.trim()
 
-            if (!addressForMap && !isEditing) return null
+            if (!addressForMap && !isEditing && !isEstimator) return null
 
             const mapsUrl = addressForMap
               ? googleMapsEmbedUrl(
@@ -5826,7 +5879,7 @@ export default function InstallerProfilePage() {
                 transition={{ delay: 0.95 }}
                 className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
               >
-                {isEditing && (
+                {showAddressForm && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Street Address</label>
@@ -6464,13 +6517,16 @@ export default function InstallerProfilePage() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">State</label>
-                      <input
-                        type="text"
+                      <select
                         value={historyForm.companyState || ''}
                         onChange={(e) => setHistoryForm({ ...historyForm, companyState: e.target.value })}
                         className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                        placeholder="State"
-                      />
+                      >
+                        <option value="">Select a state</option>
+                        {US_STATES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Zip Code</label>

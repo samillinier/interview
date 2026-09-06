@@ -21,6 +21,7 @@ interface InstallerUser {
   firstName?: string
   lastName?: string
   email: string
+  accountType?: string
 }
 
 interface InstallerSidebarProps {
@@ -107,6 +108,7 @@ export default function InstallerSidebar({ notificationCount = 0, installer, sid
           <ExternalLink className="w-5 h-5 flex-shrink-0" />
           {sidebarOpen && <span>Referrals</span>}
         </Link>
+        {installer?.accountType !== 'estimator' && (
         <Link
           href="/installer/survey"
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -116,6 +118,7 @@ export default function InstallerSidebar({ notificationCount = 0, installer, sid
           <ClipboardList className="w-5 h-5 flex-shrink-0" />
           {sidebarOpen && <span>Survey</span>}
         </Link>
+        )}
         <Link
           href="/installer/notifications"
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${

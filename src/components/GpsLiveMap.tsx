@@ -748,15 +748,21 @@ export function GpsLiveMap({
       maxZoom: 19,
     })
 
-    const cartoLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OSM · CARTO',
-      maxZoom: 19,
-    }).addTo(map)
+    const cartoLight = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: '© Esri · OpenStreetMap',
+        maxZoom: 19,
+      }
+    ).addTo(map)
 
-    const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OSM · CARTO',
-      maxZoom: 19,
-    })
+    const cartoDark = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: '© Esri · OpenStreetMap',
+        maxZoom: 19,
+      }
+    )
 
     const satelliteLayer = L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -779,7 +785,7 @@ export function GpsLiveMap({
           'background:white;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.2);padding:3px;display:flex;gap:1px'
         for (const { key, label } of [
           { key: 'osm', label: 'OSM' },
-          { key: 'light', label: 'Light' },
+          { key: 'light', label: 'Street' },
           { key: 'dark', label: 'Dark' },
           { key: 'satellite', label: 'Sat' },
         ] as { key: string; label: string }[]) {

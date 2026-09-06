@@ -106,6 +106,7 @@ export async function GET(request: NextRequest) {
     const certificateRisk = searchParams.get('certificateRisk')
     const workroom = searchParams.get('workroom')
     const county = searchParams.get('county')
+    const accountType = searchParams.get('accountType')
     const specialty = searchParams.get('specialty')
     const location = searchParams.get('location')
     const page = parseInt(searchParams.get('page') || '1')
@@ -205,6 +206,15 @@ export async function GET(request: NextRequest) {
 
     if (county && county !== 'all') {
       where.companyCounty = { equals: county, mode: 'insensitive' }
+    }
+
+    if (accountType && accountType !== 'all') {
+      if (accountType === 'estimator') {
+        where.accountType = 'estimator'
+      } else if (accountType === 'installer') {
+        // Everything that isn't an estimator (includes legacy rows with null/empty accountType).
+        where.accountType = { not: 'estimator' }
+      }
     }
 
     if (surface && surface !== 'all') {

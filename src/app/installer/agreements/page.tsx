@@ -17,7 +17,7 @@ import './installer-agreements-mobile.css'
 
 /** Matches Adobe embed: `...esignWidget?wid=...*&hosted=false` (see generate-independent-contractor-contract API). */
 const DEFAULT_INDEPENDENT_CONTRACTOR_ADOBE_WIDGET =
-  'https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhDs4AEhql4PJpxJSBr3jAUYbOPkCUDhFvx9stwDoWbP6-TE_Cn8JqgWp0ME6NGCegg*'
+  'https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhAd0WrFu09RPnBzKPqIax8km7WWIE8tVGYIBPYHGAcUxfksKfAtUS9e0QrNNL0Uk6I*'
 
 function adobeWidgetUrlWithHostedFalse(url: string) {
   if (/[?&]hosted=/.test(url)) return url

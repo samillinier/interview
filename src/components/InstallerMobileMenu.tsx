@@ -22,10 +22,11 @@ import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 type Props = {
   pathname: string
   notificationCount?: number
+  accountType?: string
   onLogout?: () => void
 }
 
-export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout }: Props) {
+export function InstallerMobileMenu({ pathname, notificationCount = 0, accountType, onLogout }: Props) {
   const [open, setOpen] = useState(false)
   const [surveyCount, setSurveyCount] = useState(0)
 
@@ -53,18 +54,22 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, onLogout 
     }
   }, [pathname])
 
+  const isEstimator = accountType === 'estimator'
+
   const items = useMemo(
     () => [
       { href: '/installer/profile', label: 'Profile', icon: User },
       { href: '/installer/agreements', label: 'Form', icon: FileText },
       { href: '/installer/attachments', label: 'Attachments', icon: Paperclip },
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
-      { href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount },
+      ...(isEstimator
+        ? []
+        : [{ href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount }]),
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
       { href: '/installer/translate', label: 'Translator', icon: Languages },
       { href: '/installer/help', label: 'Help', icon: HelpCircle },
     ],
-    [notificationCount, surveyCount]
+    [notificationCount, surveyCount, isEstimator]
   )
 
   const isActive = (href: string, match?: (p: string) => boolean) => {

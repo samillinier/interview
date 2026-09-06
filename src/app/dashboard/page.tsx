@@ -193,6 +193,7 @@ interface Installer {
   complianceStatus?: 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | null
   lastPlatform?: string | null
   lastSeenAt?: string | null
+  accountType?: string | null
 }
 
 function formatPrimarySurfaceLabel(surface: string | null | undefined): string | null {
@@ -322,6 +323,7 @@ function DashboardPageContent() {
   const urlCertificateRisk = searchParams?.get('certificateRisk') || 'all'
   const urlWorkroom = searchParams?.get('workroom') || 'all'
   const urlCounty = searchParams?.get('county') || 'all'
+  const urlAccountType = searchParams?.get('accountType') || 'all'
   
   const [installers, setInstallers] = useState<Installer[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -336,6 +338,7 @@ function DashboardPageContent() {
   const [certificateRiskFilter, setCertificateRiskFilter] = useState(urlCertificateRisk)
   const [workroomFilter, setWorkroomFilter] = useState(urlWorkroom)
   const [countyFilter, setCountyFilter] = useState(urlCounty)
+  const [accountTypeFilter, setAccountTypeFilter] = useState(urlAccountType)
   const { sidebarOpen } = useSidebarOpen()
   const [currentPage, setCurrentPage] = useState(urlPage)
   const [totalPages, setTotalPages] = useState(1)
@@ -738,6 +741,7 @@ function DashboardPageContent() {
       if (certificateRiskFilter !== 'all') params.append('certificateRisk', certificateRiskFilter)
       if (workroomFilter !== 'all') params.append('workroom', workroomFilter)
       if (countyFilter !== 'all') params.append('county', countyFilter)
+      if (accountTypeFilter !== 'all') params.append('accountType', accountTypeFilter)
       params.append('page', page.toString())
       params.append('limit', itemsPerPage.toString())
 
@@ -864,7 +868,7 @@ function DashboardPageContent() {
   }
 
   // Update URL with current state
-  const updateURL = (updates: { page?: number; search?: string; status?: string; experience?: string; state?: string; skill?: string; surface?: string; certificateRisk?: string; workroom?: string; county?: string }) => {
+  const updateURL = (updates: { page?: number; search?: string; status?: string; experience?: string; state?: string; skill?: string; surface?: string; certificateRisk?: string; workroom?: string; county?: string; accountType?: string }) => {
     const params = new URLSearchParams(searchParams?.toString() || '')
     
     if (updates.page !== undefined) {
@@ -946,6 +950,14 @@ function DashboardPageContent() {
         params.set('county', updates.county)
       }
     }
+
+    if (updates.accountType !== undefined) {
+      if (updates.accountType === 'all') {
+        params.delete('accountType')
+      } else {
+        params.set('accountType', updates.accountType)
+      }
+    }
     
     const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname
     router.replace(newUrl, { scroll: false })
@@ -964,6 +976,7 @@ function DashboardPageContent() {
     if (certificateRiskFilter !== 'all') params.set('certificateRisk', certificateRiskFilter)
     if (workroomFilter !== 'all') params.set('workroom', workroomFilter)
     if (countyFilter !== 'all') params.set('county', countyFilter)
+    if (accountTypeFilter !== 'all') params.set('accountType', accountTypeFilter)
     return params.toString() ? `?${params.toString()}` : ''
   }
 
@@ -1147,17 +1160,20 @@ function DashboardPageContent() {
       const data = await response.json()
 
       if (response.ok && data.installer) {
-        // Upload installer photo if provided
+        // Upload installer photo if provided (direct-to-Blob to avoid serverless body limits)
         if (installerPhotoFile) {
           try {
             setIsUploadingInstallerPhoto(true)
-            const photoFormData = new FormData()
-            photoFormData.append('photo', installerPhotoFile)
-            photoFormData.append('installerId', data.installer.id)
+            const safeName = installerPhotoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+            const blob = await upload(`profile-photos/${data.installer.id}-${Date.now()}-${safeName}`, installerPhotoFile, {
+              access: 'public',
+              handleUploadUrl: '/api/blob/upload',
+            })
 
             const photoResponse = await fetch('/api/installers/upload-photo', {
               method: 'POST',
-              body: photoFormData,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ installerId: data.installer.id, photoUrl: blob.url }),
             })
 
             if (photoResponse.ok) {
@@ -1180,18 +1196,12 @@ function DashboardPageContent() {
               // If staff has a photo file, upload it first
               let photoUrl = staff.photoUrl || ''
               if (staff.photoFile) {
-                const photoFormData = new FormData()
-                photoFormData.append('photo', staff.photoFile)
-                
-                const photoResponse = await fetch(`/api/installers/${data.installer.id}/staff/upload-photo`, {
-                  method: 'POST',
-                  body: photoFormData,
+                const safeName = staff.photoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+                const blob = await upload(`staff/${data.installer.id}-${Date.now()}-${safeName}`, staff.photoFile, {
+                  access: 'public',
+                  handleUploadUrl: '/api/blob/upload',
                 })
-                
-                if (photoResponse.ok) {
-                  const photoData = await photoResponse.json()
-                  photoUrl = photoData.photoUrl
-                }
+                photoUrl = blob.url
               }
 
               await fetch(`/api/installers/${data.installer.id}/staff`, {
@@ -1511,6 +1521,7 @@ function DashboardPageContent() {
       const urlCertificateRisk = searchParams.get('certificateRisk') || 'all'
       const urlWorkroom = searchParams.get('workroom') || 'all'
       const urlCounty = searchParams.get('county') || 'all'
+      const urlAccountType = searchParams.get('accountType') || 'all'
       
       // Validate status for moderators
       if (normalizedRole === 'MODERATOR' && !['all', 'qualified', 'passed', 'pending', 'failed'].includes(urlStatus)) {
@@ -1529,6 +1540,7 @@ function DashboardPageContent() {
       if (urlCertificateRisk !== certificateRiskFilter) setCertificateRiskFilter(urlCertificateRisk)
       if (urlWorkroom !== workroomFilter) setWorkroomFilter(urlWorkroom)
       if (urlCounty !== countyFilter) setCountyFilter(urlCounty)
+      if (urlAccountType !== accountTypeFilter) setAccountTypeFilter(urlAccountType)
       
       // Initial load with URL params
       if (!hasLoadedInstallersOnce) {
@@ -1551,13 +1563,14 @@ function DashboardPageContent() {
         certificateRisk: certificateRiskFilter,
         workroom: workroomFilter,
         county: countyFilter,
+        accountType: accountTypeFilter,
         page: 1,
       })
       fetchStats()
       fetchInstallers(1)
       setCurrentPage(1)
     }
-  }, [debouncedSearchQuery, statusFilter, experienceFilter, stateFilter, skillFilter, surfaceFilter, certificateRiskFilter, workroomFilter, countyFilter])
+  }, [debouncedSearchQuery, statusFilter, experienceFilter, stateFilter, skillFilter, surfaceFilter, certificateRiskFilter, workroomFilter, countyFilter, accountTypeFilter])
 
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -2133,6 +2146,20 @@ function DashboardPageContent() {
                 ))}
               </select>
 
+              <select
+                value={accountTypeFilter}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setAccountTypeFilter(next)
+                  updateURL({ accountType: next, page: 1 })
+                }}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]"
+              >
+                <option value="all">All Types</option>
+                <option value="installer">Installers</option>
+                <option value="estimator">Estimators</option>
+              </select>
+
               {normalizedRole !== 'MANAGER' ? (
                 <button
                   onClick={() => setShowAddModal(true)}
@@ -2237,6 +2264,11 @@ function DashboardPageContent() {
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {getStatusBadge(installer.status)}
+                        {installer.accountType === 'estimator' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                            <ClipboardList className="w-3 h-3" />Estimator
+                          </span>
+                        ) : null}
                         {installer.workroom ? (
                           <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
                             {installer.workroom}

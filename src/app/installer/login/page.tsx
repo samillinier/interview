@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
@@ -132,7 +133,7 @@ function InstallerLoginContent() {
               />
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-primary-900 mb-2">
-              Subcontractor Login
+              Login
             </h1>
             <p className="text-primary-500">
               Sign in to manage your profile
@@ -236,12 +237,21 @@ function InstallerLoginContent() {
 
           <p className="text-xs text-primary-400 text-center mt-6">
             Don't have an account?{' '}
-            <button
-              onClick={() => router.push('/create-account')}
+            <Link
+              href="/create-account"
               className="text-brand-green hover:underline"
             >
               Create one here
-            </button>
+            </Link>
+          </p>
+
+          <p className="text-xs text-center mt-3">
+            <Link
+              href="/create-account?type=estimator"
+              className="text-brand-green hover:underline"
+            >
+              Create Estimator Account
+            </Link>
           </p>
         </div>
       </motion.div>

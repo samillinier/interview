@@ -14,6 +14,7 @@ import {
   Menu,
   MessageSquare,
   Package,
+  Plane,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -43,6 +44,7 @@ export function AdminMobileMenu({ pathname }: Props) {
   const [signatureNotSignedCount, setSignatureNotSignedCount] = useState<number>(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
   const [updatesCount, setUpdatesCount] = useState<number>(0)
+  const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState<number>(0)
 
   const isDetailPage =
     pathname.startsWith('/dashboard/installers/')
@@ -118,6 +120,27 @@ export function AdminMobileMenu({ pathname }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    const loadTravelRequestCount = async () => {
+      try {
+        const res = await fetch('/api/travel-requests?action=count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setPendingTravelRequestCount(count)
+      } catch {
+        // ignore
+      }
+    }
+    loadTravelRequestCount()
+    const interval = setInterval(loadTravelRequestCount, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
     const loadUpdatesCount = async () => {
       try {
         const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
@@ -160,7 +183,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
       ...(role === 'MANAGER'
-        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }]
+        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
@@ -211,7 +234,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       },
     ] as typeof base
     return withPropertyPortal
-  }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, session?.user])
+  }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingTravelRequestCount, session?.user])
 
   const isActive = (href: string, match?: (p: string) => boolean) => {
     if (match) return match(pathname)

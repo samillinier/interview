@@ -7,7 +7,7 @@ import { ensureInstallerReferralCode } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, installerId } = await request.json()
+    const { email, installerId, accountType, firstName, lastName } = await request.json()
     const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!normalizedEmail && !installerId) {
@@ -31,21 +31,43 @@ export async function POST(request: NextRequest) {
     }
 
     if (!installer) {
-      if (!normalizedEmail && !installerId) {
+      const isEstimator = String(accountType || '').toLowerCase() === 'estimator'
+      if (isEstimator) {
+        const fname = String(firstName || '').trim()
+        const lname = String(lastName || '').trim()
+        if (!normalizedEmail) {
+          return NextResponse.json(
+            { error: 'Email is required' },
+            { status: 400 }
+          )
+        }
+        if (!fname || !lname) {
+          return NextResponse.json(
+            { error: 'First and last name are required to create an estimator account' },
+            { status: 400 }
+          )
+        }
+        // Estimators self-register directly — no AI interview required.
+        installer = await prisma.installer.create({
+          data: {
+            email: normalizedEmail,
+            firstName: fname,
+            lastName: lname,
+            accountType: 'estimator',
+            status: 'pending',
+          },
+        })
+      } else {
         return NextResponse.json(
-          { error: 'Email is required' },
-          { status: 400 }
+          {
+            success: false,
+            requiresInterview: true,
+            error:
+              "We don't have this email in our system yet. Please complete the AI interview first to create your installer profile.",
+          },
+          { status: 404 }
         )
       }
-      return NextResponse.json(
-        {
-          success: false,
-          requiresInterview: true,
-          error:
-            "We don't have this email in our system yet. Please complete the AI interview first to create your installer profile.",
-        },
-        { status: 404 }
-      )
     }
 
     // Existing account → email a one-click sign-in link instead of an error.

@@ -1,7 +1,7 @@
 // FIS Installer Service Worker
 // Provides offline caching for installer PWA pages
-const CACHE_NAME = 'fis-installer-v2'
-const RUNTIME_CACHE = 'fis-installer-runtime-v2'
+const CACHE_NAME = 'fis-installer-v3'
+const RUNTIME_CACHE = 'fis-installer-runtime-v3'
 
 // Pages to pre-cache (shell)
 const PRECACHE_URLS = [
@@ -72,6 +72,14 @@ self.addEventListener('fetch', (event: any) => {
   // Auth pages: network-first
   if (url.pathname.startsWith('/auth/')) {
     event.respondWith(fetch(event.request))
+    return
+  }
+
+  // Login page: always network-first so users never see a stale login screen
+  if (url.pathname === '/installer/login') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    )
     return
   }
 

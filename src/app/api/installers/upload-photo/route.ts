@@ -1,33 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { uploadFile, deleteFile } from '@/lib/storage'
+import { deleteFile } from '@/lib/storage'
 import { requireActiveAdmin } from '@/lib/installerAccess'
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const photo = formData.get('photo') as File | null
-    const installerId = formData.get('installerId') as string
+    // The file is uploaded client-side directly to Vercel Blob (via /api/blob/upload),
+    // which avoids the serverless function body limit (~4.5MB). This route only
+    // persists the resulting Blob URL onto the installer record.
+    const body = await request.json().catch(() => null)
+    const installerId = typeof body?.installerId === 'string' ? body.installerId.trim() : ''
+    const photoUrl = typeof body?.photoUrl === 'string' ? body.photoUrl.trim() : ''
 
-    if (!photo || !installerId) {
+    if (!installerId || !photoUrl) {
       return NextResponse.json(
-        { error: 'Photo and installer ID are required' },
-        { status: 400 }
-      )
-    }
-
-    // Validate file type
-    if (!photo.type.startsWith('image/')) {
-      return NextResponse.json(
-        { error: 'File must be an image' },
-        { status: 400 }
-      )
-    }
-
-    // Validate file size (max 10MB)
-    if (photo.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'Image size must be less than 10MB' },
+        { error: 'Installer ID and photo URL are required' },
         { status: 400 }
       )
     }
@@ -44,12 +31,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate unique filename
-    const fileExtension = photo.name.split('.').pop() || 'jpg'
-    const fileName = `${installerId}-${Date.now()}.${fileExtension}`
-
-    // Delete old photo if exists
-    if (installer.photoUrl) {
+    // Delete old photo if exists (only if it differs from the new one)
+    if (installer.photoUrl && installer.photoUrl !== photoUrl) {
       try {
         await deleteFile(installer.photoUrl)
       } catch (deleteError: any) {
@@ -58,23 +41,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upload file using storage utility
-    let photoUrl: string
-    try {
-      const uploadResult = await uploadFile(photo, 'installers', fileName)
-      photoUrl = uploadResult.url
-    } catch (uploadError: any) {
-      console.error('Photo upload error:', uploadError)
-      return NextResponse.json(
-        { 
-          error: `Failed to upload photo: ${uploadError.message || 'Unknown error'}`,
-          details: process.env.NODE_ENV === 'development' ? uploadError.stack : undefined
-        },
-        { status: 500 }
-      )
-    }
-
-    // Update installer with photo URL
+    // Persist the photo URL onto the installer record
     await prisma.installer.update({
       where: { id: installerId },
       data: { photoUrl },
@@ -86,11 +53,11 @@ export async function POST(request: NextRequest) {
       message: 'Photo uploaded successfully',
     })
   } catch (error: any) {
-    console.error('Error uploading photo:', error)
+    console.error('Error saving photo:', error)
     console.error('Error stack:', error.stack)
     return NextResponse.json(
       { 
-        error: error.message || 'Failed to upload photo',
+        error: error.message || 'Failed to save photo',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }

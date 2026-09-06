@@ -36,6 +36,8 @@ export async function POST(request: Request) {
           (pathname.startsWith('documents/') ||
             pathname.startsWith('corrections/') ||
             pathname.startsWith('updates/') ||
+            pathname.startsWith('profile-photos/') ||
+            pathname.startsWith('staff/') ||
             /^installers\/[^/]+\/agreements\//u.test(pathname))
         if (!allowed) {
           throw new Error('Invalid upload path')

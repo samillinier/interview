@@ -249,6 +249,7 @@ model Installer {
   openToTravel                         Boolean                  @default(false)
   travelLocations                      String?
   status                               String                   @default("pending")
+  accountType                          String                   @default("installer")
   passFailReason                       String?
   overallScore                         Int?
   notes                                String?
