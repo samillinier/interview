@@ -3019,6 +3019,8 @@ export default function InstallerProfileViewPage() {
   const remarkButtonTitle = isManager ? 'Manager Remark' : 'Admin Remark'
   const canShowManagerRemarksToAdmin = !isManager && managerRemarks.length > 0
   const isEstimator = installer.accountType === 'estimator'
+  const roleLabel = isEstimator ? 'Estimator' : 'Installer'
+  const roleLabelLower = isEstimator ? 'estimator' : 'installer'
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -3040,9 +3042,9 @@ export default function InstallerProfileViewPage() {
                   <ArrowLeft className="w-5 h-5 text-slate-600" />
                 </button>
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-1">Installer Profile</h1>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-1">{roleLabel} Profile</h1>
                   <p className="text-sm text-slate-500">
-                    {isEditing ? 'Edit installer details and information' : 'View installer details and information'}
+                    {isEditing ? `Edit ${roleLabelLower} details and information` : `View ${roleLabelLower} details and information`}
                   </p>
                   {installer?.createdAt && (
                     <p className="text-xs text-slate-400 mt-1">
@@ -3502,7 +3504,7 @@ export default function InstallerProfileViewPage() {
                       onChange={handlePhotoUpload}
                       disabled={isUploadingPhoto || isManager}
                       className="hidden"
-                      aria-label="Change installer profile photo"
+                      aria-label={`Change ${roleLabelLower} profile photo`}
                     />
                     {/* Status-based border color */}
                     <div className={`w-28 h-28 rounded-full overflow-hidden shadow-lg flex-shrink-0 flex items-center justify-center ${
@@ -3594,7 +3596,7 @@ export default function InstallerProfileViewPage() {
                               }}
                               disabled={isUploadingPhoto}
                               className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Change installer photo"
+                              title={`Change ${roleLabelLower} photo`}
                             >
                               <Pencil className="w-3 h-3" />
                               Change
@@ -3609,7 +3611,7 @@ export default function InstallerProfileViewPage() {
                               }}
                               disabled={isUploadingPhoto}
                               className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-red-600 rounded-md hover:bg-red-50 transition-colors text-xs font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Remove installer photo"
+                              title={`Remove ${roleLabelLower} photo`}
                             >
                               {isUploadingPhoto ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -3775,7 +3777,7 @@ export default function InstallerProfileViewPage() {
                             value={trackerStage}
                             onChange={(e) => setTrackerStage(e.target.value)}
                             className="px-3 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                            title="Installer Tracker Stage"
+                            title={`${roleLabel} Tracker Stage`}
                           >
                             <option value="PENDING">Pending</option>
                             <option value="QUALIFIED">Qualified</option>
@@ -3789,7 +3791,7 @@ export default function InstallerProfileViewPage() {
                         {/* Notification Method Selector */}
                         <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
                           <Bell className="w-4 h-4 text-blue-600" />
-                          <label className="text-sm font-semibold text-slate-700">Notify installer via:</label>
+                          <label className="text-sm font-semibold text-slate-700">Notify {roleLabelLower} via:</label>
                           <select
                             value={notificationMethod}
                             onChange={(e) => setNotificationMethod(e.target.value as 'none' | 'email' | 'notification' | 'both')}
@@ -4662,7 +4664,7 @@ export default function InstallerProfileViewPage() {
             <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-1">Assigned Jobs</h2>
-                <p className="text-sm text-slate-500">Scheduled Realtime jobs assigned to this installer</p>
+                <p className="text-sm text-slate-500">Scheduled Realtime jobs assigned to this {roleLabelLower}</p>
               </div>
               <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
                 <Briefcase className="w-6 h-6 text-brand-green" />
@@ -4716,7 +4718,7 @@ export default function InstallerProfileViewPage() {
             <div className="flex items-center justify-between mb-6 pb-6 border-b border-red-200">
               <div>
                 <h2 className="text-2xl font-bold text-red-800 mb-1">Chargebacks</h2>
-                <p className="text-sm text-red-600">Chargeback jobs assigned to this installer</p>
+                <p className="text-sm text-red-600">Chargeback jobs assigned to this {roleLabelLower}</p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
@@ -5199,7 +5201,7 @@ export default function InstallerProfileViewPage() {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-900">Upload agreement (admin only)</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Add a titled agreement PDF/DOC/image to this installer.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Add a titled agreement PDF/DOC/image to this {roleLabelLower}.</p>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_auto] gap-3 items-end">
@@ -5268,7 +5270,7 @@ export default function InstallerProfileViewPage() {
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-slate-900">Independent Contractor Services Agreement</h3>
-                          <p className="text-xs text-slate-500 mt-0.5">Did the installer sign this agreement?</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Did the {roleLabelLower} sign this agreement?</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
@@ -5360,7 +5362,7 @@ export default function InstallerProfileViewPage() {
                   <div className="text-center py-12">
                     <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500 font-medium">No agreements signed yet</p>
-                    <p className="text-sm text-slate-400 mt-1">Agreements will appear here once the installer signs them</p>
+                    <p className="text-sm text-slate-400 mt-1">Agreements will appear here once the {roleLabelLower} signs them</p>
                   </div>
                 )
               }
@@ -5519,7 +5521,7 @@ export default function InstallerProfileViewPage() {
                               ) : (
                                 <>
                                   <Mail className="w-4 h-4" />
-                                  Send to Installer Email
+                                  Send to {roleLabel} Email
                                 </>
                               )}
                             </button>
@@ -8435,7 +8437,7 @@ export default function InstallerProfileViewPage() {
               <div className="bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 p-12 text-center">
                 <Calendar className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-slate-700 mb-2">No historical data</h3>
-                <p className="text-slate-500">This installer hasn't added any historical profile data yet.</p>
+                <p className="text-slate-500">This {roleLabelLower} hasn't added any historical profile data yet.</p>
               </div>
             ) : (
               <div className="space-y-6">
