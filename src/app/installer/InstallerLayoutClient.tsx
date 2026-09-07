@@ -33,6 +33,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
   const [isAuthChecking, setIsAuthChecking] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [surveyCount, setSurveyCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   const isPublicPage = PUBLIC_PAGES.includes(pathname)
@@ -51,9 +52,13 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
               (n: any) =>
                 !n.isRead &&
                 n.senderType !== 'installer' &&
-                ['notification', 'message', 'news'].includes(n.type)
+                ['notification', 'message', 'news', 'survey'].includes(n.type)
+            ).length
+            const surveyUnread = notifData.notifications.filter(
+              (n: any) => !n.isRead && n.type === 'survey'
             ).length
             setNotificationCount(unread)
+            setSurveyCount(surveyUnread)
           }
         }
       } catch {
@@ -209,6 +214,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
       <InstallerSidebar
         installer={installer}
         notificationCount={notificationCount}
+        surveyCount={surveyCount}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onLogout={handleLogout}
@@ -216,6 +222,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
       <InstallerMobileMenu
         pathname={pathname}
         notificationCount={notificationCount}
+        surveyCount={surveyCount}
         accountType={installer?.accountType}
         onLogout={handleLogout}
       />

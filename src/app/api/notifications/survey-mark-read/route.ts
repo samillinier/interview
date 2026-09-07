@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireInstallerOrAdmin } from '@/lib/installerAccess'
+import { syncInstallerAppBadge } from '@/lib/pushNotifications'
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
   try {
     const body = await request.json().catch(() => null)
-    const installerId = String(body?.installerId || '').trim()
-    if (!installerId) return NextResponse.json({ error: 'installerId is required' }, { status: 400 })
+    const requestedId = String(body?.installerId || '').trim()
+    if (!requestedId) return NextResponse.json({ error: 'installerId is required' }, { status: 400 })
+
+    const access = await requireInstallerOrAdmin(request, requestedId)
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status })
+    }
 
     await prisma.notification.updateMany({
-      where: { installerId, type: 'survey', isRead: false },
+      where: { installerId: requestedId, type: 'survey', isRead: false },
       data: { isRead: true, readAt: new Date() },
     })
+
+    await syncInstallerAppBadge(requestedId).catch(() => 0)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
@@ -27,4 +30,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

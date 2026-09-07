@@ -2,18 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getInstallerTokenFromRequest, verifyInstallerToken } from '@/lib/installerToken'
 
 export const dynamic = 'force-dynamic'
 
+function installerIdFromToken(request: NextRequest): string | null {
+  const token = getInstallerTokenFromRequest(request)
+  if (!token) return null
+  try {
+    return String(verifyInstallerToken(token)?.installerId || '').trim() || null
+  } catch {
+    return null
+  }
+}
+
 // Get unread survey notification count
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
   try {
     const { searchParams } = new URL(request.url)
-    const installerId = searchParams.get('installerId')
+    const fromToken = installerIdFromToken(request)
+    const queryId = searchParams.get('installerId')
+
+    let installerId = fromToken
+    if (!installerId) {
+      const session = await getServerSession(authOptions)
+      if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      installerId = queryId
+    }
 
     if (!installerId) {
       return NextResponse.json({ error: 'installerId is required' }, { status: 400 })
@@ -36,4 +53,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

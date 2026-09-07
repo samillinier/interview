@@ -22,36 +22,16 @@ import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 type Props = {
   pathname: string
   notificationCount?: number
+  surveyCount?: number
   accountType?: string
   onLogout?: () => void
 }
 
-export function InstallerMobileMenu({ pathname, notificationCount = 0, accountType, onLogout }: Props) {
+export function InstallerMobileMenu({ pathname, notificationCount = 0, surveyCount = 0, accountType, onLogout }: Props) {
   const [open, setOpen] = useState(false)
-  const [surveyCount, setSurveyCount] = useState(0)
 
   useEffect(() => {
     setOpen(false)
-  }, [pathname])
-
-  useEffect(() => {
-    const installerId = typeof window !== 'undefined' ? localStorage.getItem('installerId') : null
-    if (!installerId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch(`/api/notifications/survey-count?installerId=${encodeURIComponent(installerId)}`, { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json().catch(() => null)
-        const c = Number(data?.count ?? 0)
-        if (!cancelled && Number.isFinite(c)) setSurveyCount(c)
-      } catch {
-        // ignore
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
   }, [pathname])
 
   const isEstimator = accountType === 'estimator'

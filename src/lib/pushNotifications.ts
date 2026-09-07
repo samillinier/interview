@@ -124,15 +124,16 @@ const INVALID_TOKEN_ERROR_CODES = new Set([
 
 /**
  * Unread items that should appear on the home-screen / in-app badge.
- * - notification + message + news (what the installer tabs show)
+ * - notification + message + news + survey (what the installer should see)
  * - never the installer's own outbound messages (those used to add a phantom +1)
- * - never survey (handled separately in the UI)
  */
+const UNREAD_BADGE_TYPES = ['notification', 'message', 'news', 'survey'] as const
+
 export function unreadBadgeWhere(installerId: string) {
   return {
     installerId,
     isRead: false,
-    type: { in: ['notification', 'message', 'news'] },
+    type: { in: [...UNREAD_BADGE_TYPES] },
     OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
   }
 }
@@ -180,7 +181,7 @@ export async function sendPushToInstallers(args: {
     where: {
       installerId: { in: args.installerIds },
       isRead: false,
-      type: { in: ['notification', 'message', 'news'] },
+      type: { in: [...UNREAD_BADGE_TYPES] },
       OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
     },
     _count: { _all: true },

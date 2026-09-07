@@ -15,11 +15,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const installerId = searchParams.get('installerId')
     
-    // Match home-screen badge: notification/message/news only, never installer’s own sends
+    // Match home-screen badge: notification/message/news/survey, never installer's own sends
     const where: any = {
       isRead: false,
       type: {
-        in: ['notification', 'message', 'news']
+        in: ['notification', 'message', 'news', 'survey']
       },
       OR: [{ senderType: null }, { senderType: { not: 'installer' } }],
     }

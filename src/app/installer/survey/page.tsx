@@ -76,9 +76,13 @@ export default function InstallerSurveyPage() {
     // Mark "survey" notifications as read when visiting Survey page (so badge clears)
     const installerId = localStorage.getItem('installerId')
     if (installerId) {
+      const tok = localStorage.getItem('installerToken')
       fetch('/api/notifications/survey-mark-read', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+        },
         body: JSON.stringify({ installerId }),
       }).catch(() => {})
     }

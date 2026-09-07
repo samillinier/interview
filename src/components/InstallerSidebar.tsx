@@ -26,13 +26,14 @@ interface InstallerUser {
 
 interface InstallerSidebarProps {
   notificationCount?: number
+  surveyCount?: number
   installer: InstallerUser | null
   sidebarOpen: boolean
   onToggleSidebar: () => void
   onLogout: () => void
 }
 
-export default function InstallerSidebar({ notificationCount = 0, installer, sidebarOpen, onToggleSidebar, onLogout }: InstallerSidebarProps) {
+export default function InstallerSidebar({ notificationCount = 0, surveyCount = 0, installer, sidebarOpen, onToggleSidebar, onLogout }: InstallerSidebarProps) {
   const pathname = usePathname()
 
   function isActive(href: string) {
@@ -116,7 +117,16 @@ export default function InstallerSidebar({ notificationCount = 0, installer, sid
           }`}
         >
           <ClipboardList className="w-5 h-5 flex-shrink-0" />
-          {sidebarOpen && <span>Survey</span>}
+          {sidebarOpen && (
+            <div className="flex items-center gap-2">
+              <span>Survey</span>
+              {surveyCount > 0 && (
+                <span className="bg-white text-brand-green text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {surveyCount > 9 ? '9+' : surveyCount}
+                </span>
+              )}
+            </div>
+          )}
         </Link>
         )}
         <Link

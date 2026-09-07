@@ -13,6 +13,7 @@ import {
   Trash2,
   Check,
   Send,
+  ClipboardList,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -30,7 +31,7 @@ import './installer-notifications-mobile.css'
 
 interface Notification {
   id: string
-  type: 'notification' | 'message' | 'news'
+  type: 'notification' | 'message' | 'news' | 'survey'
   title: string
   content: string
   isRead: boolean
@@ -93,7 +94,7 @@ export default function NotificationsPage() {
       (n) =>
         !n.isRead &&
         n.senderType !== 'installer' &&
-        (n.type === 'notification' || n.type === 'message' || n.type === 'news')
+        (n.type === 'notification' || n.type === 'message' || n.type === 'news' || n.type === 'survey')
     ).length
     setNativeAppBadge(unread)
   }
@@ -512,7 +513,7 @@ export default function NotificationsPage() {
   }
 
   const filteredNotifications = notifications.filter((n) => {
-    if (activeTab === 'notification') return n.type === 'notification'
+    if (activeTab === 'notification') return n.type === 'notification' || n.type === 'survey'
     if (activeTab === 'message') return n.type === 'message'
     if (activeTab === 'news') return n.type === 'news'
     return false
@@ -525,7 +526,7 @@ export default function NotificationsPage() {
   })
 
   const unreadCount = {
-    notification: notifications.filter(n => n.type === 'notification' && !n.isRead).length,
+    notification: notifications.filter(n => (n.type === 'notification' || n.type === 'survey') && !n.isRead).length,
     message: notifications.filter(n => n.type === 'message' && !n.isRead && n.senderType !== 'installer').length,
     news: notifications.filter(n => n.type === 'news' && !n.isRead).length,
   }
@@ -1066,6 +1067,12 @@ export default function NotificationsPage() {
                           High Priority
                         </span>
                       )}
+                      {notification.type === 'survey' && (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-full">
+                          <ClipboardList className="w-3 h-3" />
+                          Survey
+                        </span>
+                      )}
                     </div>
                     <p className="text-slate-700 mb-3 leading-relaxed break-words">{notification.content}</p>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-slate-500">
@@ -1084,7 +1091,7 @@ export default function NotificationsPage() {
                           href={notification.link}
                           className="text-brand-green hover:underline font-medium"
                         >
-                          View Details →
+                          {notification.type === 'survey' ? 'View Survey →' : 'View Details →'}
                         </a>
                       )}
                     </div>
