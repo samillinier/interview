@@ -144,12 +144,14 @@ export function InstallerDigitalIdQuickAccess({ installerId, digitalId, name, co
                   </div>
                 ) : (
                   <div className="flex min-h-[430px] bg-white" role="img" aria-label={`${displayName} digital badge`}>
-                    <div className="shrink-0 w-14 bg-[#284B85] text-[#E0E0E0] flex items-center justify-center">
+                    <div className="shrink-0 w-16 bg-[#284B85] text-[#E0E0E0] flex items-center justify-center py-6">
                       <span
-                        className="font-bold tracking-[0.18em] text-[13px] py-8 select-none"
-                        style={{ writingMode: 'vertical-lr', textOrientation: 'upright' }}
+                        className="font-bold text-[16px] select-none flex flex-col items-center gap-2 leading-none tracking-normal"
+                        aria-label={badgeType}
                       >
-                        {badgeType}
+                        {(badgeType || 'CONTRACTOR').split('').map((ch, i) => (
+                          <span key={`${ch}-${i}`}>{ch}</span>
+                        ))}
                       </span>
                     </div>
 
