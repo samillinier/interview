@@ -196,7 +196,7 @@ export function InstallerDigitalIdQuickAccess({ installerId, digitalId, name, co
 
                       <div className="flex items-end justify-between gap-3 mt-auto pt-6">
                         {company ? (
-                          <div className="text-[12px] font-semibold text-slate-800 leading-snug text-right uppercase flex-1">
+                          <div className="text-[10px] font-semibold text-slate-800 leading-none text-right uppercase flex-1 min-w-0 whitespace-nowrap">
                             {company}
                           </div>
                         ) : (
