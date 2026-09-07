@@ -144,10 +144,10 @@ export function InstallerDigitalIdQuickAccess({ installerId, digitalId, name, co
                   </div>
                 ) : (
                   <div className="flex min-h-[430px] bg-white" role="img" aria-label={`${displayName} digital badge`}>
-                    <div className="shrink-0 w-14 bg-[#284B85] text-[#E0E0E0] flex items-center justify-center">
+                    <div className="shrink-0 w-16 bg-[#284B85] text-[#E0E0E0] flex items-center justify-center">
                       <span
-                        className="font-bold tracking-[0.18em] text-[13px] py-8 select-none"
-                        style={{ writingMode: 'vertical-lr', textOrientation: 'upright' }}
+                        className="font-bold text-[20px] py-8 select-none"
+                        style={{ writingMode: 'vertical-lr', textOrientation: 'upright', letterSpacing: '0.45em' }}
                       >
                         {badgeType}
                       </span>
@@ -194,7 +194,7 @@ export function InstallerDigitalIdQuickAccess({ installerId, digitalId, name, co
 
                       <div className="flex items-end justify-between gap-3 mt-auto pt-6">
                         {company ? (
-                          <div className="text-[12px] font-semibold text-slate-800 leading-snug text-right uppercase flex-1">
+                          <div className="text-[10px] font-semibold text-slate-800 leading-none text-right uppercase flex-1 min-w-0 whitespace-nowrap">
                             {company}
                           </div>
                         ) : (
