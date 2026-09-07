@@ -14,7 +14,7 @@ function getSectionsFromFields(fields: string[]): string[] {
   
   // Profile Information fields
   const profileFields = new Set([
-    'firstName', 'lastName', 'phone', 'digitalId', 'workroom', 'primaryFlooringSurface', 'vehicleDescription',
+    'firstName', 'lastName', 'phone', 'accountType', 'digitalId', 'workroom', 'primaryFlooringSurface', 'vehicleDescription',
     'companyName', 'companyTitle', 'companyStreetAddress', 'companyCity', 'companyState',
     'companyZipCode', 'companyCounty', 'companyAddress', 'yearsOfExperience',
     'hasOwnCrew', 'crewSize', 'hasOwnTools', 'toolsDescription', 'hasVehicle',
@@ -545,6 +545,17 @@ export async function PATCH(
       // Extract notificationMethod (not persisted to DB)
       notificationMethod = data?.notificationMethod as 'none' | 'email' | 'notification' | 'both' | undefined
       delete data.notificationMethod
+
+      if (data.accountType !== undefined) {
+        const nextType = String(data.accountType || '').trim().toLowerCase()
+        if (nextType !== 'installer' && nextType !== 'estimator') {
+          return NextResponse.json(
+            { error: 'accountType must be installer or estimator' },
+            { status: 400 }
+          )
+        }
+        data.accountType = nextType
+      }
 
       // Normalize workroom
       if (data.workroom !== undefined) {
