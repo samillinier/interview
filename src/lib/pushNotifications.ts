@@ -2,6 +2,7 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import type { App } from 'firebase-admin/app'
 import { getMessaging } from 'firebase-admin/messaging'
 import prisma from '@/lib/db'
+import { installerNotificationOpenPath } from '@/lib/installerNotificationOpen'
 
 function getFirebaseApp(): App | null {
   const existing = getApps()
@@ -118,7 +119,7 @@ export async function notifyInstallerAndPush(args: {
   attachmentUrl?: string | null
   attachmentName?: string | null
 }): Promise<PushSendResult> {
-  await prisma.notification.create({
+  const created = await prisma.notification.create({
     data: {
       installerId: args.installerId,
       type: 'notification',
@@ -138,7 +139,11 @@ export async function notifyInstallerAndPush(args: {
     title: args.title,
     body: args.content,
     link: args.link,
-    data: args.data ?? { type: 'notification' },
+    data: {
+      type: 'notification',
+      notificationId: created.id,
+      ...(args.data || {}),
+    },
   })
 }
 
@@ -226,9 +231,15 @@ export async function sendPushToInstallers(args: {
   )
 
   const messaging = getMessaging(app)
+  const destination =
+    args.link && !args.link.startsWith('/installer/notifications') ? args.link : ''
   const dataPayload: Record<string, string> = {
-    ...(args.link ? { link: args.link } : {}),
     ...(args.data || {}),
+    ...(destination ? { destination } : {}),
+    link: installerNotificationOpenPath({
+      type: args.data?.type,
+      notificationId: args.data?.notificationId,
+    }),
   }
 
   // Send per token so each installer gets their own badge count.

@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     })
 
     const surveyContent = `A survey report was shared with you for ${workroom} • ${company}.`
-    await prisma.notification.create({
+    const surveyNotification = await prisma.notification.create({
       data: {
         installerId: best.id,
         type: 'survey',
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       title: 'New survey available',
       body: surveyContent,
       link: '/installer/survey',
-      data: { type: 'survey' },
+      data: { type: 'survey', notificationId: surveyNotification.id },
     })
 
     return NextResponse.json(

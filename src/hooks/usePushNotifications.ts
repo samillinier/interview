@@ -9,6 +9,7 @@ import {
 } from '@capacitor/push-notifications'
 import { FCM } from '@capacitor-community/fcm'
 import { toast } from 'sonner'
+import { installerNotificationOpenPath } from '@/lib/installerNotificationOpen'
 
 // Custom event fired when a push arrives while the app is in the foreground.
 // Listeners (e.g. the installer layout) can use this to refresh unread counts.
@@ -92,10 +93,13 @@ export function usePushNotifications(enabled: boolean = true) {
         await PushNotifications.addListener(
           'pushNotificationActionPerformed',
           (action: ActionPerformed) => {
-            const link = action.notification?.data?.link
-            if (typeof link === 'string' && link) {
-              window.location.href = link
-            }
+            const data = action.notification?.data || {}
+            if (data.type === 'badge-sync') return
+            window.location.href = installerNotificationOpenPath({
+              type: typeof data.type === 'string' ? data.type : '',
+              notificationId:
+                typeof data.notificationId === 'string' ? data.notificationId : '',
+            })
           }
         )
 

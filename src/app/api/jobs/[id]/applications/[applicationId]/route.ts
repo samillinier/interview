@@ -76,7 +76,7 @@ export async function PATCH(
       ? `Congratulations! Your application for "${updatedApplication.Job.title}" in ${updatedApplication.Job.location} has been accepted.`
       : `Your application for "${updatedApplication.Job.title}" in ${updatedApplication.Job.location} has been reviewed.`
 
-    await prisma.notification.create({
+    const createdNotification = await prisma.notification.create({
       data: {
         installerId: updatedApplication.installerId,
         type: 'notification',
@@ -94,7 +94,7 @@ export async function PATCH(
       title: status === 'accepted' ? 'Application Accepted' : 'Application Update',
       body: statusMessage,
       link: '/installer/jobs',
-      data: { type: 'notification' },
+      data: { type: 'notification', notificationId: createdNotification.id },
     })
 
     return NextResponse.json({

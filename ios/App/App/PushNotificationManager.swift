@@ -266,8 +266,27 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
-        if let link = userInfo["link"] as? String,
-           let url = URL(string: link.hasPrefix("http") ? link : "\(apiBase)\(link)") {
+        if (userInfo["type"] as? String == "badge-sync") {
+            completionHandler()
+            return
+        }
+
+        var path = "/installer/notifications"
+        var query: [String] = []
+        let type = userInfo["type"] as? String ?? ""
+        if type == "message" {
+            query.append("tab=message")
+        } else if type == "news" {
+            query.append("tab=news")
+        }
+        if let notificationId = userInfo["notificationId"] as? String, !notificationId.isEmpty {
+            query.append("id=\(notificationId)")
+        }
+        if !query.isEmpty {
+            path += "?" + query.joined(separator: "&")
+        }
+
+        if let url = URL(string: "\(apiBase)\(path)") {
             DispatchQueue.main.async {
                 let root = UIApplication.shared.connectedScenes
                     .compactMap { $0 as? UIWindowScene }

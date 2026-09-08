@@ -1135,7 +1135,7 @@ export async function PATCH(
               title: notificationTitle,
               body: notificationContent,
               link: '/installer/profile',
-              data: { type: 'notification' },
+              data: { type: 'notification', notificationId: notification.id },
             })
           } catch (e: any) {
             console.error('❌ Failed to create notification:', e?.message || e)

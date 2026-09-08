@@ -27,6 +27,7 @@ import {
 } from '@/components/MessageReactions'
 import { PUSH_RECEIVED_EVENT } from '@/hooks/usePushNotifications'
 import { LinkifiedText } from '@/components/LinkifiedText'
+import { notificationDestinationLabel } from '@/lib/installerNotificationOpen'
 import './installer-notifications-mobile.css'
 
 interface Notification {
@@ -62,6 +63,7 @@ export default function NotificationsPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [reactionOverrides, setReactionOverrides] = useState<Record<string, MessageReaction[]>>({})
+  const [highlightId, setHighlightId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -164,6 +166,24 @@ export default function NotificationsPage() {
   useEffect(() => {
     checkAuthAndLoadData()
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab')
+    const id = params.get('id')
+    if (tab === 'message' || tab === 'news' || tab === 'notification') {
+      setActiveTab(tab)
+    }
+    if (id) setHighlightId(id)
+  }, [])
+
+  useEffect(() => {
+    if (!highlightId) return
+    const el = document.querySelector(`[data-notification-id="${highlightId}"]`)
+    if (!(el instanceof HTMLElement)) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightId, notifications, activeTab])
 
   useEffect(() => {
     if (installer) {
@@ -1044,10 +1064,13 @@ export default function NotificationsPage() {
             {displayNotifications.map((notification) => (
               <motion.div
                 key={notification.id}
+                data-notification-id={notification.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`ios-notif-card bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 backdrop-blur-sm ${
                   !notification.isRead ? 'border-l-4 border-l-brand-green' : ''
+                } ${
+                  highlightId === notification.id ? 'ring-2 ring-brand-green ring-offset-2' : ''
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -1091,7 +1114,7 @@ export default function NotificationsPage() {
                           href={notification.link}
                           className="text-brand-green hover:underline font-medium"
                         >
-                          {notification.type === 'survey' ? 'View Survey →' : 'View Details →'}
+                          {notificationDestinationLabel(notification.link, notification.type)}
                         </a>
                       )}
                     </div>
