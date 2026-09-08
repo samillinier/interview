@@ -3654,14 +3654,34 @@ export default function InstallerProfileViewPage() {
                   >
                     {installer.firstName} {installer.lastName}
                   </motion.h2>
-                  {installer.accountType === 'estimator' && (
-                    <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold">
-                        <ClipboardList className="w-3.5 h-3.5" />
-                        Estimator
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const companyNameToShow = (isEditing ? companyName : installer.companyName) || ''
+                    const workroomToShow = (isEditing ? workroom : installer.workroom) || ''
+                    const showEstimator = installer.accountType === 'estimator'
+                    if (!companyNameToShow && !workroomToShow && !showEstimator) return null
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
+                        {showEstimator && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-xs font-bold">
+                            <ClipboardList className="w-3.5 h-3.5" />
+                            Estimator
+                          </span>
+                        )}
+                        {workroomToShow && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                            <MapPin className="w-4 h-4 text-slate-500" />
+                            <span>{workroomToShow}</span>
+                          </span>
+                        )}
+                        {companyNameToShow && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                            <Building2 className="w-4 h-4 text-slate-500" />
+                            <span className="truncate max-w-[280px]">{companyNameToShow}</span>
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {installer.lastPlatform && (
                     <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
                       {installer.lastPlatform === 'native-app' ? (
@@ -3688,27 +3708,6 @@ export default function InstallerProfileViewPage() {
                       )}
                     </div>
                   )}
-                  {(() => {
-                    const companyNameToShow = (isEditing ? companyName : installer.companyName) || ''
-                    const workroomToShow = (isEditing ? workroom : installer.workroom) || ''
-                    if (!companyNameToShow && !workroomToShow) return null
-                    return (
-                      <div className="flex flex-wrap items-center gap-2 mt-1 mb-1">
-                        {companyNameToShow && (
-                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
-                            <Building2 className="w-4 h-4 text-slate-500" />
-                            <span className="truncate max-w-[280px]">{companyNameToShow}</span>
-                          </span>
-                        )}
-                        {workroomToShow && (
-                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
-                            <MapPin className="w-4 h-4 text-slate-500" />
-                            <span>{workroomToShow}</span>
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })()}
                   <div className="mt-1">
                     {isEditing ? (
                       <div className="flex flex-col gap-3">
