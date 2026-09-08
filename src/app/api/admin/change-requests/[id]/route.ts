@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { sendPushToInstaller } from '@/lib/pushNotifications'
+import { notifyInstallerAndPush } from '@/lib/pushNotifications'
 
 function summarizeSections(sections: any): string {
   if (!sections) return ''
@@ -255,27 +255,13 @@ export async function PATCH(
           : `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was rejected.${reasonText ? ` Reason: ${reasonText}` : ''}`
         const rejectLink = isAgreement ? '/installer/agreements/background-authorization' : isDocument ? '/installer/attachments' : '/installer/profile'
 
-        await prisma.notification.create({
-          data: {
-            installerId: changeRequest.installerId,
-            type: 'notification',
-            title: rejectTitle,
-            content: rejectContent,
-            priority: 'normal',
-            link: rejectLink,
-            senderId: 'admin',
-            senderType: 'admin',
-            attachmentUrl: isDocument && correctionUrl ? correctionUrl : null,
-            attachmentName: isDocument && correctionUrl ? correctionName || 'Correction file' : null,
-          },
-        })
-
-        void sendPushToInstaller({
+        await notifyInstallerAndPush({
           installerId: changeRequest.installerId,
           title: rejectTitle,
-          body: rejectContent,
+          content: rejectContent,
           link: rejectLink,
-          data: { type: 'notification' },
+          attachmentUrl: isDocument && correctionUrl ? correctionUrl : null,
+          attachmentName: isDocument && correctionUrl ? correctionName || 'Correction file' : null,
         })
       } catch (e) {
         console.error('Failed to notify installer about rejection:', e)
@@ -348,25 +334,11 @@ export async function PATCH(
 
       // Notify installer
       try {
-        await prisma.notification.create({
-          data: {
-            installerId: changeRequest.installerId,
-            type: 'notification',
-            title: 'Agreement Approved',
-            content: 'Your Background Authorization and Release form was approved and is ready for download.',
-            priority: 'normal',
-            link: '/installer/agreements/background-authorization',
-            senderId: 'admin',
-            senderType: 'admin',
-          },
-        })
-
-        void sendPushToInstaller({
+        await notifyInstallerAndPush({
           installerId: changeRequest.installerId,
           title: 'Agreement Approved',
-          body: 'Your Background Authorization and Release form was approved and is ready for download.',
+          content: 'Your Background Authorization and Release form was approved and is ready for download.',
           link: '/installer/agreements/background-authorization',
-          data: { type: 'notification' },
         })
       } catch (e) {
         console.error('Failed to notify installer about agreement approval:', e)
@@ -427,25 +399,11 @@ export async function PATCH(
       // Notify installer
       try {
         const documentName = payload?.documentName || 'document'
-        await prisma.notification.create({
-          data: {
-            installerId: changeRequest.installerId,
-            type: 'notification',
-            title: 'Attachment Verified',
-            content: `Your uploaded ${documentName} has been verified and approved.`,
-            priority: 'normal',
-            link: '/installer/attachments',
-            senderId: 'admin',
-            senderType: 'admin',
-          },
-        })
-
-        void sendPushToInstaller({
+        await notifyInstallerAndPush({
           installerId: changeRequest.installerId,
           title: 'Attachment Verified',
-          body: `Your uploaded ${documentName} has been verified and approved.`,
+          content: `Your uploaded ${documentName} has been verified and approved.`,
           link: '/installer/attachments',
-          data: { type: 'notification' },
         })
       } catch (e) {
         console.error('Failed to notify installer about document verification:', e)
@@ -489,26 +447,12 @@ export async function PATCH(
         // Notify installer
         try {
           const sectionsText = summarizeSections(changeRequest.sections)
-          await prisma.notification.create({
-            data: {
-              installerId: changeRequest.installerId,
-              type: 'notification',
-              title: 'Update Approved',
-              content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-              priority: 'normal',
-              link: '/installer/profile',
-              senderId: 'admin',
-              senderType: 'admin',
-            },
-          })
-
-          void sendPushToInstaller({
-            installerId: changeRequest.installerId,
-            title: 'Update Approved',
-            body: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-            link: '/installer/profile',
-            data: { type: 'notification' },
-          })
+        await notifyInstallerAndPush({
+          installerId: changeRequest.installerId,
+          title: 'Update Approved',
+          content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
+          link: '/installer/profile',
+        })
         } catch (e) {
           console.error('Failed to notify installer about approval:', e)
         }
@@ -555,26 +499,12 @@ export async function PATCH(
         // Notify installer
         try {
           const sectionsText = summarizeSections(changeRequest.sections)
-          await prisma.notification.create({
-            data: {
-              installerId: changeRequest.installerId,
-              type: 'notification',
-              title: 'Update Approved',
-              content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-              priority: 'normal',
-              link: '/installer/profile',
-              senderId: 'admin',
-              senderType: 'admin',
-            },
-          })
-
-          void sendPushToInstaller({
-            installerId: changeRequest.installerId,
-            title: 'Update Approved',
-            body: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-            link: '/installer/profile',
-            data: { type: 'notification' },
-          })
+        await notifyInstallerAndPush({
+          installerId: changeRequest.installerId,
+          title: 'Update Approved',
+          content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
+          link: '/installer/profile',
+        })
         } catch (e) {
           console.error('Failed to notify installer about approval:', e)
         }
@@ -601,26 +531,12 @@ export async function PATCH(
         // Notify installer
         try {
           const sectionsText = summarizeSections(changeRequest.sections)
-          await prisma.notification.create({
-            data: {
-              installerId: changeRequest.installerId,
-              type: 'notification',
-              title: 'Update Approved',
-              content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-              priority: 'normal',
-              link: '/installer/profile',
-              senderId: 'admin',
-              senderType: 'admin',
-            },
-          })
-
-          void sendPushToInstaller({
-            installerId: changeRequest.installerId,
-            title: 'Update Approved',
-            body: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-            link: '/installer/profile',
-            data: { type: 'notification' },
-          })
+        await notifyInstallerAndPush({
+          installerId: changeRequest.installerId,
+          title: 'Update Approved',
+          content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
+          link: '/installer/profile',
+        })
         } catch (e) {
           console.error('Failed to notify installer about approval:', e)
         }
@@ -657,25 +573,11 @@ export async function PATCH(
     // Notify installer
     try {
       const sectionsText = summarizeSections(changeRequest.sections)
-      await prisma.notification.create({
-        data: {
-          installerId: changeRequest.installerId,
-          type: 'notification',
-          title: 'Update Approved',
-          content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
-          priority: 'normal',
-          link: '/installer/profile',
-          senderId: 'admin',
-          senderType: 'admin',
-        },
-      })
-
-      void sendPushToInstaller({
+      await notifyInstallerAndPush({
         installerId: changeRequest.installerId,
         title: 'Update Approved',
-        body: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
+        content: `Your submitted update${sectionsText ? ` (${sectionsText})` : ''} was approved and applied.`,
         link: '/installer/profile',
-        data: { type: 'notification' },
       })
     } catch (e) {
       console.error('Failed to notify installer about approval:', e)

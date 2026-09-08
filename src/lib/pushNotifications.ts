@@ -107,6 +107,41 @@ export async function sendPushToInstaller(args: {
   })
 }
 
+/** Create an in-app notification and wait for the device push so Vercel does not drop it. */
+export async function notifyInstallerAndPush(args: {
+  installerId: string
+  title: string
+  content: string
+  link?: string | null
+  priority?: string
+  data?: Record<string, string>
+  attachmentUrl?: string | null
+  attachmentName?: string | null
+}): Promise<PushSendResult> {
+  await prisma.notification.create({
+    data: {
+      installerId: args.installerId,
+      type: 'notification',
+      title: args.title,
+      content: args.content,
+      priority: args.priority || 'normal',
+      link: args.link ?? null,
+      senderId: 'admin',
+      senderType: 'admin',
+      attachmentUrl: args.attachmentUrl || null,
+      attachmentName: args.attachmentName || null,
+    },
+  })
+
+  return sendPushToInstaller({
+    installerId: args.installerId,
+    title: args.title,
+    body: args.content,
+    link: args.link,
+    data: args.data ?? { type: 'notification' },
+  })
+}
+
 export type PushSendResult = {
   sent: number
   failed: number

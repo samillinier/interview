@@ -7,6 +7,7 @@ import { authOptions } from '@/lib/auth'
 import { extractLikelyPhone } from '@/lib/phone'
 import { writeAdminAuditLog } from '@/lib/audit'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { sendPushToInstaller } from '@/lib/pushNotifications'
 
 // Helper function to categorize fields by section
 function getSectionsFromFields(fields: string[]): string[] {
@@ -1129,6 +1130,13 @@ export async function PATCH(
               },
             })
             console.log(`✅ ${trackerStageChanged ? 'Tracker stage' : 'Status'} change notification created successfully for installer ${installerId} (Notification ID: ${notification.id})`)
+            await sendPushToInstaller({
+              installerId,
+              title: notificationTitle,
+              body: notificationContent,
+              link: '/installer/profile',
+              data: { type: 'notification' },
+            })
           } catch (e: any) {
             console.error('❌ Failed to create notification:', e?.message || e)
           }
