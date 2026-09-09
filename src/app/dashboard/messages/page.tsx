@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, type ChangeEvent, type MouseEvent } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -644,7 +644,7 @@ export default function MessagesPage() {
     }
   }
 
-  const openMessageContextMenu = (event: MouseEvent, message: Message) => {
+  const openMessageContextMenu = (event: ReactMouseEvent, message: Message) => {
     event.preventDefault()
     event.stopPropagation()
     const menuWidth = 228
