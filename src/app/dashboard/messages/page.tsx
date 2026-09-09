@@ -314,48 +314,32 @@ export default function MessagesPage() {
       // This ensures moderators only see messages from installers they have access to
       const accessibleInstallerIds = new Set(installersList.map((i: any) => i.id))
       
-      const response = await fetch('/api/notifications?type=message')
+      const response = await fetch('/api/admin/messages/conversations')
       const data = await response.json()
-      const allMessages: Message[] = data.notifications || []
-      
-      // Filter messages to only include those from accessible installers
-      // This is important for moderators who can only see certain installer statuses
-      const filteredMessages = allMessages.filter((message) => 
-        accessibleInstallerIds.has(message.installerId)
-      )
-      
-      // Group messages by installer and create conversations
+      const conversationRows: Array<{
+        installerId: string
+        lastMessage?: Message
+        unreadCount?: number
+        Installer?: Message['Installer']
+      }> = data.conversations || []
+
       const conversationMap = new Map<string, Conversation>()
-      
-      filteredMessages.forEach((message) => {
-        const installerId = message.installerId
-        // Only count unread messages FROM installers (not from admin)
-        const isFromInstaller = !message.senderId || message.senderId !== 'admin' && message.senderType !== 'admin'
-        const isUnreadFromInstaller = !message.isRead && isFromInstaller
-        
-        if (!conversationMap.has(installerId)) {
-          const installer = installersList.find((i: any) => i.id === installerId) || {
-            id: message.Installer.id,
-            firstName: message.Installer.firstName,
-            lastName: message.Installer.lastName,
-            email: message.Installer.email,
-            status: 'pending',
-            photoUrl: message.Installer.photoUrl
-          }
-          conversationMap.set(installerId, {
-            installer,
-            lastMessage: message,
-            unreadCount: isUnreadFromInstaller ? 1 : 0
-          })
-        } else {
-          const conv = conversationMap.get(installerId)!
-          if (!conv.lastMessage || new Date(message.createdAt) > new Date(conv.lastMessage.createdAt)) {
-            conv.lastMessage = message
-          }
-          if (isUnreadFromInstaller) {
-            conv.unreadCount++
-          }
+
+      conversationRows.forEach((row) => {
+        if (!accessibleInstallerIds.has(row.installerId)) return
+        const installer = installersList.find((i: any) => i.id === row.installerId) || {
+          id: row.Installer?.id || row.installerId,
+          firstName: row.Installer?.firstName || '',
+          lastName: row.Installer?.lastName || '',
+          email: row.Installer?.email || '',
+          status: 'pending',
+          photoUrl: row.Installer?.photoUrl
         }
+        conversationMap.set(row.installerId, {
+          installer,
+          lastMessage: row.lastMessage,
+          unreadCount: row.unreadCount || 0
+        })
       })
       
       // Add installers who don't have messages yet
@@ -1146,7 +1130,9 @@ export default function MessagesPage() {
                       </div>
                       {conversation.lastMessage ? (
                         <p className="text-sm text-slate-600 truncate">
-                          {conversation.lastMessage.content}
+                          {conversation.lastMessage.content ||
+                            conversation.lastMessage.attachmentName ||
+                            'Attachment'}
                         </p>
                       ) : (
                         <p className="text-sm text-slate-400 italic">No messages yet</p>
