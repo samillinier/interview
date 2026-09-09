@@ -139,7 +139,8 @@ export default function MessagesPage() {
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
-    message: Message
+    installer: Installer
+    message?: Message | null
   } | null>(null)
 
   useEffect(() => {
@@ -644,7 +645,11 @@ export default function MessagesPage() {
     }
   }
 
-  const openMessageContextMenu = (event: ReactMouseEvent, message: Message) => {
+  const openContextMenu = (
+    event: ReactMouseEvent,
+    installer: Installer,
+    message?: Message | null
+  ) => {
     event.preventDefault()
     event.stopPropagation()
     const menuWidth = 228
@@ -652,20 +657,26 @@ export default function MessagesPage() {
     const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8)
     const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8)
     setShowProfileMenu(false)
-    setContextMenu({ x: Math.max(8, x), y: Math.max(8, y), message })
+    setContextMenu({ x: Math.max(8, x), y: Math.max(8, y), installer, message: message || null })
   }
 
-  const handleMarkMessageUnread = async (message: Message) => {
+  const handleMarkUnread = async (installer: Installer, message?: Message | null) => {
     setContextMenu(null)
     try {
-      const res = await fetch(`/api/admin/messages/${message.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unread: true }),
-      })
+      const res = message
+        ? await fetch(`/api/admin/messages/${message.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unread: true }),
+          })
+        : await fetch(`/api/admin/messages/conversation/${installer.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unread: true }),
+          })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to mark unread')
-      skipMarkReadForInstallerRef.current = message.installerId
+      skipMarkReadForInstallerRef.current = installer.id
       await fetchAllMessages()
       setSuccess('Marked as unread')
       setTimeout(() => setSuccess(''), 2500)
@@ -685,22 +696,40 @@ export default function MessagesPage() {
     )
   }
 
-  const handleDeleteMessage = async (message: Message) => {
+  const handleDeleteFromMenu = async (installer: Installer, message?: Message | null) => {
     setContextMenu(null)
-    if (!confirm('Delete this message?')) return
+    if (message) {
+      if (!confirm('Delete this message?')) return
+      try {
+        const res = await fetch(`/api/admin/messages/${message.id}`, { method: 'DELETE' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Failed to delete message')
+        setMessages((prev) => prev.filter((m) => m.id !== message.id))
+        setReactionOverrides((prev) => {
+          const next = { ...prev }
+          delete next[message.id]
+          return next
+        })
+        await fetchAllMessages()
+      } catch (err: any) {
+        setError(err.message || 'Failed to delete message')
+        setTimeout(() => setError(''), 4000)
+      }
+      return
+    }
+
+    if (!confirm(`Delete this conversation with ${installer.firstName} ${installer.lastName}?`)) return
     try {
-      const res = await fetch(`/api/admin/messages/${message.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/messages/conversation/${installer.id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Failed to delete message')
-      setMessages((prev) => prev.filter((m) => m.id !== message.id))
-      setReactionOverrides((prev) => {
-        const next = { ...prev }
-        delete next[message.id]
-        return next
-      })
+      if (!res.ok) throw new Error(data.error || 'Failed to delete conversation')
+      if (selectedInstaller?.id === installer.id) {
+        setSelectedInstaller(null)
+        setMessages([])
+      }
       await fetchAllMessages()
     } catch (err: any) {
-      setError(err.message || 'Failed to delete message')
+      setError(err.message || 'Failed to delete conversation')
       setTimeout(() => setError(''), 4000)
     }
   }
@@ -1065,6 +1094,7 @@ export default function MessagesPage() {
                 <div
                   key={conversation.installer.id}
                   onClick={() => setSelectedInstaller(conversation.installer)}
+                  onContextMenu={(event) => openContextMenu(event, conversation.installer)}
                   className={`p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${
                     selectedInstaller?.id === conversation.installer.id ? 'bg-brand-green/5 border-l-4 border-l-brand-green' : ''
                   }`}
@@ -1259,7 +1289,7 @@ export default function MessagesPage() {
                             duration: 0.3,
                             ease: [0.4, 0, 0.2, 1]
                           }}
-                          onContextMenu={(event) => openMessageContextMenu(event, message)}
+                          onContextMenu={(event) => openContextMenu(event, selectedInstaller, message)}
                           className={`flex flex-col mb-4 ${isFromAdmin ? 'items-end' : 'items-start'}`}
                         >
                           <div className={`flex items-end gap-3 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
@@ -1540,7 +1570,7 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {contextMenu && selectedInstaller && (
+      {contextMenu && (
         <div
           ref={contextMenuRef}
           className="fixed z-[80] w-56 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"
@@ -1548,7 +1578,7 @@ export default function MessagesPage() {
         >
           <button
             type="button"
-            onClick={() => void handleMarkMessageUnread(contextMenu.message)}
+            onClick={() => void handleMarkUnread(contextMenu.installer, contextMenu.message)}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors"
           >
             <MailOpen className="w-4 h-4 text-slate-500" />
@@ -1556,10 +1586,10 @@ export default function MessagesPage() {
           </button>
           <button
             type="button"
-            onClick={() => handlePinConversation(selectedInstaller.id)}
+            onClick={() => handlePinConversation(contextMenu.installer.id)}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
           >
-            {pinnedChatIds.includes(selectedInstaller.id) ? (
+            {pinnedChatIds.includes(contextMenu.installer.id) ? (
               <>
                 <PinOff className="w-4 h-4 text-slate-500" />
                 <span className="text-sm font-semibold text-slate-800">Unpin</span>
@@ -1573,17 +1603,20 @@ export default function MessagesPage() {
           </button>
           <button
             type="button"
-            onClick={() => void handleDeleteMessage(contextMenu.message)}
+            onClick={() => void handleDeleteFromMenu(contextMenu.installer, contextMenu.message)}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
           >
             <Trash2 className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-semibold text-red-600">Delete</span>
+            <span className="text-sm font-semibold text-red-600">
+              {contextMenu.message ? 'Delete' : 'Delete chat'}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => {
+              const installerId = contextMenu.installer.id
               setContextMenu(null)
-              router.push(`/dashboard/installers/${selectedInstaller.id}`)
+              router.push(`/dashboard/installers/${installerId}`)
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
           >
