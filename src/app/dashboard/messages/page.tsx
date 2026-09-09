@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent, type MouseEvent } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -35,7 +35,11 @@ import {
   Megaphone,
   CheckSquare,
   MoreVertical,
-  CreditCard
+  CreditCard,
+  Pin,
+  PinOff,
+  MailOpen,
+  Trash2,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -128,7 +132,15 @@ export default function MessagesPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+  const skipMarkReadForInstallerRef = useRef<string | null>(null)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [pinnedChatIds, setPinnedChatIds] = useState<string[]>([])
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    message: Message
+  } | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -212,9 +224,22 @@ export default function MessagesPage() {
   }, [status])
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem('fis-admin-pinned-chats')
+      const parsed = raw ? JSON.parse(raw) : []
+      if (Array.isArray(parsed)) setPinnedChatIds(parsed.filter((id) => typeof id === 'string'))
+    } catch {
+      setPinnedChatIds([])
+    }
+  }, [])
+
+  useEffect(() => {
     if (selectedInstaller) {
       fetchMessagesForInstaller(selectedInstaller.id)
-      // Mark messages as read when admin views them
+      if (skipMarkReadForInstallerRef.current === selectedInstaller.id) {
+        skipMarkReadForInstallerRef.current = null
+        return
+      }
       markMessagesAsRead(selectedInstaller.id)
     }
   }, [selectedInstaller])
@@ -246,9 +271,19 @@ export default function MessagesPage() {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
       }
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContextMenu(null)
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
   }, [])
 
   const scrollToBottom = () => {
@@ -600,6 +635,76 @@ export default function MessagesPage() {
     setReactionOverrides((prev) => ({ ...prev, [id]: reactions }))
   }
 
+  const persistPinnedChats = (ids: string[]) => {
+    setPinnedChatIds(ids)
+    try {
+      localStorage.setItem('fis-admin-pinned-chats', JSON.stringify(ids))
+    } catch {
+      // ignore
+    }
+  }
+
+  const openMessageContextMenu = (event: MouseEvent, message: Message) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const menuWidth = 228
+    const menuHeight = 200
+    const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8)
+    const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8)
+    setShowProfileMenu(false)
+    setContextMenu({ x: Math.max(8, x), y: Math.max(8, y), message })
+  }
+
+  const handleMarkMessageUnread = async (message: Message) => {
+    setContextMenu(null)
+    try {
+      const res = await fetch(`/api/admin/messages/${message.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unread: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to mark unread')
+      skipMarkReadForInstallerRef.current = message.installerId
+      await fetchAllMessages()
+      setSuccess('Marked as unread')
+      setTimeout(() => setSuccess(''), 2500)
+    } catch (err: any) {
+      setError(err.message || 'Failed to mark unread')
+      setTimeout(() => setError(''), 4000)
+    }
+  }
+
+  const handlePinConversation = (installerId: string) => {
+    setContextMenu(null)
+    const alreadyPinned = pinnedChatIds.includes(installerId)
+    persistPinnedChats(
+      alreadyPinned
+        ? pinnedChatIds.filter((id) => id !== installerId)
+        : [installerId, ...pinnedChatIds.filter((id) => id !== installerId)]
+    )
+  }
+
+  const handleDeleteMessage = async (message: Message) => {
+    setContextMenu(null)
+    if (!confirm('Delete this message?')) return
+    try {
+      const res = await fetch(`/api/admin/messages/${message.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete message')
+      setMessages((prev) => prev.filter((m) => m.id !== message.id))
+      setReactionOverrides((prev) => {
+        const next = { ...prev }
+        delete next[message.id]
+        return next
+      })
+      await fetchAllMessages()
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete message')
+      setTimeout(() => setError(''), 4000)
+    }
+  }
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -615,12 +720,18 @@ export default function MessagesPage() {
     return date.toLocaleDateString()
   }
 
-  const filteredConversations = conversations.filter(conv => {
-    const name = `${conv.installer.firstName} ${conv.installer.lastName}`.toLowerCase()
-    const email = conv.installer.email.toLowerCase()
-    const query = searchQuery.toLowerCase()
-    return name.includes(query) || email.includes(query)
-  })
+  const filteredConversations = conversations
+    .filter((conv) => {
+      const name = `${conv.installer.firstName} ${conv.installer.lastName}`.toLowerCase()
+      const email = conv.installer.email.toLowerCase()
+      const query = searchQuery.toLowerCase()
+      return name.includes(query) || email.includes(query)
+    })
+    .sort((a, b) => {
+      const aPinned = pinnedChatIds.includes(a.installer.id) ? 0 : 1
+      const bPinned = pinnedChatIds.includes(b.installer.id) ? 0 : 1
+      return aPinned - bPinned
+    })
 
   const filteredComposerInstallers = installers
     .filter((installer) => {
@@ -992,11 +1103,16 @@ export default function MessagesPage() {
                         <p className="font-semibold text-slate-900 truncate">
                           {conversation.installer.firstName} {conversation.installer.lastName}
                         </p>
-                        {conversation.lastMessage && (
-                          <span className="text-xs text-slate-500 flex-shrink-0 ml-2">
-                            {formatTime(conversation.lastMessage.createdAt)}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                          {pinnedChatIds.includes(conversation.installer.id) && (
+                            <Pin className="w-3.5 h-3.5 text-brand-green" />
+                          )}
+                          {conversation.lastMessage && (
+                            <span className="text-xs text-slate-500">
+                              {formatTime(conversation.lastMessage.createdAt)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {conversation.lastMessage ? (
                         <p className="text-sm text-slate-600 truncate">
@@ -1143,6 +1259,7 @@ export default function MessagesPage() {
                             duration: 0.3,
                             ease: [0.4, 0, 0.2, 1]
                           }}
+                          onContextMenu={(event) => openMessageContextMenu(event, message)}
                           className={`flex flex-col mb-4 ${isFromAdmin ? 'items-end' : 'items-start'}`}
                         >
                           <div className={`flex items-end gap-3 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
@@ -1422,6 +1539,59 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
+
+      {contextMenu && selectedInstaller && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[80] w-56 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button
+            type="button"
+            onClick={() => void handleMarkMessageUnread(contextMenu.message)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors"
+          >
+            <MailOpen className="w-4 h-4 text-slate-500" />
+            <span className="text-sm font-semibold text-slate-800">Mark as unread</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePinConversation(selectedInstaller.id)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+          >
+            {pinnedChatIds.includes(selectedInstaller.id) ? (
+              <>
+                <PinOff className="w-4 h-4 text-slate-500" />
+                <span className="text-sm font-semibold text-slate-800">Unpin</span>
+              </>
+            ) : (
+              <>
+                <Pin className="w-4 h-4 text-slate-500" />
+                <span className="text-sm font-semibold text-slate-800">Pin</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleDeleteMessage(contextMenu.message)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+          >
+            <Trash2 className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-semibold text-red-600">Delete</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setContextMenu(null)
+              router.push(`/dashboard/installers/${selectedInstaller.id}`)
+            }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+          >
+            <User className="w-4 h-4 text-slate-500" />
+            <span className="text-sm font-semibold text-slate-800">View profile</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
