@@ -17,6 +17,8 @@ import {
   User,
   Loader2,
   CheckCircle2,
+  Check,
+  CheckCheck,
   AlertCircle,
   Search,
   Bell,
@@ -245,12 +247,21 @@ export default function MessagesPage() {
     }
   }, [selectedInstaller])
 
+  useEffect(() => {
+    if (!selectedInstaller) return
+    const installerId = selectedInstaller.id
+    const interval = window.setInterval(() => {
+      void fetchMessagesForInstaller(installerId)
+    }, 8000)
+    return () => window.clearInterval(interval)
+  }, [selectedInstaller?.id])
+
   const markMessagesAsRead = async (installerId: string) => {
     try {
       const response = await fetch(`/api/installers/${installerId}/notifications/mark-all-read`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'message' }),
+        body: JSON.stringify({ type: 'message', senderType: 'installer' }),
       })
       if (response.ok) {
         // Refresh messages and update badge count
@@ -262,8 +273,15 @@ export default function MessagesPage() {
     }
   }
 
+  const lastMessageKeyRef = useRef('')
+
   useEffect(() => {
-    scrollToBottom()
+    const last = messages[messages.length - 1]
+    const key = `${messages.length}:${last?.id || ''}`
+    if (key !== lastMessageKeyRef.current) {
+      lastMessageKeyRef.current = key
+      scrollToBottom()
+    }
   }, [messages])
 
   // Close the profile menu when clicking outside of it
@@ -1422,8 +1440,12 @@ export default function MessagesPage() {
                             <span className="text-xs text-slate-500 font-medium">
                               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
-                            {isFromAdmin && message.isRead && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-brand-green" />
+                            {isFromAdmin && (
+                              message.isRead ? (
+                                <CheckCheck className="w-4 h-4 text-brand-green" aria-label="Read" />
+                              ) : (
+                                <Check className="w-4 h-4 text-slate-400" aria-label="Sent" />
+                              )
                             )}
                           </div>
 

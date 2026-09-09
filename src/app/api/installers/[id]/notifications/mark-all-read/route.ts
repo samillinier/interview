@@ -17,6 +17,7 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}))
     const type = typeof body?.type === 'string' ? body.type : null
+    const senderType = typeof body?.senderType === 'string' ? body.senderType : null
 
     const where: any = {
       installerId,
@@ -25,6 +26,9 @@ export async function POST(
 
     if (type) {
       where.type = type
+    }
+    if (senderType) {
+      where.senderType = senderType
     }
 
     const result = await prisma.notification.updateMany({
