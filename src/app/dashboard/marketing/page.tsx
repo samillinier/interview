@@ -7,8 +7,8 @@ import {
   Bookmark,
   BookmarkCheck,
   ExternalLink,
+  Loader2,
   Mail,
-  MapPin,
   Phone,
   Radar,
   Search,
@@ -112,7 +112,7 @@ export default function MarketingPage() {
   const counties = useMemo(() => countiesForState(stateCode), [stateCode])
   const cities = useMemo(() => citiesForState(stateCode), [stateCode])
   const selectClass =
-    'w-full appearance-none rounded-xl border border-slate-300 bg-white py-3 px-4 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20'
+    'flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]'
 
   const applyState = (nextState: string) => {
     const next = defaultPlaceForState(nextState)
@@ -281,23 +281,28 @@ export default function MarketingPage() {
           {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}
           {success ? <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-700">{success}</div> : null}
 
-          <form onSubmit={handleSearch} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <label className="text-sm font-semibold text-slate-800">Search for installers</label>
-            <div className="mt-3">
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Floor installers"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-              />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="relative">
-                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <form onSubmit={handleSearch} className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search installers..."
+                  className="w-full pl-10 sm:pl-12 pr-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
+                />
+                {searching ? (
+                  <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 animate-spin" />
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <select
                   value={stateCode}
                   onChange={(event) => applyState(event.target.value)}
-                  className={`${selectClass} pl-10`}
+                  className={selectClass}
                   aria-label="State"
                 >
                   {US_STATE_OPTIONS.map((state) => (
@@ -306,41 +311,41 @@ export default function MarketingPage() {
                     </option>
                   ))}
                 </select>
+                <select
+                  value={city}
+                  onChange={(event) => applyCity(event.target.value)}
+                  className={selectClass}
+                  aria-label="City"
+                >
+                  <option value="">All cities</option>
+                  {cities.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={county}
+                  onChange={(event) => applyCounty(event.target.value)}
+                  className={selectClass}
+                  aria-label="County"
+                >
+                  <option value="">All counties</option>
+                  {counties.map((name) => (
+                    <option key={name} value={name}>
+                      {name} County
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={searching}
+                  className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base disabled:opacity-60"
+                >
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {searching ? 'Searching…' : 'Search'}
+                </button>
               </div>
-              <select
-                value={city}
-                onChange={(event) => applyCity(event.target.value)}
-                className={selectClass}
-                aria-label="City"
-              >
-                <option value="">All cities</option>
-                {cities.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={county}
-                onChange={(event) => applyCounty(event.target.value)}
-                className={selectClass}
-                aria-label="County"
-              >
-                <option value="">All counties</option>
-                {counties.map((name) => (
-                  <option key={name} value={name}>
-                    {name} County
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                disabled={searching}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-5 py-3 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-60"
-              >
-                <Search className="h-4 w-4" />
-                {searching ? 'Searching…' : 'Search'}
-              </button>
             </div>
           </form>
 
@@ -374,8 +379,8 @@ export default function MarketingPage() {
             ) : null}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-5">
-            <div className="xl:col-span-2 xl:sticky xl:top-4 h-fit">
+          <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+            <div className="h-[min(820px,calc(100vh-13rem))] min-h-[560px]">
               <MarketingLeadsMap
                 leads={rows}
                 stateCode={stateCode}
@@ -386,13 +391,16 @@ export default function MarketingPage() {
                 onSelectState={applyState}
               />
             </div>
-            <div className="xl:col-span-3">
+            <div className="h-[min(820px,calc(100vh-13rem))] min-h-[560px]">
           {searching ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600">
-              Searching…
+            <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200/60 bg-white p-10 text-center text-slate-600 shadow-md">
+              <div>
+                <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-slate-400" />
+                Searching…
+              </div>
             </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+            <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-md">
               <Radar className="mx-auto h-10 w-10 text-slate-400" />
               <h2 className="mt-3 text-lg font-bold text-slate-900">{tab === 'saved' ? 'No saved leads yet' : 'No results yet'}</h2>
               <p className="mt-1 text-sm text-slate-600">
@@ -402,10 +410,10 @@ export default function MarketingPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="overflow-x-auto">
+            <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
+              <div className="min-h-0 flex-1 overflow-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-500">
+                  <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Company</th>
                       <th className="px-4 py-3 font-semibold">Contact</th>

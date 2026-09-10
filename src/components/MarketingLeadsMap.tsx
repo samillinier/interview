@@ -165,6 +165,16 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
       }
 
       window.setTimeout(() => map.invalidateSize(), 80)
+      const resize = () => map.invalidateSize()
+      window.addEventListener('resize', resize)
+      const observer = typeof ResizeObserver !== 'undefined' && mapRef.current
+        ? new ResizeObserver(resize)
+        : null
+      if (observer && mapRef.current) observer.observe(mapRef.current)
+      ;(map as any)._marketingCleanup = () => {
+        window.removeEventListener('resize', resize)
+        observer?.disconnect()
+      }
     }
 
     void run()
@@ -172,6 +182,7 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
     return () => {
       cancelled = true
       if (leafletMapRef.current) {
+        leafletMapRef.current._marketingCleanup?.()
         leafletMapRef.current.remove()
         leafletMapRef.current = null
       }
@@ -191,7 +202,7 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
   const looking = placeLabel || stateLabel(stateCode) || 'the United States'
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="flex h-full min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-brand-green" />
@@ -205,7 +216,7 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
             : 'Add a city or county, or click a state'}
         </p>
       </div>
-      <div ref={mapRef} className="h-64 w-full lg:h-[420px]" />
+      <div ref={mapRef} className="min-h-[480px] w-full flex-1" />
     </div>
   )
 }
