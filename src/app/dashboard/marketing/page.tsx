@@ -54,6 +54,7 @@ type MarketingLead = {
   outreachStatus?: string | null
   remark?: string | null
   savedByEmail?: string | null
+  rowColor?: string | null
 }
 
 const OUTREACH_OPTIONS = [
@@ -65,6 +66,25 @@ const OUTREACH_OPTIONS = [
 ] as const
 
 type OutreachStatus = (typeof OUTREACH_OPTIONS)[number]['value']
+
+const ROW_COLOR_OPTIONS = [
+  { id: 'gray', label: 'Gray', dotClass: 'bg-slate-400', rowClass: 'bg-slate-100/80 group-hover:bg-slate-200/60' },
+  { id: 'red', label: 'Red', dotClass: 'bg-red-400', rowClass: 'bg-red-100/65 group-hover:bg-red-100/85' },
+  { id: 'orange', label: 'Orange', dotClass: 'bg-orange-400', rowClass: 'bg-orange-100/65 group-hover:bg-orange-100/85' },
+  { id: 'amber', label: 'Amber', dotClass: 'bg-amber-400', rowClass: 'bg-amber-100/65 group-hover:bg-amber-100/85' },
+  { id: 'yellow', label: 'Yellow', dotClass: 'bg-yellow-300', rowClass: 'bg-yellow-100/65 group-hover:bg-yellow-100/85' },
+  { id: 'green', label: 'Green', dotClass: 'bg-green-400', rowClass: 'bg-green-100/65 group-hover:bg-green-100/85' },
+  { id: 'teal', label: 'Teal', dotClass: 'bg-teal-400', rowClass: 'bg-teal-100/65 group-hover:bg-teal-100/85' },
+  { id: 'sky', label: 'Sky', dotClass: 'bg-sky-400', rowClass: 'bg-sky-100/65 group-hover:bg-sky-100/85' },
+  { id: 'blue', label: 'Blue', dotClass: 'bg-blue-400', rowClass: 'bg-blue-100/65 group-hover:bg-blue-100/85' },
+  { id: 'purple', label: 'Purple', dotClass: 'bg-purple-400', rowClass: 'bg-purple-100/65 group-hover:bg-purple-100/85' },
+] as const
+
+type RowColor = (typeof ROW_COLOR_OPTIONS)[number]['id']
+
+function isRowColor(value: unknown): value is RowColor {
+  return typeof value === 'string' && ROW_COLOR_OPTIONS.some((option) => option.id === value)
+}
 
 function outreachClass(status?: string | null) {
   return OUTREACH_OPTIONS.find((item) => item.value === status)?.className || OUTREACH_OPTIONS[0].className
@@ -116,8 +136,16 @@ export default function MarketingPage() {
   const [savingHost, setSavingHost] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
-  const [menu, setMenu] = useState<{ x: number; y: number; id: string; name: string; host: string } | null>(null)
+  const [menu, setMenu] = useState<{
+    x: number
+    y: number
+    id: string
+    name: string
+    host: string
+    currentColor: RowColor | null
+  } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [colorSaving, setColorSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('saved')
@@ -163,9 +191,11 @@ export default function MarketingPage() {
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
+      if (colorSaving || deletingId) return
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenu(null)
     }
     const onKey = (event: KeyboardEvent) => {
+      if (colorSaving || deletingId) return
       if (event.key === 'Escape') setMenu(null)
     }
     document.addEventListener('mousedown', close)
@@ -174,7 +204,7 @@ export default function MarketingPage() {
       document.removeEventListener('mousedown', close)
       document.removeEventListener('keydown', onKey)
     }
-  }, [])
+  }, [colorSaving, deletingId])
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
   const savedByHost = useMemo(() => new Map(saved.map((lead) => [lead.websiteHost, lead])), [saved])
@@ -309,7 +339,9 @@ export default function MarketingPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to delete')
       setSaved((current) => current.filter((lead) => lead.id !== id))
       setResults((current) =>
-        current.map((lead) => (lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined } : lead)),
+        current.map((lead) =>
+          lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined, rowColor: null } : lead,
+        ),
       )
       setMenu(null)
       flash('Lead removed.', 'ok')
@@ -317,6 +349,31 @@ export default function MarketingPage() {
       flash(err.message || 'Failed to delete lead', 'err')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleRowColor = async (color: RowColor | null) => {
+    if (!menu) return
+    const { id, host } = menu
+    setColorSaving(true)
+    try {
+      const res = await fetch(`/api/admin/marketing/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowColor: color }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to update color')
+      const nextColor = isRowColor(data.lead?.rowColor) ? data.lead.rowColor : color
+      const apply = (lead: MarketingLead) =>
+        lead.id === id || lead.websiteHost === host ? { ...lead, rowColor: nextColor } : lead
+      setSaved((current) => current.map(apply))
+      setResults((current) => current.map(apply))
+      setMenu(null)
+    } catch (err: any) {
+      flash(err.message || 'Failed to update color', 'err')
+    } finally {
+      setColorSaving(false)
     }
   }
 
@@ -527,8 +584,17 @@ export default function MarketingPage() {
                       const savedLead = savedByHost.get(lead.websiteHost)
                       const savedId = lead.id || savedLead?.id
                       const outreachStatus = (lead.outreachStatus || savedLead?.outreachStatus || 'pending') as OutreachStatus
+                      const savedColor = savedLead?.rowColor
+                      const rowColor = isRowColor(lead.rowColor)
+                        ? lead.rowColor
+                        : isRowColor(savedColor)
+                          ? savedColor
+                          : null
+                      const rowColorOption = ROW_COLOR_OPTIONS.find((option) => option.id === rowColor)
                       const isSaved = Boolean(lead.alreadySaved || (lead.id && tab === 'saved') || savedHosts.has(lead.websiteHost))
                       const isSelected = selectedHost === lead.websiteHost
+                      const rowBgClass = rowColorOption?.rowClass
+                        || (isSelected ? 'bg-brand-green/5' : 'bg-white hover:bg-slate-50')
                       return (
                         <tr
                           key={lead.id || lead.websiteHost}
@@ -537,15 +603,23 @@ export default function MarketingPage() {
                             if (!savedId) return
                             event.preventDefault()
                             setSelectedHost(lead.websiteHost)
+                            const menuWidth = 224
+                            const menuHeight = 420
+                            const x = Math.min(Math.max(8, event.clientX), window.innerWidth - menuWidth - 8)
+                            let y = event.clientY
+                            if (y + menuHeight > window.innerHeight - 12) {
+                              y = Math.max(12, event.clientY - menuHeight)
+                            }
                             setMenu({
-                              x: Math.min(event.clientX, window.innerWidth - 200),
-                              y: Math.min(event.clientY, window.innerHeight - 72),
+                              x,
+                              y,
                               id: savedId,
                               name: cleanText(lead.companyName),
                               host: lead.websiteHost,
+                              currentColor: rowColor,
                             })
                           }}
-                          className={`border-t border-slate-100 align-top cursor-pointer ${isSelected ? 'bg-brand-green/5' : 'hover:bg-slate-50'}`}
+                          className={`group border-t border-slate-100 align-top cursor-pointer ${rowBgClass} ${isSelected && rowColorOption ? 'ring-1 ring-inset ring-brand-green/40' : ''}`}
                         >
                           <td className="px-4 py-4">
                             <div className="font-semibold text-slate-900">{cleanText(lead.companyName)}</div>
@@ -648,23 +722,74 @@ export default function MarketingPage() {
           </div>
         </div>
         {menu ? (
-          <div
-            ref={menuRef}
-            className="fixed z-[80] w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
-            style={{ top: menu.y, left: menu.x }}
-          >
+          <>
             <button
               type="button"
-              disabled={deletingId === menu.id}
-              onClick={() => void handleDelete(menu.id, menu.host)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-red-50 disabled:opacity-60"
+              className="fixed inset-0 z-[79] cursor-default bg-slate-900/10"
+              aria-label="Close row menu"
+              onClick={() => {
+                if (!colorSaving && deletingId !== menu.id) setMenu(null)
+              }}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              className="fixed z-[80] w-56 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl"
+              style={{ top: menu.y, left: menu.x }}
             >
-              <Trash2 className="h-4 w-4 text-red-500" />
-              <span className="text-sm font-semibold text-red-600">
-                {deletingId === menu.id ? 'Removing…' : 'Remove'}
-              </span>
-            </button>
-          </div>
+              <div className="p-1 flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  disabled={colorSaving}
+                  onClick={() => void handleRowColor(null)}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold disabled:opacity-50 ${
+                    !menu.currentColor ? 'bg-slate-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="h-3 w-3 rounded-full bg-white ring-1 ring-slate-300" aria-hidden />
+                  White
+                </button>
+                <div className="grid grid-cols-2 gap-1 p-1">
+                  {ROW_COLOR_OPTIONS.map((option) => {
+                    const isSelected = menu.currentColor === option.id
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={colorSaving}
+                        onClick={() => void handleRowColor(option.id)}
+                        className={`flex items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-semibold disabled:opacity-50 ${
+                          isSelected ? 'bg-slate-100 text-slate-950' : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className={`h-3 w-3 rounded-full ${option.dotClass}`} aria-hidden />
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              {colorSaving ? (
+                <div className="px-3 py-2 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Saving…
+                </div>
+              ) : null}
+              <div className="border-t border-slate-100 p-1">
+                <button
+                  type="button"
+                  disabled={deletingId === menu.id || colorSaving}
+                  onClick={() => void handleDelete(menu.id, menu.host)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-red-50 disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-semibold text-red-600">
+                    {deletingId === menu.id ? 'Removing…' : 'Remove'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </>
         ) : null}
       </main>
     </div>

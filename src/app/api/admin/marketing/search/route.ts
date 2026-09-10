@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const saved = hosts.length
       ? await prisma.marketingLead.findMany({
           where: { websiteHost: { in: hosts } },
-          select: { id: true, websiteHost: true, outreachStatus: true, savedByEmail: true },
+          select: { id: true, websiteHost: true, outreachStatus: true, savedByEmail: true, rowColor: true },
         })
       : []
     const savedByHost = new Map(saved.map((row) => [row.websiteHost, row]))
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
             id: savedLead?.id,
             outreachStatus: savedLead?.outreachStatus || 'pending',
             savedByEmail: savedLead?.savedByEmail || null,
+            rowColor: savedLead?.rowColor || null,
           }
         }),
       },

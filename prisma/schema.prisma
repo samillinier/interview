@@ -1171,6 +1171,7 @@ model MarketingLead {
   savedByEmail   String?
   outreachStatus String   @default("pending")
   remark         String?
+  rowColor       String?
 
   @@index([score])
   @@index([createdAt])

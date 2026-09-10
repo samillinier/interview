@@ -37,6 +37,7 @@ export async function DELETE(
 }
 
 const OUTREACH_STATUSES = new Set(['pending', 'contacted', 'offered', 'contracted', 'declined'])
+const ROW_COLORS = new Set(['gray', 'red', 'orange', 'amber', 'yellow', 'green', 'teal', 'sky', 'blue', 'purple'])
 
 export async function PATCH(
   request: NextRequest,
@@ -62,9 +63,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Pick pending, contacted, offered, contracted, or declined.' }, { status: 400, headers: noStoreHeaders })
     }
 
-    const data: { outreachStatus?: string; remark?: string | null } = {}
+    const data: { outreachStatus?: string; remark?: string | null; rowColor?: string | null } = {}
     if (body?.outreachStatus !== undefined) data.outreachStatus = outreachStatus
     if (body?.remark !== undefined) data.remark = remark
+    if (body?.rowColor !== undefined) {
+      if (body.rowColor === null || body.rowColor === '' || String(body.rowColor).trim().toLowerCase() === 'white') {
+        data.rowColor = null
+      } else {
+        const rowColor = String(body.rowColor).trim().toLowerCase()
+        if (!ROW_COLORS.has(rowColor)) {
+          return NextResponse.json({ error: 'Pick a valid row color.' }, { status: 400, headers: noStoreHeaders })
+        }
+        data.rowColor = rowColor
+      }
+    }
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: 'Nothing to update' }, { status: 400, headers: noStoreHeaders })
     }
