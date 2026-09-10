@@ -53,6 +53,7 @@ export async function GET() {
         leads: mapped.map((lead) => ({
           ...lead,
           rowColor: (lead as { rowColor?: string | null }).rowColor || null,
+          remark: (lead as { remark?: string | null }).remark || null,
         })),
       },
       { headers: noStoreHeaders },

@@ -58,7 +58,7 @@ export async function PATCH(
 
     const body = await request.json().catch(() => ({}))
     const outreachStatus = String(body?.outreachStatus || '').trim().toLowerCase()
-    const remark = body?.remark === undefined ? undefined : String(body.remark || '').trim().slice(0, 240) || null
+    const remark = body?.remark === undefined ? undefined : String(body.remark || '').trim().slice(0, 2000) || null
     if (body?.outreachStatus !== undefined && !OUTREACH_STATUSES.has(outreachStatus)) {
       return NextResponse.json({ error: 'Pick pending, contacted, offered, contracted, or declined.' }, { status: 400, headers: noStoreHeaders })
     }

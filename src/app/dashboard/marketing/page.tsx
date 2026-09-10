@@ -12,6 +12,7 @@ import {
   Phone,
   Radar,
   Search,
+  StickyNote,
   Trash2,
 } from 'lucide-react'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
@@ -143,9 +144,18 @@ export default function MarketingPage() {
     name: string
     host: string
     currentColor: RowColor | null
+    currentNote: string
   } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [colorSaving, setColorSaving] = useState(false)
+  const [notePicker, setNotePicker] = useState<{
+    x: number
+    y: number
+    id: string
+    host: string
+  } | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('saved')
@@ -193,12 +203,16 @@ export default function MarketingPage() {
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
-      if (colorSaving || deletingId) return
+      if (colorSaving || deletingId || noteSaving) return
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenu(null)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (colorSaving || deletingId) return
-      if (event.key === 'Escape') setMenu(null)
+      if (colorSaving || deletingId || noteSaving) return
+      if (event.key === 'Escape') {
+        setMenu(null)
+        setNotePicker(null)
+        setNoteDraft('')
+      }
     }
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', onKey)
@@ -206,7 +220,7 @@ export default function MarketingPage() {
       document.removeEventListener('mousedown', close)
       document.removeEventListener('keydown', onKey)
     }
-  }, [colorSaving, deletingId])
+  }, [colorSaving, deletingId, noteSaving])
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
   const savedByHost = useMemo(() => new Map(saved.map((lead) => [lead.websiteHost, lead])), [saved])
@@ -342,7 +356,7 @@ export default function MarketingPage() {
       setSaved((current) => current.filter((lead) => lead.id !== id))
       setResults((current) =>
         current.map((lead) =>
-          lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined, rowColor: null } : lead,
+          lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined, rowColor: null, remark: null } : lead,
         ),
       )
       setMenu(null)
@@ -351,6 +365,55 @@ export default function MarketingPage() {
       flash(err.message || 'Failed to delete lead', 'err')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const openNotePicker = (
+    event: React.MouseEvent<HTMLElement>,
+    id: string,
+    host: string,
+    note: string,
+  ) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setMenu(null)
+    const menuWidth = 288
+    const menuHeight = 250
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = Math.min(Math.max(8, rect.left), window.innerWidth - menuWidth - 8)
+    let y = rect.bottom + 6
+    if (y + menuHeight > window.innerHeight - 12) {
+      y = Math.max(12, rect.top - menuHeight - 6)
+    }
+    setNoteDraft(note)
+    setNotePicker({ x, y, id, host })
+  }
+
+  const handleSaveNote = async (nextNote?: string) => {
+    if (!notePicker) return
+    const { id, host } = notePicker
+    const note = (nextNote ?? noteDraft).trim()
+    setNoteSaving(true)
+    try {
+      const res = await fetch(`/api/admin/marketing/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remark: note || null }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to save note')
+      const savedNote = typeof data.lead?.remark === 'string' ? data.lead.remark : note || null
+      const apply = (lead: MarketingLead) =>
+        lead.id === id || lead.websiteHost === host ? { ...lead, remark: savedNote } : lead
+      setSaved((current) => current.map(apply))
+      setResults((current) => current.map(apply))
+      setNotePicker(null)
+      setNoteDraft('')
+      flash(savedNote ? 'Note saved.' : 'Note cleared.', 'ok')
+    } catch (err: any) {
+      flash(err.message || 'Failed to save note', 'err')
+    } finally {
+      setNoteSaving(false)
     }
   }
 
@@ -582,6 +645,7 @@ export default function MarketingPage() {
                       const keywords = keywordList(lead.keywords)
                       const savedLead = savedByHost.get(lead.websiteHost)
                       const savedId = lead.id || savedLead?.id
+                      const rowNote = String(lead.remark || savedLead?.remark || '').trim()
                       const outreachStatus = (lead.outreachStatus || savedLead?.outreachStatus || 'pending') as OutreachStatus
                       const savedColor = savedLead?.rowColor
                       const rowColor = isRowColor(lead.rowColor)
@@ -617,20 +681,43 @@ export default function MarketingPage() {
                               name: cleanText(lead.companyName),
                               host: lead.websiteHost,
                               currentColor: rowColor,
+                              currentNote: rowNote,
                             })
                           }}
                           className={`group border-t border-slate-100 cursor-pointer ${isSelected && rowColorOption ? 'ring-1 ring-inset ring-brand-green/40' : ''}`}
                         >
                           <td className={`border-l-4 ${rowColorOption ? rowColorOption.barClass : 'border-l-transparent'} ${cellClass}`}>
-                            <div className="font-semibold text-slate-900">{cleanText(lead.companyName)}</div>
-                            <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-brand-green hover:underline">
-                              {lead.websiteHost} <ExternalLink className="h-3 w-3" />
-                            </a>
-                            {cleanText(lead.snippet) ? <p className="mt-2 text-xs text-slate-500 line-clamp-2">{cleanText(lead.snippet)}</p> : null}
-                            {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500">{cleanText(lead.services)}</p> : null}
-                            {savedLead?.savedByEmail || lead.savedByEmail ? (
-                              <p className="mt-1 text-[11px] text-slate-400">Saved by {savedLead?.savedByEmail || lead.savedByEmail}</p>
-                            ) : null}
+                            <div className="flex items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold text-slate-900">{cleanText(lead.companyName)}</div>
+                                <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-brand-green hover:underline">
+                                  {lead.websiteHost} <ExternalLink className="h-3 w-3" />
+                                </a>
+                                {cleanText(lead.snippet) ? <p className="mt-2 text-xs text-slate-500 line-clamp-2">{cleanText(lead.snippet)}</p> : null}
+                                {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500">{cleanText(lead.services)}</p> : null}
+                                {savedLead?.savedByEmail || lead.savedByEmail ? (
+                                  <p className="mt-1 text-[11px] text-slate-400">Saved by {savedLead?.savedByEmail || lead.savedByEmail}</p>
+                                ) : null}
+                              </div>
+                              {savedId ? (
+                                <button
+                                  type="button"
+                                  disabled={noteSaving}
+                                  onClick={(event) => openNotePicker(event, savedId, lead.websiteHost, rowNote)}
+                                  className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/70 hover:text-slate-800 disabled:opacity-40"
+                                  title="Row note"
+                                  aria-label="Row note"
+                                >
+                                  {rowNote ? (
+                                    <span
+                                      className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 ring-2 ring-white"
+                                      aria-hidden
+                                    />
+                                  ) : null}
+                                  <StickyNote className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
                           <td className={`text-slate-700 ${cellClass}`}>
                             {lead.phone ? (
@@ -778,6 +865,20 @@ export default function MarketingPage() {
               <div className="border-t border-slate-100 p-1">
                 <button
                   type="button"
+                  disabled={noteSaving || colorSaving}
+                  onClick={(event) => openNotePicker(event, menu.id, menu.host, menu.currentNote)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <span className="relative inline-flex">
+                    <StickyNote className="h-4 w-4" />
+                    {menu.currentNote ? (
+                      <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+                    ) : null}
+                  </span>
+                  <span className="text-sm font-semibold">{menu.currentNote ? 'Edit note' : 'Add note'}</span>
+                </button>
+                <button
+                  type="button"
                   disabled={deletingId === menu.id || colorSaving}
                   onClick={() => void handleDelete(menu.id, menu.host)}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-red-50 disabled:opacity-60"
@@ -787,6 +888,69 @@ export default function MarketingPage() {
                     {deletingId === menu.id ? 'Removing…' : 'Remove'}
                   </span>
                 </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+        {notePicker ? (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[79] cursor-default bg-slate-900/10"
+              aria-label="Close note"
+              onClick={() => {
+                if (!noteSaving) {
+                  setNotePicker(null)
+                  setNoteDraft('')
+                }
+              }}
+            />
+            <div
+              role="dialog"
+              aria-label="Row note"
+              className="fixed z-[80] w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+              style={{ left: notePicker.x, top: notePicker.y }}
+            >
+              <textarea
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                disabled={noteSaving}
+                placeholder="Write a row note..."
+                rows={5}
+                maxLength={2000}
+                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 disabled:opacity-50"
+              />
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  disabled={noteSaving || !noteDraft.trim()}
+                  onClick={() => void handleSaveNote('')}
+                  className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                >
+                  Clear
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={noteSaving}
+                    onClick={() => {
+                      setNotePicker(null)
+                      setNoteDraft('')
+                    }}
+                    className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={noteSaving}
+                    onClick={() => void handleSaveNote()}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-40"
+                  >
+                    {noteSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
           </>
