@@ -68,8 +68,6 @@ export default function MarketingPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [source, setSource] = useState('')
-  const [crawler, setCrawler] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('results')
   const [results, setResults] = useState<MarketingLead[]>([])
   const [saved, setSaved] = useState<MarketingLead[]>([])
@@ -124,8 +122,6 @@ export default function MarketingPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Search failed')
       setResults(Array.isArray(data.leads) ? data.leads : [])
-      setSource(String(data.source || ''))
-      setCrawler(String(data.crawler || ''))
       setTab('results')
       if (!data.leads?.length) flash(data.message || 'No contractor websites found.', 'err')
     } catch (err: any) {
@@ -230,10 +226,7 @@ export default function MarketingPage() {
 
           <form onSubmit={handleSearch} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="text-sm font-semibold text-slate-800">Search for installers</label>
-            <p className="mt-1 text-sm text-slate-600">
-              Try a trade plus a place, like Floor installers in Dothan. Playwright searches Google, then opens the contractor websites to pull phone, email, city, and services.
-            </p>
-            <div className="mt-4 flex flex-col gap-3 lg:flex-row">
+            <div className="mt-3 flex flex-col gap-3 lg:flex-row">
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -249,16 +242,6 @@ export default function MarketingPage() {
                 {searching ? 'Searching…' : 'Search'}
               </button>
             </div>
-            {source || crawler ? (
-              <p className="mt-3 text-xs text-slate-500">
-                {source ? `Search: ${source === 'google' ? 'Google via Playwright' : source === 'bing' ? 'Bing via Playwright' : source === 'duckduckgo' ? 'DuckDuckGo via Playwright' : source}. ` : ''}
-                Crawler: {crawler === 'playwright' ? 'Playwright' : 'HTML fetch fallback'}
-              </p>
-            ) : (
-              <p className="mt-3 text-xs text-slate-500">
-                Playwright searches Google, then visits each contractor site.
-              </p>
-            )}
           </form>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -293,7 +276,7 @@ export default function MarketingPage() {
 
           {searching ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600">
-              Playwright is searching Google and opening contractor websites…
+              Searching…
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
