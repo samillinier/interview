@@ -657,7 +657,10 @@ async function crawlWithFetch(hits: SearchHit[]): Promise<MarketingLeadDraft[]> 
 
   return crawled
     .map((result) => (result.status === 'fulfilled' ? result.value : null))
-    .filter((lead): lead is MarketingLeadDraft => Boolean(lead) && !isJunkCompany(lead.companyName) && !isNoiseHost(lead.websiteHost))
+    .filter((lead): lead is MarketingLeadDraft => {
+      if (!lead) return false
+      return !isJunkCompany(lead.companyName) && !isNoiseHost(lead.websiteHost)
+    })
     .sort((a, b) => b.score - a.score)
 }
 
