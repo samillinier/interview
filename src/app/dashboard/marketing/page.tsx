@@ -100,9 +100,10 @@ export default function MarketingPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [tab, setTab] = useState<'results' | 'saved'>('results')
+  const [tab, setTab] = useState<'results' | 'saved'>('saved')
   const [results, setResults] = useState<MarketingLead[]>([])
   const [saved, setSaved] = useState<MarketingLead[]>([])
+  const [loadingSaved, setLoadingSaved] = useState(true)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -118,7 +119,9 @@ export default function MarketingPage() {
 
   useEffect(() => {
     if (status === 'authenticated' && canView) {
-      void loadSaved().catch((err) => setError(err.message || 'Failed to load saved leads'))
+      void loadSaved()
+        .catch((err) => setError(err.message || 'Failed to load saved leads'))
+        .finally(() => setLoadingSaved(false))
     }
   }, [status, canView])
 
@@ -406,11 +409,11 @@ export default function MarketingPage() {
               />
             </div>
             <div className="h-[min(820px,calc(100vh-13rem))] min-h-[560px]">
-          {searching ? (
+          {searching || (tab === 'saved' && loadingSaved) ? (
             <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200/60 bg-white p-10 text-center text-slate-600 shadow-md">
               <div>
                 <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-slate-400" />
-                Searching…
+                {searching ? 'Searching…' : 'Loading saved leads…'}
               </div>
             </div>
           ) : rows.length === 0 ? (
