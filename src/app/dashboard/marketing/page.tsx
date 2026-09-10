@@ -8,6 +8,7 @@ import {
   BookmarkCheck,
   ExternalLink,
   Mail,
+  MapPin,
   Phone,
   Radar,
   Search,
@@ -15,8 +16,10 @@ import {
 } from 'lucide-react'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import { MarketingLeadsMap } from '@/components/MarketingLeadsMap'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { formatPlaceLabel, US_STATE_OPTIONS } from '@/lib/us-states'
 
 type MarketingLead = {
   id?: string
@@ -26,6 +29,7 @@ type MarketingLead = {
   phone: string | null
   email: string | null
   city: string | null
+  county?: string | null
   state: string | null
   services: string | null
   contactUrl: string | null
@@ -39,6 +43,8 @@ type MarketingLead = {
   query?: string
   alreadySaved?: boolean
   createdAt?: string
+  lat?: number | null
+  lng?: number | null
 }
 
 function keywordList(value: MarketingLead['keywords']): string[] {
@@ -51,7 +57,8 @@ function keywordList(value: MarketingLead['keywords']): string[] {
 }
 
 function locationLabel(lead: MarketingLead) {
-  return [lead.city, lead.state].filter(Boolean).join(', ') || '—'
+  const county = lead.county ? (String(lead.county).toLowerCase().endsWith('county') ? lead.county : `${lead.county} County`) : ''
+  return [lead.city, county, lead.state].filter(Boolean).join(', ') || '—'
 }
 
 export default function MarketingPage() {
@@ -62,7 +69,12 @@ export default function MarketingPage() {
   const canView = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const { sidebarOpen } = useSidebarOpen()
 
-  const [query, setQuery] = useState('Floor installers in Dothan')
+  const [query, setQuery] = useState('Floor installers')
+  const [city, setCity] = useState('Dothan')
+  const [county, setCounty] = useState('Houston')
+  const [stateCode, setStateCode] = useState('AL')
+  const [mapFocus, setMapFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
+  const [selectedHost, setSelectedHost] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
   const [savingHost, setSavingHost] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -107,7 +119,7 @@ export default function MarketingPage() {
     event?.preventDefault()
     const nextQuery = query.trim()
     if (nextQuery.length < 3) {
-      flash('Enter a search like “Floor installers in Dothan”.', 'err')
+      flash('Enter a search like “Floor installers”.', 'err')
       return
     }
     setSearching(true)
@@ -117,11 +129,13 @@ export default function MarketingPage() {
       const res = await fetch('/api/admin/marketing/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: nextQuery }),
+        body: JSON.stringify({ query: nextQuery, city, county, state: stateCode }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Search failed')
       setResults(Array.isArray(data.leads) ? data.leads : [])
+      setMapFocus(data.focus || null)
+      setSelectedHost(null)
       setTab('results')
       if (!data.leads?.length) flash(data.message || 'No contractor websites found.', 'err')
     } catch (err: any) {
@@ -226,13 +240,44 @@ export default function MarketingPage() {
 
           <form onSubmit={handleSearch} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="text-sm font-semibold text-slate-800">Search for installers</label>
-            <div className="mt-3 flex flex-col gap-3 lg:flex-row">
+            <div className="mt-3">
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Floor installers in Dothan"
-                className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                placeholder="Floor installers"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
               />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <input
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+                placeholder="City"
+                className="rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                aria-label="City"
+              />
+              <input
+                value={county}
+                onChange={(event) => setCounty(event.target.value)}
+                placeholder="County"
+                className="rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                aria-label="County"
+              />
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={stateCode}
+                  onChange={(event) => setStateCode(event.target.value)}
+                  className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-8 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                  aria-label="State"
+                >
+                  {US_STATE_OPTIONS.map((state) => (
+                    <option key={state.value} value={state.value}>
+                      {state.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="submit"
                 disabled={searching}
@@ -274,6 +319,19 @@ export default function MarketingPage() {
             ) : null}
           </div>
 
+          <div className="grid gap-6 xl:grid-cols-5">
+            <div className="xl:col-span-2 xl:sticky xl:top-4 h-fit">
+              <MarketingLeadsMap
+                leads={rows}
+                stateCode={stateCode}
+                placeLabel={formatPlaceLabel({ city, county, state: stateCode })}
+                focus={mapFocus}
+                selectedHost={selectedHost}
+                onSelectHost={setSelectedHost}
+                onSelectState={setStateCode}
+              />
+            </div>
+            <div className="xl:col-span-3">
           {searching ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600">
               Searching…
@@ -285,7 +343,7 @@ export default function MarketingPage() {
               <p className="mt-1 text-sm text-slate-600">
                 {tab === 'saved'
                   ? 'Save companies from a search to keep them here for outreach.'
-                  : 'Run a search to pull contractor websites and contact details.'}
+                  : 'Pick a city, county, and state, then search to pin contractor websites on the map.'}
               </p>
             </div>
           ) : (
@@ -306,8 +364,13 @@ export default function MarketingPage() {
                     {rows.map((lead) => {
                       const keywords = keywordList(lead.keywords)
                       const isSaved = Boolean(lead.alreadySaved || (lead.id && tab === 'saved') || savedHosts.has(lead.websiteHost))
+                      const isSelected = selectedHost === lead.websiteHost
                       return (
-                        <tr key={lead.id || lead.websiteHost} className="border-t border-slate-100 align-top">
+                        <tr
+                          key={lead.id || lead.websiteHost}
+                          onClick={() => setSelectedHost(lead.websiteHost)}
+                          className={`border-t border-slate-100 align-top cursor-pointer ${isSelected ? 'bg-brand-green/5' : 'hover:bg-slate-50'}`}
+                        >
                           <td className="px-4 py-4">
                             <div className="font-semibold text-slate-900">{lead.companyName}</div>
                             <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-brand-green hover:underline">
@@ -359,7 +422,10 @@ export default function MarketingPage() {
                             {tab === 'saved' && lead.id ? (
                               <button
                                 type="button"
-                                onClick={() => handleDelete(lead.id!)}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleDelete(lead.id!)
+                                }}
                                 disabled={deletingId === lead.id}
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
                               >
@@ -369,7 +435,10 @@ export default function MarketingPage() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => handleSave(lead)}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleSave(lead)
+                                }}
                                 disabled={isSaved || savingHost === lead.websiteHost}
                                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                               >
@@ -386,6 +455,8 @@ export default function MarketingPage() {
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -7,6 +7,7 @@ import {
   searchDuckDuckGoWithPlaywright,
   searchGoogleWithPlaywright,
 } from '@/lib/marketing-playwright'
+import { countyName, stateLabel, type PlaceFilter } from '@/lib/us-states'
 
 export type SearchHit = {
   url: string
@@ -21,6 +22,7 @@ export type MarketingLeadDraft = {
   phone: string | null
   email: string | null
   city: string | null
+  county: string | null
   state: string | null
   services: string | null
   contactUrl: string | null
@@ -274,18 +276,30 @@ function placeFromQuery(query: string): { city: string | null; state: string | n
   return { city: null, state: null }
 }
 
-function hitMentionsPlace(hit: SearchHit, place: { city: string | null; state: string | null }): boolean {
-  if (!place.city && !place.state) return true
+function hitPlaceScore(hit: SearchHit, place: PlaceFilter): number {
+  const city = String(place.city || '').trim().toLowerCase()
+  const county = countyName(place.county).toLowerCase()
+  const stateCode = String(place.state || '').trim().toLowerCase()
+  const stateName = stateLabel(place.state).toLowerCase()
+  if (!city && !county && !stateCode) return 0
   const text = `${hit.title} ${hit.snippet} ${hit.url}`.toLowerCase()
-  if (place.city && text.includes(place.city.toLowerCase())) return true
-  if (place.state && new RegExp(`\\b${place.state.toLowerCase()}\\b`).test(text)) return true
-  return false
+  let score = 0
+  if (city && text.includes(city)) score += 4
+  if (county && text.includes(county)) score += 3
+  if (stateName && text.includes(stateName)) score += 1
+  if (stateCode && new RegExp(`\\b${stateCode}\\b`).test(text)) score += 1
+  return score
 }
 
-function rankHitsForQuery(hits: SearchHit[], query: string): SearchHit[] {
-  const place = placeFromQuery(query)
-  if (!place.city && !place.state) return hits
-  return [...hits].sort((a, b) => Number(hitMentionsPlace(b, place)) - Number(hitMentionsPlace(a, place)))
+function rankHitsForQuery(hits: SearchHit[], query: string, place?: PlaceFilter): SearchHit[] {
+  const parsed = placeFromQuery(query)
+  const next: PlaceFilter = {
+    city: place?.city || parsed.city,
+    county: place?.county || null,
+    state: place?.state || parsed.state,
+  }
+  if (!next.city && !next.county && !next.state) return hits
+  return [...hits].sort((a, b) => hitPlaceScore(b, next) - hitPlaceScore(a, next))
 }
 
 function uniqueUrls(hits: SearchHit[], limit: number): SearchHit[] {
@@ -392,17 +406,17 @@ async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
   return html ? parseDuckDuckGoHtml(html) : []
 }
 
-export async function searchContractorSites(query: string): Promise<{ hits: SearchHit[]; source: string }> {
+export async function searchContractorSites(query: string, place?: PlaceFilter): Promise<{ hits: SearchHit[]; source: string }> {
   const brave = await searchBrave(query)
   if (brave && brave.length > 0) {
-    return { hits: rankHitsForQuery(uniqueUrls(brave, RESULT_LIMIT), query), source: 'brave' }
+    return { hits: rankHitsForQuery(uniqueUrls(brave, RESULT_LIMIT), query, place), source: 'brave' }
   }
   const google = await searchGoogleCse(query)
   if (google && google.length > 0) {
-    return { hits: rankHitsForQuery(uniqueUrls(google, RESULT_LIMIT), query), source: 'google' }
+    return { hits: rankHitsForQuery(uniqueUrls(google, RESULT_LIMIT), query, place), source: 'google' }
   }
   const duck = await searchDuckDuckGo(query)
-  return { hits: rankHitsForQuery(uniqueUrls(duck, RESULT_LIMIT), query), source: 'duckduckgo' }
+  return { hits: rankHitsForQuery(uniqueUrls(duck, RESULT_LIMIT), query, place), source: 'duckduckgo' }
 }
 
 function stripTags(value: string): string {
@@ -520,6 +534,13 @@ function extractCityState(text: string): { city: string | null; state: string | 
   return { city: null, state: stateOnly?.[1] || null }
 }
 
+function extractCounty(text: string): string | null {
+  const skip = /^(the|our|your|this|home|united|washington|this)$/i
+  const match = text.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+County\b/)
+  if (!match?.[1] || skip.test(match[1])) return null
+  return match[1]
+}
+
 function extractLicense(text: string): string | null {
   const match = text.match(/\b(?:license|licence|lic\.?)\s*(?:#|no\.?|number)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9-]{2,20})/i)
   return match ? `${match[0].trim()}` : null
@@ -554,6 +575,7 @@ function scoreLead(lead: Omit<MarketingLeadDraft, 'score'>): number {
   if (lead.email) score += 20
   if (lead.contactUrl) score += 8
   if (lead.city || lead.state) score += 8
+  if (lead.county) score += 4
   if (lead.licenseInfo) score += 10
   if (lead.facebookUrl) score += 4
   if (lead.linkedinUrl) score += 4
@@ -582,6 +604,7 @@ export function extractLeadFromHtml(html: string, pageUrl: string, snippet?: str
     phone: extractPhones(text),
     email: extractEmails(text, html),
     city,
+    county: extractCounty(text),
     state,
     services: extractServices(text),
     contactUrl: pickContactUrl(hrefs, origin),
@@ -602,6 +625,7 @@ function mergeLeads(lead: MarketingLeadDraft, extra: MarketingLeadDraft): Market
     phone: lead.phone || extra.phone,
     email: lead.email || extra.email,
     city: lead.city || extra.city,
+    county: lead.county || extra.county,
     state: lead.state || extra.state,
     licenseInfo: lead.licenseInfo || extra.licenseInfo,
     facebookUrl: lead.facebookUrl || extra.facebookUrl,
@@ -623,6 +647,7 @@ function leadFromSnippet(hit: SearchHit): MarketingLeadDraft | null {
     phone: extractPhones(hit.snippet),
     email: extractEmails(hit.snippet, ''),
     city: extractCityState(hit.snippet).city,
+    county: extractCounty(`${hit.title} ${hit.snippet}`),
     state: extractCityState(hit.snippet).state,
     services: extractServices(hit.snippet),
     contactUrl: null,
@@ -729,14 +754,14 @@ export async function crawlContractorSites(
   }
 }
 
-export async function runMarketingDiscovery(query: string): Promise<{
+export async function runMarketingDiscovery(query: string, place?: PlaceFilter): Promise<{
   hits: SearchHit[]
   source: string
   leads: MarketingLeadDraft[]
   crawler: 'playwright' | 'fetch'
 }> {
   const braveHits = await searchBrave(query)
-  let hits = braveHits && braveHits.length > 0 ? rankHitsForQuery(uniqueUrls(braveHits, RESULT_LIMIT), query) : []
+  let hits = braveHits && braveHits.length > 0 ? rankHitsForQuery(uniqueUrls(braveHits, RESULT_LIMIT), query, place) : []
   let source = hits.length > 0 ? 'brave' : ''
 
   if (hits.length > 0) {
@@ -752,7 +777,7 @@ export async function runMarketingDiscovery(query: string): Promise<{
   }
 
   if (!context) {
-    const fallback = await searchContractorSites(query)
+    const fallback = await searchContractorSites(query, place)
     return { ...fallback, leads: await crawlWithFetch(fallback.hits), crawler: 'fetch' }
   }
 
@@ -768,7 +793,7 @@ export async function runMarketingDiscovery(query: string): Promise<{
       hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(page, query), RESULT_LIMIT)
       source = 'duckduckgo'
     }
-    hits = rankHitsForQuery(hits, query)
+    hits = rankHitsForQuery(hits, query, place)
     const crawled = await crawlContractorSites(hits, context)
     return { hits, source, ...crawled }
   } finally {

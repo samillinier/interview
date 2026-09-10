@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireMarketingAdmin } from '@/lib/marketing-admin'
+import { attachLeadCoordinates } from '@/lib/marketing-geocode'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,8 @@ export async function GET() {
       orderBy: [{ createdAt: 'desc' }],
       take: 200,
     })
-    return NextResponse.json({ success: true, leads }, { headers: noStoreHeaders })
+    const mapped = await attachLeadCoordinates(leads)
+    return NextResponse.json({ success: true, leads: mapped }, { headers: noStoreHeaders })
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Failed to load leads' },
