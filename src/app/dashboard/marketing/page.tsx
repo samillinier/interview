@@ -20,6 +20,12 @@ import { MarketingLeadsMap } from '@/components/MarketingLeadsMap'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { formatPlaceLabel, US_STATE_OPTIONS } from '@/lib/us-states'
+import {
+  citiesForCounty,
+  countiesForState,
+  countyForCity,
+  defaultPlaceForState,
+} from '@/lib/us-places'
 
 type MarketingLead = {
   id?: string
@@ -103,6 +109,31 @@ export default function MarketingPage() {
   }, [status, canView])
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
+  const counties = useMemo(() => countiesForState(stateCode), [stateCode])
+  const cities = useMemo(() => citiesForCounty(stateCode, county), [stateCode, county])
+  const selectClass =
+    'w-full appearance-none rounded-xl border border-slate-300 bg-white py-3 px-4 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20'
+
+  const applyState = (nextState: string) => {
+    const next = defaultPlaceForState(nextState)
+    setStateCode(nextState)
+    setCounty(next.county)
+    setCity(next.city)
+  }
+
+  const applyCounty = (nextCounty: string) => {
+    setCounty(nextCounty)
+    const nextCities = citiesForCounty(stateCode, nextCounty)
+    if (city && !nextCities.includes(city)) {
+      setCity(nextCities[0] || '')
+    }
+  }
+
+  const applyCity = (nextCity: string) => {
+    setCity(nextCity)
+    const matched = countyForCity(stateCode, nextCity)
+    if (matched) setCounty(matched)
+  }
 
   const flash = (message: string, kind: 'ok' | 'err') => {
     if (kind === 'ok') {
@@ -249,26 +280,12 @@ export default function MarketingPage() {
               />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <input
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                placeholder="City"
-                className="rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-                aria-label="City"
-              />
-              <input
-                value={county}
-                onChange={(event) => setCounty(event.target.value)}
-                placeholder="County"
-                className="rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-                aria-label="County"
-              />
               <div className="relative">
                 <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <select
                   value={stateCode}
-                  onChange={(event) => setStateCode(event.target.value)}
-                  className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-8 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                  onChange={(event) => applyState(event.target.value)}
+                  className={`${selectClass} pl-10`}
                   aria-label="State"
                 >
                   {US_STATE_OPTIONS.map((state) => (
@@ -278,6 +295,32 @@ export default function MarketingPage() {
                   ))}
                 </select>
               </div>
+              <select
+                value={county}
+                onChange={(event) => applyCounty(event.target.value)}
+                className={selectClass}
+                aria-label="County"
+              >
+                <option value="">All counties</option>
+                {counties.map((name) => (
+                  <option key={name} value={name}>
+                    {name} County
+                  </option>
+                ))}
+              </select>
+              <select
+                value={city}
+                onChange={(event) => applyCity(event.target.value)}
+                className={selectClass}
+                aria-label="City"
+              >
+                <option value="">All cities</option>
+                {cities.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
               <button
                 type="submit"
                 disabled={searching}
@@ -328,7 +371,7 @@ export default function MarketingPage() {
                 focus={mapFocus}
                 selectedHost={selectedHost}
                 onSelectHost={setSelectedHost}
-                onSelectState={setStateCode}
+                onSelectState={applyState}
               />
             </div>
             <div className="xl:col-span-3">

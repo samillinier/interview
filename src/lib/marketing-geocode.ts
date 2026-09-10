@@ -47,42 +47,12 @@ async function geocodeCity(city: string, stateCode: string, county?: string): Pr
 
 function jitter(point: Coord, index: number): Coord {
   if (index <= 0) return point
-  const angle = index * 2.4
-  const dist = 0.012 * index
+  const angle = index * 2.399
+  const dist = 0.01 + 0.007 * index
   return {
     lat: point.lat + Math.cos(angle) * dist,
     lng: point.lng + Math.sin(angle) * dist,
   }
-}
-
-export async function attachLeadCoordinates<T extends { city?: string | null; state?: string | null }>(
-  leads: T[],
-  fallbackState?: string | null,
-): Promise<(T & { lat: number | null; lng: number | null })[]> {
-  const fallback = normalizeStateCode(fallbackState)
-  const unique = new Map<string, { city: string; state: string }>()
-  for (const lead of leads) {
-    const city = String(lead.city || '').trim()
-    const state = normalizeStateCode(lead.state) || fallback
-    if (!city || !state) continue
-    unique.set(cacheKey(city, state), { city, state })
-  }
-
-  await Promise.all(Array.from(unique.values()).map((place) => geocodeCity(place.city, place.state)))
-
-  const used = new Map<string, number>()
-  return leads.map((lead) => {
-    const city = String(lead.city || '').trim()
-    const state = normalizeStateCode(lead.state) || fallback
-    if (!city || !state) return { ...lead, lat: null, lng: null }
-    const point = cache.get(cacheKey(city, state))
-    if (!point) return { ...lead, lat: null, lng: null }
-    const stamp = `${point.lat.toFixed(4)},${point.lng.toFixed(4)}`
-    const index = used.get(stamp) || 0
-    used.set(stamp, index + 1)
-    const shifted = jitter(point, index)
-    return { ...lead, lat: shifted.lat, lng: shifted.lng }
-  })
 }
 
 export function stateCenter(stateCode?: string | null): Coord & { zoom: number } {
@@ -104,4 +74,67 @@ export async function geocodeSearchPlace(place: PlaceFilter): Promise<(Coord & {
   }
   if (state) return stateCenter(state)
   return null
+}
+
+export async function attachLeadCoordinates<T extends { city?: string | null; county?: string | null; state?: string | null }>(
+  leads: T[],
+  fallbackPlace?: PlaceFilter | string | null,
+): Promise<(T & { lat: number; lng: number })[]> {
+  const place: PlaceFilter =
+    typeof fallbackPlace === 'string' ? { state: fallbackPlace } : fallbackPlace || {}
+  const fallbackState = normalizeStateCode(place.state)
+  const fallbackCity = String(place.city || '').trim()
+  const fallbackCounty = countyName(place.county)
+
+  const unique = new Map<string, { city: string; state: string; county?: string }>()
+  for (const lead of leads) {
+    const city = String(lead.city || '').trim() || fallbackCity
+    const state = normalizeStateCode(lead.state) || fallbackState
+    const county = countyName(lead.county) || fallbackCounty
+    if (city && state) unique.set(cacheKey(city, state, county), { city, state, county })
+    else if (county && state) unique.set(cacheKey(`${county} County`, state), { city: `${county} County`, state })
+  }
+  if (fallbackCity && fallbackState) {
+    unique.set(cacheKey(fallbackCity, fallbackState, fallbackCounty), {
+      city: fallbackCity,
+      state: fallbackState,
+      county: fallbackCounty,
+    })
+  } else if (fallbackCounty && fallbackState) {
+    unique.set(cacheKey(`${fallbackCounty} County`, fallbackState), {
+      city: `${fallbackCounty} County`,
+      state: fallbackState,
+    })
+  }
+
+  await Promise.all(
+    Array.from(unique.values()).map((item) => geocodeCity(item.city, item.state, item.county)),
+  )
+
+  const fallbackPoint =
+    (fallbackCity && fallbackState
+      ? cache.get(cacheKey(fallbackCity, fallbackState, fallbackCounty))
+      : null) ||
+    (fallbackCounty && fallbackState
+      ? cache.get(cacheKey(`${fallbackCounty} County`, fallbackState))
+      : null) ||
+    (fallbackState ? stateCenter(fallbackState) : null)
+
+  const used = new Map<string, number>()
+  return leads.map((lead) => {
+    const city = String(lead.city || '').trim() || fallbackCity
+    const state = normalizeStateCode(lead.state) || fallbackState
+    const county = countyName(lead.county) || fallbackCounty
+    const point =
+      (city && state ? cache.get(cacheKey(city, state, county)) : null) ||
+      (county && state ? cache.get(cacheKey(`${county} County`, state)) : null) ||
+      fallbackPoint ||
+      (state ? stateCenter(state) : null) ||
+      stateCenter('AL')
+    const stamp = `${point.lat.toFixed(4)},${point.lng.toFixed(4)}`
+    const offset = used.get(stamp) || 0
+    used.set(stamp, offset + 1)
+    const shifted = jitter(point, offset)
+    return { ...lead, lat: shifted.lat, lng: shifted.lng }
+  })
 }

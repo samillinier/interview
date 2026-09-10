@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         })
       : []
     const savedHosts = new Set(saved.map((row) => row.websiteHost))
-    const mapped = await attachLeadCoordinates(leads, state)
+    const mapped = await attachLeadCoordinates(leads, place)
     const ranked = [...mapped].sort((a, b) => {
       const diff = leadPlaceScore(b, place) - leadPlaceScore(a, place)
       return diff || b.score - a.score

@@ -60,13 +60,24 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
   onSelectHostRef.current = onSelectHost
   onSelectStateRef.current = onSelectState
 
-  const pins = useMemo(
-    () =>
-      leads.filter(
-        (lead) => Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng)),
-      ),
-    [leads],
-  )
+  const pins = useMemo(() => {
+    const used = new Map<string, number>()
+    return leads.map((lead, index) => {
+      const hasPoint = Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng))
+      if (hasPoint) return lead
+      if (!focus || !Number.isFinite(focus.lat) || !Number.isFinite(focus.lng)) return lead
+      const stamp = `${focus.lat.toFixed(4)},${focus.lng.toFixed(4)}`
+      const offset = used.get(stamp) || 0
+      used.set(stamp, offset + 1)
+      const angle = (offset + index) * 2.399
+      const dist = 0.01 + 0.007 * (offset + 1)
+      return {
+        ...lead,
+        lat: focus.lat + Math.cos(angle) * dist,
+        lng: focus.lng + Math.sin(angle) * dist,
+      }
+    }).filter((lead) => Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng)))
+  }, [leads, focus])
 
   useEffect(() => {
     let cancelled = false
@@ -187,7 +198,11 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
           <h2 className="text-sm font-semibold text-slate-900">Looking in {looking}</h2>
         </div>
         <p className="text-xs text-slate-500">
-          {pins.length ? `${pins.length} on the map` : 'Add a city or county, or click a state'}
+          {leads.length
+            ? pins.length === leads.length
+              ? `${pins.length} on the map`
+              : `${pins.length} of ${leads.length} on the map`
+            : 'Add a city or county, or click a state'}
         </p>
       </div>
       <div ref={mapRef} className="h-64 w-full lg:h-[420px]" />
