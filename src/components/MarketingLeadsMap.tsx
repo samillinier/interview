@@ -81,10 +81,7 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
       }).setView([39.8283, -98.5795], 4)
       leafletMapRef.current = map
 
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19 },
-      ).addTo(map)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
 
       const icon = new L.Icon({
         iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -157,7 +154,13 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
   const looking = placeLabel || stateLabel(stateCode) || 'the United States'
 
   return (
-    <div className="flex h-full min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
+    <div className="marketing-leads-map flex h-full min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
+      <style>{`
+        .marketing-leads-map .leaflet-container { background: #f2f2ea; }
+        .marketing-leads-map .leaflet-tile-pane {
+          filter: grayscale(1) saturate(0) brightness(1.22) contrast(0.82);
+        }
+      `}</style>
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-brand-green" />
