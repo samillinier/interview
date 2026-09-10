@@ -231,7 +231,7 @@ export default function MarketingPage() {
           <form onSubmit={handleSearch} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="text-sm font-semibold text-slate-800">Search for installers</label>
             <p className="mt-1 text-sm text-slate-600">
-              Try a trade plus a place, like metal building installers in Georgia. Playwright opens each contractor site so JavaScript-rendered phones, emails, and contact pages get captured.
+              Try a trade plus a place, like metal building installers in Georgia. Playwright searches Google, then opens the contractor websites to pull phone, email, city, and services.
             </p>
             <div className="mt-4 flex flex-col gap-3 lg:flex-row">
               <input
@@ -251,12 +251,12 @@ export default function MarketingPage() {
             </div>
             {source || crawler ? (
               <p className="mt-3 text-xs text-slate-500">
-                {source ? `Search source: ${source === 'duckduckgo' ? 'DuckDuckGo (no API key)' : source === 'brave' ? 'Brave Search' : 'Google CSE'}. ` : ''}
-                Crawler: {crawler === 'playwright' ? 'Playwright' : crawler === 'fetch' ? 'HTML fetch fallback' : 'Playwright'}
+                {source ? `Search: ${source === 'google' ? 'Google via Playwright' : source === 'duckduckgo' ? 'DuckDuckGo via Playwright (Google blocked)' : source}. ` : ''}
+                Crawler: {crawler === 'playwright' ? 'Playwright' : 'HTML fetch fallback'}
               </p>
             ) : (
               <p className="mt-3 text-xs text-slate-500">
-                Playwright opens contractor websites. Add BRAVE_SEARCH_API_KEY or GOOGLE_CSE_API_KEY + GOOGLE_CSE_CX for stronger search results.
+                Playwright searches Google, then visits each contractor site.
               </p>
             )}
           </form>
@@ -293,7 +293,7 @@ export default function MarketingPage() {
 
           {searching ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600">
-              Playwright is opening contractor websites…
+              Playwright is searching Google and opening contractor websites…
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">

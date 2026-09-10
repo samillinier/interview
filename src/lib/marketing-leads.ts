@@ -1,5 +1,10 @@
 import type { Browser } from 'playwright-core'
-import { launchMarketingBrowser, renderPageHtml } from '@/lib/marketing-playwright'
+import {
+  launchMarketingBrowser,
+  renderPageHtml,
+  searchDuckDuckGoWithPlaywright,
+  searchGoogleWithPlaywright,
+} from '@/lib/marketing-playwright'
 
 export type SearchHit = {
   url: string
@@ -582,7 +587,6 @@ export async function runMarketingDiscovery(query: string): Promise<{
   leads: MarketingLeadDraft[]
   crawler: 'playwright' | 'fetch'
 }> {
-  let { hits, source } = await searchContractorSites(query)
   let browser: Browser | null = null
   try {
     browser = await launchMarketingBrowser()
@@ -590,26 +594,21 @@ export async function runMarketingDiscovery(query: string): Promise<{
     browser = null
   }
 
+  if (!browser) {
+    const fallback = await searchContractorSites(query)
+    return { ...fallback, leads: await crawlWithFetch(fallback.hits), crawler: 'fetch' }
+  }
+
   try {
-    if (hits.length === 0 && browser) {
-      const rendered = await renderPageHtml(
-        browser,
-        `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
-        15000,
-      )
-      if (rendered?.html) {
-        hits = uniqueUrls(parseDuckDuckGoHtml(rendered.html), 6)
-        source = 'duckduckgo'
-      }
+    let hits = uniqueUrls(await searchGoogleWithPlaywright(browser, query), 6)
+    let source = 'google'
+    if (hits.length === 0) {
+      hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(browser, query), 6)
+      source = 'duckduckgo'
     }
-
-    if (!browser) {
-      return { hits, source, leads: await crawlWithFetch(hits), crawler: 'fetch' }
-    }
-
     const leads = await crawlWithPlaywright(browser, hits)
     return { hits, source, leads, crawler: 'playwright' }
   } finally {
-    await browser?.close().catch(() => {})
+    await browser.close().catch(() => {})
   }
 }
