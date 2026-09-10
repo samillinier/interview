@@ -56,8 +56,8 @@ function jitter(point: Coord, index: number): Coord {
 }
 
 export function stateCenter(stateCode?: string | null): Coord & { zoom: number } {
-  const code = normalizeStateCode(stateCode) || 'AL'
-  return US_STATE_CENTROIDS[code] || US_STATE_CENTROIDS.AL
+  const code = normalizeStateCode(stateCode) || 'FL'
+  return US_STATE_CENTROIDS[code] || US_STATE_CENTROIDS.FL
 }
 
 export async function geocodeSearchPlace(place: PlaceFilter): Promise<(Coord & { zoom: number }) | null> {
@@ -130,7 +130,7 @@ export async function attachLeadCoordinates<T extends { city?: string | null; co
       (county && state ? cache.get(cacheKey(`${county} County`, state)) : null) ||
       fallbackPoint ||
       (state ? stateCenter(state) : null) ||
-      stateCenter('AL')
+      stateCenter('FL')
     const stamp = `${point.lat.toFixed(4)},${point.lng.toFixed(4)}`
     const offset = used.get(stamp) || 0
     used.set(stamp, offset + 1)

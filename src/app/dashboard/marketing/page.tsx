@@ -21,7 +21,7 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { formatPlaceLabel, US_STATE_OPTIONS } from '@/lib/us-states'
 import {
-  citiesForCounty,
+  citiesForState,
   countiesForState,
   countyForCity,
   defaultPlaceForState,
@@ -76,9 +76,9 @@ export default function MarketingPage() {
   const { sidebarOpen } = useSidebarOpen()
 
   const [query, setQuery] = useState('Floor installers')
-  const [city, setCity] = useState('Dothan')
-  const [county, setCounty] = useState('Houston')
-  const [stateCode, setStateCode] = useState('AL')
+  const [city, setCity] = useState('')
+  const [county, setCounty] = useState('')
+  const [stateCode, setStateCode] = useState('FL')
   const [mapFocus, setMapFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
   const [selectedHost, setSelectedHost] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
@@ -110,7 +110,7 @@ export default function MarketingPage() {
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
   const counties = useMemo(() => countiesForState(stateCode), [stateCode])
-  const cities = useMemo(() => citiesForCounty(stateCode, county), [stateCode, county])
+  const cities = useMemo(() => citiesForState(stateCode), [stateCode])
   const selectClass =
     'w-full appearance-none rounded-xl border border-slate-300 bg-white py-3 px-4 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20'
 
@@ -123,10 +123,9 @@ export default function MarketingPage() {
 
   const applyCounty = (nextCounty: string) => {
     setCounty(nextCounty)
-    const nextCities = citiesForCounty(stateCode, nextCounty)
-    if (city && !nextCities.includes(city)) {
-      setCity(nextCities[0] || '')
-    }
+    if (!nextCounty || !city) return
+    const matched = countyForCity(stateCode, city)
+    if (matched && matched !== nextCounty) setCity('')
   }
 
   const applyCity = (nextCity: string) => {
@@ -296,19 +295,6 @@ export default function MarketingPage() {
                 </select>
               </div>
               <select
-                value={county}
-                onChange={(event) => applyCounty(event.target.value)}
-                className={selectClass}
-                aria-label="County"
-              >
-                <option value="">All counties</option>
-                {counties.map((name) => (
-                  <option key={name} value={name}>
-                    {name} County
-                  </option>
-                ))}
-              </select>
-              <select
                 value={city}
                 onChange={(event) => applyCity(event.target.value)}
                 className={selectClass}
@@ -318,6 +304,19 @@ export default function MarketingPage() {
                 {cities.map((name) => (
                   <option key={name} value={name}>
                     {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={county}
+                onChange={(event) => applyCounty(event.target.value)}
+                className={selectClass}
+                aria-label="County"
+              >
+                <option value="">All counties</option>
+                {counties.map((name) => (
+                  <option key={name} value={name}>
+                    {name} County
                   </option>
                 ))}
               </select>

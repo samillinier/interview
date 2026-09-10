@@ -35,6 +35,7 @@ export function countyForCity(stateCode: string, city: string): string | null {
 }
 
 export function defaultPlaceForState(stateCode: string): { county: string; city: string } {
+  if (stateCode === 'FL') return { county: '', city: '' }
   if (stateCode === 'AL') return { county: 'Houston', city: 'Dothan' }
   return { county: '', city: '' }
 }
