@@ -45,7 +45,6 @@ export async function GET() {
 
     const leads = await prisma.marketingLead.findMany({
       orderBy: [{ createdAt: 'desc' }],
-      take: 200,
     })
     const mapped = await attachLeadCoordinates(leads)
     return NextResponse.json({ success: true, leads: mapped }, { headers: noStoreHeaders })
@@ -77,7 +76,7 @@ export async function POST(request: NextRequest) {
       const row = await prisma.marketingLead.upsert({
         where: { websiteHost: payload.websiteHost },
         create: { ...payload, savedByEmail: auth.email },
-        update: { ...payload, savedByEmail: auth.email },
+        update: payload,
       })
       saved.push(row)
     }

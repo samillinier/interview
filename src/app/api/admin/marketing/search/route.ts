@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
     const saved = hosts.length
       ? await prisma.marketingLead.findMany({
           where: { websiteHost: { in: hosts } },
-          select: { websiteHost: true },
+          select: { id: true, websiteHost: true, outreachStatus: true, savedByEmail: true },
         })
       : []
-    const savedHosts = new Set(saved.map((row) => row.websiteHost))
+    const savedByHost = new Map(saved.map((row) => [row.websiteHost, row]))
     const mapped = await attachLeadCoordinates(leads, place)
     const ranked = [...mapped].sort((a, b) => {
       const diff = leadPlaceScore(b, place) - leadPlaceScore(a, place)
@@ -74,10 +74,16 @@ export async function POST(request: NextRequest) {
         focus,
         source,
         crawler,
-        leads: ranked.map((lead) => ({
-          ...lead,
-          alreadySaved: savedHosts.has(lead.websiteHost),
-        })),
+        leads: ranked.map((lead) => {
+          const savedLead = savedByHost.get(lead.websiteHost)
+          return {
+            ...lead,
+            alreadySaved: Boolean(savedLead),
+            id: savedLead?.id,
+            outreachStatus: savedLead?.outreachStatus || 'pending',
+            savedByEmail: savedLead?.savedByEmail || null,
+          }
+        }),
       },
       { headers: noStoreHeaders },
     )

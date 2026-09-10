@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -53,6 +53,7 @@ type MarketingLead = {
   lng?: number | null
   outreachStatus?: string | null
   remark?: string | null
+  savedByEmail?: string | null
 }
 
 const OUTREACH_OPTIONS = [
@@ -115,6 +116,8 @@ export default function MarketingPage() {
   const [savingHost, setSavingHost] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string; name: string; host: string } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('saved')
@@ -141,6 +144,37 @@ export default function MarketingPage() {
         .finally(() => setLoadingSaved(false))
     }
   }, [status, canView])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !canView) return
+    const refresh = () => {
+      void loadSaved().catch(() => {})
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [status, canView])
+
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenu(null)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenu(null)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [])
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
   const savedByHost = useMemo(() => new Map(saved.map((lead) => [lead.websiteHost, lead])), [saved])
@@ -267,13 +301,17 @@ export default function MarketingPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, host: string) => {
     setDeletingId(id)
     try {
       const res = await fetch(`/api/admin/marketing/leads/${id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to delete')
       setSaved((current) => current.filter((lead) => lead.id !== id))
+      setResults((current) =>
+        current.map((lead) => (lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined } : lead)),
+      )
+      setMenu(null)
       flash('Lead removed.', 'ok')
     } catch (err: any) {
       flash(err.message || 'Failed to delete lead', 'err')
@@ -406,6 +444,7 @@ export default function MarketingPage() {
           </form>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
             <div className="flex rounded-xl border border-slate-200 bg-white p-1">
               <button
                 type="button"
@@ -421,6 +460,8 @@ export default function MarketingPage() {
               >
                 Saved ({saved.length})
               </button>
+            </div>
+            <p className="text-xs font-medium text-slate-500">Shared with every admin</p>
             </div>
             {tab === 'results' && results.length > 0 ? (
               <button
@@ -474,10 +515,10 @@ export default function MarketingPage() {
                       <th className="px-4 py-3 font-semibold">Company</th>
                       <th className="px-4 py-3 font-semibold">Contact</th>
                       <th className="px-4 py-3 font-semibold">Location</th>
-                      <th className="px-4 py-3 font-semibold">Status</th>
                       <th className="px-4 py-3 font-semibold">Keywords</th>
                       <th className="px-4 py-3 font-semibold">Score</th>
-                      <th className="px-4 py-3 font-semibold"> </th>
+                      {tab === 'results' ? <th className="px-4 py-3 font-semibold"> </th> : null}
+                      <th className="px-4 py-3 font-semibold">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -492,6 +533,18 @@ export default function MarketingPage() {
                         <tr
                           key={lead.id || lead.websiteHost}
                           onClick={() => setSelectedHost(lead.websiteHost)}
+                          onContextMenu={(event) => {
+                            if (!savedId) return
+                            event.preventDefault()
+                            setSelectedHost(lead.websiteHost)
+                            setMenu({
+                              x: Math.min(event.clientX, window.innerWidth - 200),
+                              y: Math.min(event.clientY, window.innerHeight - 72),
+                              id: savedId,
+                              name: cleanText(lead.companyName),
+                              host: lead.websiteHost,
+                            })
+                          }}
                           className={`border-t border-slate-100 align-top cursor-pointer ${isSelected ? 'bg-brand-green/5' : 'hover:bg-slate-50'}`}
                         >
                           <td className="px-4 py-4">
@@ -501,6 +554,9 @@ export default function MarketingPage() {
                             </a>
                             {cleanText(lead.snippet) ? <p className="mt-2 text-xs text-slate-500 line-clamp-2">{cleanText(lead.snippet)}</p> : null}
                             {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500">{cleanText(lead.services)}</p> : null}
+                            {savedLead?.savedByEmail || lead.savedByEmail ? (
+                              <p className="mt-1 text-[11px] text-slate-400">Saved by {savedLead?.savedByEmail || lead.savedByEmail}</p>
+                            ) : null}
                           </td>
                           <td className="px-4 py-4 text-slate-700">
                             {lead.phone ? (
@@ -527,6 +583,37 @@ export default function MarketingPage() {
                           </td>
                           <td className="px-4 py-4 text-slate-700">{locationLabel(lead)}</td>
                           <td className="px-4 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {keywords.length ? keywords.slice(0, 4).map((keyword) => (
+                                <span key={keyword} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                                  {keyword}
+                                </span>
+                              )) : <span className="text-slate-400">—</span>}
+                            </div>
+                            {lead.licenseInfo ? <div className="mt-2 text-xs text-slate-500">{lead.licenseInfo}</div> : null}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${lead.score >= 70 ? 'bg-green-100 text-green-800' : lead.score >= 45 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                              {lead.score}
+                            </span>
+                          </td>
+                          {tab === 'results' ? (
+                          <td className="px-4 py-4">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleSave(lead)
+                              }}
+                              disabled={isSaved || savingHost === lead.websiteHost}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 text-brand-green" /> : <Bookmark className="h-3.5 w-3.5" />}
+                              {isSaved ? 'Saved' : savingHost === lead.websiteHost ? 'Saving…' : 'Save'}
+                            </button>
+                          </td>
+                          ) : null}
+                          <td className="px-4 py-4">
                             {savedId ? (
                               <select
                                 value={outreachStatus}
@@ -549,50 +636,6 @@ export default function MarketingPage() {
                               <span className="text-xs text-slate-400">Save to track</span>
                             )}
                           </td>
-                          <td className="px-4 py-4">
-                            <div className="flex flex-wrap gap-1">
-                              {keywords.length ? keywords.slice(0, 4).map((keyword) => (
-                                <span key={keyword} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                                  {keyword}
-                                </span>
-                              )) : <span className="text-slate-400">—</span>}
-                            </div>
-                            {lead.licenseInfo ? <div className="mt-2 text-xs text-slate-500">{lead.licenseInfo}</div> : null}
-                          </td>
-                          <td className="px-4 py-4">
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${lead.score >= 70 ? 'bg-green-100 text-green-800' : lead.score >= 45 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
-                              {lead.score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4">
-                            {tab === 'saved' && lead.id ? (
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleDelete(lead.id!)
-                                }}
-                                disabled={deletingId === lead.id}
-                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                {deletingId === lead.id ? 'Removing…' : 'Remove'}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  handleSave(lead)
-                                }}
-                                disabled={isSaved || savingHost === lead.websiteHost}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                              >
-                                {isSaved ? <BookmarkCheck className="h-3.5 w-3.5 text-brand-green" /> : <Bookmark className="h-3.5 w-3.5" />}
-                                {isSaved ? 'Saved' : savingHost === lead.websiteHost ? 'Saving…' : 'Save'}
-                              </button>
-                            )}
-                          </td>
                         </tr>
                       )
                     })}
@@ -604,6 +647,25 @@ export default function MarketingPage() {
             </div>
           </div>
         </div>
+        {menu ? (
+          <div
+            ref={menuRef}
+            className="fixed z-[80] w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            style={{ top: menu.y, left: menu.x }}
+          >
+            <button
+              type="button"
+              disabled={deletingId === menu.id}
+              onClick={() => void handleDelete(menu.id, menu.host)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-red-50 disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+              <span className="text-sm font-semibold text-red-600">
+                {deletingId === menu.id ? 'Removing…' : 'Remove'}
+              </span>
+            </button>
+          </div>
+        ) : null}
       </main>
     </div>
   )
