@@ -154,13 +154,7 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
   const looking = placeLabel || stateLabel(stateCode) || 'the United States'
 
   return (
-    <div className="marketing-leads-map flex h-full min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
-      <style>{`
-        .marketing-leads-map .leaflet-container { background: #f2f2ea; }
-        .marketing-leads-map .leaflet-tile-pane {
-          filter: grayscale(1) saturate(0) brightness(1.22) contrast(0.82);
-        }
-      `}</style>
+    <div className="flex h-full min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-brand-green" />
