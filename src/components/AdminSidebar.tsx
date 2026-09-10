@@ -24,6 +24,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plane,
+  Radar,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -198,6 +199,9 @@ export function AdminSidebar({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
+      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
+        ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]
+        : []),
       { href: '/dashboard/ltr', label: 'Survey', icon: ClipboardList },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
       { href: '/dashboard/updates', label: 'Updates', icon: Megaphone, badge: updatesCount },

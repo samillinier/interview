@@ -1147,6 +1147,34 @@ model GpsPosition {
   @@index([timestamp])
 }
 
+model MarketingLead {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  query        String
+  companyName  String
+  website      String
+  websiteHost  String   @unique
+  phone        String?
+  email        String?
+  city         String?
+  state        String?
+  services     String?
+  contactUrl   String?
+  facebookUrl  String?
+  linkedinUrl  String?
+  licenseInfo  String?
+  keywords     String?
+  score        Int      @default(0)
+  sourceUrl    String?
+  snippet      String?
+  savedByEmail String?
+
+  @@index([score])
+  @@index([createdAt])
+  @@index([query])
+}
+
 enum AdminRole {
   ADMIN
   MODERATOR

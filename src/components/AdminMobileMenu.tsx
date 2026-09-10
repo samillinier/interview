@@ -28,6 +28,7 @@ import {
   FileText,
   PhoneCall,
   Megaphone,
+  Radar,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -187,6 +188,9 @@ export function AdminMobileMenu({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
+      ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
+        ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (p: string) => p.startsWith('/dashboard/marketing') }]
+        : []),
       { href: '/dashboard/ltr', label: 'Survey', icon: ClipboardList },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
       { href: '/dashboard/updates', label: 'Updates', icon: Megaphone, badge: updatesCount },

@@ -23,7 +23,8 @@ if (process.env.NODE_ENV === 'production') {
   // After `prisma generate`, a cached global client can miss new models until this module reloads or restart.
   const stale =
     existing &&
-    typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined'
+    (typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined' ||
+      typeof (existing as unknown as { marketingLead?: unknown }).marketingLead === 'undefined')
   if (stale) {
     void existing.$disconnect().catch(() => {})
     globalForPrisma.prisma = undefined
