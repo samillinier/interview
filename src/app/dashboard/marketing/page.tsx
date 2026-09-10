@@ -53,12 +53,26 @@ type MarketingLead = {
   lng?: number | null
 }
 
+function cleanText(value: string | null | undefined) {
+  if (!value) return ''
+  return value
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function keywordList(value: MarketingLead['keywords']): string[] {
-  if (Array.isArray(value)) return value
+  if (Array.isArray(value)) return value.map((item) => cleanText(item)).filter(Boolean)
   if (!value) return []
   return String(value)
     .split(',')
-    .map((item) => item.trim())
+    .map((item) => cleanText(item))
     .filter(Boolean)
 }
 
@@ -379,7 +393,7 @@ export default function MarketingPage() {
             ) : null}
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+          <div className="grid gap-6 xl:grid-cols-[minmax(280px,38%)_minmax(0,1fr)] xl:items-stretch">
             <div className="h-[min(820px,calc(100vh-13rem))] min-h-[560px]">
               <MarketingLeadsMap
                 leads={rows}
@@ -435,12 +449,12 @@ export default function MarketingPage() {
                           className={`border-t border-slate-100 align-top cursor-pointer ${isSelected ? 'bg-brand-green/5' : 'hover:bg-slate-50'}`}
                         >
                           <td className="px-4 py-4">
-                            <div className="font-semibold text-slate-900">{lead.companyName}</div>
+                            <div className="font-semibold text-slate-900">{cleanText(lead.companyName)}</div>
                             <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-brand-green hover:underline">
                               {lead.websiteHost} <ExternalLink className="h-3 w-3" />
                             </a>
-                            {lead.snippet ? <p className="mt-2 max-w-xs text-xs text-slate-500 line-clamp-2">{lead.snippet}</p> : null}
-                            {lead.services ? <p className="mt-1 text-xs text-slate-500">{lead.services}</p> : null}
+                            {cleanText(lead.snippet) ? <p className="mt-2 text-xs text-slate-500 line-clamp-2">{cleanText(lead.snippet)}</p> : null}
+                            {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500">{cleanText(lead.services)}</p> : null}
                           </td>
                           <td className="px-4 py-4 text-slate-700">
                             {lead.phone ? (

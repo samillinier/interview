@@ -2,24 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { MapPin } from 'lucide-react'
-import { normalizeStateCode, stateLabel, US_STATE_OPTIONS } from '@/lib/us-states'
-
-let statesGeoPromise: Promise<any> | null = null
-
-function loadUsStates(): Promise<any> {
-  if (!statesGeoPromise) {
-    statesGeoPromise = fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
-      .then((res) => (res.ok ? res.json() : null))
-      .catch(() => null)
-  }
-  return statesGeoPromise
-}
-
-function codeFromFeature(feature: any): string | null {
-  const name = String(feature?.properties?.name || feature?.properties?.NAME || '').trim()
-  const abbr = String(feature?.properties?.state_code || feature?.properties?.STUSPS || '').trim()
-  return normalizeStateCode(abbr) || US_STATE_OPTIONS.find((state) => state.label === name)?.value || null
-}
+import { stateLabel } from '@/lib/us-states'
 
 export type MarketingMapLead = {
   companyName: string
@@ -51,14 +34,12 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#039;')
 }
 
-export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selectedHost, onSelectHost, onSelectState }: Props) {
+export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selectedHost, onSelectHost }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
   const onSelectHostRef = useRef(onSelectHost)
-  const onSelectStateRef = useRef(onSelectState)
   onSelectHostRef.current = onSelectHost
-  onSelectStateRef.current = onSelectState
 
   const pins = useMemo(() => {
     const used = new Map<string, number>()
@@ -96,38 +77,14 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
       const map = L.map(mapRef.current, {
         zoomControl: true,
         scrollWheelZoom: false,
+        attributionControl: false,
       }).setView([39.8283, -98.5795], 4)
       leafletMapRef.current = map
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-      }).addTo(map)
-
-      let selectedLayer: any = null
-      const geo = await loadUsStates()
-      if (!cancelled && geo) {
-        L.geoJSON(geo, {
-          style: (feature: any) => {
-            const code = codeFromFeature(feature)
-            const selected = code === stateCode
-            return {
-              color: selected ? '#15803d' : '#94a3b8',
-              weight: selected ? 2.5 : 1,
-              fillColor: selected ? '#22c55e' : '#e2e8f0',
-              fillOpacity: selected ? 0.35 : 0.15,
-            }
-          },
-          onEachFeature: (feature: any, layer: any) => {
-            const code = codeFromFeature(feature)
-            const name = stateLabel(code) || String(feature?.properties?.name || '')
-            layer.bindTooltip(name, { sticky: true })
-            layer.on('click', () => {
-              if (code) onSelectStateRef.current?.(code)
-            })
-            if (code === stateCode) selectedLayer = layer
-          },
-        }).addTo(map)
-      }
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19 },
+      ).addTo(map)
 
       const icon = new L.Icon({
         iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -160,8 +117,6 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
         map.fitBounds(bounds, { padding: [36, 36], maxZoom: 12 })
       } else if (focus && Number.isFinite(focus.lat) && Number.isFinite(focus.lng)) {
         map.setView([focus.lat, focus.lng], focus.zoom || 11)
-      } else if (selectedLayer?.getBounds) {
-        map.fitBounds(selectedLayer.getBounds(), { padding: [28, 28], maxZoom: 6 })
       }
 
       window.setTimeout(() => map.invalidateSize(), 80)

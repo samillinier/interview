@@ -321,8 +321,8 @@ function parseBraveResults(data: any): SearchHit[] {
   return rows
     .map((row: any) => ({
       url: String(row?.url || '').trim(),
-      title: String(row?.title || '').trim(),
-      snippet: String(row?.description || '').trim(),
+      title: stripTags(String(row?.title || '')),
+      snippet: stripTags(String(row?.description || '')),
     }))
     .filter((row: SearchHit) => row.url.startsWith('http'))
 }
@@ -368,8 +368,8 @@ async function searchGoogleCse(query: string): Promise<SearchHit[] | null> {
     return rows
       .map((row: any) => ({
         url: String(row?.link || '').trim(),
-        title: String(row?.title || '').trim(),
-        snippet: String(row?.snippet || '').trim(),
+        title: stripTags(String(row?.title || '')),
+        snippet: stripTags(String(row?.snippet || '')),
       }))
       .filter((row: SearchHit) => row.url.startsWith('http'))
   } catch {
@@ -420,7 +420,7 @@ export async function searchContractorSites(query: string, place?: PlaceFilter):
 }
 
 function stripTags(value: string): string {
-  return value
+  return decodeHtml(value)
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
@@ -429,6 +429,8 @@ function stripTags(value: string): string {
     .replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -566,7 +568,7 @@ function companyFromHtml(html: string, host: string, fallbackTitle: string): str
   const title = firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i)
   const h1 = firstMatch(html, /<h1[^>]*>([\s\S]*?)<\/h1>/i)
   const raw = siteName || (h1 ? stripTags(h1) : '') || (title ? stripTags(title).split(/[|–—-]/)[0] : '') || fallbackTitle || host
-  return raw.replace(/\s+/g, ' ').trim().slice(0, 120) || host
+  return stripTags(raw).replace(/\s+/g, ' ').trim().slice(0, 120) || host
 }
 
 function scoreLead(lead: Omit<MarketingLeadDraft, 'score'>): number {
@@ -613,7 +615,7 @@ export function extractLeadFromHtml(html: string, pageUrl: string, snippet?: str
     licenseInfo: extractLicense(text),
     keywords: extractKeywords(text),
     sourceUrl: pageUrl,
-    snippet: (snippet || attr(html, 'og:description') || text.slice(0, 220) || null)?.slice(0, 280) || null,
+    snippet: stripTags(snippet || attr(html, 'og:description') || text.slice(0, 220) || '').slice(0, 280) || null,
   }
   if (isJunkCompany(draft.companyName)) return null
   return { ...draft, score: scoreLead(draft) }
@@ -641,7 +643,7 @@ function leadFromSnippet(hit: SearchHit): MarketingLeadDraft | null {
   const origin = originOf(hit.url)
   if (!host || !origin || isNoiseHost(host) || isJunkCompany(hit.title)) return null
   const draft: Omit<MarketingLeadDraft, 'score'> = {
-    companyName: hit.title || host,
+    companyName: stripTags(hit.title || host),
     website: origin,
     websiteHost: host,
     phone: extractPhones(hit.snippet),
@@ -656,7 +658,7 @@ function leadFromSnippet(hit: SearchHit): MarketingLeadDraft | null {
     licenseInfo: extractLicense(hit.snippet),
     keywords: extractKeywords(`${hit.title} ${hit.snippet}`),
     sourceUrl: hit.url,
-    snippet: hit.snippet || null,
+    snippet: stripTags(hit.snippet || '') || null,
   }
   return { ...draft, score: scoreLead(draft) }
 }
