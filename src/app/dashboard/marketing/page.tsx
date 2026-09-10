@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -68,16 +68,16 @@ const OUTREACH_OPTIONS = [
 type OutreachStatus = (typeof OUTREACH_OPTIONS)[number]['value']
 
 const ROW_COLOR_OPTIONS = [
-  { id: 'gray', label: 'Gray', dotClass: 'bg-slate-400', rowClass: 'bg-slate-100/80 group-hover:bg-slate-200/60' },
-  { id: 'red', label: 'Red', dotClass: 'bg-red-400', rowClass: 'bg-red-100/65 group-hover:bg-red-100/85' },
-  { id: 'orange', label: 'Orange', dotClass: 'bg-orange-400', rowClass: 'bg-orange-100/65 group-hover:bg-orange-100/85' },
-  { id: 'amber', label: 'Amber', dotClass: 'bg-amber-400', rowClass: 'bg-amber-100/65 group-hover:bg-amber-100/85' },
-  { id: 'yellow', label: 'Yellow', dotClass: 'bg-yellow-300', rowClass: 'bg-yellow-100/65 group-hover:bg-yellow-100/85' },
-  { id: 'green', label: 'Green', dotClass: 'bg-green-400', rowClass: 'bg-green-100/65 group-hover:bg-green-100/85' },
-  { id: 'teal', label: 'Teal', dotClass: 'bg-teal-400', rowClass: 'bg-teal-100/65 group-hover:bg-teal-100/85' },
-  { id: 'sky', label: 'Sky', dotClass: 'bg-sky-400', rowClass: 'bg-sky-100/65 group-hover:bg-sky-100/85' },
-  { id: 'blue', label: 'Blue', dotClass: 'bg-blue-400', rowClass: 'bg-blue-100/65 group-hover:bg-blue-100/85' },
-  { id: 'purple', label: 'Purple', dotClass: 'bg-purple-400', rowClass: 'bg-purple-100/65 group-hover:bg-purple-100/85' },
+  { id: 'gray', label: 'Gray', dotClass: 'bg-slate-400', barClass: 'border-l-slate-400', rowClass: 'bg-slate-100/80 group-hover:bg-slate-200/60' },
+  { id: 'red', label: 'Red', dotClass: 'bg-red-400', barClass: 'border-l-red-400', rowClass: 'bg-red-100/80 group-hover:bg-red-100' },
+  { id: 'orange', label: 'Orange', dotClass: 'bg-orange-400', barClass: 'border-l-orange-400', rowClass: 'bg-orange-100/80 group-hover:bg-orange-100' },
+  { id: 'amber', label: 'Amber', dotClass: 'bg-amber-400', barClass: 'border-l-amber-400', rowClass: 'bg-amber-100/80 group-hover:bg-amber-100' },
+  { id: 'yellow', label: 'Yellow', dotClass: 'bg-yellow-300', barClass: 'border-l-yellow-400', rowClass: 'bg-yellow-100/80 group-hover:bg-yellow-100' },
+  { id: 'green', label: 'Green', dotClass: 'bg-green-400', barClass: 'border-l-green-500', rowClass: 'bg-green-100/80 group-hover:bg-green-100' },
+  { id: 'teal', label: 'Teal', dotClass: 'bg-teal-400', barClass: 'border-l-teal-400', rowClass: 'bg-teal-100/80 group-hover:bg-teal-100' },
+  { id: 'sky', label: 'Sky', dotClass: 'bg-sky-400', barClass: 'border-l-sky-400', rowClass: 'bg-sky-100/80 group-hover:bg-sky-100' },
+  { id: 'blue', label: 'Blue', dotClass: 'bg-blue-400', barClass: 'border-l-blue-400', rowClass: 'bg-blue-100/80 group-hover:bg-blue-100' },
+  { id: 'purple', label: 'Purple', dotClass: 'bg-purple-400', barClass: 'border-l-purple-400', rowClass: 'bg-purple-100/80 group-hover:bg-purple-100' },
 ] as const
 
 type RowColor = (typeof ROW_COLOR_OPTIONS)[number]['id']
@@ -158,12 +158,12 @@ export default function MarketingPage() {
     if (status === 'authenticated' && !canView) router.push('/dashboard')
   }, [status, canView, router])
 
-  const loadSaved = async () => {
+  const loadSaved = useCallback(async () => {
     const res = await fetch('/api/admin/marketing/leads', { cache: 'no-store' })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || 'Failed to load saved leads')
     setSaved(Array.isArray(data.leads) ? data.leads : [])
-  }
+  }, [])
 
   useEffect(() => {
     if (status === 'authenticated' && canView) {
@@ -171,7 +171,7 @@ export default function MarketingPage() {
         .catch((err) => setError(err.message || 'Failed to load saved leads'))
         .finally(() => setLoadingSaved(false))
     }
-  }, [status, canView])
+  }, [status, canView, loadSaved])
 
   useEffect(() => {
     if (status !== 'authenticated' || !canView) return
@@ -183,11 +183,13 @@ export default function MarketingPage() {
     }
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', onVisible)
+    const timer = window.setInterval(refresh, 12000)
     return () => {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(timer)
     }
-  }, [status, canView])
+  }, [status, canView, loadSaved])
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
@@ -563,7 +565,16 @@ export default function MarketingPage() {
           ) : (
             <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
               <div className="min-h-0 flex-1 overflow-auto">
-                <table className="min-w-full text-left text-sm">
+                <table className="w-full min-w-[980px] table-fixed text-left text-sm">
+                  <colgroup>
+                    <col style={{ width: tab === 'results' ? '42%' : '46%' }} />
+                    <col style={{ width: '168px' }} />
+                    <col style={{ width: '140px' }} />
+                    <col />
+                    <col style={{ width: '64px' }} />
+                    {tab === 'results' ? <col style={{ width: '88px' }} /> : null}
+                    <col style={{ width: '152px' }} />
+                  </colgroup>
                   <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Company</th>
@@ -591,7 +602,8 @@ export default function MarketingPage() {
                       const isSaved = Boolean(lead.alreadySaved || (lead.id && tab === 'saved') || savedHosts.has(lead.websiteHost))
                       const isSelected = selectedHost === lead.websiteHost
                       const rowBgClass = rowColorOption?.rowClass
-                        || (isSelected ? 'bg-brand-green/5' : 'bg-white hover:bg-slate-50')
+                        || (isSelected ? 'bg-brand-green/5' : 'bg-white group-hover:bg-slate-50')
+                      const cellClass = `px-4 py-4 align-top ${rowBgClass}`
                       return (
                         <tr
                           key={lead.id || lead.websiteHost}
@@ -616,32 +628,32 @@ export default function MarketingPage() {
                               currentColor: rowColor,
                             })
                           }}
-                          className={`group border-t border-slate-100 align-top cursor-pointer ${rowBgClass} ${isSelected && rowColorOption ? 'ring-1 ring-inset ring-brand-green/40' : ''}`}
+                          className={`group border-t border-slate-100 cursor-pointer ${isSelected && rowColorOption ? 'ring-1 ring-inset ring-brand-green/40' : ''}`}
                         >
-                          <td className="px-4 py-4">
-                            <div className="font-semibold text-slate-900">{cleanText(lead.companyName)}</div>
-                            <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-brand-green hover:underline">
-                              {lead.websiteHost} <ExternalLink className="h-3 w-3" />
+                          <td className={`min-w-0 border-l-4 ${rowColorOption ? rowColorOption.barClass : 'border-l-transparent'} ${cellClass}`}>
+                            <div className="font-semibold text-slate-900 break-words">{cleanText(lead.companyName)}</div>
+                            <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-brand-green hover:underline">
+                              <span className="truncate">{lead.websiteHost}</span> <ExternalLink className="h-3 w-3 shrink-0" />
                             </a>
-                            {cleanText(lead.snippet) ? <p className="mt-2 text-xs text-slate-500 line-clamp-2">{cleanText(lead.snippet)}</p> : null}
-                            {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500">{cleanText(lead.services)}</p> : null}
+                            {cleanText(lead.snippet) ? <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-3">{cleanText(lead.snippet)}</p> : null}
+                            {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500 line-clamp-2">{cleanText(lead.services)}</p> : null}
                             {savedLead?.savedByEmail || lead.savedByEmail ? (
                               <p className="mt-1 text-[11px] text-slate-400">Saved by {savedLead?.savedByEmail || lead.savedByEmail}</p>
                             ) : null}
                           </td>
-                          <td className="px-4 py-4 text-slate-700">
+                          <td className={`min-w-0 text-slate-700 ${cellClass}`}>
                             {lead.phone ? (
                               <div className="flex items-center gap-1.5">
-                                <Phone className="h-3.5 w-3.5 text-slate-400" />
-                                <a href={`tel:${lead.phone}`} className="hover:underline">{lead.phone}</a>
+                                <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                <a href={`tel:${lead.phone}`} className="truncate hover:underline">{lead.phone}</a>
                               </div>
                             ) : (
                               <div className="text-slate-400">No phone</div>
                             )}
                             {lead.email ? (
-                              <div className="mt-1 flex items-center gap-1.5">
-                                <Mail className="h-3.5 w-3.5 text-slate-400" />
-                                <a href={`mailto:${lead.email}`} className="hover:underline">{lead.email}</a>
+                              <div className="mt-1 flex items-start gap-1.5">
+                                <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                <a href={`mailto:${lead.email}`} className="min-w-0 break-all hover:underline">{lead.email}</a>
                               </div>
                             ) : (
                               <div className="mt-1 text-slate-400">No email</div>
@@ -652,8 +664,8 @@ export default function MarketingPage() {
                               </a>
                             ) : null}
                           </td>
-                          <td className="px-4 py-4 text-slate-700">{locationLabel(lead)}</td>
-                          <td className="px-4 py-4">
+                          <td className={`text-slate-700 ${cellClass}`}>{locationLabel(lead)}</td>
+                          <td className={cellClass}>
                             <div className="flex flex-wrap gap-1">
                               {keywords.length ? keywords.slice(0, 4).map((keyword) => (
                                 <span key={keyword} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
@@ -663,13 +675,13 @@ export default function MarketingPage() {
                             </div>
                             {lead.licenseInfo ? <div className="mt-2 text-xs text-slate-500">{lead.licenseInfo}</div> : null}
                           </td>
-                          <td className="px-4 py-4">
+                          <td className={cellClass}>
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${lead.score >= 70 ? 'bg-green-100 text-green-800' : lead.score >= 45 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
                               {lead.score}
                             </span>
                           </td>
                           {tab === 'results' ? (
-                          <td className="px-4 py-4">
+                          <td className={cellClass}>
                             <button
                               type="button"
                               onClick={(event) => {
@@ -684,7 +696,7 @@ export default function MarketingPage() {
                             </button>
                           </td>
                           ) : null}
-                          <td className="px-4 py-4">
+                          <td className={cellClass}>
                             {savedId ? (
                               <select
                                 value={outreachStatus}
@@ -694,7 +706,7 @@ export default function MarketingPage() {
                                   event.stopPropagation()
                                   void handleOutreach(savedId, event.target.value as OutreachStatus)
                                 }}
-                                className={`min-w-[132px] rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-green/20 ${outreachClass(outreachStatus)}`}
+                                className={`min-w-0 w-full rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-green/20 ${outreachClass(outreachStatus)}`}
                                 aria-label="Outreach status"
                               >
                                 {OUTREACH_OPTIONS.map((option) => (

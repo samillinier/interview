@@ -47,7 +47,16 @@ export async function GET() {
       orderBy: [{ createdAt: 'desc' }],
     })
     const mapped = await attachLeadCoordinates(leads)
-    return NextResponse.json({ success: true, leads: mapped }, { headers: noStoreHeaders })
+    return NextResponse.json(
+      {
+        success: true,
+        leads: mapped.map((lead) => ({
+          ...lead,
+          rowColor: (lead as { rowColor?: string | null }).rowColor || null,
+        })),
+      },
+      { headers: noStoreHeaders },
+    )
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Failed to load leads' },
