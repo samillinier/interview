@@ -698,40 +698,22 @@ export default function MessagesPage() {
     )
   }
 
-  const handleDeleteFromMenu = async (installer: Installer, message?: Message | null) => {
+  const handleDeleteMessage = async (message: Message) => {
     setContextMenu(null)
-    if (message) {
-      if (!confirm('Delete this message?')) return
-      try {
-        const res = await fetch(`/api/admin/messages/${message.id}`, { method: 'DELETE' })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.error || 'Failed to delete message')
-        setMessages((prev) => prev.filter((m) => m.id !== message.id))
-        setReactionOverrides((prev) => {
-          const next = { ...prev }
-          delete next[message.id]
-          return next
-        })
-        await fetchAllMessages()
-      } catch (err: any) {
-        setError(err.message || 'Failed to delete message')
-        setTimeout(() => setError(''), 4000)
-      }
-      return
-    }
-
-    if (!confirm(`Delete this conversation with ${installer.firstName} ${installer.lastName}?`)) return
+    if (!confirm('Delete this message? The rest of the chat will stay.')) return
     try {
-      const res = await fetch(`/api/admin/messages/conversation/${installer.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/messages/${message.id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Failed to delete conversation')
-      if (selectedInstaller?.id === installer.id) {
-        setSelectedInstaller(null)
-        setMessages([])
-      }
+      if (!res.ok) throw new Error(data.error || 'Failed to delete message')
+      setMessages((prev) => prev.filter((m) => m.id !== message.id))
+      setReactionOverrides((prev) => {
+        const next = { ...prev }
+        delete next[message.id]
+        return next
+      })
       await fetchAllMessages()
     } catch (err: any) {
-      setError(err.message || 'Failed to delete conversation')
+      setError(err.message || 'Failed to delete message')
       setTimeout(() => setError(''), 4000)
     }
   }
@@ -1609,16 +1591,16 @@ export default function MessagesPage() {
               </>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => void handleDeleteFromMenu(contextMenu.installer, contextMenu.message)}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
-          >
-            <Trash2 className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-semibold text-red-600">
-              {contextMenu.message ? 'Delete' : 'Delete chat'}
-            </span>
-          </button>
+          {contextMenu.message && (
+            <button
+              type="button"
+              onClick={() => void handleDeleteMessage(contextMenu.message as Message)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-semibold text-red-600">Delete message</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
