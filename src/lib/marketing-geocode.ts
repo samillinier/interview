@@ -14,9 +14,11 @@ async function geocodeCity(city: string, stateCode: string, county?: string): Pr
 
   const name = stateLabel(stateCode)
   const countyPart = countyName(county)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 2500)
   try {
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=8&language=en&format=json&countryCode=US`
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal })
     if (!res.ok) {
       cache.set(key, null)
       return null
@@ -42,6 +44,8 @@ async function geocodeCity(city: string, stateCode: string, county?: string): Pr
   } catch {
     cache.set(key, null)
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 

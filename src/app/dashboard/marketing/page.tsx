@@ -162,14 +162,27 @@ export default function MarketingPage() {
         body: JSON.stringify({ query: nextQuery, city, county, state: stateCode }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Search failed')
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+            (res.status === 504 || res.status === 408
+              ? 'Search took too long. Try a city instead of the whole state.'
+              : 'Search failed'),
+        )
+      }
       setResults(Array.isArray(data.leads) ? data.leads : [])
       setMapFocus(data.focus || null)
       setSelectedHost(null)
       setTab('results')
       if (!data.leads?.length) flash(data.message || 'No contractor websites found.', 'err')
     } catch (err: any) {
-      flash(err.message || 'Search failed', 'err')
+      const message = String(err?.message || '')
+      flash(
+        /failed to fetch|networkerror|load failed/i.test(message)
+          ? 'Search took too long. Try a city instead of the whole state.'
+          : message || 'Search failed',
+        'err',
+      )
     } finally {
       setSearching(false)
     }

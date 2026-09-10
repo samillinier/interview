@@ -765,8 +765,8 @@ export async function runMarketingDiscovery(query: string, place?: PlaceFilter):
   let source = hits.length > 0 ? 'brave' : ''
 
   if (hits.length > 0) {
-    const crawled = await crawlContractorSites(hits)
-    return { hits, source, ...crawled }
+    const leads = await crawlWithFetch(hits)
+    return { hits, source, leads, crawler: 'fetch' as const }
   }
 
   let context: BrowserContext | null = null
