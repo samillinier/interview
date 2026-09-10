@@ -35,3 +35,46 @@ export async function DELETE(
     )
   }
 }
+
+const OUTREACH_STATUSES = new Set(['pending', 'contacted', 'offered', 'contracted', 'declined'])
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } },
+) {
+  try {
+    const auth = await requireMarketingAdmin()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status, headers: noStoreHeaders })
+    }
+
+    const params = context.params
+    const resolved = params instanceof Promise ? await params : params
+    const id = String(resolved?.id || '').trim()
+    if (!id) {
+      return NextResponse.json({ error: 'Lead id required' }, { status: 400, headers: noStoreHeaders })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const outreachStatus = String(body?.outreachStatus || '').trim().toLowerCase()
+    const remark = body?.remark === undefined ? undefined : String(body.remark || '').trim().slice(0, 240) || null
+    if (body?.outreachStatus !== undefined && !OUTREACH_STATUSES.has(outreachStatus)) {
+      return NextResponse.json({ error: 'Pick pending, contacted, offered, contracted, or declined.' }, { status: 400, headers: noStoreHeaders })
+    }
+
+    const data: { outreachStatus?: string; remark?: string | null } = {}
+    if (body?.outreachStatus !== undefined) data.outreachStatus = outreachStatus
+    if (body?.remark !== undefined) data.remark = remark
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400, headers: noStoreHeaders })
+    }
+
+    const lead = await prisma.marketingLead.update({ where: { id }, data })
+    return NextResponse.json({ success: true, lead }, { headers: noStoreHeaders })
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Failed to update lead' },
+      { status: 500, headers: noStoreHeaders },
+    )
+  }
+}

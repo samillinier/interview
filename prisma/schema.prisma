@@ -1167,12 +1167,15 @@ model MarketingLead {
   keywords     String?
   score        Int      @default(0)
   sourceUrl    String?
-  snippet      String?
-  savedByEmail String?
+  snippet        String?
+  savedByEmail   String?
+  outreachStatus String   @default("pending")
+  remark         String?
 
   @@index([score])
   @@index([createdAt])
   @@index([query])
+  @@index([outreachStatus])
 }
 
 enum AdminRole {

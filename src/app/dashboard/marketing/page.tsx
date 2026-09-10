@@ -51,6 +51,22 @@ type MarketingLead = {
   createdAt?: string
   lat?: number | null
   lng?: number | null
+  outreachStatus?: string | null
+  remark?: string | null
+}
+
+const OUTREACH_OPTIONS = [
+  { value: 'pending', label: 'Pending', className: 'border-slate-200 bg-slate-50 text-slate-700' },
+  { value: 'contacted', label: 'Contacted', className: 'border-blue-200 bg-blue-50 text-blue-800' },
+  { value: 'offered', label: 'Offered', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  { value: 'contracted', label: 'Contracted', className: 'border-green-200 bg-green-50 text-green-800' },
+  { value: 'declined', label: 'Declined', className: 'border-red-200 bg-red-50 text-red-700' },
+] as const
+
+type OutreachStatus = (typeof OUTREACH_OPTIONS)[number]['value']
+
+function outreachClass(status?: string | null) {
+  return OUTREACH_OPTIONS.find((item) => item.value === status)?.className || OUTREACH_OPTIONS[0].className
 }
 
 function cleanText(value: string | null | undefined) {
@@ -98,6 +114,7 @@ export default function MarketingPage() {
   const [searching, setSearching] = useState(false)
   const [savingHost, setSavingHost] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('saved')
@@ -126,6 +143,7 @@ export default function MarketingPage() {
   }, [status, canView])
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
+  const savedByHost = useMemo(() => new Map(saved.map((lead) => [lead.websiteHost, lead])), [saved])
   const counties = useMemo(() => countiesForState(stateCode), [stateCode])
   const cities = useMemo(() => citiesForState(stateCode), [stateCode])
   const selectClass =
@@ -261,6 +279,27 @@ export default function MarketingPage() {
       flash(err.message || 'Failed to delete lead', 'err')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleOutreach = async (id: string, outreachStatus: OutreachStatus) => {
+    setStatusSavingId(id)
+    try {
+      const res = await fetch(`/api/admin/marketing/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outreachStatus }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to update status')
+      const nextStatus = data.lead?.outreachStatus || outreachStatus
+      const apply = (lead: MarketingLead) => (lead.id === id ? { ...lead, outreachStatus: nextStatus } : lead)
+      setSaved((current) => current.map(apply))
+      setResults((current) => current.map(apply))
+    } catch (err: any) {
+      flash(err.message || 'Failed to update status', 'err')
+    } finally {
+      setStatusSavingId(null)
     }
   }
 
@@ -435,6 +474,7 @@ export default function MarketingPage() {
                       <th className="px-4 py-3 font-semibold">Company</th>
                       <th className="px-4 py-3 font-semibold">Contact</th>
                       <th className="px-4 py-3 font-semibold">Location</th>
+                      <th className="px-4 py-3 font-semibold">Status</th>
                       <th className="px-4 py-3 font-semibold">Keywords</th>
                       <th className="px-4 py-3 font-semibold">Score</th>
                       <th className="px-4 py-3 font-semibold"> </th>
@@ -443,6 +483,9 @@ export default function MarketingPage() {
                   <tbody>
                     {rows.map((lead) => {
                       const keywords = keywordList(lead.keywords)
+                      const savedLead = savedByHost.get(lead.websiteHost)
+                      const savedId = lead.id || savedLead?.id
+                      const outreachStatus = (lead.outreachStatus || savedLead?.outreachStatus || 'pending') as OutreachStatus
                       const isSaved = Boolean(lead.alreadySaved || (lead.id && tab === 'saved') || savedHosts.has(lead.websiteHost))
                       const isSelected = selectedHost === lead.websiteHost
                       return (
@@ -483,6 +526,29 @@ export default function MarketingPage() {
                             ) : null}
                           </td>
                           <td className="px-4 py-4 text-slate-700">{locationLabel(lead)}</td>
+                          <td className="px-4 py-4">
+                            {savedId ? (
+                              <select
+                                value={outreachStatus}
+                                disabled={statusSavingId === savedId}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) => {
+                                  event.stopPropagation()
+                                  void handleOutreach(savedId, event.target.value as OutreachStatus)
+                                }}
+                                className={`min-w-[132px] rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-green/20 ${outreachClass(outreachStatus)}`}
+                                aria-label="Outreach status"
+                              >
+                                {OUTREACH_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-xs text-slate-400">Save to track</span>
+                            )}
+                          </td>
                           <td className="px-4 py-4">
                             <div className="flex flex-wrap gap-1">
                               {keywords.length ? keywords.slice(0, 4).map((keyword) => (
