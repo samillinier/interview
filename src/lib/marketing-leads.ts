@@ -3,6 +3,7 @@ import {
   getMarketingPage,
   launchMarketingContext,
   renderPageHtml,
+  searchBingWithPlaywright,
   searchDuckDuckGoWithPlaywright,
   searchGoogleWithPlaywright,
 } from '@/lib/marketing-playwright'
@@ -32,17 +33,30 @@ export type MarketingLeadDraft = {
   snippet: string | null
 }
 
-const SKIP_HOSTS = new Set([
+const ALWAYS_SKIP_HOSTS = new Set([
   'google.com',
   'www.google.com',
   'bing.com',
   'www.bing.com',
   'duckduckgo.com',
   'html.duckduckgo.com',
+  'lite.duckduckgo.com',
   'youtube.com',
   'www.youtube.com',
   'wikipedia.org',
   'en.wikipedia.org',
+  'facebook.com',
+  'www.facebook.com',
+  'linkedin.com',
+  'www.linkedin.com',
+  'instagram.com',
+  'www.instagram.com',
+  'maps.google.com',
+  'play.google.com',
+  'apple.com',
+])
+
+const DIRECTORY_HOSTS = new Set([
   'yelp.com',
   'www.yelp.com',
   'angi.com',
@@ -55,21 +69,16 @@ const SKIP_HOSTS = new Set([
   'www.thumbtack.com',
   'houzz.com',
   'www.houzz.com',
-  'facebook.com',
-  'www.facebook.com',
-  'linkedin.com',
-  'www.linkedin.com',
-  'instagram.com',
-  'www.instagram.com',
   'nextdoor.com',
-  'maps.google.com',
-  'play.google.com',
-  'apple.com',
   'indeed.com',
   'www.indeed.com',
   'glassdoor.com',
   'www.glassdoor.com',
   'craigslist.org',
+  'homeadvisor.com',
+  'www.homeadvisor.com',
+  'superpages.com',
+  'www.superpages.com',
 ])
 
 const SKIP_EMAIL_HOSTS = new Set([
@@ -102,6 +111,10 @@ const SERVICE_PHRASES = [
   'estimator',
   'installer',
   'builder',
+  'flooring',
+  'floor installer',
+  'carpet',
+  'hardwood',
 ]
 
 const US_STATES: Record<string, string> = {
@@ -172,17 +185,25 @@ async function fetchText(url: string, timeoutMs: number): Promise<string | null>
 }
 
 function uniqueUrls(hits: SearchHit[], limit: number): SearchHit[] {
-  const seen = new Set<string>()
-  const out: SearchHit[] = []
-  for (const hit of hits) {
-    const host = hostnameOf(hit.url)
-    if (!host || SKIP_HOSTS.has(host) || SKIP_HOSTS.has(`www.${host}`)) continue
-    if (seen.has(host)) continue
-    seen.add(host)
-    out.push(hit)
-    if (out.length >= limit) break
+  const pick = (skipDirectories: boolean) => {
+    const seen = new Set<string>()
+    const out: SearchHit[] = []
+    for (const hit of hits) {
+      const host = hostnameOf(hit.url)
+      if (!host) continue
+      if (ALWAYS_SKIP_HOSTS.has(host) || ALWAYS_SKIP_HOSTS.has(`www.${host}`)) continue
+      if (skipDirectories && (DIRECTORY_HOSTS.has(host) || DIRECTORY_HOSTS.has(`www.${host}`))) continue
+      if (seen.has(host)) continue
+      seen.add(host)
+      out.push(hit)
+      if (out.length >= limit) break
+    }
+    return out
   }
-  return out
+
+  const preferred = pick(true)
+  if (preferred.length >= Math.min(3, limit)) return preferred
+  return pick(false)
 }
 
 async function searchBrave(query: string): Promise<SearchHit[] | null> {
@@ -431,6 +452,7 @@ function scoreLead(lead: Omit<MarketingLeadDraft, 'score'>): number {
   const keywords = lead.keywords.map((k) => k.toLowerCase())
   if (keywords.includes('installer')) score += 15
   if (keywords.includes('estimator')) score += 12
+  if (keywords.includes('flooring') || keywords.includes('floor installer') || keywords.includes('carpet')) score += 10
   if (keywords.includes('builder') || keywords.includes('contractor')) score += 8
   if (keywords.some((k) => k.includes('metal building') || k.includes('steel'))) score += 10
   if (!lead.phone && !lead.email) score -= 15
@@ -440,7 +462,7 @@ function scoreLead(lead: Omit<MarketingLeadDraft, 'score'>): number {
 export function extractLeadFromHtml(html: string, pageUrl: string, snippet?: string, fallbackTitle?: string): MarketingLeadDraft | null {
   const host = hostnameOf(pageUrl)
   const origin = originOf(pageUrl)
-  if (!host || !origin || SKIP_HOSTS.has(host)) return null
+  if (!host || !origin || ALWAYS_SKIP_HOSTS.has(host)) return null
 
   const text = `${stripTags(html)} ${snippet || ''}`.slice(0, 40000)
   const hrefs = collectHrefs(html, origin)
@@ -607,8 +629,17 @@ export async function runMarketingDiscovery(query: string): Promise<{
     let hits = uniqueUrls(await searchGoogleWithPlaywright(page, query), 6)
     let source = 'google'
     if (hits.length === 0) {
+      hits = uniqueUrls(await searchBingWithPlaywright(page, query), 6)
+      source = 'bing'
+    }
+    if (hits.length === 0) {
       hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(page, query), 6)
       source = 'duckduckgo'
+    }
+    if (hits.length === 0) {
+      const fallback = await searchContractorSites(query)
+      hits = fallback.hits
+      source = fallback.source
     }
     const leads = await crawlWithPlaywright(page, hits)
     return { hits, source, leads, crawler: 'playwright' }

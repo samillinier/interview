@@ -251,7 +251,7 @@ export default function MarketingPage() {
             </div>
             {source || crawler ? (
               <p className="mt-3 text-xs text-slate-500">
-                {source ? `Search: ${source === 'google' ? 'Google via Playwright' : source === 'duckduckgo' ? 'DuckDuckGo via Playwright (Google blocked)' : source}. ` : ''}
+                {source ? `Search: ${source === 'google' ? 'Google via Playwright' : source === 'bing' ? 'Bing via Playwright' : source === 'duckduckgo' ? 'DuckDuckGo via Playwright' : source}. ` : ''}
                 Crawler: {crawler === 'playwright' ? 'Playwright' : 'HTML fetch fallback'}
               </p>
             ) : (

@@ -175,6 +175,57 @@ export async function searchGoogleWithPlaywright(page: Page, query: string): Pro
   }
 }
 
+function decodeBingHref(href: string): string | null {
+  try {
+    const parsed = new URL(href)
+    const encoded = parsed.searchParams.get('u')
+    if (encoded) {
+      const raw = encoded.replace(/^a1/i, '').replace(/-/g, '+').replace(/_/g, '/')
+      const padded = raw + '='.repeat((4 - (raw.length % 4)) % 4)
+      const decoded = Buffer.from(padded, 'base64').toString('utf8')
+      if (decoded.startsWith('http')) return decoded
+    }
+    if (parsed.hostname.includes('bing.com') || parsed.hostname.includes('microsoft.com')) return null
+    return parsed.toString()
+  } catch {
+    return href.startsWith('http') ? href : null
+  }
+}
+
+export async function searchBingWithPlaywright(page: Page, query: string): Promise<PlaywrightSearchHit[]> {
+  try {
+    await page.goto(`https://www.bing.com/search?q=${encodeURIComponent(query)}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 18000,
+    })
+    await page.waitForSelector('li.b_algo h2 a, #b_results a', { timeout: 8000 }).catch(() => {})
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    const rows = (await page.evaluate(`(() => {
+      return Array.from(document.querySelectorAll('li.b_algo h2 a')).map((a) => {
+        const row = a.closest('li.b_algo');
+        const snippetEl = row && row.querySelector('.b_caption p, p');
+        return {
+          url: a.href,
+          title: (a.textContent || '').trim(),
+          snippet: (snippetEl && snippetEl.textContent || '').trim(),
+        };
+      });
+    })()`)) as PlaywrightSearchHit[]
+    const hits: PlaywrightSearchHit[] = []
+    const seen = new Set<string>()
+    for (const row of rows || []) {
+      const url = decodeBingHref(row.url)
+      if (!url || seen.has(url)) continue
+      seen.add(url)
+      hits.push({ ...row, url })
+      if (hits.length >= 12) break
+    }
+    return hits
+  } catch {
+    return []
+  }
+}
+
 export async function searchDuckDuckGoWithPlaywright(page: Page, query: string): Promise<PlaywrightSearchHit[]> {
   try {
     await page.goto(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
@@ -197,6 +248,7 @@ export async function searchDuckDuckGoWithPlaywright(page: Page, query: string):
       .map((row) => {
         try {
           const parsed = new URL(row.url)
+          if (parsed.pathname.includes('/y.js')) return null
           const uddg = parsed.searchParams.get('uddg')
           const url = uddg ? decodeURIComponent(uddg) : parsed.hostname.includes('duckduckgo.com') ? '' : row.url
           return url ? { ...row, url } : null
