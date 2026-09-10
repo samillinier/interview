@@ -33,6 +33,9 @@ export type MarketingLeadDraft = {
   snippet: string | null
 }
 
+const RESULT_LIMIT = 15
+const PLAYWRIGHT_ENRICH_LIMIT = 8
+
 const ALWAYS_SKIP_HOSTS = new Set([
   'google.com',
   'www.google.com',
@@ -54,6 +57,12 @@ const ALWAYS_SKIP_HOSTS = new Set([
   'maps.google.com',
   'play.google.com',
   'apple.com',
+  'reddit.com',
+  'www.reddit.com',
+  'pinterest.com',
+  'www.pinterest.com',
+  'tiktok.com',
+  'www.tiktok.com',
 ])
 
 const DIRECTORY_HOSTS = new Set([
@@ -61,6 +70,7 @@ const DIRECTORY_HOSTS = new Set([
   'www.yelp.com',
   'angi.com',
   'www.angi.com',
+  'angieslist.com',
   'bbb.org',
   'www.bbb.org',
   'yellowpages.com',
@@ -79,7 +89,54 @@ const DIRECTORY_HOSTS = new Set([
   'www.homeadvisor.com',
   'superpages.com',
   'www.superpages.com',
+  'downtobid.com',
+  'procore.com',
+  'network.procore.com',
+  'mapquest.com',
+  'www.mapquest.com',
+  'porch.com',
+  'www.porch.com',
+  'bark.com',
+  'www.bark.com',
+  'buildzoom.com',
+  'www.buildzoom.com',
+  'manta.com',
+  'www.manta.com',
+  'merchantcircle.com',
+  'www.merchantcircle.com',
 ])
+
+const CHAIN_HOSTS = new Set([
+  'lowes.com',
+  'www.lowes.com',
+  'homedepot.com',
+  'www.homedepot.com',
+  'menards.com',
+  'www.menards.com',
+  'flooranddecor.com',
+  'www.flooranddecor.com',
+  'walmart.com',
+  'www.walmart.com',
+  'amazon.com',
+  'www.amazon.com',
+  'costco.com',
+  'www.costco.com',
+  'target.com',
+  'www.target.com',
+  'ikea.com',
+  'www.ikea.com',
+  'empiretoday.com',
+  'www.empiretoday.com',
+  'llflooring.com',
+  'www.llflooring.com',
+  'lumberliquidators.com',
+  'www.lumberliquidators.com',
+  'acehardware.com',
+  'www.acehardware.com',
+])
+
+const JUNK_COMPANY_RE =
+  /^(access denied|error page|just a moment|attention required|403|404|forbidden|blocked|cloudflare|enable javascript|pardon our interruption|request unsuccessful|unavailable)/i
 
 const SKIP_EMAIL_HOSTS = new Set([
   'example.com',
@@ -184,33 +241,83 @@ async function fetchText(url: string, timeoutMs: number): Promise<string | null>
   }
 }
 
-function uniqueUrls(hits: SearchHit[], limit: number): SearchHit[] {
-  const pick = (skipDirectories: boolean) => {
-    const seen = new Set<string>()
-    const out: SearchHit[] = []
-    for (const hit of hits) {
-      const host = hostnameOf(hit.url)
-      if (!host) continue
-      if (ALWAYS_SKIP_HOSTS.has(host) || ALWAYS_SKIP_HOSTS.has(`www.${host}`)) continue
-      if (skipDirectories && (DIRECTORY_HOSTS.has(host) || DIRECTORY_HOSTS.has(`www.${host}`))) continue
-      if (seen.has(host)) continue
-      seen.add(host)
-      out.push(hit)
-      if (out.length >= limit) break
-    }
-    return out
-  }
-
-  const preferred = pick(true)
-  if (preferred.length >= Math.min(3, limit)) return preferred
-  return pick(false)
+function isNoiseHost(host: string): boolean {
+  const bare = host.replace(/^www\./, '')
+  return (
+    ALWAYS_SKIP_HOSTS.has(bare) ||
+    ALWAYS_SKIP_HOSTS.has(host) ||
+    DIRECTORY_HOSTS.has(bare) ||
+    DIRECTORY_HOSTS.has(host) ||
+    CHAIN_HOSTS.has(bare) ||
+    CHAIN_HOSTS.has(host)
+  )
 }
 
-async function searchBrave(query: string): Promise<SearchHit[] | null> {
+function isJunkCompany(name: string): boolean {
+  return JUNK_COMPANY_RE.test(name.trim())
+}
+
+function placeFromQuery(query: string): { city: string | null; state: string | null } {
+  const cityState = query.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),?\s*([A-Z]{2})\b/)
+  if (cityState && US_STATES[cityState[2]]) {
+    return { city: cityState[1], state: cityState[2] }
+  }
+  const inPlace = query.match(/\bin\s+([A-Za-z]+(?:\s[A-Za-z]+)?)\b/i)
+  if (inPlace?.[1]) {
+    const parts = inPlace[1].trim().split(/\s+/)
+    const maybeState = parts[parts.length - 1].toUpperCase()
+    if (parts.length > 1 && US_STATES[maybeState]) {
+      return { city: parts.slice(0, -1).join(' '), state: maybeState }
+    }
+    return { city: inPlace[1].trim(), state: null }
+  }
+  return { city: null, state: null }
+}
+
+function hitMentionsPlace(hit: SearchHit, place: { city: string | null; state: string | null }): boolean {
+  if (!place.city && !place.state) return true
+  const text = `${hit.title} ${hit.snippet} ${hit.url}`.toLowerCase()
+  if (place.city && text.includes(place.city.toLowerCase())) return true
+  if (place.state && new RegExp(`\\b${place.state.toLowerCase()}\\b`).test(text)) return true
+  return false
+}
+
+function rankHitsForQuery(hits: SearchHit[], query: string): SearchHit[] {
+  const place = placeFromQuery(query)
+  if (!place.city && !place.state) return hits
+  return [...hits].sort((a, b) => Number(hitMentionsPlace(b, place)) - Number(hitMentionsPlace(a, place)))
+}
+
+function uniqueUrls(hits: SearchHit[], limit: number): SearchHit[] {
+  const seen = new Set<string>()
+  const out: SearchHit[] = []
+  for (const hit of hits) {
+    const host = hostnameOf(hit.url)
+    if (!host || isNoiseHost(host)) continue
+    if (seen.has(host)) continue
+    seen.add(host)
+    out.push(hit)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
+function parseBraveResults(data: any): SearchHit[] {
+  const rows = Array.isArray(data?.web?.results) ? data.web.results : []
+  return rows
+    .map((row: any) => ({
+      url: String(row?.url || '').trim(),
+      title: String(row?.title || '').trim(),
+      snippet: String(row?.description || '').trim(),
+    }))
+    .filter((row: SearchHit) => row.url.startsWith('http'))
+}
+
+async function fetchBravePage(query: string, offset: number): Promise<SearchHit[] | null> {
   const key = process.env.BRAVE_SEARCH_API_KEY?.trim()
   if (!key) return null
   try {
-    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=12`
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=20&offset=${offset}&country=US&search_lang=en`
     const res = await fetch(url, {
       headers: {
         Accept: 'application/json',
@@ -220,17 +327,18 @@ async function searchBrave(query: string): Promise<SearchHit[] | null> {
     })
     if (!res.ok) return null
     const data = await res.json().catch(() => null)
-    const rows = Array.isArray(data?.web?.results) ? data.web.results : []
-    return rows
-      .map((row: any) => ({
-        url: String(row?.url || '').trim(),
-        title: String(row?.title || '').trim(),
-        snippet: String(row?.description || '').trim(),
-      }))
-      .filter((row: SearchHit) => row.url.startsWith('http'))
+    return parseBraveResults(data)
   } catch {
     return null
   }
+}
+
+async function searchBrave(query: string): Promise<SearchHit[] | null> {
+  const first = await fetchBravePage(query, 0)
+  if (!first) return null
+  if (uniqueUrls(first, RESULT_LIMIT).length >= 10) return first
+  const second = await fetchBravePage(query, 20)
+  return second && second.length > 0 ? [...first, ...second] : first
 }
 
 async function searchGoogleCse(query: string): Promise<SearchHit[] | null> {
@@ -287,14 +395,14 @@ async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
 export async function searchContractorSites(query: string): Promise<{ hits: SearchHit[]; source: string }> {
   const brave = await searchBrave(query)
   if (brave && brave.length > 0) {
-    return { hits: uniqueUrls(brave, 6), source: 'brave' }
+    return { hits: rankHitsForQuery(uniqueUrls(brave, RESULT_LIMIT), query), source: 'brave' }
   }
   const google = await searchGoogleCse(query)
   if (google && google.length > 0) {
-    return { hits: uniqueUrls(google, 6), source: 'google' }
+    return { hits: rankHitsForQuery(uniqueUrls(google, RESULT_LIMIT), query), source: 'google' }
   }
   const duck = await searchDuckDuckGo(query)
-  return { hits: uniqueUrls(duck, 6), source: 'duckduckgo' }
+  return { hits: rankHitsForQuery(uniqueUrls(duck, RESULT_LIMIT), query), source: 'duckduckgo' }
 }
 
 function stripTags(value: string): string {
@@ -462,7 +570,7 @@ function scoreLead(lead: Omit<MarketingLeadDraft, 'score'>): number {
 export function extractLeadFromHtml(html: string, pageUrl: string, snippet?: string, fallbackTitle?: string): MarketingLeadDraft | null {
   const host = hostnameOf(pageUrl)
   const origin = originOf(pageUrl)
-  if (!host || !origin || ALWAYS_SKIP_HOSTS.has(host)) return null
+  if (!host || !origin || isNoiseHost(host)) return null
 
   const text = `${stripTags(html)} ${snippet || ''}`.slice(0, 40000)
   const hrefs = collectHrefs(html, origin)
@@ -484,6 +592,7 @@ export function extractLeadFromHtml(html: string, pageUrl: string, snippet?: str
     sourceUrl: pageUrl,
     snippet: (snippet || attr(html, 'og:description') || text.slice(0, 220) || null)?.slice(0, 280) || null,
   }
+  if (isJunkCompany(draft.companyName)) return null
   return { ...draft, score: scoreLead(draft) }
 }
 
@@ -506,7 +615,7 @@ function mergeLeads(lead: MarketingLeadDraft, extra: MarketingLeadDraft): Market
 function leadFromSnippet(hit: SearchHit): MarketingLeadDraft | null {
   const host = hostnameOf(hit.url)
   const origin = originOf(hit.url)
-  if (!host || !origin) return null
+  if (!host || !origin || isNoiseHost(host) || isJunkCompany(hit.title)) return null
   const draft: Omit<MarketingLeadDraft, 'score'> = {
     companyName: hit.title || host,
     website: origin,
@@ -548,29 +657,35 @@ async function crawlWithFetch(hits: SearchHit[]): Promise<MarketingLeadDraft[]> 
 
   return crawled
     .map((result) => (result.status === 'fulfilled' ? result.value : null))
-    .filter((lead): lead is MarketingLeadDraft => Boolean(lead))
+    .filter((lead): lead is MarketingLeadDraft => Boolean(lead) && !isJunkCompany(lead.companyName) && !isNoiseHost(lead.websiteHost))
     .sort((a, b) => b.score - a.score)
 }
 
-async function crawlWithPlaywright(page: Page, hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
-  const leads: MarketingLeadDraft[] = []
-  for (const hit of hits.slice(0, 6)) {
-    const rendered = await renderPageHtml(page, hit.url)
-    const extracted = rendered
-      ? extractLeadFromHtml(rendered.html, rendered.finalUrl || hit.url, hit.snippet, hit.title)
-      : leadFromSnippet(hit)
-    if (!extracted) continue
-    if ((!extracted.phone || !extracted.email) && extracted.contactUrl) {
-      const contact = await renderPageHtml(page, extracted.contactUrl)
+async function enrichLeadsWithPlaywright(page: Page, leads: MarketingLeadDraft[]): Promise<MarketingLeadDraft[]> {
+  const out: MarketingLeadDraft[] = []
+  let used = 0
+  for (const lead of leads) {
+    if (used >= PLAYWRIGHT_ENRICH_LIMIT || (lead.phone && lead.email)) {
+      out.push(lead)
+      continue
+    }
+    used += 1
+    const rendered = await renderPageHtml(page, lead.sourceUrl, 9000)
+    let next = rendered
+      ? extractLeadFromHtml(rendered.html, rendered.finalUrl || lead.sourceUrl, lead.snippet || undefined, lead.companyName)
+      : null
+    if (next) next = mergeLeads(lead, next)
+    else next = lead
+    if ((!next.phone || !next.email) && next.contactUrl) {
+      const contact = await renderPageHtml(page, next.contactUrl, 8000)
       if (contact) {
-        const extra = extractLeadFromHtml(contact.html, contact.finalUrl, extracted.snippet || undefined, extracted.companyName)
-        leads.push(extra ? mergeLeads(extracted, extra) : extracted)
-        continue
+        const extra = extractLeadFromHtml(contact.html, contact.finalUrl, next.snippet || undefined, next.companyName)
+        if (extra) next = mergeLeads(next, extra)
       }
     }
-    leads.push(extracted)
+    if (!isJunkCompany(next.companyName)) out.push(next)
   }
-  return leads.sort((a, b) => b.score - a.score)
+  return out.sort((a, b) => b.score - a.score)
 }
 
 export async function crawlSearchHits(hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
@@ -582,27 +697,32 @@ export async function crawlContractorSites(
   hits: SearchHit[],
   context?: BrowserContext | null,
 ): Promise<{ leads: MarketingLeadDraft[]; crawler: 'playwright' | 'fetch' }> {
-  if (context) {
-    const page = await getMarketingPage(context)
-    return { leads: await crawlWithPlaywright(page, hits), crawler: 'playwright' }
+  const fetched = await crawlWithFetch(hits)
+  const needsEnrich = fetched.some((lead) => !lead.phone || !lead.email)
+  if (!needsEnrich) {
+    return { leads: fetched, crawler: 'fetch' }
   }
 
-  let launched: BrowserContext | null = null
-  try {
-    launched = await launchMarketingContext()
-  } catch {
-    launched = null
+  let launched = context || null
+  let ownsContext = false
+  if (!launched) {
+    try {
+      launched = await launchMarketingContext()
+      ownsContext = true
+    } catch {
+      launched = null
+    }
   }
 
   if (!launched) {
-    return { leads: await crawlWithFetch(hits), crawler: 'fetch' }
+    return { leads: fetched, crawler: 'fetch' }
   }
 
   try {
     const page = await getMarketingPage(launched)
-    return { leads: await crawlWithPlaywright(page, hits), crawler: 'playwright' }
+    return { leads: await enrichLeadsWithPlaywright(page, fetched), crawler: 'playwright' }
   } finally {
-    await launched.close().catch(() => {})
+    if (ownsContext) await launched.close().catch(() => {})
   }
 }
 
@@ -613,8 +733,13 @@ export async function runMarketingDiscovery(query: string): Promise<{
   crawler: 'playwright' | 'fetch'
 }> {
   const braveHits = await searchBrave(query)
-  let hits = braveHits && braveHits.length > 0 ? uniqueUrls(braveHits, 6) : []
+  let hits = braveHits && braveHits.length > 0 ? rankHitsForQuery(uniqueUrls(braveHits, RESULT_LIMIT), query) : []
   let source = hits.length > 0 ? 'brave' : ''
+
+  if (hits.length > 0) {
+    const crawled = await crawlContractorSites(hits)
+    return { hits, source, ...crawled }
+  }
 
   let context: BrowserContext | null = null
   try {
@@ -624,35 +749,25 @@ export async function runMarketingDiscovery(query: string): Promise<{
   }
 
   if (!context) {
-    if (hits.length === 0) {
-      const fallback = await searchContractorSites(query)
-      hits = fallback.hits
-      source = fallback.source
-    }
-    return { hits, source, leads: await crawlWithFetch(hits), crawler: 'fetch' }
+    const fallback = await searchContractorSites(query)
+    return { ...fallback, leads: await crawlWithFetch(fallback.hits), crawler: 'fetch' }
   }
 
   try {
     const page = await getMarketingPage(context)
+    hits = uniqueUrls(await searchGoogleWithPlaywright(page, query), RESULT_LIMIT)
+    source = 'google'
     if (hits.length === 0) {
-      hits = uniqueUrls(await searchGoogleWithPlaywright(page, query), 6)
-      source = 'google'
-    }
-    if (hits.length === 0) {
-      hits = uniqueUrls(await searchBingWithPlaywright(page, query), 6)
+      hits = uniqueUrls(await searchBingWithPlaywright(page, query), RESULT_LIMIT)
       source = 'bing'
     }
     if (hits.length === 0) {
-      hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(page, query), 6)
+      hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(page, query), RESULT_LIMIT)
       source = 'duckduckgo'
     }
-    if (hits.length === 0) {
-      const fallback = await searchContractorSites(query)
-      hits = fallback.hits
-      source = fallback.source
-    }
-    const leads = await crawlWithPlaywright(page, hits)
-    return { hits, source, leads, crawler: 'playwright' }
+    hits = rankHitsForQuery(hits, query)
+    const crawled = await crawlContractorSites(hits, context)
+    return { hits, source, ...crawled }
   } finally {
     await context.close().catch(() => {})
   }
