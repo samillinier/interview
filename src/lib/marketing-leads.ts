@@ -612,6 +612,10 @@ export async function runMarketingDiscovery(query: string): Promise<{
   leads: MarketingLeadDraft[]
   crawler: 'playwright' | 'fetch'
 }> {
+  const braveHits = await searchBrave(query)
+  let hits = braveHits && braveHits.length > 0 ? uniqueUrls(braveHits, 6) : []
+  let source = hits.length > 0 ? 'brave' : ''
+
   let context: BrowserContext | null = null
   try {
     context = await launchMarketingContext()
@@ -620,14 +624,20 @@ export async function runMarketingDiscovery(query: string): Promise<{
   }
 
   if (!context) {
-    const fallback = await searchContractorSites(query)
-    return { ...fallback, leads: await crawlWithFetch(fallback.hits), crawler: 'fetch' }
+    if (hits.length === 0) {
+      const fallback = await searchContractorSites(query)
+      hits = fallback.hits
+      source = fallback.source
+    }
+    return { hits, source, leads: await crawlWithFetch(hits), crawler: 'fetch' }
   }
 
   try {
     const page = await getMarketingPage(context)
-    let hits = uniqueUrls(await searchGoogleWithPlaywright(page, query), 6)
-    let source = 'google'
+    if (hits.length === 0) {
+      hits = uniqueUrls(await searchGoogleWithPlaywright(page, query), 6)
+      source = 'google'
+    }
     if (hits.length === 0) {
       hits = uniqueUrls(await searchBingWithPlaywright(page, query), 6)
       source = 'bing'
