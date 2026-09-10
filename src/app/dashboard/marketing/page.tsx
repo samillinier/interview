@@ -565,16 +565,7 @@ export default function MarketingPage() {
           ) : (
             <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-md">
               <div className="min-h-0 flex-1 overflow-auto">
-                <table className="w-full min-w-[980px] table-fixed text-left text-sm">
-                  <colgroup>
-                    <col style={{ width: tab === 'results' ? '42%' : '46%' }} />
-                    <col style={{ width: '168px' }} />
-                    <col style={{ width: '140px' }} />
-                    <col />
-                    <col style={{ width: '64px' }} />
-                    {tab === 'results' ? <col style={{ width: '88px' }} /> : null}
-                    <col style={{ width: '152px' }} />
-                  </colgroup>
+                <table className="min-w-full text-left text-sm">
                   <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Company</th>
@@ -630,30 +621,30 @@ export default function MarketingPage() {
                           }}
                           className={`group border-t border-slate-100 cursor-pointer ${isSelected && rowColorOption ? 'ring-1 ring-inset ring-brand-green/40' : ''}`}
                         >
-                          <td className={`min-w-0 border-l-4 ${rowColorOption ? rowColorOption.barClass : 'border-l-transparent'} ${cellClass}`}>
-                            <div className="font-semibold text-slate-900 break-words">{cleanText(lead.companyName)}</div>
-                            <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-brand-green hover:underline">
-                              <span className="truncate">{lead.websiteHost}</span> <ExternalLink className="h-3 w-3 shrink-0" />
+                          <td className={`border-l-4 ${rowColorOption ? rowColorOption.barClass : 'border-l-transparent'} ${cellClass}`}>
+                            <div className="font-semibold text-slate-900">{cleanText(lead.companyName)}</div>
+                            <a href={lead.website} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-brand-green hover:underline">
+                              {lead.websiteHost} <ExternalLink className="h-3 w-3" />
                             </a>
-                            {cleanText(lead.snippet) ? <p className="mt-2 text-xs leading-relaxed text-slate-500 line-clamp-3">{cleanText(lead.snippet)}</p> : null}
-                            {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500 line-clamp-2">{cleanText(lead.services)}</p> : null}
+                            {cleanText(lead.snippet) ? <p className="mt-2 text-xs text-slate-500 line-clamp-2">{cleanText(lead.snippet)}</p> : null}
+                            {cleanText(lead.services) ? <p className="mt-1 text-xs text-slate-500">{cleanText(lead.services)}</p> : null}
                             {savedLead?.savedByEmail || lead.savedByEmail ? (
                               <p className="mt-1 text-[11px] text-slate-400">Saved by {savedLead?.savedByEmail || lead.savedByEmail}</p>
                             ) : null}
                           </td>
-                          <td className={`min-w-0 text-slate-700 ${cellClass}`}>
+                          <td className={`text-slate-700 ${cellClass}`}>
                             {lead.phone ? (
                               <div className="flex items-center gap-1.5">
-                                <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <a href={`tel:${lead.phone}`} className="truncate hover:underline">{lead.phone}</a>
+                                <Phone className="h-3.5 w-3.5 text-slate-400" />
+                                <a href={`tel:${lead.phone}`} className="hover:underline">{lead.phone}</a>
                               </div>
                             ) : (
                               <div className="text-slate-400">No phone</div>
                             )}
                             {lead.email ? (
-                              <div className="mt-1 flex items-start gap-1.5">
-                                <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <a href={`mailto:${lead.email}`} className="min-w-0 break-all hover:underline">{lead.email}</a>
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <Mail className="h-3.5 w-3.5 text-slate-400" />
+                                <a href={`mailto:${lead.email}`} className="hover:underline">{lead.email}</a>
                               </div>
                             ) : (
                               <div className="mt-1 text-slate-400">No email</div>
@@ -706,7 +697,7 @@ export default function MarketingPage() {
                                   event.stopPropagation()
                                   void handleOutreach(savedId, event.target.value as OutreachStatus)
                                 }}
-                                className={`min-w-0 w-full rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-green/20 ${outreachClass(outreachStatus)}`}
+                                className={`min-w-[132px] rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-green/20 ${outreachClass(outreachStatus)}`}
                                 aria-label="Outreach status"
                               >
                                 {OUTREACH_OPTIONS.map((option) => (
