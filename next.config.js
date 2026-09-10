@@ -5,7 +5,7 @@ const nextConfig = {
   experimental: {
     // pdf-parse v1 is server-only (btrExpiry); avoid bundling its embedded PDF.js
     // firebase-admin is server-only and should not be bundled into the serverless function
-    serverComponentsExternalPackages: ['pdf-parse', 'firebase-admin'],
+    serverComponentsExternalPackages: ['pdf-parse', 'firebase-admin', 'playwright-core', '@sparticuz/chromium'],
     optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns'],
     serverActions: {
       bodySizeLimit: '10mb',
@@ -15,6 +15,10 @@ const nextConfig = {
         './node_modules/@tesseract.js-data/eng/4.0.0/**',
         './node_modules/tesseract.js/src/worker-script/node/**',
         './node_modules/tesseract.js-core/**',
+      ],
+      '/api/admin/marketing/search': [
+        './node_modules/@sparticuz/chromium/**',
+        './node_modules/playwright-core/**',
       ],
     },
   },

@@ -69,6 +69,7 @@ export default function MarketingPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [source, setSource] = useState('')
+  const [crawler, setCrawler] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('results')
   const [results, setResults] = useState<MarketingLead[]>([])
   const [saved, setSaved] = useState<MarketingLead[]>([])
@@ -124,6 +125,7 @@ export default function MarketingPage() {
       if (!res.ok) throw new Error(data.error || 'Search failed')
       setResults(Array.isArray(data.leads) ? data.leads : [])
       setSource(String(data.source || ''))
+      setCrawler(String(data.crawler || ''))
       setTab('results')
       if (!data.leads?.length) flash(data.message || 'No contractor websites found.', 'err')
     } catch (err: any) {
@@ -229,7 +231,7 @@ export default function MarketingPage() {
           <form onSubmit={handleSearch} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="text-sm font-semibold text-slate-800">Search for installers</label>
             <p className="mt-1 text-sm text-slate-600">
-              Try a trade plus a place, like metal building installers in Georgia. We search the public web, open the company sites, and pull phone, email, city, and services.
+              Try a trade plus a place, like metal building installers in Georgia. Playwright opens each contractor site so JavaScript-rendered phones, emails, and contact pages get captured.
             </p>
             <div className="mt-4 flex flex-col gap-3 lg:flex-row">
               <input
@@ -247,13 +249,14 @@ export default function MarketingPage() {
                 {searching ? 'Searching…' : 'Search'}
               </button>
             </div>
-            {source ? (
+            {source || crawler ? (
               <p className="mt-3 text-xs text-slate-500">
-                Search source: {source === 'duckduckgo' ? 'DuckDuckGo (no API key)' : source === 'brave' ? 'Brave Search' : 'Google CSE'}
+                {source ? `Search source: ${source === 'duckduckgo' ? 'DuckDuckGo (no API key)' : source === 'brave' ? 'Brave Search' : 'Google CSE'}. ` : ''}
+                Crawler: {crawler === 'playwright' ? 'Playwright' : crawler === 'fetch' ? 'HTML fetch fallback' : 'Playwright'}
               </p>
             ) : (
               <p className="mt-3 text-xs text-slate-500">
-                Add BRAVE_SEARCH_API_KEY or GOOGLE_CSE_API_KEY + GOOGLE_CSE_CX for stronger results. Without those, DuckDuckGo HTML search is used.
+                Playwright opens contractor websites. Add BRAVE_SEARCH_API_KEY or GOOGLE_CSE_API_KEY + GOOGLE_CSE_CX for stronger search results.
               </p>
             )}
           </form>
@@ -290,7 +293,7 @@ export default function MarketingPage() {
 
           {searching ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-600">
-              Searching and reading contractor websites…
+              Playwright is opening contractor websites…
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireMarketingAdmin } from '@/lib/marketing-admin'
-import { crawlSearchHits, searchContractorSites } from '@/lib/marketing-leads'
+import { runMarketingDiscovery } from '@/lib/marketing-leads'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -24,15 +24,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Enter a search like “metal building installers in Georgia”.' }, { status: 400, headers: noStoreHeaders })
     }
 
-    const { hits, source } = await searchContractorSites(query)
-    if (hits.length === 0) {
+    const { hits, source, leads, crawler } = await runMarketingDiscovery(query)
+    if (hits.length === 0 && leads.length === 0) {
       return NextResponse.json(
-        { success: true, query, source, leads: [], message: 'No public contractor websites found for that search.' },
+        { success: true, query, source, crawler, leads: [], message: 'No public contractor websites found for that search.' },
         { headers: noStoreHeaders },
       )
     }
 
-    const leads = await crawlSearchHits(hits)
     const hosts = leads.map((lead) => lead.websiteHost)
     const saved = hosts.length
       ? await prisma.marketingLead.findMany({
@@ -47,6 +46,7 @@ export async function POST(request: NextRequest) {
         success: true,
         query,
         source,
+        crawler,
         leads: leads.map((lead) => ({
           ...lead,
           alreadySaved: savedHosts.has(lead.websiteHost),

@@ -1,3 +1,6 @@
+import type { Browser } from 'playwright-core'
+import { launchMarketingBrowser, renderPageHtml } from '@/lib/marketing-playwright'
+
 export type SearchHit = {
   url: string
   title: string
@@ -225,12 +228,7 @@ async function searchGoogleCse(query: string): Promise<SearchHit[] | null> {
   }
 }
 
-async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
-  const html = await fetchText(
-    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
-    12000,
-  )
-  if (!html) return []
+function parseDuckDuckGoHtml(html: string): SearchHit[] {
   const hits: SearchHit[] = []
   const linkRe = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi
   let match: RegExpExecArray | null
@@ -251,17 +249,25 @@ async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
   return hits.map((hit, index) => ({ ...hit, snippet: snippets[index] || '' }))
 }
 
+async function searchDuckDuckGo(query: string): Promise<SearchHit[]> {
+  const html = await fetchText(
+    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+    12000,
+  )
+  return html ? parseDuckDuckGoHtml(html) : []
+}
+
 export async function searchContractorSites(query: string): Promise<{ hits: SearchHit[]; source: string }> {
   const brave = await searchBrave(query)
   if (brave && brave.length > 0) {
-    return { hits: uniqueUrls(brave, 8), source: 'brave' }
+    return { hits: uniqueUrls(brave, 6), source: 'brave' }
   }
   const google = await searchGoogleCse(query)
   if (google && google.length > 0) {
-    return { hits: uniqueUrls(google, 8), source: 'google' }
+    return { hits: uniqueUrls(google, 6), source: 'google' }
   }
   const duck = await searchDuckDuckGo(query)
-  return { hits: uniqueUrls(duck, 8), source: 'duckduckgo' }
+  return { hits: uniqueUrls(duck, 6), source: 'duckduckgo' }
 }
 
 function stripTags(value: string): string {
@@ -453,12 +459,7 @@ export function extractLeadFromHtml(html: string, pageUrl: string, snippet?: str
   return { ...draft, score: scoreLead(draft) }
 }
 
-async function enrichFromContactPage(lead: MarketingLeadDraft): Promise<MarketingLeadDraft> {
-  if ((lead.phone && lead.email) || !lead.contactUrl) return lead
-  const html = await fetchText(lead.contactUrl, 8000)
-  if (!html) return lead
-  const extra = extractLeadFromHtml(html, lead.contactUrl, lead.snippet || undefined, lead.companyName)
-  if (!extra) return lead
+function mergeLeads(lead: MarketingLeadDraft, extra: MarketingLeadDraft): MarketingLeadDraft {
   const merged: Omit<MarketingLeadDraft, 'score'> = {
     ...lead,
     phone: lead.phone || extra.phone,
@@ -474,33 +475,43 @@ async function enrichFromContactPage(lead: MarketingLeadDraft): Promise<Marketin
   return { ...merged, score: scoreLead(merged) }
 }
 
-export async function crawlSearchHits(hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
+function leadFromSnippet(hit: SearchHit): MarketingLeadDraft | null {
+  const host = hostnameOf(hit.url)
+  const origin = originOf(hit.url)
+  if (!host || !origin) return null
+  const draft: Omit<MarketingLeadDraft, 'score'> = {
+    companyName: hit.title || host,
+    website: origin,
+    websiteHost: host,
+    phone: extractPhones(hit.snippet),
+    email: extractEmails(hit.snippet, ''),
+    city: extractCityState(hit.snippet).city,
+    state: extractCityState(hit.snippet).state,
+    services: extractServices(hit.snippet),
+    contactUrl: null,
+    facebookUrl: null,
+    linkedinUrl: null,
+    licenseInfo: extractLicense(hit.snippet),
+    keywords: extractKeywords(`${hit.title} ${hit.snippet}`),
+    sourceUrl: hit.url,
+    snippet: hit.snippet || null,
+  }
+  return { ...draft, score: scoreLead(draft) }
+}
+
+async function enrichFromContactPage(lead: MarketingLeadDraft): Promise<MarketingLeadDraft> {
+  if ((lead.phone && lead.email) || !lead.contactUrl) return lead
+  const html = await fetchText(lead.contactUrl, 8000)
+  if (!html) return lead
+  const extra = extractLeadFromHtml(html, lead.contactUrl, lead.snippet || undefined, lead.companyName)
+  return extra ? mergeLeads(lead, extra) : lead
+}
+
+async function crawlWithFetch(hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
   const crawled = await Promise.allSettled(
     hits.map(async (hit) => {
       const html = await fetchText(hit.url, 8000)
-      if (!html) {
-        const host = hostnameOf(hit.url)
-        const origin = originOf(hit.url)
-        if (!host || !origin) return null
-        const draft: Omit<MarketingLeadDraft, 'score'> = {
-          companyName: hit.title || host,
-          website: origin,
-          websiteHost: host,
-          phone: extractPhones(hit.snippet),
-          email: extractEmails(hit.snippet, ''),
-          city: extractCityState(hit.snippet).city,
-          state: extractCityState(hit.snippet).state,
-          services: extractServices(hit.snippet),
-          contactUrl: null,
-          facebookUrl: null,
-          linkedinUrl: null,
-          licenseInfo: extractLicense(hit.snippet),
-          keywords: extractKeywords(`${hit.title} ${hit.snippet}`),
-          sourceUrl: hit.url,
-          snippet: hit.snippet || null,
-        }
-        return { ...draft, score: scoreLead(draft) }
-      }
+      if (!html) return leadFromSnippet(hit)
       const extracted = extractLeadFromHtml(html, hit.url, hit.snippet, hit.title)
       if (!extracted) return null
       return enrichFromContactPage(extracted)
@@ -511,4 +522,94 @@ export async function crawlSearchHits(hits: SearchHit[]): Promise<MarketingLeadD
     .map((result) => (result.status === 'fulfilled' ? result.value : null))
     .filter((lead): lead is MarketingLeadDraft => Boolean(lead))
     .sort((a, b) => b.score - a.score)
+}
+
+async function crawlWithPlaywright(browser: Browser, hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
+  const leads: MarketingLeadDraft[] = []
+  for (const hit of hits.slice(0, 6)) {
+    const rendered = await renderPageHtml(browser, hit.url)
+    const extracted = rendered
+      ? extractLeadFromHtml(rendered.html, rendered.finalUrl || hit.url, hit.snippet, hit.title)
+      : leadFromSnippet(hit)
+    if (!extracted) continue
+    if ((!extracted.phone || !extracted.email) && extracted.contactUrl) {
+      const contact = await renderPageHtml(browser, extracted.contactUrl)
+      if (contact) {
+        const extra = extractLeadFromHtml(contact.html, contact.finalUrl, extracted.snippet || undefined, extracted.companyName)
+        leads.push(extra ? mergeLeads(extracted, extra) : extracted)
+        continue
+      }
+    }
+    leads.push(extracted)
+  }
+  return leads.sort((a, b) => b.score - a.score)
+}
+
+export async function crawlSearchHits(hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
+  const { leads } = await crawlContractorSites(hits)
+  return leads
+}
+
+export async function crawlContractorSites(
+  hits: SearchHit[],
+  browser?: Browser | null,
+): Promise<{ leads: MarketingLeadDraft[]; crawler: 'playwright' | 'fetch' }> {
+  if (browser) {
+    return { leads: await crawlWithPlaywright(browser, hits), crawler: 'playwright' }
+  }
+
+  let launched: Browser | null = null
+  try {
+    launched = await launchMarketingBrowser()
+  } catch {
+    launched = null
+  }
+
+  if (!launched) {
+    return { leads: await crawlWithFetch(hits), crawler: 'fetch' }
+  }
+
+  try {
+    return { leads: await crawlWithPlaywright(launched, hits), crawler: 'playwright' }
+  } finally {
+    await launched.close().catch(() => {})
+  }
+}
+
+export async function runMarketingDiscovery(query: string): Promise<{
+  hits: SearchHit[]
+  source: string
+  leads: MarketingLeadDraft[]
+  crawler: 'playwright' | 'fetch'
+}> {
+  let { hits, source } = await searchContractorSites(query)
+  let browser: Browser | null = null
+  try {
+    browser = await launchMarketingBrowser()
+  } catch {
+    browser = null
+  }
+
+  try {
+    if (hits.length === 0 && browser) {
+      const rendered = await renderPageHtml(
+        browser,
+        `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+        15000,
+      )
+      if (rendered?.html) {
+        hits = uniqueUrls(parseDuckDuckGoHtml(rendered.html), 6)
+        source = 'duckduckgo'
+      }
+    }
+
+    if (!browser) {
+      return { hits, source, leads: await crawlWithFetch(hits), crawler: 'fetch' }
+    }
+
+    const leads = await crawlWithPlaywright(browser, hits)
+    return { hits, source, leads, crawler: 'playwright' }
+  } finally {
+    await browser?.close().catch(() => {})
+  }
 }
