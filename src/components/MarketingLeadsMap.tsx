@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { stateLabel } from '@/lib/us-states'
 
@@ -34,12 +34,30 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#039;')
 }
 
+type MapStyle = 'map' | 'satellite'
+
 export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selectedHost, onSelectHost }: Props) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const leafletMapRef = useRef<any>(null)
   const markersRef = useRef<Map<string, any>>(new Map())
+  const tilesRef = useRef<{ osm: any; satellite: any; active: any } | null>(null)
   const onSelectHostRef = useRef(onSelectHost)
   onSelectHostRef.current = onSelectHost
+  const [mapStyle, setMapStyle] = useState<MapStyle>('map')
+  const mapStyleRef = useRef<MapStyle>(mapStyle)
+  mapStyleRef.current = mapStyle
+
+  const applyMapStyle = (style: MapStyle) => {
+    const map = leafletMapRef.current
+    const tiles = tilesRef.current
+    if (!map || !tiles) return
+    const next = style === 'satellite' ? tiles.satellite : tiles.osm
+    if (tiles.active && map.hasLayer(tiles.active) && tiles.active !== next) {
+      map.removeLayer(tiles.active)
+    }
+    if (!map.hasLayer(next)) map.addLayer(next)
+    tiles.active = next
+  }
 
   const pins = useMemo(() => {
     const used = new Map<string, number>()
@@ -72,6 +90,7 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
         leafletMapRef.current.remove()
         leafletMapRef.current = null
         markersRef.current.clear()
+        tilesRef.current = null
       }
 
       const map = L.map(mapRef.current, {
@@ -81,7 +100,14 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
       }).setView([39.8283, -98.5795], 4)
       leafletMapRef.current = map
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map)
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+      const satellite = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19 },
+      )
+      const start = mapStyleRef.current === 'satellite' ? satellite : osm
+      start.addTo(map)
+      tilesRef.current = { osm, satellite, active: start }
 
       const icon = new L.Icon({
         iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -139,8 +165,13 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
         leafletMapRef.current = null
       }
       markersRef.current.clear()
+      tilesRef.current = null
     }
   }, [pins, stateCode, focus?.lat, focus?.lng, focus?.zoom])
+
+  useEffect(() => {
+    applyMapStyle(mapStyle)
+  }, [mapStyle])
 
   useEffect(() => {
     if (!selectedHost) return
@@ -168,7 +199,29 @@ export function MarketingLeadsMap({ leads, stateCode, placeLabel, focus, selecte
             : 'Add a city or county, or click a state'}
         </p>
       </div>
-      <div ref={mapRef} className="min-h-[480px] w-full flex-1" />
+      <div className="relative min-h-[480px] w-full flex-1">
+        <div ref={mapRef} className="absolute inset-0 min-h-[480px] w-full" />
+        <div className="absolute right-3 top-3 z-[1000] flex overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md">
+          <button
+            type="button"
+            onClick={() => setMapStyle('map')}
+            className={`px-3 py-1.5 text-xs font-semibold ${
+              mapStyle === 'map' ? 'bg-brand-green text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Map
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapStyle('satellite')}
+            className={`px-3 py-1.5 text-xs font-semibold ${
+              mapStyle === 'satellite' ? 'bg-brand-green text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Satellite
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

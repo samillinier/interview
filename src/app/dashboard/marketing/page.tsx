@@ -501,7 +501,6 @@ export default function MarketingPage() {
           </form>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
             <div className="flex rounded-xl border border-slate-200 bg-white p-1">
               <button
                 type="button"
@@ -517,8 +516,6 @@ export default function MarketingPage() {
               >
                 Saved ({saved.length})
               </button>
-            </div>
-            <p className="text-xs font-medium text-slate-500">Shared with every admin</p>
             </div>
             {tab === 'results' && results.length > 0 ? (
               <button
