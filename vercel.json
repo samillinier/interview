@@ -3,6 +3,12 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
+  "functions": {
+    "src/app/api/admin/marketing/search/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/installers/check-incomplete-interviews",

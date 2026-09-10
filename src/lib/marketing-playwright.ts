@@ -1,5 +1,7 @@
-import { existsSync } from 'fs'
-import type { Browser, Page } from 'playwright-core'
+import { existsSync, mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import type { BrowserContext, Page } from 'playwright-core'
 
 export type PlaywrightSearchHit = {
   url: string
@@ -9,8 +11,6 @@ export type PlaywrightSearchHit = {
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-
-const EXTRA_ARGS = ['--disable-dev-shm-usage', '--no-sandbox', '--disable-blink-features=AutomationControlled']
 
 function localChromePath(): string | undefined {
   return [
@@ -24,9 +24,21 @@ function localChromePath(): string | undefined {
   ].find((path) => Boolean(path && existsSync(path)))
 }
 
-export async function launchMarketingBrowser(): Promise<Browser> {
+function profileDir() {
+  return mkdtempSync(join(process.env.VERCEL ? '/tmp' : tmpdir(), 'pw-mkt-'))
+}
+
+export async function launchMarketingContext(): Promise<BrowserContext> {
   const { chromium: playwrightChromium } = await import('playwright-core')
   const serverless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+  const shared = {
+    headless: true as const,
+    viewport: { width: 1280, height: 720 },
+    userAgent: USER_AGENT,
+    locale: 'en-US',
+    extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
+    ignoreHTTPSErrors: true,
+  }
 
   if (serverless) {
     const chromiumMod = await import('@sparticuz/chromium')
@@ -39,49 +51,30 @@ export async function launchMarketingBrowser(): Promise<Browser> {
     if (libDir) {
       process.env.LD_LIBRARY_PATH = [libDir, process.env.LD_LIBRARY_PATH || ''].filter(Boolean).join(':')
     }
-    return playwrightChromium.launch({
-      args: [...chromium.args, ...EXTRA_ARGS],
+    const context = await playwrightChromium.launchPersistentContext(profileDir(), {
+      ...shared,
+      args: chromium.args,
       executablePath,
-      headless: true,
+      headless: chromium.headless === false ? false : true,
     })
+    await context.addInitScript('Object.defineProperty(navigator, "webdriver", { get: () => undefined })')
+    return context
   }
 
   const executablePath = localChromePath()
-  if (executablePath) {
-    return playwrightChromium.launch({
-      executablePath,
-      headless: true,
-      args: EXTRA_ARGS,
-    })
-  }
-
-  return playwrightChromium.launch({
-    channel: 'chrome',
-    headless: true,
-    args: EXTRA_ARGS,
+  const context = await playwrightChromium.launchPersistentContext(profileDir(), {
+    ...shared,
+    ...(executablePath ? { executablePath } : { channel: 'chrome' as const }),
+    args: ['--disable-dev-shm-usage', '--no-sandbox'],
   })
+  await context.addInitScript('Object.defineProperty(navigator, "webdriver", { get: () => undefined })')
+  return context
 }
 
-async function newSearchPage(browser: Browser, abortHeavy = false): Promise<Page> {
-  const page = await browser.newPage({
-    userAgent: USER_AGENT,
-    viewport: { width: 1365, height: 900 },
-    locale: 'en-US',
-    extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
-  })
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
-  })
-  if (abortHeavy) {
-    await page.route('**/*', (route) => {
-      const type = route.request().resourceType()
-      if (type === 'image' || type === 'media' || type === 'font') {
-        return route.abort()
-      }
-      return route.continue()
-    })
-  }
-  return page
+export async function getMarketingPage(context: BrowserContext): Promise<Page> {
+  const open = context.pages().find((page) => !page.isClosed())
+  if (open) return open
+  return context.newPage()
 }
 
 function cleanGoogleHref(href: string): string | null {
@@ -105,8 +98,7 @@ function cleanGoogleHref(href: string): string | null {
   }
 }
 
-export async function searchGoogleWithPlaywright(browser: Browser, query: string): Promise<PlaywrightSearchHit[]> {
-  const page = await newSearchPage(browser)
+export async function searchGoogleWithPlaywright(page: Page, query: string): Promise<PlaywrightSearchHit[]> {
   try {
     await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en&num=10&pws=0`, {
       waitUntil: 'domcontentloaded',
@@ -160,9 +152,10 @@ export async function searchGoogleWithPlaywright(browser: Browser, query: string
       }
       return items;
     })()`)) as PlaywrightSearchHit[]
+
     const hits: PlaywrightSearchHit[] = []
     const seenHosts = new Set<string>()
-    for (const item of rawItems) {
+    for (const item of rawItems || []) {
       const url = cleanGoogleHref(item.url)
       if (!url) continue
       let host = ''
@@ -179,13 +172,10 @@ export async function searchGoogleWithPlaywright(browser: Browser, query: string
     return hits
   } catch {
     return []
-  } finally {
-    await page.close().catch(() => {})
   }
 }
 
-export async function searchDuckDuckGoWithPlaywright(browser: Browser, query: string): Promise<PlaywrightSearchHit[]> {
-  const page = await newSearchPage(browser)
+export async function searchDuckDuckGoWithPlaywright(page: Page, query: string): Promise<PlaywrightSearchHit[]> {
   try {
     await page.goto(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       waitUntil: 'domcontentloaded',
@@ -203,7 +193,7 @@ export async function searchDuckDuckGoWithPlaywright(browser: Browser, query: st
         };
       });
     })()`)) as PlaywrightSearchHit[]
-    return rows
+    return (rows || [])
       .map((row) => {
         try {
           const parsed = new URL(row.url)
@@ -217,28 +207,15 @@ export async function searchDuckDuckGoWithPlaywright(browser: Browser, query: st
       .filter((row): row is PlaywrightSearchHit => Boolean(row))
   } catch {
     return []
-  } finally {
-    await page.close().catch(() => {})
   }
 }
 
 export async function renderPageHtml(
-  browser: Browser,
+  page: Page,
   url: string,
   timeoutMs = 12000,
 ): Promise<{ html: string; finalUrl: string } | null> {
-  const page = await browser.newPage({
-    userAgent: USER_AGENT,
-    viewport: { width: 1280, height: 720 },
-  })
   try {
-    await page.route('**/*', (route) => {
-      const type = route.request().resourceType()
-      if (type === 'image' || type === 'media' || type === 'font') {
-        return route.abort()
-      }
-      return route.continue()
-    })
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
     await page.waitForLoadState('networkidle', { timeout: 3500 }).catch(() => {})
     const html = await page.content()
@@ -246,7 +223,5 @@ export async function renderPageHtml(
     return { html, finalUrl: page.url() || url }
   } catch {
     return null
-  } finally {
-    await page.close().catch(() => {})
   }
 }

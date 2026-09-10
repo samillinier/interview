@@ -62,7 +62,7 @@ export default function MarketingPage() {
   const canView = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const { sidebarOpen } = useSidebarOpen()
 
-  const [query, setQuery] = useState('metal building installers in Georgia')
+  const [query, setQuery] = useState('Floor installers in Dothan')
   const [searching, setSearching] = useState(false)
   const [savingHost, setSavingHost] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -109,7 +109,7 @@ export default function MarketingPage() {
     event?.preventDefault()
     const nextQuery = query.trim()
     if (nextQuery.length < 3) {
-      flash('Enter a search like “metal building installers in Georgia”.', 'err')
+      flash('Enter a search like “Floor installers in Dothan”.', 'err')
       return
     }
     setSearching(true)
@@ -231,13 +231,13 @@ export default function MarketingPage() {
           <form onSubmit={handleSearch} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="text-sm font-semibold text-slate-800">Search for installers</label>
             <p className="mt-1 text-sm text-slate-600">
-              Try a trade plus a place, like metal building installers in Georgia. Playwright searches Google, then opens the contractor websites to pull phone, email, city, and services.
+              Try a trade plus a place, like Floor installers in Dothan. Playwright searches Google, then opens the contractor websites to pull phone, email, city, and services.
             </p>
             <div className="mt-4 flex flex-col gap-3 lg:flex-row">
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="metal building installers in Georgia"
+                placeholder="Floor installers in Dothan"
                 className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
               />
               <button

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const query = String(body?.query || '').trim().slice(0, 160)
     if (query.length < 3) {
-      return NextResponse.json({ error: 'Enter a search like “metal building installers in Georgia”.' }, { status: 400, headers: noStoreHeaders })
+      return NextResponse.json({ error: 'Enter a search like “Floor installers in Dothan”.' }, { status: 400, headers: noStoreHeaders })
     }
 
     const { hits, source, leads, crawler } = await runMarketingDiscovery(query)

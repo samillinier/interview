@@ -1,6 +1,7 @@
-import type { Browser } from 'playwright-core'
+import type { BrowserContext, Page } from 'playwright-core'
 import {
-  launchMarketingBrowser,
+  getMarketingPage,
+  launchMarketingContext,
   renderPageHtml,
   searchDuckDuckGoWithPlaywright,
   searchGoogleWithPlaywright,
@@ -529,16 +530,16 @@ async function crawlWithFetch(hits: SearchHit[]): Promise<MarketingLeadDraft[]> 
     .sort((a, b) => b.score - a.score)
 }
 
-async function crawlWithPlaywright(browser: Browser, hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
+async function crawlWithPlaywright(page: Page, hits: SearchHit[]): Promise<MarketingLeadDraft[]> {
   const leads: MarketingLeadDraft[] = []
   for (const hit of hits.slice(0, 6)) {
-    const rendered = await renderPageHtml(browser, hit.url)
+    const rendered = await renderPageHtml(page, hit.url)
     const extracted = rendered
       ? extractLeadFromHtml(rendered.html, rendered.finalUrl || hit.url, hit.snippet, hit.title)
       : leadFromSnippet(hit)
     if (!extracted) continue
     if ((!extracted.phone || !extracted.email) && extracted.contactUrl) {
-      const contact = await renderPageHtml(browser, extracted.contactUrl)
+      const contact = await renderPageHtml(page, extracted.contactUrl)
       if (contact) {
         const extra = extractLeadFromHtml(contact.html, contact.finalUrl, extracted.snippet || undefined, extracted.companyName)
         leads.push(extra ? mergeLeads(extracted, extra) : extracted)
@@ -557,15 +558,16 @@ export async function crawlSearchHits(hits: SearchHit[]): Promise<MarketingLeadD
 
 export async function crawlContractorSites(
   hits: SearchHit[],
-  browser?: Browser | null,
+  context?: BrowserContext | null,
 ): Promise<{ leads: MarketingLeadDraft[]; crawler: 'playwright' | 'fetch' }> {
-  if (browser) {
-    return { leads: await crawlWithPlaywright(browser, hits), crawler: 'playwright' }
+  if (context) {
+    const page = await getMarketingPage(context)
+    return { leads: await crawlWithPlaywright(page, hits), crawler: 'playwright' }
   }
 
-  let launched: Browser | null = null
+  let launched: BrowserContext | null = null
   try {
-    launched = await launchMarketingBrowser()
+    launched = await launchMarketingContext()
   } catch {
     launched = null
   }
@@ -575,7 +577,8 @@ export async function crawlContractorSites(
   }
 
   try {
-    return { leads: await crawlWithPlaywright(launched, hits), crawler: 'playwright' }
+    const page = await getMarketingPage(launched)
+    return { leads: await crawlWithPlaywright(page, hits), crawler: 'playwright' }
   } finally {
     await launched.close().catch(() => {})
   }
@@ -587,28 +590,29 @@ export async function runMarketingDiscovery(query: string): Promise<{
   leads: MarketingLeadDraft[]
   crawler: 'playwright' | 'fetch'
 }> {
-  let browser: Browser | null = null
+  let context: BrowserContext | null = null
   try {
-    browser = await launchMarketingBrowser()
+    context = await launchMarketingContext()
   } catch {
-    browser = null
+    context = null
   }
 
-  if (!browser) {
+  if (!context) {
     const fallback = await searchContractorSites(query)
     return { ...fallback, leads: await crawlWithFetch(fallback.hits), crawler: 'fetch' }
   }
 
   try {
-    let hits = uniqueUrls(await searchGoogleWithPlaywright(browser, query), 6)
+    const page = await getMarketingPage(context)
+    let hits = uniqueUrls(await searchGoogleWithPlaywright(page, query), 6)
     let source = 'google'
     if (hits.length === 0) {
-      hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(browser, query), 6)
+      hits = uniqueUrls(await searchDuckDuckGoWithPlaywright(page, query), 6)
       source = 'duckduckgo'
     }
-    const leads = await crawlWithPlaywright(browser, hits)
+    const leads = await crawlWithPlaywright(page, hits)
     return { hits, source, leads, crawler: 'playwright' }
   } finally {
-    await browser.close().catch(() => {})
+    await context.close().catch(() => {})
   }
 }
