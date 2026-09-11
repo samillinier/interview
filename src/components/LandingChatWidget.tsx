@@ -36,6 +36,8 @@ function formatRelativeTime(dateString: string) {
   const years = Math.floor(days / 365)
   return `${years} year${years === 1 ? '' : 's'} ago`
 }
+
+function ensureVisitorToken() {
   try {
     const existing = localStorage.getItem(TOKEN_KEY) || ''
     if (existing.length >= 16) return existing
