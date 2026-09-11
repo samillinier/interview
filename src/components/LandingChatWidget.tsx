@@ -284,6 +284,7 @@ export function LandingChatWidget() {
       <ChatLauncherButton
         onClick={() => persistOpen(true)}
         ariaLabel="Open chat support"
+        variant="white"
       />
     )
   }
