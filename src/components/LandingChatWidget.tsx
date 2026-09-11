@@ -304,7 +304,7 @@ export function LandingChatWidget() {
           <div className="min-w-0">
             <p className="text-sm font-bold">Chat Support</p>
             <p className="text-[11px] text-white/80">
-              {adminJoined ? 'An admin has joined' : "I'm here to help resolve your issue."}
+              {adminJoined ? 'A team member has joined' : "I'm here to help resolve your issue."}
             </p>
           </div>
         </div>
@@ -381,7 +381,7 @@ export function LandingChatWidget() {
                     >
                       {fromStaff ? (
                         <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          {fromAlice ? 'Alice' : 'Admin'}
+                          {fromAlice ? 'Alice' : 'Support'}
                         </p>
                       ) : null}
                       {message.content}
