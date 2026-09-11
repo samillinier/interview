@@ -417,18 +417,22 @@ export function LandingChatWidget() {
                         </svg>
                       </span>
                     ) : null}
-                    <div className={fromStaff ? 'min-w-0 max-w-[82%]' : 'max-w-[78%]'}>
+                    <div className={fromStaff ? 'relative min-w-0 max-w-[82%]' : 'relative max-w-[78%]'}>
                       <div
-                        className={`text-[15px] leading-relaxed ${
+                        className={`relative z-[1] text-[15px] leading-relaxed ${
                           fromStaff
-                            ? 'rounded-3xl bg-slate-100 px-4 py-3 text-slate-800'
-                            : `bg-brand-green px-4 py-2.5 font-medium text-white ${
-                                message.content.length > 42 ? 'rounded-3xl' : 'rounded-full'
-                              }`
+                            ? 'rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
+                            : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
                         }`}
                       >
                         {message.content}
                       </div>
+                      <span
+                        aria-hidden
+                        className={`absolute bottom-2 h-2.5 w-2.5 rotate-45 ${
+                          fromStaff ? '-left-[5px] bg-slate-100' : '-right-[5px] bg-brand-green'
+                        }`}
+                      />
                       {fromStaff ? (
                         <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
                       ) : null}

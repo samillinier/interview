@@ -94,6 +94,7 @@ export async function GET() {
             status: 'website_chat',
             online,
             lastSeenAt: chat.lastSeenAt,
+            issueStatus: (chat as { issueStatus?: string }).issueStatus || 'open',
           },
         }
       })

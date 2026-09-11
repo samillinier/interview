@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { ChevronLeft, Loader2, Minus, Send, X } from 'lucide-react'
+import { ChevronLeft, Loader2, Minus, MoreVertical, Send, X } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
@@ -16,6 +16,7 @@ type WebsiteVisitor = {
   online: boolean
   unreadCount: number
   preview: string
+  issueStatus: string
 }
 
 type ChatMessage = {
@@ -25,8 +26,15 @@ type ChatMessage = {
   createdAt: string
 }
 
+function issueStatusLabel(status?: string) {
+  if (status === 'solved') return 'Solved'
+  if (status === 'not_solved') return 'Not solved'
+  if (status === 'in_progress') return 'In progress'
+  return ''
+}
+
 function visitorName(row: {
-  Installer?: { id?: string; firstName?: string; lastName?: string; email?: string; online?: boolean }
+  Installer?: { id?: string; firstName?: string; lastName?: string; email?: string; online?: boolean; issueStatus?: string }
   installerId?: string
 }) {
   const first = String(row.Installer?.firstName || '').trim()
@@ -43,6 +51,9 @@ export function AdminWebsiteChatPopup() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const persistOpen = (next: boolean) => {
@@ -80,6 +91,7 @@ export function AdminWebsiteChatPopup() {
             online: Boolean(row.Installer?.online),
             unreadCount: Number(row.unreadCount || 0),
             preview: String(row.lastMessage?.content || ''),
+            issueStatus: String(row.Installer?.issueStatus || 'open'),
           }))
           .sort((a: WebsiteVisitor, b: WebsiteVisitor) => {
             if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount
@@ -127,6 +139,11 @@ export function AdminWebsiteChatPopup() {
   }, [open, selectedId])
 
   useEffect(() => {
+    setMenuOpen(false)
+    setRenaming(false)
+  }, [selectedId])
+
+  useEffect(() => {
     if (!open) return
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, open, selectedId])
@@ -167,6 +184,32 @@ export function AdminWebsiteChatPopup() {
     }
   }
 
+  const patchVisitor = async (payload: { name?: string; issueStatus?: string }) => {
+    if (!selectedId) return
+    const res = await fetch(`/api/admin/website-chats/${selectedId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return
+    setVisitors((current) =>
+      current.map((row) =>
+        row.id === selectedId
+          ? {
+              ...row,
+              ...(payload.name ? { name: payload.name } : {}),
+              ...(payload.issueStatus ? { issueStatus: payload.issueStatus } : {}),
+            }
+          : row,
+      ),
+    )
+    setMenuOpen(false)
+    if (payload.name) {
+      setRenaming(false)
+      setRenameValue('')
+    }
+  }
+
   const positionClass = 'right-4 bottom-4'
 
   if (!open) {
@@ -181,8 +224,8 @@ export function AdminWebsiteChatPopup() {
   }
 
   return (
-    <div className={`fixed bottom-4 ${positionClass} z-[200] flex h-[min(520px,78vh)] w-[min(100%-2rem,360px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]`}>
-      <div className="flex items-center justify-between bg-brand-green px-3 py-2.5 text-white">
+    <div className={`fixed bottom-4 ${positionClass} z-[200] flex h-[min(660px,88vh)] w-[min(100%-1.5rem,420px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]`}>
+      <div className="relative flex items-center justify-between bg-brand-green px-3 py-3 text-white">
         <div className="flex min-w-0 items-center gap-2">
           {selected ? (
             <button
@@ -194,19 +237,18 @@ export function AdminWebsiteChatPopup() {
               <ChevronLeft className="h-5 w-5" />
             </button>
           ) : (
-            <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+            <span className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
               <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">{selected ? selected.name : 'Chat'}</p>
+            <p className="truncate text-base font-bold">{selected ? selected.name : 'Chat'}</p>
             <p className="text-[11px] text-white/80">
               {selected
-                ? selected.online
-                  ? 'Online now'
-                  : selected.email?.endsWith('@noreply.local')
-                    ? 'Landing page visitor'
-                    : selected.email || 'Landing page visitor'
+                ? [
+                    selected.online ? 'Online now' : selected.email?.endsWith('@noreply.local') ? 'Landing page visitor' : selected.email || 'Landing page visitor',
+                    issueStatusLabel(selected.issueStatus),
+                  ].filter(Boolean).join(' · ')
                 : onlineCount > 0
                   ? `${onlineCount} online`
                   : 'No one is on the website right now'}
@@ -214,6 +256,19 @@ export function AdminWebsiteChatPopup() {
           </div>
         </div>
         <div className="flex items-center gap-0.5">
+          {selected ? (
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen((current) => !current)
+                setRenaming(false)
+              }}
+              className="rounded-lg p-1 hover:bg-white/10"
+              aria-label="Visitor options"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </button>
+          ) : null}
           <button type="button" onClick={() => persistOpen(false)} className="rounded-lg p-1 hover:bg-white/10" aria-label="Minimize chat">
             <Minus className="h-5 w-5" />
           </button>
@@ -221,6 +276,77 @@ export function AdminWebsiteChatPopup() {
             <X className="h-5 w-5" />
           </button>
         </div>
+        {selected && menuOpen ? (
+          <div className="absolute right-3 top-12 z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-slate-800 shadow-xl">
+            {renaming ? (
+              <form
+                className="space-y-2 px-3 py-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const nextName = renameValue.trim()
+                  if (nextName.length >= 2) void patchVisitor({ name: nextName })
+                }}
+              >
+                <input
+                  value={renameValue}
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  placeholder="Visitor name"
+                  autoFocus
+                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-brand-green"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" className="rounded-lg bg-brand-green px-2 py-1 text-xs font-semibold text-white">
+                    Save
+                  </button>
+                  <button type="button" onClick={() => setRenaming(false)} className="text-xs font-semibold text-slate-500">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRenameValue(selected.name)
+                    setRenaming(true)
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  Change visitor name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void patchVisitor({ issueStatus: 'in_progress' })}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  In progress
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void patchVisitor({ issueStatus: 'solved' })}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  Issue solved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void patchVisitor({ issueStatus: 'not_solved' })}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  Not solved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void patchVisitor({ issueStatus: 'open' })}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  Reopen issue
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {!selected ? (
@@ -249,6 +375,17 @@ export function AdminWebsiteChatPopup() {
                         Online
                       </span>
                     ) : null}
+                    {issueStatusLabel(visitor.issueStatus) ? (
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                        visitor.issueStatus === 'solved'
+                          ? 'bg-emerald-50 text-emerald-800'
+                          : visitor.issueStatus === 'not_solved'
+                            ? 'bg-red-50 text-red-700'
+                            : 'bg-amber-50 text-amber-800'
+                      }`}>
+                        {issueStatusLabel(visitor.issueStatus)}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-slate-500">
                     {visitor.preview || (visitor.online ? 'On the website now' : visitor.email?.endsWith('@noreply.local') ? 'Visited the website' : visitor.email)}
@@ -273,21 +410,31 @@ export function AdminWebsiteChatPopup() {
                 const fromStaff = isStaffSender(message.senderType)
                 return (
                   <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                        fromStaff ? 'bg-brand-green text-white' : 'bg-white text-slate-800 shadow-sm'
-                      }`}
-                    >
-                      <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                        fromStaff ? 'text-white/70' : 'text-slate-400'
-                      }`}>
-                        {message.senderType === 'alice'
-                          ? 'Alice'
-                          : message.senderType === 'admin'
-                            ? 'You'
-                            : selected.name}
-                      </p>
-                      {message.content}
+                    <div className="relative max-w-[78%]">
+                      <div
+                        className={`relative z-[1] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                          fromStaff
+                            ? 'rounded-br-md bg-brand-green text-white'
+                            : 'rounded-bl-md bg-white text-slate-800 shadow-sm'
+                        }`}
+                      >
+                        <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                          fromStaff ? 'text-white/70' : 'text-slate-400'
+                        }`}>
+                          {message.senderType === 'alice'
+                            ? 'Alice'
+                            : message.senderType === 'admin'
+                              ? 'You'
+                              : selected.name}
+                        </p>
+                        {message.content}
+                      </div>
+                      <span
+                        aria-hidden
+                        className={`absolute bottom-2 h-2.5 w-2.5 rotate-45 ${
+                          fromStaff ? '-right-[5px] bg-brand-green' : '-left-[5px] bg-white'
+                        }`}
+                      />
                     </div>
                     {fromStaff ? (
                       <span className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">

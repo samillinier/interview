@@ -28,7 +28,8 @@ if (process.env.NODE_ENV === 'production') {
     (typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined' ||
       typeof (existing as unknown as { marketingLead?: unknown }).marketingLead === 'undefined' ||
       typeof (existing as unknown as { websiteChat?: unknown }).websiteChat === 'undefined' ||
-      (runtimeFields != null && !('lastSeenAt' in runtimeFields)))
+      (runtimeFields != null && !('lastSeenAt' in runtimeFields)) ||
+      (runtimeFields != null && !('issueStatus' in runtimeFields)))
   if (stale) {
     void existing.$disconnect().catch(() => {})
     globalForPrisma.prisma = undefined

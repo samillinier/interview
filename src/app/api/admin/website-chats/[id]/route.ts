@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { sanitizeChatText, visitorDisplayParts, websiteChatDbId, websiteChatUiId } from '@/lib/website-chat'
+import { pickVisitorName, sanitizeChatText, visitorDisplayParts, websiteChatDbId, websiteChatUiId } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -145,6 +145,21 @@ export async function PATCH(
         })
       }
       return NextResponse.json({ success: true }, { headers: noStoreHeaders })
+    }
+
+    const nextName = pickVisitorName(body?.name)
+    const issueStatus = String(body?.issueStatus || '').trim().toLowerCase()
+    const allowedStatus = ['open', 'in_progress', 'solved', 'not_solved']
+    if (nextName || allowedStatus.includes(issueStatus)) {
+      const chat = await prisma.websiteChat.update({
+        where: { id },
+        data: {
+          ...(nextName ? { name: nextName } : {}),
+          ...(allowedStatus.includes(issueStatus) ? { issueStatus } : {}),
+        },
+        select: { name: true, issueStatus: true },
+      })
+      return NextResponse.json({ success: true, chat }, { headers: noStoreHeaders })
     }
 
     await prisma.websiteChatMessage.updateMany({
