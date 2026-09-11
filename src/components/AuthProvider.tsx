@@ -1,6 +1,7 @@
 'use client'
 
 import { SessionProvider } from 'next-auth/react'
+import { AdminWebsiteChatPopup } from '@/components/AdminWebsiteChatPopup'
 
 export default function AuthProvider({
   children,
@@ -10,6 +11,7 @@ export default function AuthProvider({
   return (
     <SessionProvider basePath="/api/auth">
       {children}
+      <AdminWebsiteChatPopup />
     </SessionProvider>
   )
 }

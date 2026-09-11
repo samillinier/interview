@@ -47,7 +47,22 @@ export function AdminWebsiteChatPopup() {
 
   const persistOpen = (next: boolean) => {
     setOpen(next)
+    try {
+      sessionStorage.setItem('fis-admin-website-chat-open', next ? '1' : '0')
+    } catch {
+      // ignore
+    }
   }
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem('fis-admin-website-chat-open')
+      if (stored === '0') setOpen(false)
+      if (stored === '1') setOpen(true)
+    } catch {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => {
     if (status !== 'authenticated' && status !== 'loading') return
@@ -136,7 +151,7 @@ export function AdminWebsiteChatPopup() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, open, selectedId])
 
-  if (status === 'unauthenticated') return null
+  if (status !== 'authenticated') return null
   const path = pathname || ''
   if (
     path.startsWith('/installer') ||
@@ -172,14 +187,14 @@ export function AdminWebsiteChatPopup() {
     }
   }
 
-  const positionClass = 'right-4'
+  const positionClass = 'right-4 bottom-4'
 
   if (!open) {
     return (
     <button
       type="button"
       onClick={() => persistOpen(true)}
-      className={`fixed bottom-4 ${positionClass} z-[100] inline-flex items-center gap-2 rounded-full border border-brand-green bg-white px-4 py-3 text-brand-green shadow-[0_8px_20px_rgba(74,124,35,0.18)] hover:bg-white`}
+      className={`fixed ${positionClass} z-[200] inline-flex items-center gap-2 rounded-full border border-brand-green bg-white px-4 py-3 text-brand-green shadow-[0_8px_20px_rgba(74,124,35,0.18)] hover:bg-white`}
       aria-label="Open website chat"
     >
       <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-brand-green text-[10px] font-bold text-white">
@@ -199,7 +214,7 @@ export function AdminWebsiteChatPopup() {
   }
 
   return (
-    <div className={`fixed bottom-4 ${positionClass} z-[100] flex h-[min(520px,78vh)] w-[min(100%-2rem,360px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]`}>
+    <div className={`fixed bottom-4 ${positionClass} z-[200] flex h-[min(520px,78vh)] w-[min(100%-2rem,360px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]`}>
       <div className="flex items-center justify-between bg-brand-green px-3 py-2.5 text-white">
         <div className="flex min-w-0 items-center gap-2">
           {selected ? (

@@ -35,6 +35,7 @@ function ensureVisitorToken() {
 
 export function LandingChatWidget() {
   const { data: session, status } = useSession()
+  const isStaff = status === 'authenticated'
   const [open, setOpen] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -274,6 +275,8 @@ export function LandingChatWidget() {
   }
 
   const adminJoined = messages.some((message) => message.senderType === 'admin')
+
+  if (isStaff) return null
 
   if (!open) {
     return (
