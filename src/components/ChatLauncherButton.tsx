@@ -48,7 +48,7 @@ export function ChatLauncherButton({
         </svg>
         {unreadCount > 0 ? (
           <span
-            className={`absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold leading-4 ${
+            className={`absolute -right-0.5 -top-0.5 min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-5 ${
               isWhite ? 'bg-brand-green text-white' : 'bg-white text-brand-green'
             }`}
           >

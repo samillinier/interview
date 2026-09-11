@@ -11,6 +11,7 @@ const TOKEN_KEY = 'fis-website-chat-token'
 const OPEN_KEY = 'fis-website-chat-open'
 const NAME_KEY = 'fis-website-chat-name'
 const EMAIL_KEY = 'fis-website-chat-email'
+const SEEN_KEY = 'fis-website-chat-seen-at'
 
 type ChatMessage = {
   id: string
@@ -47,8 +48,19 @@ export function LandingChatWidget() {
   const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
   const [sending, setSending] = useState(false)
+  const [seenAt, setSeenAt] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const identityRef = useRef({ name: '', email: '' })
+
+  const markSeen = () => {
+    const next = Date.now()
+    setSeenAt(next)
+    try {
+      localStorage.setItem(SEEN_KEY, String(next))
+    } catch {
+      // ignore
+    }
+  }
 
   const persistOpen = (next: boolean) => {
     setOpen(next)
@@ -64,9 +76,11 @@ export function LandingChatWidget() {
       const stored = sessionStorage.getItem(OPEN_KEY)
       if (stored === '0') {
         setOpen(false)
-        return
+      } else {
+        setOpen(true)
       }
-      setOpen(true)
+      const seen = Number(localStorage.getItem(SEEN_KEY) || 0)
+      if (Number.isFinite(seen) && seen > 0) setSeenAt(seen)
     } catch {
       setOpen(true)
     }
@@ -74,9 +88,11 @@ export function LandingChatWidget() {
 
   const resetSession = () => {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(SEEN_KEY)
     setToken('')
     setStarted(false)
     setMessages([])
+    setSeenAt(0)
   }
 
   const applyKnownIdentity = (nextName?: string | null, nextEmail?: string | null) => {
@@ -202,13 +218,18 @@ export function LandingChatWidget() {
   }, [token])
 
   useEffect(() => {
-    if (!open || !started || !token) return
+    if (!started || !token) return
     void loadMessages(token).catch(() => {})
     const timer = window.setInterval(() => {
       void loadMessages(token).catch(() => {})
-    }, 6000)
+    }, 4000)
     return () => window.clearInterval(timer)
-  }, [open, started, token, loadMessages])
+  }, [started, token, loadMessages])
+
+  useEffect(() => {
+    if (!open) return
+    markSeen()
+  }, [open, messages.length])
 
   useEffect(() => {
     if (!open) return
@@ -276,6 +297,13 @@ export function LandingChatWidget() {
   }
 
   const adminJoined = messages.some((message) => message.senderType === 'admin')
+  const unreadCount = open
+    ? 0
+    : messages.filter(
+        (message) =>
+          message.senderType === 'admin' &&
+          new Date(message.createdAt).getTime() > seenAt,
+      ).length
 
   if (isStaff) return null
 
@@ -283,8 +311,9 @@ export function LandingChatWidget() {
     return (
       <ChatLauncherButton
         onClick={() => persistOpen(true)}
-        ariaLabel="Open chat support"
+        ariaLabel={unreadCount > 0 ? `Open chat support, ${unreadCount} new messages` : 'Open chat support'}
         variant="white"
+        unreadCount={unreadCount}
       />
     )
   }
