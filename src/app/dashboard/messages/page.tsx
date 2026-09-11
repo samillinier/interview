@@ -42,11 +42,13 @@ import {
   PinOff,
   MailOpen,
   Trash2,
+  Globe,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import alicePhoto from '@/images/alice-interviewer.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import {
@@ -57,13 +59,14 @@ import {
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { LinkifiedText } from '@/components/LinkifiedText'
+import { isAliceSender, isWebsiteChatId } from '@/lib/website-chat'
 
 interface Installer {
   id: string
   firstName: string
   lastName: string
   email: string
-  status: string
+  status?: string
   photoUrl?: string
 }
 
@@ -223,6 +226,10 @@ export default function MessagesPage() {
   useEffect(() => {
     if (status === 'authenticated') {
       fetchAllMessages()
+      const interval = window.setInterval(() => {
+        void fetchAllMessages()
+      }, 12000)
+      return () => window.clearInterval(interval)
     }
   }, [status])
 
@@ -258,11 +265,13 @@ export default function MessagesPage() {
 
   const markMessagesAsRead = async (installerId: string) => {
     try {
-      const response = await fetch(`/api/installers/${installerId}/notifications/mark-all-read`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'message', senderType: 'installer' }),
-      })
+      const response = isWebsiteChatId(installerId)
+        ? await fetch(`/api/admin/website-chats/${installerId}`, { method: 'PATCH' })
+        : await fetch(`/api/installers/${installerId}/notifications/mark-all-read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'message', senderType: 'installer' }),
+          })
       if (response.ok) {
         // Refresh messages and update badge count
         await fetchMessagesForInstaller(installerId)
@@ -332,27 +341,44 @@ export default function MessagesPage() {
       // This ensures moderators only see messages from installers they have access to
       const accessibleInstallerIds = new Set(installersList.map((i: any) => i.id))
       
-      const response = await fetch('/api/admin/messages/conversations')
+      const [response, websiteRes] = await Promise.all([
+        fetch('/api/admin/messages/conversations'),
+        fetch('/api/admin/website-chats', { cache: 'no-store' }),
+      ])
       const data = await response.json()
+      const websiteData = websiteRes.ok ? await websiteRes.json().catch(() => ({})) : {}
       const conversationRows: Array<{
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-        Installer?: Message['Installer']
-      }> = data.conversations || []
+        Installer?: Message['Installer'] & { status?: string }
+      }> = [
+        ...(data.conversations || []),
+        ...(websiteData.conversations || []),
+      ]
 
       const conversationMap = new Map<string, Conversation>()
 
       conversationRows.forEach((row) => {
-        if (!accessibleInstallerIds.has(row.installerId)) return
-        const installer = installersList.find((i: any) => i.id === row.installerId) || {
-          id: row.Installer?.id || row.installerId,
-          firstName: row.Installer?.firstName || '',
-          lastName: row.Installer?.lastName || '',
-          email: row.Installer?.email || '',
-          status: 'pending',
-          photoUrl: row.Installer?.photoUrl
-        }
+        const websiteChat = isWebsiteChatId(row.installerId)
+        if (!websiteChat && !accessibleInstallerIds.has(row.installerId)) return
+        const installer = websiteChat
+          ? {
+              id: row.Installer?.id || row.installerId,
+              firstName: row.Installer?.firstName || 'Website',
+              lastName: row.Installer?.lastName || 'Visitor',
+              email: row.Installer?.email || '',
+              status: 'website_chat',
+              photoUrl: row.Installer?.photoUrl || undefined,
+            }
+          : installersList.find((i: any) => i.id === row.installerId) || {
+              id: row.Installer?.id || row.installerId,
+              firstName: row.Installer?.firstName || '',
+              lastName: row.Installer?.lastName || '',
+              email: row.Installer?.email || '',
+              status: 'pending',
+              photoUrl: row.Installer?.photoUrl
+            }
         conversationMap.set(row.installerId, {
           installer,
           lastMessage: row.lastMessage,
@@ -389,6 +415,16 @@ export default function MessagesPage() {
 
   const fetchMessagesForInstaller = async (installerId: string) => {
     try {
+      if (isWebsiteChatId(installerId)) {
+        const response = await fetch(`/api/admin/website-chats/${installerId}`, { cache: 'no-store' })
+        const data = await response.json().catch(() => ({}))
+        const sortedMessages = (data.notifications || []).sort((a: Message, b: Message) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
+        setMessages(sortedMessages)
+        return
+      }
+
       // Verify that the installer is accessible (important for moderators)
       const installerExists = installers.find((i) => i.id === installerId)
       if (!installerExists) {
@@ -453,6 +489,26 @@ export default function MessagesPage() {
     let attachmentName: string | null = null
 
     try {
+      if (isWebsiteChatId(selectedInstaller.id)) {
+        if (!messageContent.trim()) {
+          setIsSending(false)
+          return
+        }
+        const response = await fetch(`/api/admin/website-chats/${selectedInstaller.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: messageContent.trim() }),
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.error || 'Failed to send message.')
+        setSuccess('Message sent!')
+        setTimeout(() => setSuccess(''), 8000)
+        setMessageContent('')
+        await fetchMessagesForInstaller(selectedInstaller.id)
+        await fetchAllMessages()
+        return
+      }
+
       // Upload file if one is selected
       if (selectedFile) {
         setIsUploadingFile(true)
@@ -665,7 +721,13 @@ export default function MessagesPage() {
   const handleMarkUnread = async (installer: Installer, message?: Message | null) => {
     setContextMenu(null)
     try {
-      const res = message
+      const res = isWebsiteChatId(installer.id)
+        ? await fetch(`/api/admin/website-chats/${installer.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unread: true }),
+          })
+        : message
         ? await fetch(`/api/admin/messages/${message.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -700,6 +762,11 @@ export default function MessagesPage() {
 
   const handleDeleteMessage = async (message: Message) => {
     setContextMenu(null)
+    if (isWebsiteChatId(message.installerId) || isWebsiteChatId(selectedInstaller?.id)) {
+      setError('Delete the whole website chat instead of a single message.')
+      setTimeout(() => setError(''), 4000)
+      return
+    }
     if (!confirm('Delete this message? The rest of the chat will stay.')) return
     try {
       const res = await fetch(`/api/admin/messages/${message.id}`, { method: 'DELETE' })
@@ -714,6 +781,24 @@ export default function MessagesPage() {
       await fetchAllMessages()
     } catch (err: any) {
       setError(err.message || 'Failed to delete message')
+      setTimeout(() => setError(''), 4000)
+    }
+  }
+
+  const handleDeleteWebsiteChat = async (installer: Installer) => {
+    setContextMenu(null)
+    if (!confirm('Delete this website chat? The visitor will start a new conversation if they write again.')) return
+    try {
+      const res = await fetch(`/api/admin/website-chats/${installer.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete chat')
+      if (selectedInstaller?.id === installer.id) {
+        setSelectedInstaller(null)
+        setMessages([])
+      }
+      await fetchAllMessages()
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete chat')
       setTimeout(() => setError(''), 4000)
     }
   }
@@ -1043,7 +1128,7 @@ export default function MessagesPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search installers..."
+                      placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
@@ -1052,7 +1137,9 @@ export default function MessagesPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setComposerInstaller(selectedInstaller)
+                  setComposerInstaller(
+                    selectedInstaller && !isWebsiteChatId(selectedInstaller.id) ? selectedInstaller : null
+                  )
                   setShowComposer(true)
                   setError('')
                   setSuccess('')
@@ -1114,8 +1201,14 @@ export default function MessagesPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-slate-900 truncate">
+                        <p className="font-semibold text-slate-900 truncate flex items-center gap-1.5">
                           {conversation.installer.firstName} {conversation.installer.lastName}
+                          {isWebsiteChatId(conversation.installer.id) ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700">
+                              <Globe className="h-3 w-3" />
+                              Website
+                            </span>
+                          ) : null}
                         </p>
                         <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                           {pinnedChatIds.includes(conversation.installer.id) && (
@@ -1185,11 +1278,22 @@ export default function MessagesPage() {
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-slate-900 flex items-center gap-2">
                     {selectedInstaller.firstName} {selectedInstaller.lastName}
+                    {isWebsiteChatId(selectedInstaller.id) ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700">
+                        <Globe className="h-3 w-3" />
+                        Website
+                      </span>
+                    ) : null}
                   </p>
-                  <p className="text-sm text-slate-500">{selectedInstaller.email}</p>
+                  <p className="text-sm text-slate-500">
+                    {isWebsiteChatId(selectedInstaller.id)
+                      ? selectedInstaller.email || 'Landing page visitor'
+                      : selectedInstaller.email}
+                  </p>
                 </div>
+                {!isWebsiteChatId(selectedInstaller.id) ? (
                 <div className="relative flex-shrink-0" ref={profileMenuRef}>
                   <button
                     type="button"
@@ -1247,6 +1351,7 @@ export default function MessagesPage() {
                     )}
                   </AnimatePresence>
                 </div>
+                ) : null}
               </div>
 
               {/* Messages */}
@@ -1264,7 +1369,10 @@ export default function MessagesPage() {
                 ) : (
                   <AnimatePresence>
                     {messages.map((message) => {
-                      const isFromAdmin = !message.senderId || message.senderId === 'admin'
+                      const isFromAdmin = isWebsiteChatId(selectedInstaller.id)
+                        ? message.senderType === 'admin' || message.senderId === 'admin'
+                        : !message.senderId || message.senderId === 'admin'
+                      const isFromAlice = isAliceSender(message.senderType, message.senderId)
                       const showAvatar = true
                       return (
                         <motion.div
@@ -1279,11 +1387,19 @@ export default function MessagesPage() {
                           className={`flex flex-col mb-4 ${isFromAdmin ? 'items-end' : 'items-start'}`}
                         >
                           <div className={`flex items-end gap-3 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
-                          {/* Avatar for installer messages */}
+                          {/* Avatar for installer / Alice messages */}
                             {!isFromAdmin && (
                             <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                               <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-gradient-to-br from-brand-green to-brand-green-dark">
-                                {message.Installer?.photoUrl ? (
+                                {isFromAlice ? (
+                                  <Image
+                                    src={alicePhoto}
+                                    alt="Alice"
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover object-top"
+                                  />
+                                ) : message.Installer?.photoUrl ? (
                                   <Image
                                     src={message.Installer.photoUrl}
                                     alt={`${message.Installer.firstName} ${message.Installer.lastName}`}
@@ -1302,6 +1418,7 @@ export default function MessagesPage() {
                                     }}
                                   />
                                 ) : null}
+                                {!isFromAlice ? (
                                 <div className={`w-full h-full flex items-center justify-center initials-fallback ${
                                   message.Installer?.photoUrl ? 'absolute inset-0 z-0' : ''
                                 }`} style={{ display: message.Installer?.photoUrl ? 'none' : 'flex' }}>
@@ -1309,6 +1426,7 @@ export default function MessagesPage() {
                                     {message.Installer ? getInitials(message.Installer.firstName, message.Installer.lastName) : 'I'}
                                   </span>
                                 </div>
+                                ) : null}
                               </div>
                             </div>
                             )}
@@ -1420,6 +1538,7 @@ export default function MessagesPage() {
                           {/* Timestamp and Read Status */}
                           <div className={`flex items-center gap-2 mt-1.5 px-2 ${isFromAdmin ? 'flex-row-reverse' : ''}`}>
                             <span className="text-xs text-slate-500 font-medium">
+                              {isFromAlice ? 'Alice · ' : ''}
                               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {isFromAdmin && (
@@ -1432,6 +1551,7 @@ export default function MessagesPage() {
                           </div>
 
                           {/* Reactions */}
+                          {!isWebsiteChatId(selectedInstaller.id) ? (
                           <div className={`flex items-center gap-1.5 mt-1.5 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
                             <MessageReactionButton
                               messageId={message.id}
@@ -1446,6 +1566,7 @@ export default function MessagesPage() {
                               onToggled={handleReactionsToggled(message.id)}
                             />
                           </div>
+                          ) : null}
                         </motion.div>
                       )
                     })}
@@ -1511,6 +1632,7 @@ export default function MessagesPage() {
                     className="hidden"
                     accept="image/*,.pdf,.doc,.docx,.txt"
                   />
+                  {!isWebsiteChatId(selectedInstaller.id) ? (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -1519,11 +1641,16 @@ export default function MessagesPage() {
                   >
                     <Paperclip className="w-5 h-5 text-slate-600" />
                   </button>
+                  ) : null}
                   <div className="flex-1">
                     <textarea
                       value={messageContent}
                       onChange={(e) => setMessageContent(e.target.value)}
-                      placeholder="Type a message..."
+                      placeholder={
+                        isWebsiteChatId(selectedInstaller.id)
+                          ? 'Reply to website visitor...'
+                          : 'Type a message...'
+                      }
                       rows={1}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green resize-none"
                       onKeyDown={(e) => {
@@ -1553,7 +1680,7 @@ export default function MessagesPage() {
               <div className="text-center">
                 <MessageSquare className="w-20 h-20 text-slate-300 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-slate-900 mb-2">Select a conversation</h2>
-                <p className="text-slate-500">Choose an installer from the list to start messaging</p>
+                <p className="text-slate-500">Choose a conversation from the list to start messaging</p>
               </div>
             </div>
           )}
@@ -1591,7 +1718,7 @@ export default function MessagesPage() {
               </>
             )}
           </button>
-          {contextMenu.message && (
+          {contextMenu.message && !isWebsiteChatId(contextMenu.installer.id) && (
             <button
               type="button"
               onClick={() => void handleDeleteMessage(contextMenu.message as Message)}
@@ -1601,6 +1728,16 @@ export default function MessagesPage() {
               <span className="text-sm font-semibold text-red-600">Delete message</span>
             </button>
           )}
+          {isWebsiteChatId(contextMenu.installer.id) ? (
+            <button
+              type="button"
+              onClick={() => void handleDeleteWebsiteChat(contextMenu.installer)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-semibold text-red-600">Delete chat</span>
+            </button>
+          ) : (
           <button
             type="button"
             onClick={() => {
@@ -1613,6 +1750,7 @@ export default function MessagesPage() {
             <User className="w-4 h-4 text-slate-500" />
             <span className="text-sm font-semibold text-slate-800">View profile</span>
           </button>
+          )}
         </div>
       )}
     </div>

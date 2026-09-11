@@ -1179,6 +1179,35 @@ model MarketingLead {
   @@index([outreachStatus])
 }
 
+model WebsiteChat {
+  id            String               @id @default(cuid())
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  visitorToken  String               @unique
+  name          String
+  email         String
+  phone         String?
+  lastMessageAt DateTime             @default(now())
+  messages      WebsiteChatMessage[]
+
+  @@index([email])
+  @@index([lastMessageAt])
+}
+
+model WebsiteChatMessage {
+  id         String      @id @default(cuid())
+  createdAt  DateTime    @default(now())
+  chatId     String
+  senderType String
+  senderName String?
+  content    String
+  isRead     Boolean     @default(false)
+  Chat       WebsiteChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@index([isRead])
+}
+
 enum AdminRole {
   ADMIN
   MODERATOR

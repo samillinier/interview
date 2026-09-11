@@ -78,16 +78,21 @@ export function AdminMobileMenu({ pathname }: Props) {
     let cancelled = false
     const loadMessages = async () => {
       try {
-        const res = await fetch('/api/notifications?type=message', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json().catch(() => null)
+        const [res, websiteRes] = await Promise.all([
+          fetch('/api/notifications?type=message', { cache: 'no-store' }),
+          fetch('/api/admin/website-chats', { cache: 'no-store' }),
+        ])
+        const data = res.ok ? await res.json().catch(() => null) : null
         const messages = data?.notifications || []
         // Only count unread messages from installers (not from admin)
         const unreadCount = messages.filter((m: any) => {
           const isFromInstaller = !m.senderId || (m.senderId !== 'admin' && m.senderType !== 'admin')
           return !m.isRead && isFromInstaller
         }).length
-        if (!cancelled && Number.isFinite(unreadCount)) setUnreadMessagesCount(unreadCount)
+        const websiteData = websiteRes.ok ? await websiteRes.json().catch(() => null) : null
+        const websiteUnread = Number(websiteData?.unreadCount || 0)
+        const total = unreadCount + (Number.isFinite(websiteUnread) ? websiteUnread : 0)
+        if (!cancelled && Number.isFinite(total)) setUnreadMessagesCount(total)
       } catch {
         // ignore
       }

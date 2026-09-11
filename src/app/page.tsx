@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { ArrowRight, LogOut, ChevronDown, Play } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
+import { LandingChatWidget } from '@/components/LandingChatWidget'
 
 const rotatingWords = [
   { text: 'Automate', color: 'text-brand-green' },
@@ -221,6 +222,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <LandingChatWidget />
     </div>
   )
 }

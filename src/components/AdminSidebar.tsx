@@ -92,11 +92,12 @@ export function AdminSidebar({ pathname }: Props) {
     let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, messagesRes, bolRes, padTransferRes, invCycleRes, travelRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, messagesRes, websiteChatRes, bolRes, padTransferRes, invCycleRes, travelRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
           fetch('/api/notifications?type=message', { cache: 'no-store' }),
+          fetch('/api/admin/website-chats', { cache: 'no-store' }),
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
@@ -123,15 +124,18 @@ export function AdminSidebar({ pathname }: Props) {
           if (Number.isFinite(count)) setUpdatesCount(count)
         }
 
+        let installerUnread = 0
         if (messagesRes.ok) {
           const data = await messagesRes.json().catch(() => null)
           const messages = Array.isArray(data?.notifications) ? data.notifications : []
-          const count = messages.filter((message: any) => {
+          installerUnread = messages.filter((message: any) => {
             const isFromInstaller = !message.senderId || (message.senderId !== 'admin' && message.senderType !== 'admin')
             return !message.isRead && isFromInstaller
           }).length
-          setUnreadMessagesCount(count)
         }
+        const websiteData = websiteChatRes.ok ? await websiteChatRes.json().catch(() => null) : null
+        const websiteUnread = Number(websiteData?.unreadCount || 0)
+        setUnreadMessagesCount(installerUnread + (Number.isFinite(websiteUnread) ? websiteUnread : 0))
 
         if (bolRes.ok) {
           const data = await bolRes.json().catch(() => null)
