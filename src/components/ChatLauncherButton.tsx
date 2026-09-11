@@ -46,16 +46,12 @@ export function ChatLauncherButton({
         >
           <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
         </svg>
-        {unreadCount > 0 ? (
-          <span
-            className={`absolute -right-0.5 -top-0.5 min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-bold leading-5 ${
-              isWhite ? 'bg-brand-green text-white' : 'bg-white text-brand-green'
-            }`}
-          >
-            {unreadCount}
-          </span>
-        ) : null}
       </span>
+      {unreadCount > 0 ? (
+        <span className="absolute -right-1 -top-1 z-10 inline-flex min-h-[22px] min-w-[22px] items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[12px] font-black leading-none text-white shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      ) : null}
     </button>
   )
 }
