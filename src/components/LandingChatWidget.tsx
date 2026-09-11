@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useSession } from 'next-auth/react'
-import { Loader2, Minus, Send, X } from 'lucide-react'
+import { ChevronDown, Loader2, Maximize2, Minimize2, Send } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 
@@ -21,7 +21,21 @@ type ChatMessage = {
   createdAt: string
 }
 
-function ensureVisitorToken() {
+function formatRelativeTime(dateString: string) {
+  const diff = Date.now() - new Date(dateString).getTime()
+  if (!Number.isFinite(diff) || diff < 0) return 'Just now'
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
+  const years = Math.floor(days / 365)
+  return `${years} year${years === 1 ? '' : 's'} ago`
+}
   try {
     const existing = localStorage.getItem(TOKEN_KEY) || ''
     if (existing.length >= 16) return existing
@@ -48,6 +62,7 @@ export function LandingChatWidget() {
   const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
   const [sending, setSending] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [seenAt, setSeenAt] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const identityRef = useRef({ name: '', email: '' })
@@ -319,38 +334,39 @@ export function LandingChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex h-[min(520px,78vh)] w-[min(100%-2rem,360px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]">
-      <div className="flex items-center justify-between bg-brand-green px-3 py-2.5 text-white">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+    <div className={`fixed bottom-4 right-4 z-40 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${
+      expanded ? 'h-[min(720px,90vh)] w-[min(100%-1.5rem,420px)]' : 'h-[min(560px,82vh)] w-[min(100%-1.5rem,380px)]'
+    }`}>
+      <div className="bg-brand-green px-4 pb-4 pt-2 text-white">
+        <div className="mb-3 flex items-center justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            className="rounded-lg p-1.5 hover:bg-white/10"
+            aria-label={expanded ? 'Shrink chat' : 'Expand chat'}
+          >
+            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => persistOpen(false)}
+            className="rounded-lg p-1.5 hover:bg-white/10"
+            aria-label="Minimize chat"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full bg-white ring-2 ring-white">
             <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold">Chat Support</p>
-            <p className="text-[11px] text-white/80">
-              {adminJoined ? 'A team member has joined' : "I'm here to help resolve your issue."}
+            <p className="text-[22px] font-semibold leading-tight tracking-tight">How can we help?</p>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#4ADE80]" />
+              {adminJoined ? 'A team member has joined' : 'We reply immediately'}
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => persistOpen(false)}
-            className="rounded-lg p-1 hover:bg-white/10"
-            aria-label="Minimize chat"
-            title="Minimize"
-          >
-            <Minus className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => persistOpen(false)}
-            className="rounded-lg p-1 hover:bg-white/10"
-            aria-label="Close chat"
-            title="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
       </div>
 
@@ -384,31 +400,36 @@ export function LandingChatWidget() {
         </form>
       ) : (
         <>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-white px-4 py-5">
             {messages.length === 0 ? (
-              <p className="text-center text-sm text-slate-500">Say hello and Alice will get an admin for you.</p>
+              <p className="text-center text-sm text-slate-500">Say hello and a team member will join shortly.</p>
             ) : (
               messages.map((message) => {
                 const fromStaff = message.senderType === 'admin' || message.senderType === 'alice'
-                const fromAlice = message.senderType === 'alice' || (!adminJoined && fromStaff)
                 return (
-                  <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-start' : 'justify-end'}`}>
+                  <div key={message.id} className={`flex ${fromStaff ? 'items-start gap-2.5 justify-start' : 'justify-end'}`}>
                     {fromStaff ? (
-                      <span className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-                        <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
+                      <span className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2h19.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z" />
+                        </svg>
                       </span>
                     ) : null}
-                    <div
-                      className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                        fromStaff ? 'bg-white text-slate-800 shadow-sm' : 'bg-brand-green text-white'
-                      }`}
-                    >
+                    <div className={fromStaff ? 'min-w-0 max-w-[82%]' : 'max-w-[78%]'}>
+                      <div
+                        className={`text-[15px] leading-relaxed ${
+                          fromStaff
+                            ? 'rounded-3xl bg-slate-100 px-4 py-3 text-slate-800'
+                            : `bg-brand-green px-4 py-2.5 font-medium text-white ${
+                                message.content.length > 42 ? 'rounded-3xl' : 'rounded-full'
+                              }`
+                        }`}
+                      >
+                        {message.content}
+                      </div>
                       {fromStaff ? (
-                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          {fromAlice ? 'Alice' : 'Support'}
-                        </p>
+                        <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
                       ) : null}
-                      {message.content}
                     </div>
                   </div>
                 )
@@ -435,7 +456,7 @@ export function LandingChatWidget() {
               <button
                 type="submit"
                 disabled={sending || !draft.trim()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-50"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-50"
                 aria-label="Send"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
