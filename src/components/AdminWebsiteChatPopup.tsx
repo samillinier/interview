@@ -359,24 +359,24 @@ export function AdminWebsiteChatPopup() {
                 key={visitor.id}
                 type="button"
                 onClick={() => setSelectedId(visitor.id)}
-                className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50"
+                className="flex w-full items-center gap-3.5 border-b border-slate-100 px-5 py-4 text-left hover:bg-slate-50"
               >
-                <span className="relative mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-green text-[11px] font-bold text-white">
+                <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-brand-green text-sm font-bold text-white">
                   {visitor.name.slice(0, 2).toUpperCase()}
                   {visitor.online ? (
-                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400" />
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-semibold text-slate-900">{visitor.name}</span>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="truncate text-base font-semibold text-slate-900">{visitor.name}</span>
                     {visitor.online ? (
-                      <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700">
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold uppercase text-emerald-700">
                         Online
                       </span>
                     ) : null}
                     {issueStatusLabel(visitor.issueStatus) ? (
-                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${
                         visitor.issueStatus === 'solved'
                           ? 'bg-emerald-50 text-emerald-800'
                           : visitor.issueStatus === 'not_solved'
@@ -387,12 +387,12 @@ export function AdminWebsiteChatPopup() {
                       </span>
                     ) : null}
                   </span>
-                  <span className="mt-0.5 block truncate text-xs text-slate-500">
+                  <span className="mt-1 block truncate text-sm text-slate-500">
                     {visitor.preview || (visitor.online ? 'On the website now' : visitor.email?.endsWith('@noreply.local') ? 'Visited the website' : visitor.email)}
                   </span>
                 </span>
                 {visitor.unreadCount > 0 ? (
-                  <span className="rounded-full bg-brand-green px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded-full bg-brand-green px-2 py-0.5 text-xs font-bold text-white">
                     {visitor.unreadCount}
                   </span>
                 ) : null}
