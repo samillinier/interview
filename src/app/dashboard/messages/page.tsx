@@ -59,7 +59,7 @@ import {
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { LinkifiedText } from '@/components/LinkifiedText'
-import { isAliceSender, isWebsiteChatId } from '@/lib/website-chat'
+import { isAliceSender, isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
 
 interface Installer {
   id: string
@@ -1705,7 +1705,7 @@ export default function MessagesPage() {
                   <AnimatePresence>
                     {messages.map((message) => {
                       const isFromAdmin = isWebsiteChatId(selectedInstaller.id)
-                        ? message.senderType === 'admin' || message.senderId === 'admin'
+                        ? isStaffSender(message.senderType, message.senderId)
                         : !message.senderId || message.senderId === 'admin'
                       const isFromAlice = isAliceSender(message.senderType, message.senderId)
                       const showAvatar = true

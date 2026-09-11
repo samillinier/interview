@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ChevronLeft, Loader2, Minus, Send, X } from 'lucide-react'
-import { isWebsiteChatId } from '@/lib/website-chat'
+import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
 
 type WebsiteVisitor = {
   id: string
@@ -299,19 +299,23 @@ export function AdminWebsiteChatPopup() {
               <p className="text-center text-sm text-slate-500">No messages yet. You can write first.</p>
             ) : (
               messages.map((message) => {
-                const fromAdmin = message.senderType === 'admin'
+                const fromStaff = isStaffSender(message.senderType)
                 return (
-                  <div key={message.id} className={`flex ${fromAdmin ? 'justify-end' : 'justify-start'}`}>
+                  <div key={message.id} className={`flex ${fromStaff ? 'justify-end' : 'justify-start'}`}>
                     <div
                       className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                        fromAdmin ? 'bg-brand-green text-white' : 'bg-white text-slate-800 shadow-sm'
+                        fromStaff ? 'bg-brand-green text-white' : 'bg-white text-slate-800 shadow-sm'
                       }`}
                     >
-                      {!fromAdmin ? (
-                        <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          {message.senderType === 'alice' ? 'Alice' : selected.name}
-                        </p>
-                      ) : null}
+                      <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        fromStaff ? 'text-white/70' : 'text-slate-400'
+                      }`}>
+                        {message.senderType === 'alice'
+                          ? 'Alice'
+                          : message.senderType === 'admin'
+                            ? 'You'
+                            : selected.name}
+                      </p>
                       {message.content}
                     </div>
                   </div>
