@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { aliceGreeting, sanitizeChatText } from '@/lib/website-chat'
+import { aliceGreeting, isLoggedInVisitor, pickVisitorEmail, pickVisitorName, sanitizeChatText } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +12,30 @@ const noStoreHeaders = {
   Pragma: 'no-cache',
 } as const
 
-function validEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+function generatedVisitor() {
+  const code = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 4)
+  return {
+    name: `Visitor ${code}`,
+    email: `visitor-${code.toLowerCase()}@noreply.local`,
+  }
+}
+
+function resolveIdentity(
+  body: any,
+  sessionUser?: { name?: string | null; email?: string | null } | null,
+  existing?: { name: string; email: string } | null,
+) {
+  const fallback = generatedVisitor()
+  return {
+    name:
+      pickVisitorName(body?.name, sessionUser?.name, existing?.name) ||
+      existing?.name ||
+      fallback.name,
+    email:
+      pickVisitorEmail(body?.email, sessionUser?.email, existing?.email) ||
+      existing?.email ||
+      fallback.email,
+  }
 }
 
 function visitorTokenFrom(request: NextRequest, body?: any) {
@@ -24,15 +48,35 @@ function visitorTokenFrom(request: NextRequest, body?: any) {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (isLoggedInVisitor(session?.user)) {
+      return NextResponse.json({ success: true, chat: null, skipped: true }, { headers: noStoreHeaders })
+    }
     const token = visitorTokenFrom(request)
     if (!token) {
       return NextResponse.json({ success: true, chat: null }, { headers: noStoreHeaders })
     }
     const chat = await prisma.websiteChat.findUnique({
       where: { visitorToken: token },
-      select: { id: true, name: true, email: true, phone: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        createdAt: true,
+        _count: { select: { messages: true } },
+      },
     })
-    return NextResponse.json({ success: true, chat }, { headers: noStoreHeaders })
+    if (chat) {
+      await prisma.websiteChat.update({
+        where: { id: chat.id },
+        data: { lastSeenAt: new Date() },
+      })
+    }
+    return NextResponse.json(
+      { success: true, chat: chat ? { ...chat, messageCount: chat._count.messages } : null },
+      { headers: noStoreHeaders },
+    )
   } catch (error: any) {
     console.error('website-chat GET failed', error?.message || error)
     return NextResponse.json(
@@ -45,47 +89,96 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
-    const name = sanitizeChatText(body?.name, 80)
-    const email = String(body?.email || '').trim().toLowerCase()
+    const presenceOnly = Boolean(body?.presence)
     const phone = sanitizeChatText(body?.phone, 40) || null
     const existingToken = visitorTokenFrom(request, body)
+    const session = await getServerSession(authOptions)
+    const sessionUser = session?.user || null
 
-    if (!name || name.length < 2) {
-      return NextResponse.json({ error: 'Please enter your name.' }, { status: 400, headers: noStoreHeaders })
-    }
-    if (!validEmail(email)) {
-      return NextResponse.json({ error: 'Please enter a valid email.' }, { status: 400, headers: noStoreHeaders })
+    if (presenceOnly && isLoggedInVisitor(sessionUser)) {
+      return NextResponse.json(
+        { success: true, skipped: true, token: existingToken || '' },
+        { headers: noStoreHeaders },
+      )
     }
 
     if (existingToken) {
-      const existing = await prisma.websiteChat.findUnique({ where: { visitorToken: existingToken } })
+      const existing = await prisma.websiteChat.findUnique({
+        where: { visitorToken: existingToken },
+        include: { _count: { select: { messages: true } } },
+      })
       if (existing) {
+        const identity = resolveIdentity(body, sessionUser, existing)
         const chat = await prisma.websiteChat.update({
           where: { id: existing.id },
-          data: { name, email, phone },
+          data: presenceOnly
+            ? { name: identity.name, email: identity.email, lastSeenAt: new Date() }
+            : { name: identity.name, email: identity.email, phone, lastSeenAt: new Date() },
         })
-        return NextResponse.json({ success: true, token: existingToken, chat }, { headers: noStoreHeaders })
+        return NextResponse.json(
+          {
+            success: true,
+            token: existingToken,
+            chat: { ...chat, messageCount: existing._count.messages },
+          },
+          { headers: noStoreHeaders },
+        )
       }
     }
 
-    const token = crypto.randomBytes(24).toString('hex')
-    const chat = await prisma.websiteChat.create({
-      data: {
-        visitorToken: token,
-        name,
-        email,
-        phone,
-        messages: {
-          create: {
+    const identity = resolveIdentity(body, sessionUser)
+    const token = existingToken || crypto.randomBytes(24).toString('hex')
+    const chat = await prisma.websiteChat.upsert({
+      where: { visitorToken: token },
+      create: presenceOnly
+        ? {
+            visitorToken: token,
+            name: identity.name,
+            email: identity.email,
+            phone,
+            lastSeenAt: new Date(),
+          }
+        : {
+            visitorToken: token,
+            name: identity.name,
+            email: identity.email,
+            phone,
+            lastSeenAt: new Date(),
+            messages: {
+              create: {
+                senderType: 'alice',
+                senderName: 'Alice',
+                content: aliceGreeting(identity.name),
+                isRead: true,
+              },
+            },
+          },
+      update: presenceOnly
+        ? { name: identity.name, email: identity.email, lastSeenAt: new Date() }
+        : { name: identity.name, email: identity.email, phone, lastSeenAt: new Date() },
+    })
+    if (!presenceOnly) {
+      const hasAlice = await prisma.websiteChatMessage.findFirst({
+        where: { chatId: chat.id, senderType: 'alice' },
+        select: { id: true },
+      })
+      if (!hasAlice) {
+        await prisma.websiteChatMessage.create({
+          data: {
+            chatId: chat.id,
             senderType: 'alice',
             senderName: 'Alice',
-            content: aliceGreeting(name),
+            content: aliceGreeting(identity.name),
             isRead: true,
           },
-        },
-      },
-    })
-    return NextResponse.json({ success: true, token, chat }, { headers: noStoreHeaders })
+        })
+      }
+    }
+    const messageCount = await prisma.websiteChatMessage.count({ where: { chatId: chat.id } })
+    return NextResponse.json(
+      { success: true, token, chat: { ...chat, messageCount } },
+      { headers: noStoreHeaders },
+    )
   } catch (error: any) {
     console.error('website-chat POST failed', error?.message || error)
     return NextResponse.json(

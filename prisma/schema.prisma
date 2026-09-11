@@ -1188,10 +1188,12 @@ model WebsiteChat {
   email         String
   phone         String?
   lastMessageAt DateTime             @default(now())
+  lastSeenAt    DateTime?
   messages      WebsiteChatMessage[]
 
   @@index([email])
   @@index([lastMessageAt])
+  @@index([lastSeenAt])
 }
 
 model WebsiteChatMessage {

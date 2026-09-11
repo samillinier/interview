@@ -2,11 +2,14 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useSession } from 'next-auth/react'
 import { Loader2, Minus, Send, X } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 
 const TOKEN_KEY = 'fis-website-chat-token'
 const OPEN_KEY = 'fis-website-chat-open'
+const NAME_KEY = 'fis-website-chat-name'
+const EMAIL_KEY = 'fis-website-chat-email'
 
 type ChatMessage = {
   id: string
@@ -16,8 +19,23 @@ type ChatMessage = {
   createdAt: string
 }
 
+function ensureVisitorToken() {
+  try {
+    const existing = localStorage.getItem(TOKEN_KEY) || ''
+    if (existing.length >= 16) return existing
+    const bytes = new Uint8Array(24)
+    crypto.getRandomValues(bytes)
+    const token = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')
+    localStorage.setItem(TOKEN_KEY, token)
+    return token
+  } catch {
+    return ''
+  }
+}
+
 export function LandingChatWidget() {
-  const [open, setOpen] = useState(false)
+  const { data: session, status } = useSession()
+  const [open, setOpen] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
@@ -28,6 +46,7 @@ export function LandingChatWidget() {
   const [starting, setStarting] = useState(false)
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const identityRef = useRef({ name: '', email: '' })
 
   const persistOpen = (next: boolean) => {
     setOpen(next)
@@ -45,9 +64,9 @@ export function LandingChatWidget() {
         setOpen(false)
         return
       }
-      if (stored === '1' || window.innerWidth >= 1024) setOpen(true)
+      setOpen(true)
     } catch {
-      if (window.innerWidth >= 1024) setOpen(true)
+      setOpen(true)
     }
   }, [])
 
@@ -58,24 +77,113 @@ export function LandingChatWidget() {
     setMessages([])
   }
 
+  const applyKnownIdentity = (nextName?: string | null, nextEmail?: string | null) => {
+    setName((current) => {
+      if (current.trim()) return current
+      if (nextName && !String(nextName).startsWith('Visitor ')) {
+        try {
+          localStorage.setItem(NAME_KEY, nextName)
+        } catch {
+          // ignore
+        }
+        return nextName
+      }
+      return current
+    })
+    setEmail((current) => {
+      if (current.trim()) return current
+      if (nextEmail && !String(nextEmail).endsWith('@noreply.local')) {
+        try {
+          localStorage.setItem(EMAIL_KEY, nextEmail)
+        } catch {
+          // ignore
+        }
+        return nextEmail
+      }
+      return current
+    })
+  }
+
   useEffect(() => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) || '' : ''
-    if (!stored) return
-    setToken(stored)
+    identityRef.current = {
+      name: name.trim() || session?.user?.name || '',
+      email: email.trim() || session?.user?.email || '',
+    }
+    try {
+      if (name.trim()) localStorage.setItem(NAME_KEY, name.trim())
+      if (email.trim()) localStorage.setItem(EMAIL_KEY, email.trim())
+    } catch {
+      // ignore
+    }
+  }, [name, email, session])
+
+  useEffect(() => {
+    try {
+      const storedName = localStorage.getItem(NAME_KEY) || ''
+      const storedEmail = localStorage.getItem(EMAIL_KEY) || ''
+      if (storedName) setName(storedName)
+      if (storedEmail) setEmail(storedEmail)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!name && session?.user?.name) setName(session.user.name)
+    if (!email && session?.user?.email) setEmail(session.user.email)
+  }, [session, name, email])
+
+  useEffect(() => {
+    if (status === 'loading' || status === 'authenticated') return
+    let cancelled = false
+    const stored = ensureVisitorToken()
+    if (stored) setToken(stored)
     void fetch('/api/website-chat', {
-      headers: { 'x-website-chat-token': stored },
-      cache: 'no-store',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(stored ? { 'x-website-chat-token': stored } : {}),
+      },
+      body: JSON.stringify({ presence: true, ...identityRef.current }),
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data?.chat) {
-          setStarted(true)
-          setName(data.chat.name || '')
-          setEmail(data.chat.email || '')
-        }
+        if (cancelled || !data?.token) return
+        localStorage.setItem(TOKEN_KEY, data.token)
+        setToken(data.token)
+        applyKnownIdentity(data.chat?.name, data.chat?.email)
+        if (Number(data.chat?.messageCount || 0) > 0) setStarted(true)
       })
       .catch(() => {})
-  }, [])
+    return () => {
+      cancelled = true
+    }
+  }, [status])
+
+  useEffect(() => {
+    if (status === 'loading' || status === 'authenticated') return
+    const stored = ensureVisitorToken()
+    if (stored) setToken((prev) => prev || stored)
+    let currentToken = stored
+    const ping = () => {
+      const headerToken = currentToken || ensureVisitorToken()
+      if (!headerToken) return
+      currentToken = headerToken
+      void fetch('/api/website-chat/ping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-website-chat-token': headerToken,
+        },
+        body: JSON.stringify(identityRef.current),
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(() => {})
+    }
+    ping()
+    const timer = window.setInterval(ping, 4000)
+    return () => window.clearInterval(timer)
+  }, [status])
 
   const loadMessages = useCallback(async (nextToken = token) => {
     if (!nextToken) return
@@ -110,9 +218,14 @@ export function LandingChatWidget() {
     setError('')
     setStarting(true)
     try {
+      const chatToken = token || ensureVisitorToken()
+      if (chatToken) setToken(chatToken)
       const res = await fetch('/api/website-chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-website-chat-token': token },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(chatToken ? { 'x-website-chat-token': chatToken } : {}),
+        },
         body: JSON.stringify({ name, email }),
       })
       const data = await res.json().catch(() => ({}))
@@ -120,6 +233,10 @@ export function LandingChatWidget() {
       const nextToken = String(data.token || '')
       localStorage.setItem(TOKEN_KEY, nextToken)
       setToken(nextToken)
+      if (data.chat?.name) setName(data.chat.name)
+      if (data.chat?.email && !String(data.chat.email).endsWith('@noreply.local')) {
+        setEmail(data.chat.email)
+      }
       setStarted(true)
     } catch (err: any) {
       setError(err.message || 'Could not start chat')
@@ -214,21 +331,21 @@ export function LandingChatWidget() {
 
       {!started ? (
         <form onSubmit={startChat} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-          <p className="text-sm text-slate-600">Tell us who you are and Alice will connect you with an admin.</p>
+          <p className="text-sm text-slate-600">
+            Name and email are optional. If you skip them, we will start the chat as a visitor.
+          </p>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Your name"
+            placeholder="Your name (optional)"
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-            required
           />
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="Email"
+            placeholder="Email (optional)"
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-            required
           />
           {error ? <p className="text-xs text-red-600">{error}</p> : null}
           <button

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { aliceGreeting, sanitizeChatText } from '@/lib/website-chat'
+import { sanitizeChatText } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,26 +25,6 @@ export async function GET(request: NextRequest) {
     })
     if (!chat) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
-    }
-    if (!chat.messages.some((message) => message.senderType === 'alice')) {
-      await prisma.websiteChatMessage.create({
-        data: {
-          chatId: chat.id,
-          senderType: 'alice',
-          senderName: 'Alice',
-          content: aliceGreeting(chat.name),
-          isRead: true,
-          createdAt: chat.createdAt,
-        },
-      })
-      const refreshed = await prisma.websiteChat.findUnique({
-        where: { id: chat.id },
-        include: { messages: { orderBy: { createdAt: 'asc' } } },
-      })
-      return NextResponse.json(
-        { success: true, messages: refreshed?.messages || [] },
-        { headers: noStoreHeaders },
-      )
     }
     return NextResponse.json({ success: true, messages: chat.messages }, { headers: noStoreHeaders })
   } catch (error: any) {
@@ -84,7 +64,7 @@ export async function POST(request: NextRequest) {
     })
     await prisma.websiteChat.update({
       where: { id: chat.id },
-      data: { lastMessageAt: new Date() },
+      data: { lastMessageAt: new Date(), lastSeenAt: new Date() },
     })
     return NextResponse.json({ success: true, message }, { headers: noStoreHeaders })
   } catch (error: any) {

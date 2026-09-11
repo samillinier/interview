@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
+import { AdminWebsiteChatPopup } from '@/components/AdminWebsiteChatPopup'
 
 type Props = {
   pathname: string
@@ -285,6 +286,7 @@ export function AdminSidebar({ pathname }: Props) {
   }
 
   return (
+    <>
     <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-brand-green border-r border-brand-green-dark transition-all duration-300 flex flex-col fixed h-screen z-30 hidden lg:flex shadow-lg`}>
       <div className="p-3 border-b border-slate-200 bg-white flex items-center justify-between">
         <div className={`flex items-center gap-3 ${!sidebarOpen && 'w-full justify-center'}`}>
@@ -355,5 +357,7 @@ export function AdminSidebar({ pathname }: Props) {
         </button>
       </div>
     </aside>
+    <AdminWebsiteChatPopup />
+    </>
   )
 }

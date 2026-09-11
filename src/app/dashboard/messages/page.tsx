@@ -68,6 +68,7 @@ interface Installer {
   email: string
   status?: string
   photoUrl?: string
+  online?: boolean
 }
 
 interface Message {
@@ -100,6 +101,34 @@ interface Conversation {
   unreadCount: number
 }
 
+function isRealWebsiteConversation(conv: Conversation) {
+  const sender = conv.lastMessage?.senderType
+  return sender === 'visitor' || sender === 'admin'
+}
+
+function mapWebsiteConversations(websiteData: {
+  conversations?: Array<{
+    installerId: string
+    lastMessage?: Message | null
+    unreadCount?: number
+    Installer?: Message['Installer'] & { status?: string; online?: boolean }
+  }>
+}): Conversation[] {
+  return (websiteData.conversations || []).map((row) => ({
+    installer: {
+      id: row.Installer?.id || row.installerId,
+      firstName: row.Installer?.firstName || 'Website',
+      lastName: row.Installer?.lastName || 'Visitor',
+      email: row.Installer?.email || '',
+      status: 'website_chat',
+      photoUrl: row.Installer?.photoUrl || undefined,
+      online: Boolean(row.Installer?.online),
+    },
+    lastMessage: row.lastMessage || undefined,
+    unreadCount: row.unreadCount || 0,
+  }))
+}
+
 export default function MessagesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -121,9 +150,10 @@ export default function MessagesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [conversationFilter, setConversationFilter] = useState<'all' | 'installers' | 'website' | 'online'>('all')
   const [messageContent, setMessageContent] = useState('')
   const [showComposer, setShowComposer] = useState(false)
-  const [composerMode, setComposerMode] = useState<'installer' | 'email'>('installer')
+  const [composerMode, setComposerMode] = useState<'installer' | 'email' | 'website'>('installer')
   const [composerSearchQuery, setComposerSearchQuery] = useState('')
   const [composerInstaller, setComposerInstaller] = useState<Installer | null>(null)
   const [composerSelectAll, setComposerSelectAll] = useState(false)
@@ -230,6 +260,35 @@ export default function MessagesPage() {
         void fetchAllMessages()
       }, 12000)
       return () => window.clearInterval(interval)
+    }
+  }, [status])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    let cancelled = false
+    const loadWebsitePresence = async () => {
+      try {
+        const res = await fetch('/api/admin/website-chats', { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (cancelled || !res.ok) return
+        const websiteConvs = mapWebsiteConversations(data)
+        setConversations((prev) => {
+          const installers = prev.filter((conv) => !isWebsiteChatId(conv.installer.id))
+          const next = [...websiteConvs, ...installers]
+          setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
+          return next
+        })
+      } catch {
+        // ignore
+      }
+    }
+    void loadWebsitePresence()
+    const interval = window.setInterval(() => {
+      void loadWebsitePresence()
+    }, 3000)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
     }
   }, [status])
 
@@ -341,44 +400,27 @@ export default function MessagesPage() {
       // This ensures moderators only see messages from installers they have access to
       const accessibleInstallerIds = new Set(installersList.map((i: any) => i.id))
       
-      const [response, websiteRes] = await Promise.all([
-        fetch('/api/admin/messages/conversations'),
-        fetch('/api/admin/website-chats', { cache: 'no-store' }),
-      ])
+      const response = await fetch('/api/admin/messages/conversations')
       const data = await response.json()
-      const websiteData = websiteRes.ok ? await websiteRes.json().catch(() => ({})) : {}
       const conversationRows: Array<{
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-        Installer?: Message['Installer'] & { status?: string }
-      }> = [
-        ...(data.conversations || []),
-        ...(websiteData.conversations || []),
-      ]
+        Installer?: Message['Installer'] & { status?: string; online?: boolean }
+      }> = data.conversations || []
 
       const conversationMap = new Map<string, Conversation>()
 
       conversationRows.forEach((row) => {
-        const websiteChat = isWebsiteChatId(row.installerId)
-        if (!websiteChat && !accessibleInstallerIds.has(row.installerId)) return
-        const installer = websiteChat
-          ? {
-              id: row.Installer?.id || row.installerId,
-              firstName: row.Installer?.firstName || 'Website',
-              lastName: row.Installer?.lastName || 'Visitor',
-              email: row.Installer?.email || '',
-              status: 'website_chat',
-              photoUrl: row.Installer?.photoUrl || undefined,
-            }
-          : installersList.find((i: any) => i.id === row.installerId) || {
-              id: row.Installer?.id || row.installerId,
-              firstName: row.Installer?.firstName || '',
-              lastName: row.Installer?.lastName || '',
-              email: row.Installer?.email || '',
-              status: 'pending',
-              photoUrl: row.Installer?.photoUrl
-            }
+        if (!accessibleInstallerIds.has(row.installerId)) return
+        const installer = installersList.find((i: any) => i.id === row.installerId) || {
+          id: row.Installer?.id || row.installerId,
+          firstName: row.Installer?.firstName || '',
+          lastName: row.Installer?.lastName || '',
+          email: row.Installer?.email || '',
+          status: 'pending',
+          photoUrl: row.Installer?.photoUrl
+        }
         conversationMap.set(row.installerId, {
           installer,
           lastMessage: row.lastMessage,
@@ -396,18 +438,21 @@ export default function MessagesPage() {
         }
       })
       
-      const sortedConversations = Array.from(conversationMap.values()).sort((a, b) => {
+      const installerConversations = Array.from(conversationMap.values()).sort((a, b) => {
         if (!a.lastMessage && !b.lastMessage) return 0
         if (!a.lastMessage) return 1
         if (!b.lastMessage) return -1
         return new Date(b.lastMessage!.createdAt).getTime() - new Date(a.lastMessage!.createdAt).getTime()
       })
-      
-      setConversations(sortedConversations)
-      
-      // Calculate total unread message count - only count messages FROM installers (not from admin)
-      const totalUnread = sortedConversations.reduce((sum, conv) => sum + conv.unreadCount, 0)
-      setUnreadMessagesCount(totalUnread)
+
+      setConversations((prev) => {
+        const website = prev.filter(
+          (conv) => isWebsiteChatId(conv.installer.id) && isRealWebsiteConversation(conv),
+        )
+        const next = [...website, ...installerConversations]
+        setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
+        return next
+      })
     } catch (error) {
       console.error('Error fetching messages:', error)
     }
@@ -616,6 +661,12 @@ export default function MessagesPage() {
       return
     }
 
+    if (composerMode === 'website' && !composerInstaller && !composerSelectAll) {
+      setError('Please choose a website visitor or select all visitors.')
+      setTimeout(() => setError(''), 5000)
+      return
+    }
+
     if (composerMode === 'email' && (!composerEmail.trim() || !composerSubject.trim())) {
       setError('Please add an email address and subject.')
       setTimeout(() => setError(''), 5000)
@@ -627,6 +678,37 @@ export default function MessagesPage() {
     setIsComposerSending(true)
 
     try {
+      if (composerMode === 'website') {
+        const websiteVisitors = conversations
+          .filter((conv) => isWebsiteChatId(conv.installer.id))
+          .map((conv) => conv.installer)
+        const targets = composerSelectAll ? websiteVisitors : composerInstaller ? [composerInstaller] : []
+        const response = await fetch('/api/admin/website-chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: composerContent.trim(),
+            all: composerSelectAll,
+            chatIds: composerSelectAll ? undefined : targets.map((visitor) => visitor.id),
+          }),
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.error || 'Failed to send message.')
+        const sentVisitor = composerInstaller
+        const sentToAll = composerSelectAll
+        const sentCount = Number(data.sent || targets.length)
+        resetComposer()
+        if (sentVisitor) {
+          setSelectedInstaller(sentVisitor)
+          await fetchMessagesForInstaller(sentVisitor.id)
+        }
+        await fetchAllMessages()
+        setConversationFilter('website')
+        setSuccess(sentToAll ? `Message sent to ${sentCount} website visitor${sentCount === 1 ? '' : 's'}!` : 'Message sent to website visitor!')
+        setTimeout(() => setSuccess(''), 3000)
+        return
+      }
+
       const response = await fetch(composerMode === 'installer' ? '/api/notifications' : '/api/admin/messages/email', {
         method: 'POST',
         headers: {
@@ -687,7 +769,9 @@ export default function MessagesPage() {
   }
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+    if (lastName) return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase()
+    const local = String(firstName || '').split('@')[0]
+    return local.slice(0, 2).toUpperCase()
   }
 
   const handleReactionsToggled = (id: string) => (reactions: MessageReaction[]) => {
@@ -818,8 +902,28 @@ export default function MessagesPage() {
     return date.toLocaleDateString()
   }
 
+  const websiteConversations = conversations.filter((conv) => isWebsiteChatId(conv.installer.id))
+  const websiteVisitorCount = websiteConversations.filter(isRealWebsiteConversation).length
+  const websiteUnreadCount = websiteConversations.reduce((sum, conv) => sum + conv.unreadCount, 0)
+  const onlineVisitorCount = websiteConversations.filter((conv) => conv.installer.online).length
+  const selectedOnline = Boolean(
+    selectedInstaller && conversations.find((conv) => conv.installer.id === selectedInstaller.id)?.installer.online
+  )
+
   const filteredConversations = conversations
     .filter((conv) => {
+      if (conversationFilter === 'all') {
+        if (isWebsiteChatId(conv.installer.id) && !isRealWebsiteConversation(conv)) {
+          return false
+        }
+      }
+      if (conversationFilter === 'online' && !conv.installer.online) return false
+      if (conversationFilter === 'website') {
+        if (!isWebsiteChatId(conv.installer.id)) return false
+        const sender = conv.lastMessage?.senderType
+        if (sender !== 'visitor' && sender !== 'admin') return false
+      }
+      if (conversationFilter === 'installers' && isWebsiteChatId(conv.installer.id)) return false
       const name = `${conv.installer.firstName} ${conv.installer.lastName}`.toLowerCase()
       const email = conv.installer.email.toLowerCase()
       const query = searchQuery.toLowerCase()
@@ -828,7 +932,14 @@ export default function MessagesPage() {
     .sort((a, b) => {
       const aPinned = pinnedChatIds.includes(a.installer.id) ? 0 : 1
       const bPinned = pinnedChatIds.includes(b.installer.id) ? 0 : 1
-      return aPinned - bPinned
+      if (aPinned !== bPinned) return aPinned - bPinned
+      const aOnline = a.installer.online ? 0 : 1
+      const bOnline = b.installer.online ? 0 : 1
+      if (aOnline !== bOnline) return aOnline - bOnline
+      if (!a.lastMessage && !b.lastMessage) return 0
+      if (!a.lastMessage) return 1
+      if (!b.lastMessage) return -1
+      return new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
     })
 
   const filteredComposerInstallers = installers
@@ -837,6 +948,18 @@ export default function MessagesPage() {
       if (!query) return true
       const name = `${installer.firstName} ${installer.lastName}`.toLowerCase()
       const email = (installer.email || '').toLowerCase()
+      return name.includes(query) || email.includes(query)
+    })
+    .slice(0, 25)
+
+  const filteredComposerVisitors = websiteConversations
+    .filter(isRealWebsiteConversation)
+    .map((conv) => conv.installer)
+    .filter((visitor) => {
+      const query = composerSearchQuery.trim().toLowerCase()
+      if (!query) return true
+      const name = `${visitor.firstName} ${visitor.lastName}`.toLowerCase()
+      const email = (visitor.email || '').toLowerCase()
       return name.includes(query) || email.includes(query)
     })
     .slice(0, 25)
@@ -879,7 +1002,7 @@ export default function MessagesPage() {
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Compose Message</h2>
                   <p className="text-sm text-slate-500">
-                    Send to an installer or directly to an outside email address.
+                    Send to an installer, a website visitor, or an outside email address.
                   </p>
                 </div>
                 <button
@@ -900,11 +1023,15 @@ export default function MessagesPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+                <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
                   <button
                     type="button"
-                    onClick={() => setComposerMode('installer')}
-                    className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                    onClick={() => {
+                      setComposerMode('installer')
+                      if (composerInstaller && isWebsiteChatId(composerInstaller.id)) setComposerInstaller(null)
+                      setComposerSelectAll(false)
+                    }}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors ${
                       composerMode === 'installer'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
@@ -916,17 +1043,34 @@ export default function MessagesPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setComposerMode('website')
+                      if (composerInstaller && !isWebsiteChatId(composerInstaller.id)) setComposerInstaller(null)
+                      setComposerSelectAll(false)
+                    }}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors ${
+                      composerMode === 'website'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Globe className="w-4 h-4" />
+                    Website
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setComposerMode('email')
                       setComposerInstaller(null)
+                      setComposerSelectAll(false)
                     }}
-                    className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                    className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors ${
                       composerMode === 'email'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Mail className="w-4 h-4" />
-                    Email Address
+                    Email
                   </button>
                 </div>
 
@@ -1036,6 +1180,118 @@ export default function MessagesPage() {
                       </div>
                     )}
                   </div>
+                ) : composerMode === 'website' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      To
+                    </label>
+                    {composerSelectAll ? (
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-sky-200 bg-sky-50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center font-semibold flex-shrink-0">
+                            <Globe className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900">All website visitors</p>
+                            <p className="text-sm text-slate-500">
+                              {websiteVisitorCount} visitor{websiteVisitorCount === 1 ? '' : 's'} will receive this message
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setComposerSelectAll(false)}
+                          className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : composerInstaller ? (
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-sky-200 bg-sky-50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center font-semibold flex-shrink-0">
+                            {getInitials(composerInstaller.firstName, composerInstaller.lastName)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">
+                              {composerInstaller.firstName} {composerInstaller.lastName}
+                            </p>
+                            <p className="text-sm text-slate-500 truncate">
+                              {composerInstaller.email?.endsWith('@noreply.local')
+                                ? 'No email provided'
+                                : composerInstaller.email}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setComposerInstaller(null)}
+                          className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {websiteVisitorCount > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setComposerSelectAll(true)
+                              setComposerInstaller(null)
+                            }}
+                            className="w-full flex items-center gap-3 p-3 rounded-2xl border border-sky-200 bg-sky-50 text-left hover:bg-sky-100 transition-colors"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center font-semibold flex-shrink-0">
+                              <CheckSquare className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-900">Select all website visitors</p>
+                              <p className="text-sm text-slate-500">
+                                Send to every website visitor ({websiteVisitorCount} total)
+                              </p>
+                            </div>
+                          </button>
+                        ) : null}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input
+                            type="text"
+                            value={composerSearchQuery}
+                            onChange={(e) => setComposerSearchQuery(e.target.value)}
+                            placeholder="Search website visitors..."
+                            className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
+                          />
+                        </div>
+                        <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-200 divide-y divide-slate-100">
+                          {filteredComposerVisitors.length === 0 ? (
+                            <p className="p-4 text-sm text-slate-500 text-center">No website visitors yet</p>
+                          ) : (
+                            filteredComposerVisitors.map((visitor) => (
+                              <button
+                                key={visitor.id}
+                                type="button"
+                                onClick={() => setComposerInstaller(visitor)}
+                                className="w-full p-3 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+                              >
+                                <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center font-semibold flex-shrink-0">
+                                  {getInitials(visitor.firstName, visitor.lastName)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-slate-900 truncate">
+                                    {visitor.firstName} {visitor.lastName}
+                                  </p>
+                                  <p className="text-sm text-slate-500 truncate">
+                                    {visitor.email?.endsWith('@noreply.local') ? 'No email provided' : visitor.email}
+                                  </p>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     <div>
@@ -1094,6 +1350,7 @@ export default function MessagesPage() {
                     isComposerSending ||
                     !composerContent.trim() ||
                     (composerMode === 'installer' && !composerInstaller && !composerSelectAll) ||
+                    (composerMode === 'website' && !composerInstaller && !composerSelectAll) ||
                     (composerMode === 'email' && (!composerEmail.trim() || !composerSubject.trim()))
                   }
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1122,7 +1379,50 @@ export default function MessagesPage() {
         <div className="w-full md:w-96 border-r border-slate-200 bg-white flex flex-col h-full">
           {/* Header */}
           <div className="border-b border-slate-200 flex-shrink-0 pr-4 pl-16 pt-16 pb-4 lg:p-4">
-            <h1 className="text-2xl font-bold text-slate-900 mb-4">Messages</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mb-3">Messages</h1>
+            <div className="flex gap-1.5 mb-3">
+              <button
+                type="button"
+                onClick={() => setConversationFilter('all')}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  conversationFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setConversationFilter('installers')}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  conversationFilter === 'installers' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Installers
+              </button>
+              <button
+                type="button"
+                onClick={() => setConversationFilter('online')}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  conversationFilter === 'online' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${conversationFilter === 'online' ? 'bg-white' : 'bg-emerald-500'} ${onlineVisitorCount > 0 ? 'animate-pulse' : ''}`} />
+                Online
+              </button>
+              <button
+                type="button"
+                onClick={() => setConversationFilter('website')}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  conversationFilter === 'website' ? 'bg-sky-600 text-white' : 'bg-sky-50 text-sky-800 hover:bg-sky-100'
+                }`}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Website
+                {websiteUnreadCount > 0 ? (
+                  <span className="h-2 w-2 rounded-full bg-brand-green" title="Unread website messages" />
+                ) : null}
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -1137,9 +1437,11 @@ export default function MessagesPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setComposerInstaller(
-                    selectedInstaller && !isWebsiteChatId(selectedInstaller.id) ? selectedInstaller : null
-                  )
+                  const websiteSelected = Boolean(selectedInstaller && isWebsiteChatId(selectedInstaller.id))
+                  setComposerMode(websiteSelected ? 'website' : 'installer')
+                  setComposerSelectAll(false)
+                  setComposerInstaller(selectedInstaller)
+                  if (websiteSelected) setConversationFilter('website')
                   setShowComposer(true)
                   setError('')
                   setSuccess('')
@@ -1158,7 +1460,11 @@ export default function MessagesPage() {
             {filteredConversations.length === 0 ? (
               <div className="p-8 text-center">
                 <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No conversations found</p>
+                <p className="text-slate-500">
+                  {conversationFilter === 'online'
+                    ? 'No one is on the website right now'
+                    : 'No conversations found'}
+                </p>
               </div>
             ) : (
               filteredConversations.map((conversation) => (
@@ -1171,7 +1477,8 @@ export default function MessagesPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-brand-green">
+                    <div className="relative w-12 h-12 flex-shrink-0">
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-brand-green">
                       {conversation.installer.photoUrl ? (
                         <Image
                           src={conversation.installer.photoUrl}
@@ -1199,11 +1506,19 @@ export default function MessagesPage() {
                         </span>
                       </div>
                     </div>
+                    {conversation.installer.online ? (
+                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" title="Online" />
+                    ) : null}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-semibold text-slate-900 truncate flex items-center gap-1.5">
                           {conversation.installer.firstName} {conversation.installer.lastName}
-                          {isWebsiteChatId(conversation.installer.id) ? (
+                          {conversation.installer.online ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                              Online
+                            </span>
+                          ) : isWebsiteChatId(conversation.installer.id) ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700">
                               <Globe className="h-3 w-3" />
                               Website
@@ -1227,7 +1542,12 @@ export default function MessagesPage() {
                             conversation.lastMessage.attachmentName ||
                             'Attachment'}
                         </p>
-                      ) : (
+                      ) : isWebsiteChatId(conversation.installer.id) &&
+                        conversation.installer.email &&
+                        !conversation.installer.email.endsWith('@noreply.local') &&
+                        conversation.installer.firstName !== conversation.installer.email ? (
+                        <p className="text-sm text-slate-500 truncate">{conversation.installer.email}</p>
+                      ) : conversation.installer.online && isWebsiteChatId(conversation.installer.id) ? null : (
                         <p className="text-sm text-slate-400 italic">No messages yet</p>
                       )}
                       {conversation.unreadCount > 0 && (
@@ -1249,7 +1569,8 @@ export default function MessagesPage() {
             <>
               {/* Chat Header */}
               <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-3 flex-shrink-0">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-brand-green/20 bg-brand-green">
+                <div className="relative w-10 h-10 flex-shrink-0">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-brand-green">
                   {selectedInstaller.photoUrl ? (
                     <Image
                       src={selectedInstaller.photoUrl}
@@ -1277,10 +1598,18 @@ export default function MessagesPage() {
                     </span>
                   </div>
                 </div>
+                {selectedOnline ? (
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" title="Online" />
+                ) : null}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-slate-900 flex items-center gap-2">
                     {selectedInstaller.firstName} {selectedInstaller.lastName}
-                    {isWebsiteChatId(selectedInstaller.id) ? (
+                    {selectedOnline ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                        Online
+                      </span>
+                    ) : isWebsiteChatId(selectedInstaller.id) ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700">
                         <Globe className="h-3 w-3" />
                         Website
@@ -1289,7 +1618,13 @@ export default function MessagesPage() {
                   </p>
                   <p className="text-sm text-slate-500">
                     {isWebsiteChatId(selectedInstaller.id)
-                      ? selectedInstaller.email || 'Landing page visitor'
+                      ? selectedInstaller.email &&
+                        !selectedInstaller.email.endsWith('@noreply.local') &&
+                        selectedInstaller.firstName !== selectedInstaller.email
+                        ? selectedInstaller.email
+                        : selectedOnline
+                          ? 'On the website now'
+                          : 'Landing page visitor'
                       : selectedInstaller.email}
                   </p>
                 </div>

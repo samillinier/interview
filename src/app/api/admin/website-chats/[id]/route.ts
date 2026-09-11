@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { sanitizeChatText, splitVisitorName, websiteChatDbId, websiteChatUiId } from '@/lib/website-chat'
+import { sanitizeChatText, visitorDisplayParts, websiteChatDbId, websiteChatUiId } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +18,7 @@ async function requireSession() {
 }
 
 function mapMessage(message: { id: string; createdAt: Date; senderType: string; senderName: string | null; content: string; isRead: boolean; chatId: string }, chat: { id: string; name: string; email: string }) {
-  const { firstName, lastName } = splitVisitorName(chat.name)
+  const { firstName, lastName } = visitorDisplayParts(chat.name, chat.email)
   return {
     id: message.id,
     installerId: websiteChatUiId(chat.id),

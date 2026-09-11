@@ -20,12 +20,15 @@ if (process.env.NODE_ENV === 'production') {
   prisma = newClient()
 } else {
   const existing = globalForPrisma.prisma
-  // After `prisma generate`, a cached global client can miss new models until this module reloads or restart.
+  // After `prisma generate`, a cached global client can miss new models/fields until this module reloads or restart.
+  const runtimeFields = (existing as { _runtimeDataModel?: { models?: Record<string, { fields?: Record<string, unknown> }> } } | undefined)
+    ?._runtimeDataModel?.models?.WebsiteChat?.fields
   const stale =
     existing &&
     (typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined' ||
       typeof (existing as unknown as { marketingLead?: unknown }).marketingLead === 'undefined' ||
-      typeof (existing as unknown as { websiteChat?: unknown }).websiteChat === 'undefined')
+      typeof (existing as unknown as { websiteChat?: unknown }).websiteChat === 'undefined' ||
+      (runtimeFields != null && !('lastSeenAt' in runtimeFields)))
   if (stale) {
     void existing.$disconnect().catch(() => {})
     globalForPrisma.prisma = undefined
