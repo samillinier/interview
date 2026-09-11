@@ -298,11 +298,9 @@ export function LandingChatWidget() {
     <div className="fixed bottom-4 right-4 z-40 flex h-[min(520px,78vh)] w-[min(100%-2rem,360px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]">
       <div className="flex items-center justify-between bg-brand-green px-3 py-2.5 text-white">
         <div className="flex min-w-0 items-center gap-2.5">
-          {!adminJoined ? (
-            <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
-              <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
-            </span>
-          ) : null}
+          <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+            <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-bold">Chat Support</p>
             <p className="text-[11px] text-white/80">
@@ -373,13 +371,7 @@ export function LandingChatWidget() {
                   <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-start' : 'justify-end'}`}>
                     {fromStaff ? (
                       <span className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-                        {fromAlice ? (
-                          <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center bg-brand-green text-[10px] font-bold text-white">
-                            FIS
-                          </span>
-                        )}
+                        <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
                       </span>
                     ) : null}
                     <div

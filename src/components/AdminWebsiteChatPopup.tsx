@@ -1,9 +1,11 @@
 'use client'
 
 import { FormEvent, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ChevronLeft, Loader2, Minus, Send, X } from 'lucide-react'
+import alicePhoto from '@/images/alice-interviewer.png'
 import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
 
 type WebsiteVisitor = {
@@ -174,8 +176,8 @@ export function AdminWebsiteChatPopup() {
       className={`fixed ${positionClass} z-[200] inline-flex items-center gap-2 rounded-full border border-brand-green bg-white px-4 py-3 text-brand-green shadow-[0_8px_20px_rgba(74,124,35,0.18)] hover:bg-white`}
       aria-label="Open chat"
     >
-      <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-brand-green text-[10px] font-bold text-white">
-        FIS
+      <span className="relative h-7 w-7 overflow-hidden rounded-full ring-1 ring-brand-green/20">
+        <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
         {onlineCount > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400" />
         ) : null}
@@ -203,7 +205,11 @@ export function AdminWebsiteChatPopup() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-          ) : null}
+          ) : (
+            <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+              <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
+            </span>
+          )}
           <div className="min-w-0">
             <p className="truncate text-sm font-bold">{selected ? selected.name : 'Chat'}</p>
             <p className="text-[11px] text-white/80">
@@ -278,7 +284,7 @@ export function AdminWebsiteChatPopup() {
               messages.map((message) => {
                 const fromStaff = isStaffSender(message.senderType)
                 return (
-                  <div key={message.id} className={`flex ${fromStaff ? 'justify-end' : 'justify-start'}`}>
+                  <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
                     <div
                       className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                         fromStaff ? 'bg-brand-green text-white' : 'bg-white text-slate-800 shadow-sm'
@@ -295,6 +301,11 @@ export function AdminWebsiteChatPopup() {
                       </p>
                       {message.content}
                     </div>
+                    {fromStaff ? (
+                      <span className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                        <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
+                      </span>
+                    ) : null}
                   </div>
                 )
               })
