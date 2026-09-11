@@ -225,8 +225,8 @@ export function AdminWebsiteChatPopup() {
 
   return (
     <div className={`fixed bottom-4 ${positionClass} z-[200] flex h-[min(660px,88vh)] w-[min(100%-1.5rem,420px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)]`}>
-      <div className="relative flex items-center justify-between bg-brand-green px-4 py-3.5 text-white">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="relative flex items-center justify-between bg-brand-green px-3.5 py-3 text-white">
+        <div className="flex min-w-0 items-center gap-2.5">
           {selected ? (
             <button
               type="button"
@@ -234,16 +234,16 @@ export function AdminWebsiteChatPopup() {
               className="rounded-lg p-1 hover:bg-white/10"
               aria-label="Back to visitors"
             >
-              <ChevronLeft className="h-6 w-6" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
           ) : (
-            <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+            <span className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
               <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate text-[22px] font-semibold leading-tight tracking-tight">{selected ? selected.name : 'Chat'}</p>
-            <p className="mt-0.5 text-sm text-white/85">
+            <p className="truncate text-lg font-semibold leading-tight">{selected ? selected.name : 'Chat'}</p>
+            <p className="mt-0.5 text-xs text-white/85">
               {selected
                 ? [
                     selected.online ? 'Online now' : selected.email?.endsWith('@noreply.local') ? 'Landing page visitor' : selected.email || 'Landing page visitor',
@@ -266,18 +266,18 @@ export function AdminWebsiteChatPopup() {
               className="rounded-lg p-1 hover:bg-white/10"
               aria-label="Visitor options"
             >
-              <MoreVertical className="h-6 w-6" />
+              <MoreVertical className="h-5 w-5" />
             </button>
           ) : null}
           <button type="button" onClick={() => persistOpen(false)} className="rounded-lg p-1 hover:bg-white/10" aria-label="Minimize chat">
-            <Minus className="h-6 w-6" />
+            <Minus className="h-5 w-5" />
           </button>
           <button type="button" onClick={() => persistOpen(false)} className="rounded-lg p-1 hover:bg-white/10" aria-label="Close chat">
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
         {selected && menuOpen ? (
-          <div className="absolute right-3 top-14 z-20 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-slate-800 shadow-xl">
+          <div className="absolute right-3 top-12 z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-slate-800 shadow-xl">
             {renaming ? (
               <form
                 className="space-y-2 px-3 py-2"
@@ -311,35 +311,35 @@ export function AdminWebsiteChatPopup() {
                     setRenameValue(selected.name)
                     setRenaming(true)
                   }}
-                  className="block w-full px-4 py-2.5 text-left text-base hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
                 >
                   Change visitor name
                 </button>
                 <button
                   type="button"
                   onClick={() => void patchVisitor({ issueStatus: 'in_progress' })}
-                  className="block w-full px-4 py-2.5 text-left text-base hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
                 >
                   In progress
                 </button>
                 <button
                   type="button"
                   onClick={() => void patchVisitor({ issueStatus: 'solved' })}
-                  className="block w-full px-4 py-2.5 text-left text-base hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
                 >
                   Issue solved
                 </button>
                 <button
                   type="button"
                   onClick={() => void patchVisitor({ issueStatus: 'not_solved' })}
-                  className="block w-full px-4 py-2.5 text-left text-base hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
                 >
                   Not solved
                 </button>
                 <button
                   type="button"
                   onClick={() => void patchVisitor({ issueStatus: 'open' })}
-                  className="block w-full px-4 py-2.5 text-left text-base hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
                 >
                   Reopen issue
                 </button>
@@ -352,31 +352,31 @@ export function AdminWebsiteChatPopup() {
       {!selected ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           {visitors.length === 0 ? (
-            <p className="p-8 text-center text-base text-slate-500">No website visitors yet.</p>
+            <p className="p-6 text-center text-sm text-slate-500">No website visitors yet.</p>
           ) : (
             visitors.map((visitor) => (
               <button
                 key={visitor.id}
                 type="button"
                 onClick={() => setSelectedId(visitor.id)}
-                className="flex w-full items-center gap-4 border-b border-slate-100 px-5 py-5 text-left hover:bg-slate-50"
+                className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3.5 text-left hover:bg-slate-50"
               >
-                <span className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-brand-green text-lg font-bold text-white">
+                <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-brand-green text-sm font-bold text-white">
                   {visitor.name.slice(0, 2).toUpperCase()}
                   {visitor.online ? (
-                    <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400" />
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="truncate text-lg font-semibold text-slate-900">{visitor.name}</span>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="truncate text-base font-semibold text-slate-900">{visitor.name}</span>
                     {visitor.online ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold uppercase text-emerald-700">
+                      <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold uppercase text-emerald-700">
                         Online
                       </span>
                     ) : null}
                     {issueStatusLabel(visitor.issueStatus) ? (
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase ${
+                      <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold uppercase ${
                         visitor.issueStatus === 'solved'
                           ? 'bg-emerald-50 text-emerald-800'
                           : visitor.issueStatus === 'not_solved'
@@ -387,12 +387,12 @@ export function AdminWebsiteChatPopup() {
                       </span>
                     ) : null}
                   </span>
-                  <span className="mt-1.5 block truncate text-base text-slate-500">
+                  <span className="mt-1 block truncate text-sm text-slate-500">
                     {visitor.preview || (visitor.online ? 'On the website now' : visitor.email?.endsWith('@noreply.local') ? 'Visited the website' : visitor.email)}
                   </span>
                 </span>
                 {visitor.unreadCount > 0 ? (
-                  <span className="rounded-full bg-brand-green px-2.5 py-1 text-sm font-bold text-white">
+                  <span className="rounded-full bg-brand-green px-2 py-0.5 text-xs font-bold text-white">
                     {visitor.unreadCount}
                   </span>
                 ) : null}
@@ -402,23 +402,23 @@ export function AdminWebsiteChatPopup() {
         </div>
       ) : (
         <>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3.5">
             {messages.length === 0 ? (
-              <p className="text-center text-base text-slate-500">No messages yet. You can write first.</p>
+              <p className="text-center text-sm text-slate-500">No messages yet. You can write first.</p>
             ) : (
               messages.map((message) => {
                 const fromStaff = isStaffSender(message.senderType)
                 return (
-                  <div key={message.id} className={`flex items-end gap-2.5 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
+                  <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
                     <div className="relative max-w-[78%]">
                       <div
-                        className={`relative z-[1] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
+                        className={`relative z-[1] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                           fromStaff
                             ? 'rounded-br-md bg-brand-green text-white'
                             : 'rounded-bl-md bg-white text-slate-800 shadow-sm'
                         }`}
                       >
-                        <p className={`mb-1 text-xs font-semibold uppercase tracking-wide ${
+                        <p className={`mb-0.5 text-[11px] font-semibold uppercase tracking-wide ${
                           fromStaff ? 'text-white/70' : 'text-slate-400'
                         }`}>
                           {message.senderType === 'alice'
@@ -437,7 +437,7 @@ export function AdminWebsiteChatPopup() {
                       />
                     </div>
                     {fromStaff ? (
-                      <span className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                      <span className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
                         <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
                       </span>
                     ) : null}
@@ -447,14 +447,14 @@ export function AdminWebsiteChatPopup() {
             )}
             <div ref={bottomRef} />
           </div>
-          <form onSubmit={sendMessage} className="border-t border-slate-100 p-4">
+          <form onSubmit={sendMessage} className="border-t border-slate-100 p-3">
             <div className="flex items-end gap-2">
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Write a message..."
                 rows={1}
-                className="min-h-[48px] flex-1 resize-none rounded-xl border border-slate-200 px-3.5 py-3 text-base outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                className="min-h-[44px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault()
@@ -465,10 +465,10 @@ export function AdminWebsiteChatPopup() {
               <button
                 type="submit"
                 disabled={sending || !draft.trim()}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-50"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-50"
                 aria-label="Send"
               >
-                {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
             </div>
           </form>
