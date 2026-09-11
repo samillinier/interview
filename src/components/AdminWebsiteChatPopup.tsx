@@ -34,21 +34,18 @@ function visitorName(row: {
 export function AdminWebsiteChatPopup() {
   const pathname = usePathname()
   const { status } = useSession()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [visitors, setVisitors] = useState<WebsiteVisitor[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const knownOnlineRef = useRef<Set<string>>(new Set())
-  const unreadTotalRef = useRef(0)
-  const initializedRef = useRef(false)
 
   const persistOpen = (next: boolean) => {
     setOpen(next)
     try {
-      sessionStorage.setItem('fis-admin-website-chat-open', next ? '1' : '0')
+      localStorage.setItem('fis-admin-website-chat-open', next ? '1' : '0')
     } catch {
       // ignore
     }
@@ -56,8 +53,7 @@ export function AdminWebsiteChatPopup() {
 
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem('fis-admin-website-chat-open')
-      if (stored === '0') setOpen(false)
+      const stored = localStorage.getItem('fis-admin-website-chat-open')
       if (stored === '1') setOpen(true)
     } catch {
       // ignore
@@ -88,25 +84,6 @@ export function AdminWebsiteChatPopup() {
             return a.name.localeCompare(b.name)
           })
         setVisitors(nextVisitors)
-
-        const onlineIds = nextVisitors.filter((row) => row.online).map((row) => row.id)
-        const unreadIds = nextVisitors.filter((row) => row.unreadCount > 0).map((row) => row.id)
-        const unreadTotal = nextVisitors.reduce((sum, row) => sum + row.unreadCount, 0)
-        const newOnline = onlineIds.find((id) => !knownOnlineRef.current.has(id))
-        const unreadGrew = unreadTotal > unreadTotalRef.current
-        knownOnlineRef.current = new Set(onlineIds)
-        unreadTotalRef.current = unreadTotal
-
-        const shouldPop = Boolean(
-          newOnline ||
-            unreadGrew ||
-            (!initializedRef.current && (onlineIds.length > 0 || unreadTotal > 0)),
-        )
-        initializedRef.current = true
-        if (shouldPop) {
-          persistOpen(true)
-          setSelectedId((current) => current || unreadIds[0] || newOnline || onlineIds[0] || '')
-        }
       } catch {
         // ignore
       }
@@ -195,7 +172,7 @@ export function AdminWebsiteChatPopup() {
       type="button"
       onClick={() => persistOpen(true)}
       className={`fixed ${positionClass} z-[200] inline-flex items-center gap-2 rounded-full border border-brand-green bg-white px-4 py-3 text-brand-green shadow-[0_8px_20px_rgba(74,124,35,0.18)] hover:bg-white`}
-      aria-label="Open website chat"
+      aria-label="Open chat"
     >
       <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-brand-green text-[10px] font-bold text-white">
         FIS
@@ -203,7 +180,7 @@ export function AdminWebsiteChatPopup() {
           <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400" />
         ) : null}
       </span>
-      <span className="text-sm font-semibold">Website chat</span>
+      <span className="text-sm font-semibold">Chat</span>
       {unreadCount > 0 ? (
         <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
           {unreadCount}
@@ -228,7 +205,7 @@ export function AdminWebsiteChatPopup() {
             </button>
           ) : null}
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold">{selected ? selected.name : 'Website visitors'}</p>
+            <p className="truncate text-sm font-bold">{selected ? selected.name : 'Chat'}</p>
             <p className="text-[11px] text-white/80">
               {selected
                 ? selected.online
