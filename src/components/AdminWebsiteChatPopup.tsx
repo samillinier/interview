@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { ChevronLeft, Loader2, Minus, Send, X } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
+import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
 
 type WebsiteVisitor = {
@@ -170,25 +171,12 @@ export function AdminWebsiteChatPopup() {
 
   if (!open) {
     return (
-    <button
-      type="button"
-      onClick={() => persistOpen(true)}
-      className={`fixed ${positionClass} z-[200] inline-flex items-center gap-2 rounded-full border border-brand-green bg-white px-4 py-3 text-brand-green shadow-[0_8px_20px_rgba(74,124,35,0.18)] hover:bg-white`}
-      aria-label="Open chat"
-    >
-      <span className="relative h-7 w-7 overflow-hidden rounded-full ring-1 ring-brand-green/20">
-        <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
-        {onlineCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400" />
-        ) : null}
-      </span>
-      <span className="text-sm font-semibold">Chat</span>
-      {unreadCount > 0 ? (
-        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
-          {unreadCount}
-        </span>
-      ) : null}
-      </button>
+      <ChatLauncherButton
+        onClick={() => persistOpen(true)}
+        className={positionClass}
+        zClass="z-[200]"
+        unreadCount={unreadCount}
+      />
     )
   }
 

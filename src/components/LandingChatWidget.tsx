@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import { Loader2, Minus, Send, X } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
+import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 
 const TOKEN_KEY = 'fis-website-chat-token'
 const OPEN_KEY = 'fis-website-chat-open'
@@ -280,17 +281,10 @@ export function LandingChatWidget() {
 
   if (!open) {
     return (
-      <button
-        type="button"
+      <ChatLauncherButton
         onClick={() => persistOpen(true)}
-        className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border border-brand-green bg-white px-4 py-3 text-brand-green shadow-[0_8px_20px_rgba(255,255,255,0.45)] hover:bg-white hover:shadow-[0_10px_24px_rgba(255,255,255,0.6)]"
-        aria-label="Open chat support"
-      >
-        <span className="relative h-7 w-7 overflow-hidden rounded-full ring-1 ring-brand-green/20">
-          <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
-        </span>
-        <span className="text-sm font-semibold">Chat Support</span>
-      </button>
+        ariaLabel="Open chat support"
+      />
     )
   }
 
