@@ -496,10 +496,8 @@ export function LandingChatWidget() {
                 return (
                   <div key={message.id} className={`flex ${fromStaff ? 'items-start gap-2.5 justify-start' : 'justify-end'}`}>
                     {fromStaff ? (
-                      <span className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v1.2h19.2v-1.2c0-3.2-6.4-4.8-9.6-4.8z" />
-                        </svg>
+                      <span className="relative mt-1 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                        <Image src={alicePhoto} alt="Support" className="h-full w-full object-cover object-top" />
                       </span>
                     ) : null}
                     <div className={fromStaff ? 'relative min-w-0 max-w-[82%]' : 'relative max-w-[78%]'}>
