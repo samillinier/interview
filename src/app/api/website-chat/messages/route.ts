@@ -4,6 +4,7 @@ import { sanitizeChatText } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+export const maxDuration = 10
 
 const noStoreHeaders = {
   'Cache-Control': 'private, no-store, no-cache, must-revalidate',
@@ -12,6 +13,17 @@ const noStoreHeaders = {
 
 function visitorToken(request: NextRequest, body?: any) {
   return String(request.headers.get('x-website-chat-token') || body?.token || '').trim()
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function loadVisitorMessages(token: string) {
+  return prisma.websiteChat.findUnique({
+    where: { visitorToken: token },
+    include: { messages: { orderBy: { createdAt: 'asc' } } },
+  })
 }
 
 export async function GET(request: NextRequest) {
@@ -34,14 +46,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function loadVisitorMessages(token: string) {
-  const chat = await prisma.websiteChat.findUnique({
-    where: { visitorToken: token },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
-  })
-  return chat
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
@@ -51,9 +55,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (body?.poll) {
-      const chat = await loadVisitorMessages(token)
+      const sinceId = String(body.sinceId || '')
+      const waitMs = Math.max(0, Math.min(Number(body.waitMs) || 0, 8000))
+      const deadline = Date.now() + waitMs
+      let chat = await loadVisitorMessages(token)
       if (!chat) {
         return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
+      }
+      while (waitMs > 0) {
+        const lastId = chat.messages[chat.messages.length - 1]?.id || ''
+        if (lastId !== sinceId || Date.now() >= deadline) break
+        await sleep(400)
+        chat = await loadVisitorMessages(token)
+        if (!chat) {
+          return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
+        }
       }
       return NextResponse.json({ success: true, messages: chat.messages }, { headers: noStoreHeaders })
     }
