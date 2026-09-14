@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { sanitizeChatText } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const noStoreHeaders = {
   'Cache-Control': 'private, no-store, no-cache, must-revalidate',
@@ -19,10 +20,7 @@ export async function GET(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: 'Chat session required' }, { status: 401, headers: noStoreHeaders })
     }
-    const chat = await prisma.websiteChat.findUnique({
-      where: { visitorToken: token },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
-    })
+    const chat = await loadVisitorMessages(token)
     if (!chat) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
     }
@@ -36,14 +34,31 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function loadVisitorMessages(token: string) {
+  const chat = await prisma.websiteChat.findUnique({
+    where: { visitorToken: token },
+    include: { messages: { orderBy: { createdAt: 'asc' } } },
+  })
+  return chat
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const token = visitorToken(request, body)
-    const content = sanitizeChatText(body?.content, 1000)
     if (!token) {
       return NextResponse.json({ error: 'Chat session required' }, { status: 401, headers: noStoreHeaders })
     }
+
+    if (body?.poll) {
+      const chat = await loadVisitorMessages(token)
+      if (!chat) {
+        return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
+      }
+      return NextResponse.json({ success: true, messages: chat.messages }, { headers: noStoreHeaders })
+    }
+
+    const content = sanitizeChatText(body?.content, 1000)
     if (!content) {
       return NextResponse.json({ error: 'Write a message first.' }, { status: 400, headers: noStoreHeaders })
     }

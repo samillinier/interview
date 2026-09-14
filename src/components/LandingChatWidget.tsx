@@ -68,6 +68,11 @@ export function LandingChatWidget() {
   const [seenAt, setSeenAt] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const identityRef = useRef({ name: '', email: '' })
+  const tokenRef = useRef('')
+  const startedRef = useRef(false)
+
+  tokenRef.current = token
+  startedRef.current = started
 
   const markSeen = () => {
     const next = Date.now()
@@ -220,10 +225,17 @@ export function LandingChatWidget() {
     return () => window.clearInterval(timer)
   }, [status])
 
-  const loadMessages = useCallback(async (nextToken = token) => {
+  const loadMessages = useCallback(async (nextToken = tokenRef.current) => {
     if (!nextToken) return
     const res = await fetch('/api/website-chat/messages', {
-      headers: { 'x-website-chat-token': nextToken },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-website-chat-token': nextToken,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      body: JSON.stringify({ poll: true }),
       cache: 'no-store',
     })
     const data = await res.json().catch(() => ({}))
@@ -231,17 +243,63 @@ export function LandingChatWidget() {
       resetSession()
       return
     }
-    if (res.ok && Array.isArray(data.messages)) setMessages(data.messages)
-  }, [token])
+    if (res.ok && Array.isArray(data.messages)) {
+      setMessages((current) => {
+        const next = data.messages as ChatMessage[]
+        if (
+          current.length === next.length &&
+          current[current.length - 1]?.id === next[next.length - 1]?.id
+        ) {
+          return current
+        }
+        return next
+      })
+      if (data.messages.length > 0) setStarted(true)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!started || !token) return
-    void loadMessages(token).catch(() => {})
-    const timer = window.setInterval(() => {
-      void loadMessages(token).catch(() => {})
-    }, 4000)
-    return () => window.clearInterval(timer)
-  }, [started, token, loadMessages])
+    if (status === 'loading' || status === 'authenticated') return
+    let cancelled = false
+    let timer: number | undefined
+
+    const poll = async () => {
+      if (!startedRef.current) return
+      const nextToken = tokenRef.current || ensureVisitorToken()
+      if (!nextToken) return
+      await loadMessages(nextToken)
+    }
+
+    const loop = () => {
+      void poll()
+        .catch(() => {})
+        .finally(() => {
+          if (cancelled) return
+          const wait = document.hidden ? 4000 : 1000
+          timer = window.setTimeout(loop, wait)
+        })
+    }
+
+    void loop()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void poll().catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      cancelled = true
+      if (timer) window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [status, loadMessages])
+
+  useEffect(() => {
+    if (!started) return
+    const nextToken = tokenRef.current
+    if (!nextToken) return
+    void loadMessages(nextToken).catch(() => {})
+  }, [started, loadMessages])
 
   useEffect(() => {
     if (!open) return
@@ -278,6 +336,7 @@ export function LandingChatWidget() {
         setEmail(data.chat.email)
       }
       setStarted(true)
+      await loadMessages(nextToken)
     } catch (err: any) {
       setError(err.message || 'Could not start chat')
     } finally {
