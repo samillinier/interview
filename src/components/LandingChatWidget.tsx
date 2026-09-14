@@ -253,9 +253,11 @@ export function LandingChatWidget() {
     const data = await res.json().catch(() => ({}))
     if (res.status === 404) return
     if (res.ok && Array.isArray(data.messages)) {
+      const next = data.messages as ChatMessage[]
+      const previousLastId = lastIdRef.current
+      const nextLastId = next[next.length - 1]?.id || ''
+      lastIdRef.current = nextLastId || previousLastId
       setMessages((current) => {
-        const next = data.messages as ChatMessage[]
-        lastIdRef.current = next[next.length - 1]?.id || lastIdRef.current
         if (
           current.length === next.length &&
           current[current.length - 1]?.id === next[next.length - 1]?.id
@@ -264,22 +266,32 @@ export function LandingChatWidget() {
         }
         return next
       })
-      if (data.messages.length > 0) {
+      const staffWrote = next.some((message) => message.senderType === 'admin' || message.senderType === 'alice')
+      if (next.length > 0 && staffWrote) {
         startedRef.current = true
         setStarted(true)
+      }
+      const newestIsAdmin = next[next.length - 1]?.senderType === 'admin'
+      if (newestIsAdmin && nextLastId && nextLastId !== previousLastId) {
+        setOpen(true)
+        try {
+          sessionStorage.setItem(OPEN_KEY, '1')
+        } catch {
+          // ignore
+        }
       }
     }
   }, [])
 
   useEffect(() => {
     if (status === 'authenticated') return
-    if (!started) return
     let cancelled = false
     const controller = new AbortController()
 
     const run = async () => {
       while (!cancelled) {
-        const nextToken = tokenRef.current
+        const nextToken = tokenRef.current || ensureVisitorToken()
+        if (nextToken) tokenRef.current = nextToken
         if (!nextToken) {
           await new Promise((resolve) => window.setTimeout(resolve, 400))
           continue
@@ -305,7 +317,7 @@ export function LandingChatWidget() {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [started, status, loadMessages])
+  }, [status, loadMessages])
 
   useEffect(() => {
     if (!open) return
@@ -386,6 +398,7 @@ export function LandingChatWidget() {
   }
 
   const adminJoined = messages.some((message) => message.senderType === 'admin')
+  const showThread = started || adminJoined || messages.some((message) => message.senderType === 'alice')
   const unreadCount = open
     ? 0
     : messages.filter(
@@ -444,7 +457,7 @@ export function LandingChatWidget() {
         </div>
       </div>
 
-      {!started ? (
+      {!showThread ? (
         <form onSubmit={startChat} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
           <p className="text-sm text-slate-600">
             Name and email are optional. If you skip them, we will start the chat as a visitor.

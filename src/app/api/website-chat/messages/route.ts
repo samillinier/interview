@@ -59,19 +59,17 @@ export async function POST(request: NextRequest) {
       const waitMs = Math.max(0, Math.min(Number(body.waitMs) || 0, 8000))
       const deadline = Date.now() + waitMs
       let chat = await loadVisitorMessages(token)
-      if (!chat) {
-        return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
-      }
-      while (waitMs > 0) {
-        const lastId = chat.messages[chat.messages.length - 1]?.id || ''
-        if (lastId !== sinceId || Date.now() >= deadline) break
+      while (true) {
+        const lastId = chat?.messages?.at(-1)?.id || ''
+        if (chat && lastId !== sinceId) break
+        if (waitMs <= 0 || Date.now() >= deadline) break
         await sleep(400)
         chat = await loadVisitorMessages(token)
-        if (!chat) {
-          return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
-        }
       }
-      return NextResponse.json({ success: true, messages: chat.messages }, { headers: noStoreHeaders })
+      return NextResponse.json(
+        { success: true, messages: chat?.messages || [] },
+        { headers: noStoreHeaders },
+      )
     }
 
     const content = sanitizeChatText(body?.content, 1000)
