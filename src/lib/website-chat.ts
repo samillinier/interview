@@ -69,7 +69,7 @@ export function sanitizeChatText(value: unknown, max = 1000) {
 export function aliceGreeting(name: string) {
   const first = splitVisitorName(name).firstName
   const greetName = !first || first === 'Website' || first === 'Visitor' ? 'there' : first
-  return `Hi ${greetName}, I'm Alice with Floor Interior Services. I can help with installer onboarding and compliance questions right away. An admin may also join this chat — feel free to send a message.`
+  return `Hi ${greetName}, I'm Alice with Floor Interior Services. I can help with installer onboarding and compliance questions right away. For a faster, sleeker experience, use the FIS FastTrack app — iPhone: https://apps.apple.com/us/app/fis-fasttrack/id6793172089 Android: https://play.google.com/store/apps/details?id=com.fis.installer. An admin may also join this chat — feel free to send a message.`
 }
 
 export function isAliceSender(senderType?: string | null, senderId?: string | null) {
