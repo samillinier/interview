@@ -1,19 +1,23 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
   ExternalLink,
   Loader2,
   Mail,
   Phone,
   Radar,
   Search,
+  Send,
   StickyNote,
   Trash2,
+  X,
 } from 'lucide-react'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -56,6 +60,7 @@ type MarketingLead = {
   remark?: string | null
   savedByEmail?: string | null
   rowColor?: string | null
+  emailOptInSentAt?: string | null
 }
 
 const OUTREACH_OPTIONS = [
@@ -105,18 +110,33 @@ function cleanText(value: string | null | undefined) {
     .trim()
 }
 
-function keywordList(value: MarketingLead['keywords']): string[] {
-  if (Array.isArray(value)) return value.map((item) => cleanText(item)).filter(Boolean)
-  if (!value) return []
-  return String(value)
-    .split(',')
-    .map((item) => cleanText(item))
-    .filter(Boolean)
-}
-
 function locationLabel(lead: MarketingLead) {
   const county = lead.county ? (String(lead.county).toLowerCase().endsWith('county') ? lead.county : `${lead.county} County`) : ''
   return [lead.city, county, lead.state].filter(Boolean).join(', ') || '—'
+}
+
+const OPT_IN_EMAIL_SUBJECT = "Join the FIS flooring contractor network"
+
+function defaultOptInEmail() {
+  return `Good morning,
+
+My name is Sai, and I’m reaching out from Floor Interior Services (FIS). We’re looking for qualified flooring contractors to join our subcontractor network and receive potential installation work through our Lowe’s projects across Florida.
+
+Getting started is simple:
+
+1. Start the 5–10 minute prescreening:
+https://job.floorinteriorservices.com/interview
+
+2. Create your FIS installer profile:
+https://job.floorinteriorservices.com/installer
+
+Once approved, your company may be considered for available flooring work in your service area based on your capabilities and availability.
+
+If you’re interested, we’d be happy to have you join the FIS network.
+
+Best regards,
+Sai
+Floor Interior Services (FIS)`
 }
 
 export default function MarketingPage() {
@@ -137,6 +157,7 @@ export default function MarketingPage() {
   const [savingHost, setSavingHost] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
+  const [statusMenuId, setStatusMenuId] = useState<string | null>(null)
   const [menu, setMenu] = useState<{
     x: number
     y: number
@@ -156,6 +177,16 @@ export default function MarketingPage() {
   } | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
   const [noteSaving, setNoteSaving] = useState(false)
+  const [emailComposer, setEmailComposer] = useState<{
+    id: string
+    host: string
+    companyName: string
+    to: string
+    cc: string
+    subject: string
+    body: string
+  } | null>(null)
+  const [emailSending, setEmailSending] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [tab, setTab] = useState<'results' | 'saved'>('saved')
@@ -205,13 +236,17 @@ export default function MarketingPage() {
     const close = (event: MouseEvent) => {
       if (colorSaving || deletingId || noteSaving) return
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenu(null)
+      const target = event.target as HTMLElement | null
+      if (!target?.closest('[data-status-menu]')) setStatusMenuId(null)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (colorSaving || deletingId || noteSaving) return
+      if (colorSaving || deletingId || noteSaving || emailSending) return
       if (event.key === 'Escape') {
         setMenu(null)
         setNotePicker(null)
         setNoteDraft('')
+        setEmailComposer(null)
+        setStatusMenuId(null)
       }
     }
     document.addEventListener('mousedown', close)
@@ -220,7 +255,7 @@ export default function MarketingPage() {
       document.removeEventListener('mousedown', close)
       document.removeEventListener('keydown', onKey)
     }
-  }, [colorSaving, deletingId, noteSaving])
+  }, [colorSaving, deletingId, noteSaving, emailSending])
 
   const savedHosts = useMemo(() => new Set(saved.map((lead) => lead.websiteHost)), [saved])
   const savedByHost = useMemo(() => new Map(saved.map((lead) => [lead.websiteHost, lead])), [saved])
@@ -356,7 +391,7 @@ export default function MarketingPage() {
       setSaved((current) => current.filter((lead) => lead.id !== id))
       setResults((current) =>
         current.map((lead) =>
-          lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined, rowColor: null, remark: null } : lead,
+          lead.websiteHost === host ? { ...lead, alreadySaved: false, id: undefined, rowColor: null, remark: null, emailOptInSentAt: null } : lead,
         ),
       )
       setMenu(null)
@@ -460,6 +495,64 @@ export default function MarketingPage() {
       flash(err.message || 'Failed to update status', 'err')
     } finally {
       setStatusSavingId(null)
+    }
+  }
+
+  const openEmailComposer = (event: React.MouseEvent<HTMLElement>, lead: MarketingLead, savedId: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setMenu(null)
+    setNotePicker(null)
+    setStatusMenuId(null)
+    setEmailComposer({
+      id: savedId,
+      host: lead.websiteHost,
+      companyName: cleanText(lead.companyName),
+      to: String(lead.email || '').trim(),
+      cc: String(session?.user?.email || '').trim(),
+      subject: OPT_IN_EMAIL_SUBJECT,
+      body: defaultOptInEmail(),
+    })
+  }
+
+  const handleSendOptInEmail = async () => {
+    if (!emailComposer) return
+    const to = emailComposer.to.trim()
+    const cc = emailComposer.cc.trim()
+    const subject = emailComposer.subject.trim()
+    const content = emailComposer.body.trim()
+    if (!to) {
+      flash('Add an email address before sending.', 'err')
+      return
+    }
+    if (!subject || !content) {
+      flash('Subject and message are required.', 'err')
+      return
+    }
+    setEmailSending(true)
+    try {
+      const res = await fetch(`/api/admin/marketing/leads/${emailComposer.id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: to, cc, subject, content }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to send email')
+      const sentAt = data.lead?.emailOptInSentAt || new Date().toISOString()
+      const nextStatus = data.lead?.outreachStatus || 'contacted'
+      const nextEmail = data.lead?.email || to
+      const apply = (lead: MarketingLead) =>
+        lead.id === emailComposer.id || lead.websiteHost === emailComposer.host
+          ? { ...lead, email: nextEmail, emailOptInSentAt: sentAt, outreachStatus: nextStatus }
+          : lead
+      setSaved((current) => current.map(apply))
+      setResults((current) => current.map(apply))
+      setEmailComposer(null)
+      flash(`Email sent to ${nextEmail}.`, 'ok')
+    } catch (err: any) {
+      flash(err.message || 'Failed to send email', 'err')
+    } finally {
+      setEmailSending(false)
     }
   }
 
@@ -634,19 +727,19 @@ export default function MarketingPage() {
                       <th className="px-4 py-3 font-semibold">Company</th>
                       <th className="px-4 py-3 font-semibold">Contact</th>
                       <th className="px-4 py-3 font-semibold">Location</th>
-                      <th className="px-4 py-3 font-semibold">Keywords</th>
                       <th className="px-4 py-3 font-semibold">Score</th>
-                      {tab === 'results' ? <th className="px-4 py-3 font-semibold"> </th> : null}
-                      <th className="px-4 py-3 font-semibold">Status</th>
+                      {tab === 'results' ? <th className="px-3 py-3 font-semibold"> </th> : null}
+                      <th className="px-1.5 py-3 font-semibold whitespace-nowrap">Status</th>
+                      <th className="px-2 py-3 font-semibold whitespace-nowrap">Email</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((lead) => {
-                      const keywords = keywordList(lead.keywords)
                       const savedLead = savedByHost.get(lead.websiteHost)
                       const savedId = lead.id || savedLead?.id
                       const rowNote = String(lead.remark || savedLead?.remark || '').trim()
                       const outreachStatus = (lead.outreachStatus || savedLead?.outreachStatus || 'pending') as OutreachStatus
+                      const emailSentAt = lead.emailOptInSentAt || savedLead?.emailOptInSentAt || null
                       const savedColor = savedLead?.rowColor
                       const rowColor = isRowColor(lead.rowColor)
                         ? lead.rowColor
@@ -742,15 +835,8 @@ export default function MarketingPage() {
                               </a>
                             ) : null}
                           </td>
-                          <td className={`text-slate-700 ${cellClass}`}>{locationLabel(lead)}</td>
-                          <td className={cellClass}>
-                            <div className="flex flex-wrap gap-1">
-                              {keywords.length ? keywords.slice(0, 4).map((keyword) => (
-                                <span key={keyword} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                                  {keyword}
-                                </span>
-                              )) : <span className="text-slate-400">—</span>}
-                            </div>
+                          <td className={`text-slate-700 ${cellClass}`}>
+                            {locationLabel(lead)}
                             {lead.licenseInfo ? <div className="mt-2 text-xs text-slate-500">{lead.licenseInfo}</div> : null}
                           </td>
                           <td className={cellClass}>
@@ -774,27 +860,76 @@ export default function MarketingPage() {
                             </button>
                           </td>
                           ) : null}
-                          <td className={cellClass}>
+                          <td className={`w-[1%] whitespace-nowrap ${cellClass.replace('px-4', 'px-1.5')}`}>
                             {savedId ? (
-                              <select
-                                value={outreachStatus}
-                                disabled={statusSavingId === savedId}
-                                onClick={(event) => event.stopPropagation()}
-                                onChange={(event) => {
-                                  event.stopPropagation()
-                                  void handleOutreach(savedId, event.target.value as OutreachStatus)
-                                }}
-                                className={`min-w-[132px] rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-brand-green/20 ${outreachClass(outreachStatus)}`}
-                                aria-label="Outreach status"
-                              >
-                                {OUTREACH_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="relative" data-status-menu>
+                                <button
+                                  type="button"
+                                  disabled={statusSavingId === savedId}
+                                  aria-label="Outreach status"
+                                  aria-expanded={statusMenuId === savedId}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setStatusMenuId((current) => (current === savedId ? null : savedId))
+                                  }}
+                                  className={`inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[10px] font-semibold leading-tight outline-none focus:ring-2 focus:ring-brand-green/20 disabled:opacity-60 ${outreachClass(outreachStatus)}`}
+                                >
+                                  <span>
+                                    {OUTREACH_OPTIONS.find((option) => option.value === outreachStatus)?.label || 'Pending'}
+                                  </span>
+                                  {statusSavingId === savedId ? (
+                                    <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" />
+                                  ) : (
+                                    <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                                  )}
+                                </button>
+                                {statusMenuId === savedId ? (
+                                  <div
+                                    role="listbox"
+                                    className="absolute right-0 top-full z-20 mt-1 w-[7.25rem] overflow-hidden rounded-md border border-slate-200 bg-white py-0.5 shadow-lg"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    {OUTREACH_OPTIONS.map((option) => (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        role="option"
+                                        aria-selected={option.value === outreachStatus}
+                                        onClick={() => {
+                                          setStatusMenuId(null)
+                                          if (option.value !== outreachStatus) void handleOutreach(savedId, option.value)
+                                        }}
+                                        className={`flex w-full px-2 py-1 text-left text-[10px] font-semibold hover:bg-slate-50 ${
+                                          option.value === outreachStatus ? 'bg-slate-50' : 'text-slate-700'
+                                        }`}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
                             ) : (
-                              <span className="text-xs text-slate-400">Save to track</span>
+                              <span className="text-[10px] text-slate-400">Save first</span>
+                            )}
+                          </td>
+                          <td className={`w-[1%] whitespace-nowrap ${cellClass.replace('px-4', 'px-2')}`}>
+                            {savedId ? (
+                              <button
+                                type="button"
+                                onClick={(event) => openEmailComposer(event, lead, savedId)}
+                                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                                  emailSentAt
+                                    ? 'border-green-200 bg-green-50 text-green-800 hover:bg-green-100'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                                }`}
+                                title={emailSentAt ? 'Email sent — click to send again' : 'Compose opt-in email'}
+                              >
+                                <Mail className="h-3 w-3" />
+                                {emailSentAt ? 'Sent' : 'Email'}
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-slate-400">Save first</span>
                             )}
                           </td>
                         </tr>
@@ -955,6 +1090,104 @@ export default function MarketingPage() {
             </div>
           </>
         ) : null}
+        {emailComposer && typeof document !== 'undefined'
+          ? createPortal(
+              <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+                <button
+                  type="button"
+                  className="absolute inset-0 cursor-default bg-slate-900/45"
+                  aria-label="Close email composer"
+                  onClick={() => {
+                    if (!emailSending) setEmailComposer(null)
+                  }}
+                />
+                <div
+                  role="dialog"
+                  aria-label="Email opt-in"
+                  className="relative z-[1] flex h-[min(40rem,calc(100vh-2rem))] w-[min(640px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-slate-900">Email opt-in</h2>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{emailComposer.companyName}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={emailSending}
+                      onClick={() => setEmailComposer(null)}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
+                      aria-label="Close"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col gap-3">
+                    <label className="block shrink-0">
+                      <span className="mb-1 block text-xs font-semibold text-slate-600">To</span>
+                      <input
+                        type="email"
+                        value={emailComposer.to}
+                        onChange={(event) => setEmailComposer((current) => current ? { ...current, to: event.target.value } : current)}
+                        disabled={emailSending}
+                        placeholder="contractor@email.com"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="block shrink-0">
+                      <span className="mb-1 block text-xs font-semibold text-slate-600">CC</span>
+                      <input
+                        type="text"
+                        value={emailComposer.cc}
+                        onChange={(event) => setEmailComposer((current) => current ? { ...current, cc: event.target.value } : current)}
+                        disabled={emailSending}
+                        placeholder="you@fiscorponline.com"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="block shrink-0">
+                      <span className="mb-1 block text-xs font-semibold text-slate-600">Subject</span>
+                      <input
+                        type="text"
+                        value={emailComposer.subject}
+                        onChange={(event) => setEmailComposer((current) => current ? { ...current, subject: event.target.value } : current)}
+                        disabled={emailSending}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="flex min-h-0 flex-1 flex-col">
+                      <span className="mb-1 block shrink-0 text-xs font-semibold text-slate-600">Message</span>
+                      <textarea
+                        value={emailComposer.body}
+                        onChange={(event) => setEmailComposer((current) => current ? { ...current, body: event.target.value } : current)}
+                        disabled={emailSending}
+                        className="min-h-0 w-full flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-800 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 disabled:opacity-50"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      disabled={emailSending}
+                      onClick={() => setEmailComposer(null)}
+                      className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={emailSending}
+                      onClick={() => void handleSendOptInEmail()}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-40"
+                    >
+                      {emailSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      {emailSending ? 'Sending…' : 'Send'}
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
       </main>
     </div>
   )

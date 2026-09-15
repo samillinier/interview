@@ -54,6 +54,7 @@ export async function GET() {
           ...lead,
           rowColor: (lead as { rowColor?: string | null }).rowColor || null,
           remark: (lead as { remark?: string | null }).remark || null,
+          emailOptInSentAt: (lead as { emailOptInSentAt?: Date | string | null }).emailOptInSentAt || null,
         })),
       },
       { headers: noStoreHeaders },

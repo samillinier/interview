@@ -25,6 +25,7 @@ if (process.env.NODE_ENV === 'production') {
     ?._runtimeDataModel?.models
   const websiteFields = models?.WebsiteChat?.fields
   const installerFields = models?.Installer?.fields
+  const marketingFields = models?.MarketingLead?.fields
   const stale =
     existing &&
     (typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined' ||
@@ -34,7 +35,8 @@ if (process.env.NODE_ENV === 'production') {
       (websiteFields != null && !('lastSeenAt' in websiteFields)) ||
       (websiteFields != null && !('issueStatus' in websiteFields)) ||
       (websiteFields != null && !('aiEnabled' in websiteFields)) ||
-      (installerFields != null && !('aiChatEnabled' in installerFields)))
+      (installerFields != null && !('aiChatEnabled' in installerFields)) ||
+      (marketingFields != null && !('emailOptInSentAt' in marketingFields)))
   if (stale) {
     void existing.$disconnect().catch(() => {})
     globalForPrisma.prisma = undefined
