@@ -110,7 +110,7 @@ export async function POST(
       from: `${fromName} <${fromEmail}>`,
       to: recipientEmail,
       ...(ccList.length ? { cc: ccList } : {}),
-      replyTo: auth.email,
+      reply_to: auth.email,
       subject: emailSubject,
       html: buildOptInEmailHtml({ content: emailContent, logoUrl }),
     })
