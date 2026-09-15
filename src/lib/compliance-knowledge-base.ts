@@ -1,3 +1,6 @@
+export const COMPLIANCE_CONTACT_EMAIL = 'svudaru@fiscorponline.com'
+export const COMPLIANCE_CONTACT_PHONE = 'O: (813) 867-4712 Ext: 441'
+
 export const COMPLIANCE_KNOWLEDGE_BASE = `
 This document is the MASTER training base for the AI chatbot handling Installer Compliance & Onboarding for FLOOR INTERIOR SERVICES, CORP (FIS). The AI must strictly follow all policies written below when responding to contractors.
 
@@ -10,7 +13,10 @@ FLOOR INTERIOR SERVICES, CORP
 4420 E Adamo Dr Ste 203
 Tampa, FL 33605
 
-Compliance Submission Email: compliance@floorinteriorservices.com
+Compliance Contact:
+Email: svudaru@fiscorponline.com
+Phone: O: (813) 867-4712 Ext: 441
+Documents may also be uploaded in the Installer Portal.
 
 Workroom Locations:
 South Region: Tampa, Lakeland, Sarasota, Naples
@@ -48,7 +54,7 @@ Employer’s Liability Coverage (If helpers).
 
 Digital Photo for Badge (2x2, white background).
 
-ALL DOCUMENTS must be submitted in ONE email as PDFs.
+ALL DOCUMENTS must be submitted in ONE email as PDFs to svudaru@fiscorponline.com.
 
 INSURANCE REQUIREMENTS (STRICT ENFORCEMENT)
 

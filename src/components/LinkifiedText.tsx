@@ -2,29 +2,28 @@
 
 import type { ReactNode } from 'react'
 
-// Matches http(s):// and www. links. Stops at whitespace or common trailing punctuation.
-const URL_REGEX = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi
+const TOKEN_REGEX = /(https?:\/\/[^\s<]+|www\.[^\s<]+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi
 
-function renderLink(url: string, key: number): ReactNode {
-  // Normalize www. links so they resolve correctly.
-  const href = /^www\./i.test(url) ? `https://${url}` : url
+function renderLink(token: string, key: number): ReactNode {
+  const isEmail = token.includes('@') && !token.includes('://')
+  const href = isEmail
+    ? `mailto:${token}`
+    : /^www\./i.test(token)
+      ? `https://${token}`
+      : token
   return (
     <a
       key={key}
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      target={isEmail ? undefined : '_blank'}
+      rel={isEmail ? undefined : 'noopener noreferrer'}
       className="underline underline-offset-2 break-all hover:opacity-80"
     >
-      {url}
+      {token}
     </a>
   )
 }
 
-/**
- * Renders plain text with any URLs turned into clickable links.
- * Preserves line breaks (whitespace-pre-wrap) like the original text.
- */
 export function LinkifiedText({ text }: { text: string }) {
   if (!text) return null
 
@@ -32,9 +31,9 @@ export function LinkifiedText({ text }: { text: string }) {
   let lastIndex = 0
   let key = 0
 
-  URL_REGEX.lastIndex = 0
+  TOKEN_REGEX.lastIndex = 0
   let match: RegExpExecArray | null
-  while ((match = URL_REGEX.exec(text)) !== null) {
+  while ((match = TOKEN_REGEX.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index))
     }

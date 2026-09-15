@@ -424,9 +424,9 @@ export function AdminWebsiteChatPopup() {
                 const fromStaff = isStaffSender(message.senderType)
                 return (
                   <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
-                    <div className="relative max-w-[78%]">
+                    <div className="relative min-w-0 max-w-[78%]">
                       <div
-                        className={`relative z-[1] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                        className={`relative z-[1] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere] ${
                           fromStaff
                             ? 'whitespace-pre-wrap rounded-br-md bg-brand-green text-white'
                             : 'rounded-bl-md bg-white text-slate-800 shadow-sm'

@@ -539,35 +539,37 @@ export function LandingChatWidget() {
         </form>
       ) : (
         <>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-white px-4 py-5">
+          <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto bg-white px-4 py-5">
             {messages.length === 0 ? (
               <p className="text-center text-sm text-slate-500">Ask about onboarding, insurance, or required documents.</p>
             ) : (
               messages.map((message) => {
                 const fromStaff = message.senderType === 'admin' || message.senderType === 'alice'
                 return (
-                  <div key={message.id} className={`flex ${fromStaff ? 'items-start gap-2.5 justify-start' : 'justify-end'}`}>
+                  <div key={message.id} className={`flex ${fromStaff ? 'items-end gap-2.5 justify-start' : 'justify-end'}`}>
                     {fromStaff ? (
-                      <span className="relative mt-1 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                      <span className="relative mb-6 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
                         <Image src={alicePhoto} alt="Support" className="h-full w-full object-cover object-top" />
                       </span>
                     ) : null}
-                    <div className={fromStaff ? 'relative min-w-0 max-w-[82%]' : 'relative max-w-[78%]'}>
-                      <div
-                        className={`relative z-[1] text-[15px] leading-relaxed ${
-                          fromStaff
-                            ? 'whitespace-pre-wrap rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
-                            : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
-                        }`}
-                      >
-                        {fromStaff ? <LinkifiedText text={message.content} /> : message.content}
+                    <div className={`min-w-0 ${fromStaff ? 'max-w-[calc(100%-2.75rem)]' : 'max-w-[78%]'}`}>
+                      <div className="relative">
+                        <div
+                          className={`relative z-[1] break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${
+                            fromStaff
+                              ? 'whitespace-pre-wrap rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
+                              : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
+                          }`}
+                        >
+                          {fromStaff ? <LinkifiedText text={message.content} /> : message.content}
+                        </div>
+                        <span
+                          aria-hidden
+                          className={`absolute bottom-3 h-2.5 w-2.5 rotate-45 ${
+                            fromStaff ? '-left-[5px] bg-slate-100' : '-right-[5px] bg-brand-green'
+                          }`}
+                        />
                       </div>
-                      <span
-                        aria-hidden
-                        className={`absolute bottom-2 h-2.5 w-2.5 rotate-45 ${
-                          fromStaff ? '-left-[5px] bg-slate-100' : '-right-[5px] bg-brand-green'
-                        }`}
-                      />
                       {fromStaff ? (
                         <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
                       ) : null}

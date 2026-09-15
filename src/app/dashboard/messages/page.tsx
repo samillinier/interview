@@ -1924,7 +1924,7 @@ export default function MessagesPage() {
                                 </p>
                               ) : null}
                               {message.content && (
-                                <p className={`text-[15px] leading-relaxed whitespace-pre-wrap ${
+                                <p className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                               isFromAdmin
                                     ? 'text-white font-medium' 
                                     : 'text-slate-800 font-normal'
