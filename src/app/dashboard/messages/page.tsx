@@ -38,6 +38,7 @@ import {
   CheckSquare,
   MoreVertical,
   CreditCard,
+  Sparkles,
   Pin,
   PinOff,
   MailOpen,
@@ -60,6 +61,7 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { isAliceSender, isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
+import { ChatAiToggle } from '@/components/ChatAiToggle'
 
 interface Installer {
   id: string
@@ -69,6 +71,7 @@ interface Installer {
   status?: string
   photoUrl?: string
   online?: boolean
+  aiEnabled?: boolean
 }
 
 interface Message {
@@ -103,7 +106,18 @@ interface Conversation {
 
 function isRealWebsiteConversation(conv: Conversation) {
   const sender = conv.lastMessage?.senderType
-  return sender === 'visitor' || sender === 'admin'
+  return sender === 'visitor' || sender === 'admin' || sender === 'alice'
+}
+
+function applyAiOverrides(
+  conversations: Conversation[],
+  overrides: Record<string, boolean>,
+) {
+  return conversations.map((conv) => {
+    const override = overrides[conv.installer.id]
+    if (typeof override !== 'boolean' || conv.installer.aiEnabled === override) return conv
+    return { ...conv, installer: { ...conv.installer, aiEnabled: override } }
+  })
 }
 
 function mapWebsiteConversations(websiteData: {
@@ -111,7 +125,7 @@ function mapWebsiteConversations(websiteData: {
     installerId: string
     lastMessage?: Message | null
     unreadCount?: number
-    Installer?: Message['Installer'] & { status?: string; online?: boolean }
+    Installer?: Message['Installer'] & { status?: string; online?: boolean; aiEnabled?: boolean }
   }>
 }): Conversation[] {
   return (websiteData.conversations || []).map((row) => ({
@@ -123,6 +137,7 @@ function mapWebsiteConversations(websiteData: {
       status: 'website_chat',
       photoUrl: row.Installer?.photoUrl || undefined,
       online: Boolean(row.Installer?.online),
+      aiEnabled: row.Installer?.aiEnabled !== false,
     },
     lastMessage: row.lastMessage || undefined,
     unreadCount: row.unreadCount || 0,
@@ -169,8 +184,10 @@ export default function MessagesPage() {
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const skipMarkReadForInstallerRef = useRef<string | null>(null)
+  const aiEnabledOverrideRef = useRef<Record<string, boolean>>({})
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [pinnedChatIds, setPinnedChatIds] = useState<string[]>([])
+  const [globalAiEnabled, setGlobalAiEnabled] = useState(true)
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -266,12 +283,32 @@ export default function MessagesPage() {
   useEffect(() => {
     if (status !== 'authenticated') return
     let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/chat-ai', { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!cancelled && res.ok && typeof data.enabled === 'boolean') {
+          setGlobalAiEnabled(data.enabled)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [status])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    let cancelled = false
     const loadWebsitePresence = async () => {
       try {
         const res = await fetch('/api/admin/website-chats', { cache: 'no-store' })
         const data = await res.json().catch(() => ({}))
         if (cancelled || !res.ok) return
-        const websiteConvs = mapWebsiteConversations(data)
+        const websiteConvs = applyAiOverrides(mapWebsiteConversations(data), aiEnabledOverrideRef.current)
         setConversations((prev) => {
           const installers = prev.filter((conv) => !isWebsiteChatId(conv.installer.id))
           const next = [...websiteConvs, ...installers]
@@ -303,15 +340,15 @@ export default function MessagesPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedInstaller) {
-      fetchMessagesForInstaller(selectedInstaller.id)
-      if (skipMarkReadForInstallerRef.current === selectedInstaller.id) {
-        skipMarkReadForInstallerRef.current = null
-        return
-      }
-      markMessagesAsRead(selectedInstaller.id)
+    if (!selectedInstaller?.id) return
+    const installerId = selectedInstaller.id
+    fetchMessagesForInstaller(installerId)
+    if (skipMarkReadForInstallerRef.current === installerId) {
+      skipMarkReadForInstallerRef.current = null
+      return
     }
-  }, [selectedInstaller])
+    markMessagesAsRead(installerId)
+  }, [selectedInstaller?.id])
 
   useEffect(() => {
     if (!selectedInstaller) return
@@ -406,20 +443,23 @@ export default function MessagesPage() {
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-        Installer?: Message['Installer'] & { status?: string; online?: boolean }
+        Installer?: Message['Installer'] & { status?: string; online?: boolean; aiEnabled?: boolean }
       }> = data.conversations || []
 
       const conversationMap = new Map<string, Conversation>()
 
       conversationRows.forEach((row) => {
         if (!accessibleInstallerIds.has(row.installerId)) return
-        const installer = installersList.find((i: any) => i.id === row.installerId) || {
-          id: row.Installer?.id || row.installerId,
-          firstName: row.Installer?.firstName || '',
-          lastName: row.Installer?.lastName || '',
-          email: row.Installer?.email || '',
-          status: 'pending',
-          photoUrl: row.Installer?.photoUrl
+        const installer = {
+          ...(installersList.find((i: any) => i.id === row.installerId) || {
+            id: row.Installer?.id || row.installerId,
+            firstName: row.Installer?.firstName || '',
+            lastName: row.Installer?.lastName || '',
+            email: row.Installer?.email || '',
+            status: 'pending',
+            photoUrl: row.Installer?.photoUrl,
+          }),
+          aiEnabled: row.Installer?.aiEnabled !== false,
         }
         conversationMap.set(row.installerId, {
           installer,
@@ -449,7 +489,7 @@ export default function MessagesPage() {
         const website = prev.filter(
           (conv) => isWebsiteChatId(conv.installer.id) && isRealWebsiteConversation(conv),
         )
-        const next = [...website, ...installerConversations]
+        const next = applyAiOverrides([...website, ...installerConversations], aiEnabledOverrideRef.current)
         setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
         return next
       })
@@ -549,6 +589,8 @@ export default function MessagesPage() {
         setSuccess('Message sent!')
         setTimeout(() => setSuccess(''), 8000)
         setMessageContent('')
+        aiEnabledOverrideRef.current[selectedInstaller.id] = false
+        setSelectedInstaller((current) => (current ? { ...current, aiEnabled: false } : current))
         await fetchMessagesForInstaller(selectedInstaller.id)
         await fetchAllMessages()
         return
@@ -622,6 +664,8 @@ export default function MessagesPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+      aiEnabledOverrideRef.current[selectedInstaller.id] = false
+      setSelectedInstaller((current) => (current ? { ...current, aiEnabled: false } : current))
       
       // Refresh messages
       await fetchMessagesForInstaller(selectedInstaller.id)
@@ -633,6 +677,66 @@ export default function MessagesPage() {
       setIsUploadingFile(false)
     } finally {
       setIsSending(false)
+    }
+  }
+
+  const toggleGlobalAi = async (next: boolean) => {
+    const previous = globalAiEnabled
+    setGlobalAiEnabled(next)
+    try {
+      const response = await fetch('/api/admin/chat-ai', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      })
+      if (!response.ok) throw new Error('Failed to update Alice')
+    } catch {
+      setGlobalAiEnabled(previous)
+    }
+  }
+
+  const toggleChatAi = async (next: boolean, installer?: Installer) => {
+    const target = installer || selectedInstaller
+    if (!target) return
+    const installerId = target.id
+    const previous = target.aiEnabled !== false
+    aiEnabledOverrideRef.current[installerId] = next
+    setSelectedInstaller((current) =>
+      current?.id === installerId ? { ...current, aiEnabled: next } : current,
+    )
+    setConversations((current) =>
+      current.map((conv) =>
+        conv.installer.id === installerId
+          ? { ...conv, installer: { ...conv.installer, aiEnabled: next } }
+          : conv,
+      ),
+    )
+    const url = isWebsiteChatId(installerId)
+      ? `/api/admin/website-chats/${installerId}`
+      : `/api/admin/messages/conversation/${installerId}`
+    try {
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aiEnabled: next }),
+      })
+      if (!response.ok) throw new Error('Failed to update Alice')
+      setSuccess(next ? 'Alice turned on for this chat' : 'Alice turned off for this chat')
+      setTimeout(() => setSuccess(''), 2500)
+    } catch {
+      aiEnabledOverrideRef.current[installerId] = previous
+      setSelectedInstaller((current) =>
+        current?.id === installerId ? { ...current, aiEnabled: previous } : current,
+      )
+      setConversations((current) =>
+        current.map((conv) =>
+          conv.installer.id === installerId
+            ? { ...conv, installer: { ...conv.installer, aiEnabled: previous } }
+            : conv,
+        ),
+      )
+      setError('Could not update Alice for this chat')
+      setTimeout(() => setError(''), 4000)
     }
   }
 
@@ -921,7 +1025,7 @@ export default function MessagesPage() {
       if (conversationFilter === 'website') {
         if (!isWebsiteChatId(conv.installer.id)) return false
         const sender = conv.lastMessage?.senderType
-        if (sender !== 'visitor' && sender !== 'admin') return false
+        if (sender !== 'visitor' && sender !== 'admin' && sender !== 'alice') return false
       }
       if (conversationFilter === 'installers' && isWebsiteChatId(conv.installer.id)) return false
       const name = `${conv.installer.firstName} ${conv.installer.lastName}`.toLowerCase()
@@ -1379,7 +1483,15 @@ export default function MessagesPage() {
         <div className="w-full md:w-96 border-r border-slate-200 bg-white flex flex-col h-full">
           {/* Header */}
           <div className="border-b border-slate-200 flex-shrink-0 pr-4 pl-16 pt-16 pb-4 lg:p-4">
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">Messages</h1>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-bold text-slate-900">Messages</h1>
+              <ChatAiToggle
+                label="All chats"
+                enabled={globalAiEnabled}
+                onChange={(next) => void toggleGlobalAi(next)}
+                title={globalAiEnabled ? 'Turn Alice off for every chat' : 'Turn Alice on for every chat'}
+              />
+            </div>
             <div className="flex gap-1.5 mb-3">
               <button
                 type="button"
@@ -1628,13 +1740,12 @@ export default function MessagesPage() {
                       : selectedInstaller.email}
                   </p>
                 </div>
-                {!isWebsiteChatId(selectedInstaller.id) ? (
                 <div className="relative flex-shrink-0" ref={profileMenuRef}>
                   <button
                     type="button"
                     onClick={() => setShowProfileMenu((prev) => !prev)}
                     className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
-                    aria-label="Installer options"
+                    aria-label="Chat options"
                     title="More options"
                   >
                     <MoreVertical className="w-5 h-5 text-slate-600" />
@@ -1653,40 +1764,56 @@ export default function MessagesPage() {
                           type="button"
                           onClick={() => {
                             setShowProfileMenu(false)
-                            router.push(`/dashboard/installers/${selectedInstaller.id}`)
+                            void toggleChatAi(selectedInstaller.aiEnabled === false)
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
                         >
-                          <User className="w-4 h-4 text-slate-500" />
-                          <span className="text-sm font-semibold text-slate-800">View Installer Profile</span>
+                          <Sparkles className="w-4 h-4 text-slate-500" />
+                          <span className="text-sm font-semibold text-slate-800">
+                            {selectedInstaller.aiEnabled === false ? 'Turn Alice on' : 'Turn Alice off'}
+                          </span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowProfileMenu(false)
-                            router.push(`/dashboard/installers/${selectedInstaller.id}#digital-id`)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
-                        >
-                          <CreditCard className="w-4 h-4 text-slate-500" />
-                          <span className="text-sm font-semibold text-slate-800">View Digital Badge</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowProfileMenu(false)
-                            router.push(`/dashboard/installers/${selectedInstaller.id}#team-members`)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
-                        >
-                          <Users className="w-4 h-4 text-slate-500" />
-                          <span className="text-sm font-semibold text-slate-800">View Team Members</span>
-                        </button>
+                        {!isWebsiteChatId(selectedInstaller.id) ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowProfileMenu(false)
+                                router.push(`/dashboard/installers/${selectedInstaller.id}`)
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+                            >
+                              <User className="w-4 h-4 text-slate-500" />
+                              <span className="text-sm font-semibold text-slate-800">View Installer Profile</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowProfileMenu(false)
+                                router.push(`/dashboard/installers/${selectedInstaller.id}#digital-id`)
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+                            >
+                              <CreditCard className="w-4 h-4 text-slate-500" />
+                              <span className="text-sm font-semibold text-slate-800">View Digital Badge</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowProfileMenu(false)
+                                router.push(`/dashboard/installers/${selectedInstaller.id}#team-members`)
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
+                            >
+                              <Users className="w-4 h-4 text-slate-500" />
+                              <span className="text-sm font-semibold text-slate-800">View Team Members</span>
+                            </button>
+                          </>
+                        ) : null}
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-                ) : null}
               </div>
 
               {/* Messages */}
@@ -1706,7 +1833,7 @@ export default function MessagesPage() {
                     {messages.map((message) => {
                       const isFromAdmin = isWebsiteChatId(selectedInstaller.id)
                         ? isStaffSender(message.senderType, message.senderId)
-                        : !message.senderId || message.senderId === 'admin'
+                        : isStaffSender(message.senderType, message.senderId) || !message.senderId || message.senderId === 'admin'
                       const isFromAlice = isAliceSender(message.senderType, message.senderId)
                       const showAvatar = true
                       return (
@@ -1789,6 +1916,13 @@ export default function MessagesPage() {
                                 <div className="absolute -left-2 bottom-0 w-0 h-0 border-r-[12px] border-r-white border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent" />
                               )}
                               
+                              {isFromAlice ? (
+                                <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wide ${
+                                  isFromAdmin ? 'text-white/70' : 'text-slate-400'
+                                }`}>
+                                  Alice
+                                </p>
+                              ) : null}
                               {message.content && (
                                 <p className={`text-[15px] leading-relaxed whitespace-pre-wrap ${
                               isFromAdmin
@@ -1856,11 +1990,11 @@ export default function MessagesPage() {
                             <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                               <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-white">
                                 <Image
-                                  src={logo}
-                                  alt="Company Logo"
+                                  src={isFromAlice ? alicePhoto : logo}
+                                  alt={isFromAlice ? 'Alice' : 'Company Logo'}
                                   width={40}
                                   height={40}
-                                  className="w-full h-full object-cover"
+                                  className={`w-full h-full object-cover ${isFromAlice ? 'object-top' : ''}`}
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none'
                                   }}
@@ -1873,7 +2007,6 @@ export default function MessagesPage() {
                           {/* Timestamp and Read Status */}
                           <div className={`flex items-center gap-2 mt-1.5 px-2 ${isFromAdmin ? 'flex-row-reverse' : ''}`}>
                             <span className="text-xs text-slate-500 font-medium">
-                              {isFromAlice ? 'Alice · ' : ''}
                               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {isFromAdmin && (
@@ -2030,8 +2163,21 @@ export default function MessagesPage() {
         >
           <button
             type="button"
-            onClick={() => void handleMarkUnread(contextMenu.installer, contextMenu.message)}
+            onClick={() => {
+              setContextMenu(null)
+              void toggleChatAi(contextMenu.installer.aiEnabled === false, contextMenu.installer)
+            }}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors"
+          >
+            <Sparkles className="w-4 h-4 text-slate-500" />
+            <span className="text-sm font-semibold text-slate-800">
+              {contextMenu.installer.aiEnabled === false ? 'Turn Alice on' : 'Turn Alice off'}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleMarkUnread(contextMenu.installer, contextMenu.message)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
           >
             <MailOpen className="w-4 h-4 text-slate-500" />
             <span className="text-sm font-semibold text-slate-800">Mark as unread</span>

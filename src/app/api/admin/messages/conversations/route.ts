@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { getInstallerChatAiFlags } from '@/lib/chat-ai-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,12 +64,16 @@ export async function GET() {
     const unreadByInstaller = new Map(
       unreadGroups.map((row) => [row.installerId, row._count._all])
     )
+    const aiFlags = await getInstallerChatAiFlags(Array.from(lastMessageByInstaller.keys()))
 
     const conversations = Array.from(lastMessageByInstaller.values()).map((message) => ({
       installerId: message.installerId,
       lastMessage: message,
       unreadCount: unreadByInstaller.get(message.installerId) || 0,
-      Installer: message.Installer,
+      Installer: {
+        ...message.Installer,
+        aiEnabled: aiFlags.get(message.installerId) !== false,
+      },
     }))
 
     return NextResponse.json({ success: true, conversations })

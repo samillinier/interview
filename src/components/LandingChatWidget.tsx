@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react'
 import { ChevronDown, Loader2, Maximize2, Minimize2, Send } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
+import { LinkifiedText } from '@/components/LinkifiedText'
+import { AI_FALLBACK_WAIT_MS } from '@/lib/website-chat'
 
 const TOKEN_KEY = 'fis-website-chat-token'
 const OPEN_KEY = 'fis-website-chat-open'
@@ -71,6 +73,7 @@ export function LandingChatWidget() {
   const tokenRef = useRef('')
   const startedRef = useRef(false)
   const lastIdRef = useRef('')
+  const aiFallbackTimerRef = useRef<number | null>(null)
 
   tokenRef.current = token
   startedRef.current = started
@@ -271,6 +274,13 @@ export function LandingChatWidget() {
         startedRef.current = true
         setStarted(true)
       }
+      const newestIsStaff = next[next.length - 1]?.senderType === 'admin' || next[next.length - 1]?.senderType === 'alice'
+      if (newestIsStaff && nextLastId && nextLastId !== previousLastId) {
+        if (aiFallbackTimerRef.current) {
+          window.clearTimeout(aiFallbackTimerRef.current)
+          aiFallbackTimerRef.current = null
+        }
+      }
       const newestIsAdmin = next[next.length - 1]?.senderType === 'admin'
       if (newestIsAdmin && nextLastId && nextLastId !== previousLastId) {
         setOpen(true)
@@ -318,6 +328,12 @@ export function LandingChatWidget() {
       window.removeEventListener('focus', onVisible)
     }
   }, [status, loadMessages])
+
+  useEffect(() => {
+    return () => {
+      if (aiFallbackTimerRef.current) window.clearTimeout(aiFallbackTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -388,8 +404,44 @@ export function LandingChatWidget() {
       }
       if (!res.ok) throw new Error(data.error || 'Could not send')
       setDraft('')
-      if (data.message) setMessages((current) => [...current, data.message])
-      else await loadMessages(token)
+      setMessages((current) => {
+        const next = [...current]
+        if (data.message && !next.some((message) => message.id === data.message.id)) {
+          next.push(data.message)
+        }
+        if (data.aliceMessage && !next.some((message) => message.id === data.aliceMessage.id)) {
+          next.push(data.aliceMessage)
+        }
+        return next
+      })
+      if (data.aliceMessage) {
+        if (aiFallbackTimerRef.current) {
+          window.clearTimeout(aiFallbackTimerRef.current)
+          aiFallbackTimerRef.current = null
+        }
+      } else {
+        const chatToken = token
+        if (aiFallbackTimerRef.current) window.clearTimeout(aiFallbackTimerRef.current)
+        aiFallbackTimerRef.current = window.setTimeout(async () => {
+          aiFallbackTimerRef.current = null
+          try {
+            const res = await fetch('/api/website-chat/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-website-chat-token': chatToken },
+              body: JSON.stringify({ requestAi: true }),
+            })
+            const fallback = await res.json().catch(() => ({}))
+            if (fallback.aliceMessage) {
+              setMessages((current) => {
+                if (current.some((message) => message.id === fallback.aliceMessage.id)) return current
+                return [...current, fallback.aliceMessage]
+              })
+            }
+          } catch {
+            // ignore
+          }
+        }, AI_FALLBACK_WAIT_MS)
+      }
     } catch (err: any) {
       setError(err.message || 'Could not send')
     } finally {
@@ -403,7 +455,7 @@ export function LandingChatWidget() {
     ? 0
     : messages.filter(
         (message) =>
-          message.senderType === 'admin' &&
+          (message.senderType === 'admin' || message.senderType === 'alice') &&
           new Date(message.createdAt).getTime() > seenAt,
       ).length
 
@@ -451,7 +503,7 @@ export function LandingChatWidget() {
             <p className="text-[22px] font-semibold leading-tight tracking-tight">How can we help?</p>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90">
               <span className="h-2.5 w-2.5 rounded-full bg-[#4ADE80]" />
-              {adminJoined ? 'A team member has joined' : 'We reply immediately'}
+              {adminJoined ? 'A team member has joined' : 'Alice can help with onboarding'}
             </p>
           </div>
         </div>
@@ -489,7 +541,7 @@ export function LandingChatWidget() {
         <>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-white px-4 py-5">
             {messages.length === 0 ? (
-              <p className="text-center text-sm text-slate-500">Say hello and a team member will join shortly.</p>
+              <p className="text-center text-sm text-slate-500">Ask about onboarding, insurance, or required documents.</p>
             ) : (
               messages.map((message) => {
                 const fromStaff = message.senderType === 'admin' || message.senderType === 'alice'
@@ -504,11 +556,11 @@ export function LandingChatWidget() {
                       <div
                         className={`relative z-[1] text-[15px] leading-relaxed ${
                           fromStaff
-                            ? 'rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
+                            ? 'whitespace-pre-wrap rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
                             : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
                         }`}
                       >
-                        {message.content}
+                        {fromStaff ? <LinkifiedText text={message.content} /> : message.content}
                       </div>
                       <span
                         aria-hidden

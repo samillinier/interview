@@ -8,6 +8,7 @@ import { ChevronLeft, Loader2, Minus, MoreVertical, Send, X } from 'lucide-react
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
+import { LinkifiedText } from '@/components/LinkifiedText'
 
 type WebsiteVisitor = {
   id: string
@@ -17,6 +18,7 @@ type WebsiteVisitor = {
   unreadCount: number
   preview: string
   issueStatus: string
+  aiEnabled: boolean
 }
 
 type ChatMessage = {
@@ -92,6 +94,7 @@ export function AdminWebsiteChatPopup() {
             unreadCount: Number(row.unreadCount || 0),
             preview: String(row.lastMessage?.content || ''),
             issueStatus: String(row.Installer?.issueStatus || 'open'),
+            aiEnabled: row.Installer?.aiEnabled !== false,
           }))
           .sort((a: WebsiteVisitor, b: WebsiteVisitor) => {
             if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount
@@ -178,13 +181,16 @@ export function AdminWebsiteChatPopup() {
       if (res.ok) {
         setDraft('')
         if (data.notification) setMessages((current) => [...current, data.notification])
+        setVisitors((current) =>
+          current.map((row) => (row.id === selectedId ? { ...row, aiEnabled: false } : row)),
+        )
       }
     } finally {
       setSending(false)
     }
   }
 
-  const patchVisitor = async (payload: { name?: string; issueStatus?: string }) => {
+  const patchVisitor = async (payload: { name?: string; issueStatus?: string; aiEnabled?: boolean }) => {
     if (!selectedId) return
     const res = await fetch(`/api/admin/website-chats/${selectedId}`, {
       method: 'PATCH',
@@ -199,6 +205,7 @@ export function AdminWebsiteChatPopup() {
               ...row,
               ...(payload.name ? { name: payload.name } : {}),
               ...(payload.issueStatus ? { issueStatus: payload.issueStatus } : {}),
+              ...(typeof payload.aiEnabled === 'boolean' ? { aiEnabled: payload.aiEnabled } : {}),
             }
           : row,
       ),
@@ -255,7 +262,7 @@ export function AdminWebsiteChatPopup() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1.5">
           {selected ? (
             <button
               type="button"
@@ -305,6 +312,13 @@ export function AdminWebsiteChatPopup() {
               </form>
             ) : (
               <>
+                <button
+                  type="button"
+                  onClick={() => void patchVisitor({ aiEnabled: selected.aiEnabled === false })}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  {selected.aiEnabled === false ? 'Turn Alice on' : 'Turn Alice off'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -414,7 +428,7 @@ export function AdminWebsiteChatPopup() {
                       <div
                         className={`relative z-[1] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                           fromStaff
-                            ? 'rounded-br-md bg-brand-green text-white'
+                            ? 'whitespace-pre-wrap rounded-br-md bg-brand-green text-white'
                             : 'rounded-bl-md bg-white text-slate-800 shadow-sm'
                         }`}
                       >
@@ -427,7 +441,7 @@ export function AdminWebsiteChatPopup() {
                               ? 'You'
                               : selected.name}
                         </p>
-                        {message.content}
+                        <LinkifiedText text={message.content} />
                       </div>
                       <span
                         aria-hidden

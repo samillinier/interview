@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { generateAliceComplianceReply, shouldGenerateAliceReply } from '@/lib/compliance-chat-ai'
+import { isChatAiGloballyEnabled, isWebsiteChatAiEnabled } from '@/lib/chat-ai-settings'
 import { sanitizeChatText } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-export const maxDuration = 10
+export const maxDuration = 30
 
 const noStoreHeaders = {
   'Cache-Control': 'private, no-store, no-cache, must-revalidate',
@@ -24,6 +26,52 @@ async function loadVisitorMessages(token: string) {
     where: { visitorToken: token },
     include: { messages: { orderBy: { createdAt: 'asc' } } },
   })
+}
+
+async function maybeCreateAliceReply(
+  chat: {
+    id: string
+    name: string
+    aiEnabled?: boolean | null
+    messages?: Array<{ senderType: string; senderId?: string | null; content: string; createdAt: Date }>
+  },
+  options?: { forceAfterWait?: boolean },
+) {
+  if (!(await isWebsiteChatAiEnabled(chat.id))) return null
+  if (!(await isChatAiGloballyEnabled())) return null
+  const history = chat.messages || (await prisma.websiteChatMessage.findMany({
+    where: { chatId: chat.id },
+    orderBy: { createdAt: 'asc' },
+  }))
+  if (!shouldGenerateAliceReply(history, options)) return null
+
+  const reply = await generateAliceComplianceReply({
+    visitorName: chat.name,
+    history,
+  })
+  if (!reply) return null
+
+  const latest = await prisma.websiteChatMessage.findFirst({
+    where: { chatId: chat.id },
+    orderBy: { createdAt: 'desc' },
+    select: { senderType: true },
+  })
+  if (latest && latest.senderType !== 'visitor') return null
+
+  const aliceMessage = await prisma.websiteChatMessage.create({
+    data: {
+      chatId: chat.id,
+      senderType: 'alice',
+      senderName: 'Alice',
+      content: reply,
+      isRead: true,
+    },
+  })
+  await prisma.websiteChat.update({
+    where: { id: chat.id },
+    data: { lastMessageAt: new Date() },
+  })
+  return aliceMessage
 }
 
 export async function GET(request: NextRequest) {
@@ -72,14 +120,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const chat = await prisma.websiteChat.findUnique({
+      where: { visitorToken: token },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    })
+    if (!chat) {
+      return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
+    }
+
+    if (body?.requestAi) {
+      const aliceMessage = await maybeCreateAliceReply(chat, { forceAfterWait: true })
+      return NextResponse.json({ success: true, aliceMessage }, { headers: noStoreHeaders })
+    }
+
     const content = sanitizeChatText(body?.content, 1000)
     if (!content) {
       return NextResponse.json({ error: 'Write a message first.' }, { status: 400, headers: noStoreHeaders })
-    }
-
-    const chat = await prisma.websiteChat.findUnique({ where: { visitorToken: token } })
-    if (!chat) {
-      return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
     }
 
     const message = await prisma.websiteChatMessage.create({
@@ -95,7 +151,12 @@ export async function POST(request: NextRequest) {
       where: { id: chat.id },
       data: { lastMessageAt: new Date(), lastSeenAt: new Date() },
     })
-    return NextResponse.json({ success: true, message }, { headers: noStoreHeaders })
+
+    const aliceMessage = await maybeCreateAliceReply(
+      { ...chat, messages: [...chat.messages, message] },
+    )
+
+    return NextResponse.json({ success: true, message, aliceMessage }, { headers: noStoreHeaders })
   } catch (error: any) {
     console.error('website-chat messages POST failed', error?.message || error)
     return NextResponse.json(

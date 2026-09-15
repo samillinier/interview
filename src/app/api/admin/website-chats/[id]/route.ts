@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { pickVisitorName, sanitizeChatText, visitorDisplayParts, websiteChatDbId, websiteChatUiId } from '@/lib/website-chat'
+import { setWebsiteChatAiEnabled } from '@/lib/chat-ai-settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,6 +105,7 @@ export async function POST(
       where: { id: chat.id },
       data: { lastMessageAt: new Date() },
     })
+    await setWebsiteChatAiEnabled(id, false).catch(() => {})
     await prisma.websiteChatMessage.updateMany({
       where: { chatId: chat.id, senderType: 'visitor', isRead: false },
       data: { isRead: true },
@@ -150,7 +152,13 @@ export async function PATCH(
     const nextName = pickVisitorName(body?.name)
     const issueStatus = String(body?.issueStatus || '').trim().toLowerCase()
     const allowedStatus = ['open', 'in_progress', 'solved', 'not_solved']
-    if (nextName || allowedStatus.includes(issueStatus)) {
+    const hasAiToggle = typeof body?.aiEnabled === 'boolean'
+    if (hasAiToggle && !nextName && !allowedStatus.includes(issueStatus)) {
+      const aiEnabled = await setWebsiteChatAiEnabled(id, body.aiEnabled)
+      return NextResponse.json({ success: true, aiEnabled }, { headers: noStoreHeaders })
+    }
+    if (nextName || allowedStatus.includes(issueStatus) || hasAiToggle) {
+      if (hasAiToggle) await setWebsiteChatAiEnabled(id, body.aiEnabled)
       const chat = await prisma.websiteChat.update({
         where: { id },
         data: {
@@ -159,7 +167,7 @@ export async function PATCH(
         },
         select: { name: true, issueStatus: true },
       })
-      return NextResponse.json({ success: true, chat }, { headers: noStoreHeaders })
+      return NextResponse.json({ success: true, chat, aiEnabled: hasAiToggle ? body.aiEnabled : undefined }, { headers: noStoreHeaders })
     }
 
     await prisma.websiteChatMessage.updateMany({

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import crypto from 'crypto'
+import { generateAliceComplianceReply, shouldGenerateAliceReply } from '@/lib/compliance-chat-ai'
+import { isChatAiGloballyEnabled, isInstallerChatAiEnabled } from '@/lib/chat-ai-settings'
+
+export const maxDuration = 30
 
 function getTokenSecret(): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
@@ -38,6 +42,65 @@ function verifyToken(token: string): any {
   }
 }
 
+async function maybeCreateInstallerAliceReply(
+  installer: { id: string; firstName?: string | null; lastName?: string | null },
+  options?: { forceAfterWait?: boolean },
+) {
+  if (!(await isInstallerChatAiEnabled(installer.id))) return null
+  if (!(await isChatAiGloballyEnabled())) return null
+  const history = await prisma.notification.findMany({
+    where: { installerId: installer.id, type: 'message' },
+    orderBy: { createdAt: 'desc' },
+    take: 40,
+    select: {
+      senderType: true,
+      senderId: true,
+      content: true,
+      createdAt: true,
+    },
+  })
+  history.reverse()
+  if (!shouldGenerateAliceReply(history, options)) return null
+
+  const reply = await generateAliceComplianceReply({
+    visitorName: `${installer.firstName || ''} ${installer.lastName || ''}`.trim(),
+    history,
+  })
+  if (!reply) return null
+
+  const latest = await prisma.notification.findFirst({
+    where: { installerId: installer.id, type: 'message' },
+    orderBy: { createdAt: 'desc' },
+    select: { senderType: true, senderId: true },
+  })
+  if (latest && latest.senderType !== 'installer' && latest.senderId !== installer.id) return null
+
+  return prisma.notification.create({
+    data: {
+      installerId: installer.id,
+      type: 'message',
+      title: 'Message',
+      content: reply,
+      priority: 'normal',
+      link: null,
+      senderId: 'alice',
+      senderType: 'alice',
+      isRead: false,
+    },
+    include: {
+      Installer: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          photoUrl: true,
+        },
+      },
+    },
+  })
+}
+
 // Installer sends a message back to admin
 export async function POST(
   request: NextRequest,
@@ -73,8 +136,27 @@ export async function POST(
       )
     }
 
-    // Parse request body
+    // Verify installer exists
+    const installer = await prisma.installer.findUnique({
+      where: { id: installerId },
+    })
+
+    if (!installer) {
+      return NextResponse.json(
+        { error: 'Installer not found' },
+        { status: 404 }
+      )
+    }
+
     const body = await request.json()
+    if (body?.requestAi) {
+      const aliceNotification = await maybeCreateInstallerAliceReply(installer, { forceAfterWait: true })
+      return NextResponse.json({
+        success: true,
+        aliceNotification,
+      })
+    }
+
     const { content, attachmentUrl, attachmentName } = body
 
     const trimmedContent = typeof content === 'string' ? content.trim() : ''
@@ -85,18 +167,6 @@ export async function POST(
       return NextResponse.json(
         { error: 'Message content or attachment is required' },
         { status: 400 }
-      )
-    }
-
-    // Verify installer exists
-    const installer = await prisma.installer.findUnique({
-      where: { id: installerId },
-    })
-
-    if (!installer) {
-      return NextResponse.json(
-        { error: 'Installer not found' },
-        { status: 404 }
       )
     }
     
@@ -130,9 +200,12 @@ export async function POST(
       },
     })
 
+    const aliceNotification = await maybeCreateInstallerAliceReply(installer)
+
     return NextResponse.json({
       success: true,
       notification,
+      aliceNotification,
     })
   } catch (error: any) {
     console.error('=== ERROR SENDING MESSAGE ===')

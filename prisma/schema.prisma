@@ -24,6 +24,12 @@ model Admin {
   @@index([isActive])
 }
 
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model AdminAuditLog {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
@@ -343,6 +349,7 @@ model Installer {
   primaryFlooringSurface               String?
   passedInterviewEmailSentAt           DateTime?
   managerRemarks                       String?
+  aiChatEnabled                        Boolean                  @default(true)
   cilioEnterpriseGroupNumber           Int?
   dateNullFields                       String?
   CilioJobRecord                       CilioJobRecord[]
@@ -1190,6 +1197,7 @@ model WebsiteChat {
   lastMessageAt DateTime             @default(now())
   lastSeenAt    DateTime?
   issueStatus   String               @default("open")
+  aiEnabled     Boolean              @default(true)
   messages      WebsiteChatMessage[]
 
   @@index([email])

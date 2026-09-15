@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { setInstallerChatAiEnabled } from '@/lib/chat-ai-settings'
 
 async function requireSession() {
   const session = await getServerSession(authOptions)
@@ -22,6 +23,11 @@ export async function PATCH(
     if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
 
     const body = await request.json().catch(() => ({}))
+    if (typeof body.aiEnabled === 'boolean') {
+      const aiEnabled = await setInstallerChatAiEnabled(installerId, body.aiEnabled)
+      return NextResponse.json({ success: true, aiEnabled })
+    }
+
     if (body.unread !== true) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }

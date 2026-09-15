@@ -21,15 +21,20 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   const existing = globalForPrisma.prisma
   // After `prisma generate`, a cached global client can miss new models/fields until this module reloads or restart.
-  const runtimeFields = (existing as { _runtimeDataModel?: { models?: Record<string, { fields?: Record<string, unknown> }> } } | undefined)
-    ?._runtimeDataModel?.models?.WebsiteChat?.fields
+  const models = (existing as { _runtimeDataModel?: { models?: Record<string, { fields?: Record<string, unknown> }> } } | undefined)
+    ?._runtimeDataModel?.models
+  const websiteFields = models?.WebsiteChat?.fields
+  const installerFields = models?.Installer?.fields
   const stale =
     existing &&
     (typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined' ||
       typeof (existing as unknown as { marketingLead?: unknown }).marketingLead === 'undefined' ||
       typeof (existing as unknown as { websiteChat?: unknown }).websiteChat === 'undefined' ||
-      (runtimeFields != null && !('lastSeenAt' in runtimeFields)) ||
-      (runtimeFields != null && !('issueStatus' in runtimeFields)))
+      typeof (existing as unknown as { appSetting?: unknown }).appSetting === 'undefined' ||
+      (websiteFields != null && !('lastSeenAt' in websiteFields)) ||
+      (websiteFields != null && !('issueStatus' in websiteFields)) ||
+      (websiteFields != null && !('aiEnabled' in websiteFields)) ||
+      (installerFields != null && !('aiChatEnabled' in installerFields)))
   if (stale) {
     void existing.$disconnect().catch(() => {})
     globalForPrisma.prisma = undefined

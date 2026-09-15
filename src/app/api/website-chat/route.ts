@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { isChatAiGloballyEnabled } from '@/lib/chat-ai-settings'
 import { aliceGreeting, isLoggedInVisitor, pickVisitorEmail, pickVisitorName, sanitizeChatText } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
@@ -128,17 +129,12 @@ export async function POST(request: NextRequest) {
 
     const identity = resolveIdentity(body, sessionUser)
     const token = existingToken || crypto.randomBytes(24).toString('hex')
+    const aliceOn = await isChatAiGloballyEnabled()
+    const greet = !presenceOnly && aliceOn
     const chat = await prisma.websiteChat.upsert({
       where: { visitorToken: token },
-      create: presenceOnly
+      create: greet
         ? {
-            visitorToken: token,
-            name: identity.name,
-            email: identity.email,
-            phone,
-            lastSeenAt: new Date(),
-          }
-        : {
             visitorToken: token,
             name: identity.name,
             email: identity.email,
@@ -152,12 +148,19 @@ export async function POST(request: NextRequest) {
                 isRead: true,
               },
             },
+          }
+        : {
+            visitorToken: token,
+            name: identity.name,
+            email: identity.email,
+            phone,
+            lastSeenAt: new Date(),
           },
       update: presenceOnly
         ? { name: identity.name, email: identity.email, lastSeenAt: new Date() }
         : { name: identity.name, email: identity.email, phone, lastSeenAt: new Date() },
     })
-    if (!presenceOnly) {
+    if (greet) {
       const hasAlice = await prisma.websiteChatMessage.findFirst({
         where: { chatId: chat.id, senderType: 'alice' },
         select: { id: true },

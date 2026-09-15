@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import prisma from '@/lib/db'
 import { Resend } from 'resend'
 import { getServerSession } from 'next-auth'
@@ -156,6 +157,11 @@ export async function POST(request: NextRequest) {
     let emailResult: { sent: number; skipped: boolean } | null = null
     const isAdminMessage = (type || 'notification') === 'message' && (senderType || 'admin') === 'admin'
     if (isAdminMessage) {
+      if (installerIds.length) {
+        await prisma.$executeRaw`
+          UPDATE "Installer" SET "aiChatEnabled" = false WHERE id IN (${Prisma.join(installerIds)})
+        `.catch(() => {})
+      }
       try {
         emailResult = await sendInstallerMessageEmails({
           installerIds,

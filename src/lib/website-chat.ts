@@ -69,7 +69,7 @@ export function sanitizeChatText(value: unknown, max = 1000) {
 export function aliceGreeting(name: string) {
   const first = splitVisitorName(name).firstName
   const greetName = !first || first === 'Website' || first === 'Visitor' ? 'there' : first
-  return `Hi ${greetName}, I'm Alice with Floor Interior Services. An admin will join this chat shortly — feel free to send a message.`
+  return `Hi ${greetName}, I'm Alice with Floor Interior Services. I can help with installer onboarding and compliance questions right away. An admin may also join this chat — feel free to send a message.`
 }
 
 export function isAliceSender(senderType?: string | null, senderId?: string | null) {
@@ -81,6 +81,8 @@ export function isStaffSender(senderType?: string | null, senderId?: string | nu
 }
 
 export const VISITOR_ONLINE_MS = 45_000
+export const HUMAN_STAFF_ACTIVE_MS = 3 * 60 * 1000
+export const AI_FALLBACK_WAIT_MS = 45 * 1000
 
 export function isLoggedInVisitor(sessionUser?: { email?: string | null; name?: string | null } | null) {
   return Boolean(sessionUser?.email || sessionUser?.name)

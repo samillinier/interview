@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { getWebsiteChatAiFlags } from '@/lib/chat-ai-settings'
 import { sanitizeChatText, visitorDisplayParts, websiteChatDbId, websiteChatUiId, isVisitorOnline, VISITOR_ONLINE_MS } from '@/lib/website-chat'
 
 export const dynamic = 'force-dynamic'
@@ -40,7 +41,7 @@ export async function GET() {
       include: {
         messages: {
           orderBy: { createdAt: 'desc' },
-          take: 1,
+          take: 20,
         },
       },
     })
@@ -51,6 +52,7 @@ export async function GET() {
       _count: { _all: true },
     })
     const unreadByChat = new Map(unreadGroups.map((row) => [row.chatId, row._count._all]))
+    const aiFlags = await getWebsiteChatAiFlags(chats.map((chat) => chat.id))
 
     const conversations = chats
       .filter((chat) => {
@@ -95,6 +97,7 @@ export async function GET() {
             online,
             lastSeenAt: chat.lastSeenAt,
             issueStatus: (chat as { issueStatus?: string }).issueStatus || 'open',
+            aiEnabled: aiFlags.get(chat.id) !== false,
           },
         }
       })

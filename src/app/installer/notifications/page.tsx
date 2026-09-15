@@ -18,6 +18,7 @@ import {
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
+import alicePhoto from '@/images/alice-interviewer.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
 import {
@@ -28,6 +29,7 @@ import {
 import { PUSH_RECEIVED_EVENT } from '@/hooks/usePushNotifications'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { notificationDestinationLabel } from '@/lib/installerNotificationOpen'
+import { AI_FALLBACK_WAIT_MS } from '@/lib/website-chat'
 import './installer-notifications-mobile.css'
 
 interface Notification {
@@ -40,7 +42,7 @@ interface Notification {
   createdAt: string
   link: string | null
   senderId?: string
-  senderType?: 'admin' | 'installer'
+  senderType?: 'admin' | 'installer' | 'alice'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   attachmentUrl?: string | null
   attachmentName?: string | null
@@ -69,6 +71,7 @@ export default function NotificationsPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const activeTabRef = useRef(activeTab)
   const notificationsSigRef = useRef('')
+  const aiFallbackTimerRef = useRef<number | null>(null)
 
   activeTabRef.current = activeTab
 
@@ -217,6 +220,12 @@ export default function NotificationsPage() {
       window.removeEventListener('focus', refresh)
     }
   }, [installer?.id, loadNotifications])
+
+  useEffect(() => {
+    return () => {
+      if (aiFallbackTimerRef.current) window.clearTimeout(aiFallbackTimerRef.current)
+    }
+  }, [])
 
   // Only when the installer opens the Messages tab, automatically mark all unread messages as read
   useEffect(() => {
@@ -506,6 +515,34 @@ export default function NotificationsPage() {
       }
       handleRemoveFile()
       await loadNotifications()
+
+      if (data.aliceNotification) {
+        if (aiFallbackTimerRef.current) {
+          window.clearTimeout(aiFallbackTimerRef.current)
+          aiFallbackTimerRef.current = null
+        }
+      } else if (installer?.id) {
+        const installerId = installer.id
+        const installerToken = localStorage.getItem('installerToken')
+        if (aiFallbackTimerRef.current) window.clearTimeout(aiFallbackTimerRef.current)
+        aiFallbackTimerRef.current = window.setTimeout(async () => {
+          aiFallbackTimerRef.current = null
+          if (!installerToken) return
+          try {
+            await fetch(`/api/installers/${installerId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${installerToken}`,
+              },
+              body: JSON.stringify({ requestAi: true }),
+            })
+            await loadNotifications({ quiet: true })
+          } catch {
+            // ignore
+          }
+        }, AI_FALLBACK_WAIT_MS)
+      }
       
       // Scroll to bottom to show new message
       setTimeout(() => {
@@ -771,7 +808,8 @@ export default function NotificationsPage() {
                   className="space-y-4"
                 >
                   {displayNotifications.map((message, index) => {
-                    const isFromAdmin = !message.senderId || message.senderId === 'admin' || message.senderType === 'admin'
+                    const isFromAlice = message.senderType === 'alice' || message.senderId === 'alice'
+                    const isFromAdmin = isFromAlice || !message.senderId || message.senderId === 'admin' || message.senderType === 'admin'
                     const attachmentUrl = message.attachmentUrl || null
                     const attachmentName = message.attachmentName || null
                     const isImageAttachment = Boolean(
@@ -795,11 +833,11 @@ export default function NotificationsPage() {
                           <div className={`flex-shrink-0 transition-opacity ${showAvatar ? 'opacity-100' : 'opacity-0 w-8'}`}>
                             <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-white shadow-md">
                               <Image
-                                src={logo}
-                                alt="Company Logo"
+                                src={isFromAlice ? alicePhoto : logo}
+                                alt={isFromAlice ? 'Alice' : 'Company Logo'}
                                 width={40}
                                 height={40}
-                                className="w-full h-full object-cover"
+                                className={`w-full h-full object-cover ${isFromAlice ? 'object-top' : ''}`}
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none'
                                 }}
