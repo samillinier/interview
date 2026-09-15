@@ -96,9 +96,15 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
     const refresh = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
       void loadNotificationCount(installerId, token)
+      void fetch('/api/installers/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      }).catch(() => {})
     }
 
-    const interval = window.setInterval(refresh, 30000)
+    void refresh()
+    const interval = window.setInterval(refresh, 20000)
     document.addEventListener('visibilitychange', refresh)
     return () => {
       window.clearInterval(interval)

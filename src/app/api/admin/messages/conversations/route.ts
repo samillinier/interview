@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { isVisitorOnline } from '@/lib/website-chat'
 import { getInstallerChatAiFlags } from '@/lib/chat-ai-settings'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +40,7 @@ export async function GET() {
                   lastName: true,
                   email: true,
                   photoUrl: true,
+                  status: true,
                 },
               },
             },
@@ -73,6 +75,7 @@ export async function GET() {
       Installer: {
         ...message.Installer,
         aiEnabled: aiFlags.get(message.installerId) !== false,
+        online: isVisitorOnline((message.Installer as { lastSeenAt?: Date | null })?.lastSeenAt),
       },
     }))
 

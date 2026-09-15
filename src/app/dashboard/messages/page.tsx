@@ -44,6 +44,7 @@ import {
   MailOpen,
   Trash2,
   Globe,
+  Flag,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -60,7 +61,7 @@ import {
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { LinkifiedText } from '@/components/LinkifiedText'
-import { isAliceSender, isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
+import { isAliceSender, isStaffSender, isWebsiteChatId, isVisitorOnline } from '@/lib/website-chat'
 import { ChatAiToggle } from '@/components/ChatAiToggle'
 
 interface Installer {
@@ -71,6 +72,7 @@ interface Installer {
   status?: string
   photoUrl?: string
   online?: boolean
+  lastSeenAt?: string | Date | null
   aiEnabled?: boolean
 }
 
@@ -102,6 +104,33 @@ interface Conversation {
   installer: Installer
   lastMessage?: Message
   unreadCount: number
+}
+
+function chatStatusFlag(status?: string | null) {
+  const s = String(status || '').toLowerCase()
+  if (!s || s === 'website_chat' || s === 'passed' || s === 'qualified' || s === 'active') return null
+  if (s === 'failed' || s === 'notqualified' || s === 'not_qualified' || s === 'not qualified') {
+    return {
+      label: 'Not passed',
+      className: 'bg-red-100 text-red-700',
+      ring: 'ring-red-400',
+      avatar: 'bg-red-500',
+    }
+  }
+  if (s === 'pending') {
+    return {
+      label: 'Pending',
+      className: 'bg-yellow-100 text-yellow-800',
+      ring: 'ring-yellow-400',
+      avatar: 'bg-yellow-500',
+    }
+  }
+  return null
+}
+
+function withPresence(installer: Installer): Installer {
+  if (isWebsiteChatId(installer.id)) return installer
+  return { ...installer, online: isVisitorOnline(installer.lastSeenAt) }
 }
 
 function isRealWebsiteConversation(conv: Conversation) {
@@ -443,15 +472,16 @@ export default function MessagesPage() {
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-        Installer?: Message['Installer'] & { status?: string; online?: boolean; aiEnabled?: boolean }
+                Installer?: Message['Installer'] & { status?: string; online?: boolean; lastSeenAt?: string | Date | null; aiEnabled?: boolean }
       }> = data.conversations || []
 
       const conversationMap = new Map<string, Conversation>()
 
       conversationRows.forEach((row) => {
         if (!accessibleInstallerIds.has(row.installerId)) return
-        const installer = {
-          ...(installersList.find((i: any) => i.id === row.installerId) || {
+        const found = installersList.find((i: any) => i.id === row.installerId)
+        const installer = withPresence({
+          ...(found || {
             id: row.Installer?.id || row.installerId,
             firstName: row.Installer?.firstName || '',
             lastName: row.Installer?.lastName || '',
@@ -459,8 +489,10 @@ export default function MessagesPage() {
             status: 'pending',
             photoUrl: row.Installer?.photoUrl,
           }),
+          status: row.Installer?.status || found?.status || 'pending',
+          lastSeenAt: row.Installer?.lastSeenAt || found?.lastSeenAt || null,
           aiEnabled: row.Installer?.aiEnabled !== false,
-        }
+        })
         conversationMap.set(row.installerId, {
           installer,
           lastMessage: row.lastMessage,
@@ -472,7 +504,7 @@ export default function MessagesPage() {
       installersList.forEach((installer: any) => {
         if (!conversationMap.has(installer.id)) {
           conversationMap.set(installer.id, {
-            installer,
+            installer: withPresence(installer),
             unreadCount: 0
           })
         }
@@ -1009,10 +1041,11 @@ export default function MessagesPage() {
   const websiteConversations = conversations.filter((conv) => isWebsiteChatId(conv.installer.id))
   const websiteVisitorCount = websiteConversations.filter(isRealWebsiteConversation).length
   const websiteUnreadCount = websiteConversations.reduce((sum, conv) => sum + conv.unreadCount, 0)
-  const onlineVisitorCount = websiteConversations.filter((conv) => conv.installer.online).length
+  const onlinePeopleCount = conversations.filter((conv) => conv.installer.online).length
   const selectedOnline = Boolean(
     selectedInstaller && conversations.find((conv) => conv.installer.id === selectedInstaller.id)?.installer.online
   )
+  const selectedStatusFlag = chatStatusFlag(selectedInstaller?.status)
 
   const filteredConversations = conversations
     .filter((conv) => {
@@ -1518,8 +1551,13 @@ export default function MessagesPage() {
                   conversationFilter === 'online' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                 }`}
               >
-                <span className={`h-2 w-2 rounded-full ${conversationFilter === 'online' ? 'bg-white' : 'bg-emerald-500'} ${onlineVisitorCount > 0 ? 'animate-pulse' : ''}`} />
+                <span className={`h-2 w-2 rounded-full ${conversationFilter === 'online' ? 'bg-white' : 'bg-emerald-500'} ${onlinePeopleCount > 0 ? 'animate-pulse' : ''}`} />
                 Online
+                {onlinePeopleCount > 0 ? (
+                  <span className={`rounded-full px-1.5 ${conversationFilter === 'online' ? 'bg-white/20' : 'bg-emerald-200 text-emerald-800'}`}>
+                    {onlinePeopleCount}
+                  </span>
+                ) : null}
               </button>
               <button
                 type="button"
@@ -1574,12 +1612,14 @@ export default function MessagesPage() {
                 <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-500">
                   {conversationFilter === 'online'
-                    ? 'No one is on the website right now'
+                    ? 'No one is online right now'
                     : 'No conversations found'}
                 </p>
               </div>
             ) : (
-              filteredConversations.map((conversation) => (
+              filteredConversations.map((conversation) => {
+                const statusFlag = chatStatusFlag(conversation.installer.status)
+                return (
                 <div
                   key={conversation.installer.id}
                   onClick={() => setSelectedInstaller(conversation.installer)}
@@ -1590,7 +1630,9 @@ export default function MessagesPage() {
                 >
                   <div className="flex items-start gap-3">
                     <div className="relative w-12 h-12 flex-shrink-0">
-                    <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-brand-green">
+                    <div className={`relative w-12 h-12 rounded-full overflow-hidden ring-2 ${
+                      statusFlag ? `${statusFlag.ring} ${statusFlag.avatar}` : 'ring-brand-green/20 bg-brand-green'
+                    }`}>
                       {conversation.installer.photoUrl ? (
                         <Image
                           src={conversation.installer.photoUrl}
@@ -1636,6 +1678,12 @@ export default function MessagesPage() {
                               Website
                             </span>
                           ) : null}
+                          {statusFlag ? (
+                            <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusFlag.className}`}>
+                              <Flag className="h-3 w-3" />
+                              {statusFlag.label}
+                            </span>
+                          ) : null}
                         </p>
                         <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                           {pinnedChatIds.includes(conversation.installer.id) && (
@@ -1670,7 +1718,8 @@ export default function MessagesPage() {
                     </div>
                   </div>
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
@@ -1682,7 +1731,9 @@ export default function MessagesPage() {
               {/* Chat Header */}
               <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-3 flex-shrink-0">
                 <div className="relative w-10 h-10 flex-shrink-0">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-brand-green/20 bg-brand-green">
+                <div className={`relative w-10 h-10 rounded-full overflow-hidden ring-2 ${
+                  selectedStatusFlag ? `${selectedStatusFlag.ring} ${selectedStatusFlag.avatar}` : 'ring-brand-green/20 bg-brand-green'
+                }`}>
                   {selectedInstaller.photoUrl ? (
                     <Image
                       src={selectedInstaller.photoUrl}
@@ -1715,7 +1766,7 @@ export default function MessagesPage() {
                 ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 flex items-center gap-2">
+                  <p className="font-semibold text-slate-900 flex items-center gap-2 flex-wrap">
                     {selectedInstaller.firstName} {selectedInstaller.lastName}
                     {selectedOnline ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
@@ -1725,6 +1776,12 @@ export default function MessagesPage() {
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700">
                         <Globe className="h-3 w-3" />
                         Website
+                      </span>
+                    ) : null}
+                    {selectedStatusFlag ? (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${selectedStatusFlag.className}`}>
+                        <Flag className="h-3 w-3" />
+                        {selectedStatusFlag.label}
                       </span>
                     ) : null}
                   </p>
