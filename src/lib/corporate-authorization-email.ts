@@ -5,6 +5,18 @@ import { emailLogoImg } from '@/lib/email-brand'
 export const CORPORATE_AUTHORIZER_EMAIL = 'TTaylor@fiscorponline.com'
 export const CORPORATE_AUTHORIZER_NAME = 'Tim'
 
+function authorizerEmail() {
+  const override = String(process.env.CORPORATE_AUTHORIZER_EMAIL || '').trim()
+  if (override) return override
+  if (process.env.NODE_ENV === 'development') return 'sbiru@fiscorponline.com'
+  return CORPORATE_AUTHORIZER_EMAIL
+}
+
+function authorizerName(email: string) {
+  if (email.toLowerCase() === CORPORATE_AUTHORIZER_EMAIL.toLowerCase()) return CORPORATE_AUTHORIZER_NAME
+  return 'there'
+}
+
 export type CorporateAuthKind = 'bol' | 'pad-transfer' | 'inventory-cycle' | 'travel-request'
 
 const KIND_META: Record<
@@ -44,6 +56,9 @@ function escapeHtml(value: string) {
 
 function authorizeBaseUrl() {
   const fromEnv = String(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '').trim()
+  if (process.env.NODE_ENV === 'development') {
+    return (fromEnv || 'http://localhost:3000').replace(/\/$/, '')
+  }
   if (fromEnv && !/localhost|127\.0\.0\.1/i.test(fromEnv)) return fromEnv.replace(/\/$/, '')
   return 'https://job.floorinteriorservices.com'
 }
@@ -53,12 +68,14 @@ function buildAuthEmailHtml(args: {
   authorizeUrl: string
   submittedBy?: string | null
   details?: string | null
+  greetingName: string
 }) {
   const logoImg = emailLogoImg(56)
   const kind = escapeHtml(args.kindLabel)
   const url = escapeHtml(args.authorizeUrl)
   const submittedBy = args.submittedBy ? escapeHtml(args.submittedBy) : ''
   const details = args.details ? escapeHtml(args.details) : ''
+  const greetingName = escapeHtml(args.greetingName)
 
   return `
     <div style="margin:0;padding:0;background:#f6f8f5;font-family:Arial,sans-serif;color:#162015;">
@@ -73,7 +90,7 @@ function buildAuthEmailHtml(args: {
             </table>
           </div>
           <div style="padding:28px;font-size:15px;line-height:1.7;color:#24301f;">
-            <p style="margin:0 0 12px;">Hello ${CORPORATE_AUTHORIZER_NAME},</p>
+            <p style="margin:0 0 12px;">Hello ${args.greetingName},</p>
             <p style="margin:0 0 16px;">There is a new <strong>${kind}</strong> that needs your authorization.</p>
             ${submittedBy ? `<p style="margin:0 0 8px;">Submitted by: ${submittedBy}</p>` : ''}
             ${details ? `<p style="margin:0 0 18px;">${details}</p>` : ''}
@@ -96,9 +113,9 @@ export async function notifyCorporateAuthorizer(args: {
   to?: string
   sample?: boolean
 }) {
-  const to = String(args.to || CORPORATE_AUTHORIZER_EMAIL).trim()
+  const to = String(args.to || authorizerEmail()).trim()
   const creator = String(args.submittedByEmail || '').trim().toLowerCase()
-  if (!args.to && creator && creator === CORPORATE_AUTHORIZER_EMAIL.toLowerCase()) return
+  if (!args.to && creator && creator === to.toLowerCase()) return
 
   const resendApiKey = process.env.RESEND_API_KEY
   if (!resendApiKey) {
@@ -122,6 +139,7 @@ export async function notifyCorporateAuthorizer(args: {
         authorizeUrl,
         submittedBy,
         details: args.details || null,
+        greetingName: authorizerName(to),
       }),
     })
     if (result.error) {
