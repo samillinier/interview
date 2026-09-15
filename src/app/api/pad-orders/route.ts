@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -85,6 +86,14 @@ export async function POST(request: NextRequest) {
         createdByName: user.name || null,
         authorizedBy: authorizedBy || user.name || user.email || null,
       },
+    })
+
+    await notifyCorporateAuthorizer({
+      kind: 'bol',
+      recordId: order.id,
+      submittedByEmail: user.email,
+      submittedByName: user.name,
+      details: [order.orderNumber, workroom].filter(Boolean).join(' · '),
     })
 
     return NextResponse.json({ success: true, order })

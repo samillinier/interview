@@ -184,6 +184,11 @@ export default function TravelRequestPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('id')
+    if (id) setExpandedId(id)
+  }, [])
+
+  useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
     if (sessionStatus === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
   }, [sessionStatus, router, canAccess, normalizedRole])
@@ -623,7 +628,7 @@ export default function TravelRequestPage() {
                         const expanded = expandedId === r.id
                         return (
                           <React.Fragment key={r.id}>
-                            <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                            <tr className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer ${expanded ? 'bg-amber-50/70' : ''}`}
                               onClick={() => setExpandedId(expanded ? null : r.id)}>
                               <td className="py-3.5 px-5">
                                 <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
 
@@ -109,6 +110,14 @@ export async function POST(request: NextRequest) {
         createdByEmail: user.email || null,
         createdByName: user.name || null,
       },
+    })
+
+    await notifyCorporateAuthorizer({
+      kind: 'travel-request',
+      recordId: travelRequest.id,
+      submittedByEmail: user.email,
+      submittedByName: user.name,
+      details: `${String(travelerName).trim()} · ${String(chargeWorkroom).trim()}`,
     })
 
     return NextResponse.json({ success: true, travelRequest })

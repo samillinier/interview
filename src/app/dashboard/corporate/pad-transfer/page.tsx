@@ -132,6 +132,11 @@ export default function PadTransferPage() {
   const [filterWorkroom, setFilterWorkroom] = useState('')
 
   useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('id')
+    if (id) setExpandedTransfer(id)
+  }, [])
+
+  useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
     if (sessionStatus === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
   }, [sessionStatus, router, canAccess, normalizedRole])
@@ -501,7 +506,7 @@ export default function PadTransferPage() {
                   <tbody>
                     {transfers.map((t) => (
                       <React.Fragment key={t.id}>
-                        <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        <tr className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer ${expandedTransfer === t.id ? 'bg-amber-50/70' : ''}`}
                           onClick={() => setExpandedTransfer(expandedTransfer === t.id ? null : t.id)}>
                           <td className="py-3.5 px-5"><span className="text-sm font-medium text-slate-700 whitespace-nowrap">{t.createdByName || t.createdByEmail || '-'}</span></td>
                           <td className="py-3.5 px-5"><div className="flex items-center gap-2 whitespace-nowrap"><Calendar className="w-3.5 h-3.5 text-brand-green flex-shrink-0" /><span className="font-medium text-slate-700">{formatDate(t.dateRequested)}</span></div></td>

@@ -107,6 +107,11 @@ export default function BolPage() {
   const [filterWorkroom, setFilterWorkroom] = useState('')
 
   useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('id')
+    if (id) setExpandedOrder(id)
+  }, [])
+
+  useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
     if (sessionStatus === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
   }, [sessionStatus, router, canAccess, normalizedRole])
@@ -690,7 +695,7 @@ export default function BolPage() {
                       <>
                         <tr
                           key={order.id}
-                          className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                          className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer ${expandedOrder === order.id ? 'bg-amber-50/70' : ''}`}
                           onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                         >
                           <td className="py-3.5 px-5">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -86,6 +87,14 @@ export async function POST(request: NextRequest) {
         createdByName: user.name || null,
         authorizedBy: null,
       },
+    })
+
+    await notifyCorporateAuthorizer({
+      kind: 'pad-transfer',
+      recordId: transfer.id,
+      submittedByEmail: user.email,
+      submittedByName: user.name,
+      details: `${requestorLocation} → ${receivingWorkroom}`,
     })
 
     return NextResponse.json({ success: true, transfer })
