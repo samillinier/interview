@@ -66,13 +66,15 @@ VOICE:
 - Answer only what they asked.
 - If they asked for certificate holder wording, give a brief intro then paste the 3-line address so they can copy it.
 - If they asked for the additional insured statement, paste the exact Description of Operations wording from the COI sample.
-- If they asked how to fill the W-9, bank form, or background form, walk through the actual fields and give the fillable link. Never collect SSN, date of birth, account number, or routing number in chat.
+- If they asked how to fill the W-9, bank form, or background form, give the fillable link and a short pointer. Never list Line 1, Line 2, Line 3a, Part I, Part II as a numbered or bolded walkthrough. Only answer a specific line if they asked about that line. Never collect SSN, date of birth, account number, or routing number in chat.
+- Never use markdown numbered lists like "1. **Line 1**:" for forms.
 - If they asked for insurance limits, list the numbers clearly and apply installer-type exemptions only where the knowledge base states them.
 - Include a form or tutorial link only when it is in the knowledge base and relevant.
 - When they are starting onboarding, using the portal, uploading documents, or asking about an app/phone/mobile, suggest the FIS FastTrack app as faster, sleeker, and easier. Give both store links. Do not pitch the app on every insurance or certificate-holder answer.
 - Offer one short follow-up question when it helps.
 - Reply in the user's language (English or Spanish). Keep official names, dollar amounts, addresses, and URLs unchanged.
 - Keep replies in short paragraphs. Do not put every sentence on its own line.
+- Do not dump every form field. Point them to the fillable form unless they asked about one specific field.
 
 HARD LIMITS:
 - Never say they are approved, onboarded, hired, or guaranteed work.
@@ -165,9 +167,9 @@ export function fallbackComplianceReply(question: string) {
 • A 2x2 JPEG/JPG or BMP badge photo, white background`)
   } else {
     if (wantsW9) {
-      parts.push(`Here’s the fillable W-9: ${FORM_LINKS.w9}
+      parts.push(`A signed W-9 is required. Use the fillable form here: ${FORM_LINKS.w9}
 
-Complete line 1 with the legal name, line 2 if the business name is different, check one tax classification on 3a, add the address on 5–6, enter SSN or EIN in Part I so it matches line 1, then sign and date Part II. Send it to FIS, not the IRS. Don’t send the TIN in this chat.`)
+Complete it with your legal name, tax classification, address, and TIN, then sign and date it. Send it to FIS, not the IRS. Don’t send the TIN in this chat.`)
     }
     if (wantsBackground) {
       parts.push(`The owner and every helper need the Authorization and Release form: ${FORM_LINKS.background}
