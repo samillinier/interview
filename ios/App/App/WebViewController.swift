@@ -29,6 +29,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, W
 
         // Bridge so the website can set/clear the home-screen badge immediately.
         let badgeBridge = """
+        window.__FIS_NATIVE_APP = true;
         window.fisSetAppBadge = function(n) {
           try {
             var count = Math.max(0, parseInt(n, 10) || 0);

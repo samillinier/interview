@@ -9,7 +9,7 @@ import {
   usePushNotifications,
   PUSH_RECEIVED_EVENT,
 } from '@/hooks/usePushNotifications'
-import { getInstallerAccessHints } from '@/lib/installerNativeApp'
+import { getInstallerAccessHints, installerAccessHeaders } from '@/lib/installerNativeApp'
 
 // Public pages that don't need auth
 const PUBLIC_PAGES = [
@@ -99,7 +99,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
       void loadNotificationCount(installerId, token)
       void fetch('/api/installers/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...installerAccessHeaders() },
         body: JSON.stringify({ token, ...getInstallerAccessHints() }),
       }).catch(() => {})
     }
@@ -144,7 +144,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
     try {
       const verifyResponse = await fetch('/api/installers/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...installerAccessHeaders() },
         body: JSON.stringify({ token, ...getInstallerAccessHints() }),
       })
 

@@ -1,6 +1,7 @@
 export type DeviceChannel = 'native-app' | 'mobile-web' | 'desktop-web'
 
 const NATIVE_APP_UA = /FISInstallerApp/i
+const ANDROID_WEBVIEW_UA = /;\s*wv\)/i
 const MOBILE_UA = /iPhone|iPad|iPod|Android|Mobile/i
 const VALID_CHANNELS = new Set<DeviceChannel>(['native-app', 'mobile-web', 'desktop-web'])
 
@@ -12,6 +13,16 @@ const VALID_CHANNELS = new Set<DeviceChannel>(['native-app', 'mobile-web', 'desk
 export function classifyDevice(userAgent?: string | null): DeviceChannel {
   const ua = userAgent || ''
   if (NATIVE_APP_UA.test(ua)) return 'native-app'
+  if (ANDROID_WEBVIEW_UA.test(ua)) return 'native-app'
+  // Classic iOS WKWebView omits the Safari/ token that Mobile Safari includes.
+  if (
+    /iPhone|iPad|iPod/i.test(ua) &&
+    /AppleWebKit/i.test(ua) &&
+    !/Safari\//i.test(ua) &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua)
+  ) {
+    return 'native-app'
+  }
   if (MOBILE_UA.test(ua)) return 'mobile-web'
   return 'desktop-web'
 }
@@ -21,17 +32,21 @@ export function parseDeviceChannel(value?: string | null): DeviceChannel | null 
   return VALID_CHANNELS.has(channel as DeviceChannel) ? (channel as DeviceChannel) : null
 }
 
-/** Prefer an explicit client hint; fall back to UA. Native app wins over a Safari-looking fetch UA. */
+/** Native app wins from any signal. A Safari-looking fetch UA must not override it. */
 export function resolveInstallerPlatform(args: {
   clientHint?: string | null
   bodyUserAgent?: string | null
   headerUserAgent?: string | null
 }): DeviceChannel {
   const hinted = parseDeviceChannel(args.clientHint)
-  if (hinted) return hinted
   const fromBody = classifyDevice(args.bodyUserAgent)
-  if (fromBody === 'native-app') return fromBody
-  return classifyDevice(args.headerUserAgent)
+  const fromHeader = classifyDevice(args.headerUserAgent)
+  if (hinted === 'native-app' || fromBody === 'native-app' || fromHeader === 'native-app') {
+    return 'native-app'
+  }
+  if (hinted) return hinted
+  if (fromBody !== 'desktop-web') return fromBody
+  return fromHeader
 }
 
 export const DEVICE_CHANNEL_LABEL: Record<DeviceChannel, string> = {

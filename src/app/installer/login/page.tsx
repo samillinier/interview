@@ -8,7 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
-import { getInstallerAccessHints } from '@/lib/installerNativeApp'
+import { getInstallerAccessHints, installerAccessHeaders } from '@/lib/installerNativeApp'
 
 const SAVED_CREDENTIALS_KEY = 'installerSavedCredentials'
 
@@ -75,7 +75,7 @@ function InstallerLoginContent() {
     try {
       const response = await fetch('/api/installers/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...installerAccessHeaders() },
         body: JSON.stringify({ username, password, ...getInstallerAccessHints() }),
       })
 

@@ -10,6 +10,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
@@ -50,6 +51,8 @@ public class MainActivity extends BridgeActivity {
         if (userAgent == null || !userAgent.contains("FISInstallerApp")) {
             settings.setUserAgentString((userAgent == null ? "" : userAgent) + " FISInstallerApp");
         }
+        webView.addJavascriptInterface(new FisNativeBridge(), "FISNativeApp");
+        webView.evaluateJavascript("window.__FIS_NATIVE_APP=true;", null);
         webView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
 
         showSplash();
@@ -238,5 +241,12 @@ public class MainActivity extends BridgeActivity {
         splashVideo = null;
         splashOverlay = null;
         super.onDestroy();
+    }
+
+    public static class FisNativeBridge {
+        @JavascriptInterface
+        public boolean isNative() {
+            return true;
+        }
     }
 }
