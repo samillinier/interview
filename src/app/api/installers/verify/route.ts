@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/db'
 import { verifyInstallerToken } from '@/lib/installerToken'
 import { resolveInstallerPlatform } from '@/lib/deviceDetection'
+import { recordInstallerAccess } from '@/lib/installerAccess'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,21 +19,13 @@ export async function POST(request: NextRequest) {
 
       // Heartbeat: refresh how the installer last accessed the app.
       if (payload.installerId) {
-        const lastPlatform = resolveInstallerPlatform({
+        const incoming = resolveInstallerPlatform({
           clientHint: client || request.headers.get('x-installer-client'),
           bodyUserAgent: userAgent,
           headerUserAgent: request.headers.get('user-agent'),
         })
-        const data: { lastSeenAt: Date; lastPlatform?: string } = { lastSeenAt: new Date() }
-        // Don't stamp Mobile Web over App when WKWebView fetch omits the custom UA.
-        if (client || userAgent || lastPlatform === 'native-app') {
-          data.lastPlatform = lastPlatform
-        }
         try {
-          await prisma.installer.update({
-            where: { id: payload.installerId },
-            data,
-          })
+          await recordInstallerAccess(payload.installerId, incoming)
         } catch (err) {
           console.error('Failed to record installer heartbeat:', err)
         }

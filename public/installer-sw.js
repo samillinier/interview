@@ -1,7 +1,7 @@
 // FIS Installer Service Worker
 // Provides offline caching for installer PWA pages
-const CACHE_NAME = 'fis-installer-v3'
-const RUNTIME_CACHE = 'fis-installer-runtime-v3'
+const CACHE_NAME = 'fis-installer-v4'
+const RUNTIME_CACHE = 'fis-installer-runtime-v4'
 
 // Pages to pre-cache (shell)
 const PRECACHE_URLS = [

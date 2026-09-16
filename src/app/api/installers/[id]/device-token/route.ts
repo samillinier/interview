@@ -4,6 +4,7 @@ import {
   verifyInstallerToken,
   getInstallerTokenFromRequest,
 } from '@/lib/installerToken'
+import { recordInstallerAccess } from '@/lib/installerAccess'
 
 function getAuthorizedInstallerId(
   request: NextRequest,
@@ -50,6 +51,14 @@ export async function POST(
       update: { installerId, platform },
       create: { token, installerId, platform },
     })
+
+    if (platform === 'ios' || platform === 'android') {
+      try {
+        await recordInstallerAccess(installerId, 'native-app', { forceNative: true })
+      } catch (err) {
+        console.error('Failed to stamp native app platform from device token:', err)
+      }
+    }
 
     return NextResponse.json({ success: true, deviceToken })
   } catch (error: any) {

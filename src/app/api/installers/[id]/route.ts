@@ -8,6 +8,7 @@ import { extractLikelyPhone } from '@/lib/phone'
 import { writeAdminAuditLog } from '@/lib/audit'
 import { companyDisplayName } from '@/lib/publicAppUrl'
 import { sendPushToInstaller } from '@/lib/pushNotifications'
+import { platformFromNativeDeviceToken } from '@/lib/installerAccess'
 
 // Helper function to categorize fields by section
 function getSectionsFromFields(fields: string[]): string[] {
@@ -284,6 +285,14 @@ export async function GET(
         } catch (err) {
           console.error('Failed to backfill installer phone:', err)
         }
+      }
+
+      const nativePlatform = await platformFromNativeDeviceToken(
+        installerId,
+        (installer as any).lastPlatform
+      )
+      if (nativePlatform) {
+        ;(installer as any).lastPlatform = nativePlatform
       }
 
       /**

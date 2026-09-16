@@ -21,16 +21,6 @@ function isOtherIosBrowser(ua: string): boolean {
   return /CriOS|FxiOS|EdgiOS|OPiOS|OPT\//i.test(ua)
 }
 
-function isIosSafariPwa(): boolean {
-  try {
-    if ((navigator as any).standalone) return true
-    if (window.matchMedia?.('(display-mode: standalone)').matches) return true
-  } catch {
-    // ignore
-  }
-  return false
-}
-
 /**
  * The store app is a WKWebView / Android WebView wrapping the website.
  * Safari-looking UAs are normal: iOS freezes navigator.userAgent, and fetch()
@@ -78,8 +68,7 @@ export function isInstallerNativeApp(): boolean {
   }
 
   // iOS Safari exposes window.safari; the FIS WKWebView does not.
-  // Home-screen PWAs still use Safari and should stay Mobile Web.
-  if (isIosDevice(ua) && !isOtherIosBrowser(ua) && !(window as any).safari && !isIosSafariPwa()) {
+  if (isIosDevice(ua) && !isOtherIosBrowser(ua) && !(window as any).safari) {
     return true
   }
 

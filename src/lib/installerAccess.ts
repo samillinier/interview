@@ -3,6 +3,10 @@ import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/db"
 import { getInstallerTokenFromRequest, verifyInstallerToken } from "@/lib/installerToken"
 import type { NextRequest } from "next/server"
+import {
+  coalesceInstallerPlatform,
+  type DeviceChannel,
+} from "@/lib/deviceDetection"
 
 export async function requireActiveAdmin() {
   const session = await getServerSession(authOptions)
@@ -30,4 +34,68 @@ export async function requireInstallerOrAdmin(request: NextRequest, installerId:
   }
 
   return requireActiveAdmin()
+}
+
+export async function recordInstallerAccess(
+  installerId: string,
+  incoming: DeviceChannel,
+  extras?: { forceNative?: boolean }
+) {
+  const prismaAny = prisma as any
+  let hasNativeDeviceToken = Boolean(extras?.forceNative)
+  if (!hasNativeDeviceToken) {
+    try {
+      const token = await prismaAny.deviceToken.findFirst({
+        where: { installerId, platform: { in: ["ios", "android"] } },
+        select: { id: true },
+      })
+      hasNativeDeviceToken = Boolean(token)
+    } catch (err) {
+      console.error("Failed to look up installer device token:", err)
+    }
+  }
+
+  let existing: string | null = null
+  try {
+    const row = await prismaAny.installer.findUnique({
+      where: { id: installerId },
+      select: { lastPlatform: true },
+    })
+    existing = row?.lastPlatform || null
+  } catch (err) {
+    console.error("Failed to read installer lastPlatform:", err)
+  }
+
+  const lastPlatform = coalesceInstallerPlatform({
+    incoming: extras?.forceNative ? "native-app" : incoming,
+    existing,
+    hasNativeDeviceToken,
+  })
+
+  await prismaAny.installer.update({
+    where: { id: installerId },
+    data: { lastPlatform, lastSeenAt: new Date() },
+  })
+}
+
+export async function platformFromNativeDeviceToken(
+  installerId: string,
+  current?: string | null
+): Promise<string | null | undefined> {
+  if (current === "native-app") return current
+  try {
+    const token = await (prisma as any).deviceToken.findFirst({
+      where: { installerId, platform: { in: ["ios", "android"] } },
+      select: { id: true },
+    })
+    if (!token) return current
+    await (prisma as any).installer.update({
+      where: { id: installerId },
+      data: { lastPlatform: "native-app" },
+    })
+    return "native-app"
+  } catch (err) {
+    console.error("Failed to backfill installer app platform:", err)
+    return current
+  }
 }

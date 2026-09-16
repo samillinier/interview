@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { resolveInstallerPlatform } from '@/lib/deviceDetection'
+import { recordInstallerAccess } from '@/lib/installerAccess'
 
 function getTokenSecret(): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
@@ -91,16 +92,13 @@ export async function POST(request: NextRequest) {
     const token = generateToken(payload)
 
     // Record how the installer is accessing the app (native app vs web).
-    const lastPlatform = resolveInstallerPlatform({
+    const incoming = resolveInstallerPlatform({
       clientHint: client || request.headers.get('x-installer-client'),
       bodyUserAgent: userAgent,
       headerUserAgent: request.headers.get('user-agent'),
     })
     try {
-      await prisma.installer.update({
-        where: { id: installer.id },
-        data: { lastPlatform, lastSeenAt: new Date() },
-      })
+      await recordInstallerAccess(installer.id, incoming)
     } catch (err) {
       console.error('Failed to record installer platform:', err)
     }

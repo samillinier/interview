@@ -413,7 +413,7 @@ export async function GET(request: NextRequest) {
     }
 
     const installerIds = installers.map((installer) => installer.id)
-    const [documents, staffMembers] =
+    const [documents, staffMembers, nativeDeviceTokens] =
       installerIds.length > 0
         ? await Promise.all([
             prisma.document.findMany({
@@ -433,8 +433,40 @@ export async function GET(request: NextRequest) {
                 title: true,
               },
             }),
+            (prisma as any).deviceToken.findMany({
+              where: {
+                installerId: { in: installerIds },
+                platform: { in: ['ios', 'android'] },
+              },
+              select: { installerId: true },
+              distinct: ['installerId'],
+            }).catch(() => []),
           ])
-        : [[], []]
+        : [[], [], []]
+
+    const nativeAppInstallerIds = new Set(
+      (nativeDeviceTokens as { installerId: string }[]).map((token) => token.installerId)
+    )
+    const needsAppStamp = installers.filter(
+      (installer) =>
+        nativeAppInstallerIds.has(installer.id) && installer.lastPlatform !== 'native-app'
+    )
+    if (needsAppStamp.length > 0) {
+      try {
+        await prisma.installer.updateMany({
+          where: { id: { in: needsAppStamp.map((installer) => installer.id) } },
+          data: { lastPlatform: 'native-app' },
+        })
+        for (const installer of needsAppStamp) {
+          installer.lastPlatform = 'native-app'
+        }
+      } catch (err) {
+        console.error('Failed to stamp App platform from device tokens:', err)
+        for (const installer of needsAppStamp) {
+          installer.lastPlatform = 'native-app'
+        }
+      }
+    }
 
     const documentTypesByInstallerId = new Map<string, Set<string>>()
     for (const document of documents) {

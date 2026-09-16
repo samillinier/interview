@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { isNativeShellUserAgent } from '@/lib/deviceDetection'
+import { recordInstallerAccess } from '@/lib/installerAccess'
 
 export async function GET(
   request: NextRequest,
@@ -15,6 +17,14 @@ export async function GET(
         { error: 'Installer ID is required' },
         { status: 400 }
       )
+    }
+
+    if (isNativeShellUserAgent(request.headers.get('user-agent'))) {
+      try {
+        await recordInstallerAccess(installerId, 'native-app', { forceNative: true })
+      } catch (err) {
+        console.error('Failed to stamp App platform from native badge sync:', err)
+      }
     }
 
     const { searchParams } = new URL(request.url)
