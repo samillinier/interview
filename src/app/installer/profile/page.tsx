@@ -63,6 +63,7 @@ import {
 } from '@/components/installer-profile/IosProfileChrome'
 import { DeleteAccountSection } from '@/components/installer-profile/DeleteAccountSection'
 import { InstallerDigitalIdQuickAccess } from '@/components/installer-profile/InstallerDigitalIdQuickAccess'
+import { InAppFileViewer } from '@/components/InAppFileViewer'
 import './installer-profile-mobile.css'
 
 const US_STATES: { value: string; label: string }[] = [
@@ -418,6 +419,7 @@ export default function InstallerProfilePage() {
   const [companyCounty, setCompanyCounty] = useState('')
   const [companyAddress, setCompanyAddress] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; name: string } | null>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [showNDAModal, setShowNDAModal] = useState(false)
   const [isAgreeingNDA, setIsAgreeingNDA] = useState(false)
@@ -2055,16 +2057,23 @@ export default function InstallerProfilePage() {
                     'bg-yellow-100'
                   ) : ''}`}>
                     {photoUrl ? (
-                      <Image
-                        src={photoUrl}
-                        alt="Profile Photo"
-                        width={112}
-                        height={112}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setPreviewPhoto({ url: photoUrl, name: 'Profile photo' })}
+                        className="w-full h-full"
+                        title="View photo"
+                      >
+                        <Image
+                          src={photoUrl}
+                          alt="Profile Photo"
+                          width={112}
+                          height={112}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      </button>
                     ) : (
                       <User className={`w-14 h-14 ${
                         installer && installer.status === 'active' ? 'text-brand-green-dark' :
@@ -2083,8 +2092,8 @@ export default function InstallerProfilePage() {
                       <CheckCircle2 className="w-5 h-5 text-white" />
                     </div>
                   )}
-                  {/* Photo Upload Overlay */}
-                  <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                  {/* Photo Upload Overlay — desktop hover only so tapping the photo can open a full view */}
+                  <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hidden 2xl:flex items-center justify-center pointer-events-none group-hover:pointer-events-auto">
                     <input
                       type="file"
                       accept="image/*"
@@ -2096,6 +2105,20 @@ export default function InstallerProfilePage() {
                       <Loader2 className="w-6 h-6 text-white animate-spin" />
                     ) : (
                       <Camera className="w-6 h-6 text-white" />
+                    )}
+                  </label>
+                  <label className="absolute bottom-0 left-0 w-8 h-8 rounded-full bg-brand-green flex items-center justify-center shadow-lg z-20 border-2 border-white cursor-pointer 2xl:hidden">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      disabled={isUploadingPhoto}
+                      className="hidden"
+                    />
+                    {isUploadingPhoto ? (
+                      <Loader2 className="w-4 h-4 text-white animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4 text-white" />
                     )}
                   </label>
                 </div>
@@ -3468,16 +3491,28 @@ export default function InstallerProfilePage() {
                       <div className="flex items-center gap-3 flex-1">
                         <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-brand-green/30 flex-shrink-0 bg-brand-green/10 flex items-center justify-center relative">
                           {staff.photoUrl && !failedImageLoads.has(staff.id) ? (
-                            <Image
-                              src={staff.photoUrl}
-                              alt={`${staff.firstName} ${staff.lastName}`}
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover"
-                              onError={() => {
-                                setFailedImageLoads(prev => new Set(prev).add(staff.id))
-                              }}
-                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewPhoto({
+                                  url: staff.photoUrl,
+                                  name: `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'Staff photo',
+                                })
+                              }
+                              className="w-full h-full"
+                              title="View photo"
+                            >
+                              <Image
+                                src={staff.photoUrl}
+                                alt={`${staff.firstName} ${staff.lastName}`}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                                onError={() => {
+                                  setFailedImageLoads(prev => new Set(prev).add(staff.id))
+                                }}
+                              />
+                            </button>
                           ) : (
                             <User className="w-8 h-8 text-brand-green" />
                           )}
@@ -6155,16 +6190,23 @@ export default function InstallerProfilePage() {
                   <div className="relative group mb-4">
                     <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand-green/30 shadow-xl flex-shrink-0 bg-brand-green/10 flex items-center justify-center relative">
                       {staffForm.photoUrl && !staffFormImageError ? (
-                        <Image
-                          src={staffForm.photoUrl}
-                          alt="Staff Photo"
-                          width={128}
-                          height={128}
-                          className="w-full h-full object-cover"
-                          onError={() => {
-                            setStaffFormImageError(true)
-                          }}
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPhoto({ url: staffForm.photoUrl, name: 'Staff photo' })}
+                          className="w-full h-full"
+                          title="View photo"
+                        >
+                          <Image
+                            src={staffForm.photoUrl}
+                            alt="Staff Photo"
+                            width={128}
+                            height={128}
+                            className="w-full h-full object-cover"
+                            onError={() => {
+                              setStaffFormImageError(true)
+                            }}
+                          />
+                        </button>
                       ) : (
                         <User className="w-16 h-16 text-brand-green" />
                       )}
@@ -7791,6 +7833,14 @@ export default function InstallerProfilePage() {
           </motion.div>
         </div>
       )}
+
+      {previewPhoto ? (
+        <InAppFileViewer
+          url={previewPhoto.url}
+          name={previewPhoto.name}
+          onClose={() => setPreviewPhoto(null)}
+        />
+      ) : null}
 
       <IosProfileEditBar
         isEditing={isEditing}

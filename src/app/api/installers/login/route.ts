@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
-import { classifyDevice } from '@/lib/deviceDetection'
+import { NextRequest, NextResponse } from 'next/server'
+import prisma from '@/lib/db'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
+import { resolveInstallerPlatform } from '@/lib/deviceDetection'
 
 function getTokenSecret(): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
@@ -27,7 +31,7 @@ function generateToken(payload: any): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json()
+    const { username, password, client, userAgent } = await request.json()
     const login = String(username || '').trim()
     const normalizedEmail = login.toLowerCase()
 
@@ -91,7 +95,11 @@ export async function POST(request: NextRequest) {
     const token = generateToken(payload)
 
     // Record how the installer is accessing the app (native app vs web).
-    const lastPlatform = classifyDevice(request.headers.get('user-agent'))
+    const lastPlatform = resolveInstallerPlatform({
+      clientHint: client || request.headers.get('x-installer-client'),
+      bodyUserAgent: userAgent,
+      headerUserAgent: request.headers.get('user-agent'),
+    })
     try {
       await prisma.installer.update({
         where: { id: installer.id },

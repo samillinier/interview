@@ -42,6 +42,11 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, W
         config.userContentController.add(self, name: "fisBadge")
 
         webView = WKWebView(frame: view.bounds, configuration: config)
+        let defaultUA = webView.value(forKey: "userAgent") as? String ?? ""
+        if !defaultUA.contains("FISInstallerApp") {
+            defaultUA += " FISInstallerApp"
+        }
+        webView.customUserAgent = defaultUA
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.navigationDelegate = self
         webView.uiDelegate = self

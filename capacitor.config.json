@@ -1,6 +1,7 @@
 {
 	"appId": "com.fis.installer",
 	"appName": "FIS Installer",
+	"appendUserAgent": "FISInstallerApp",
 	"webDir": "tools/capacitor-web",
 	"server": {
 		"url": "https://job.floorinteriorservices.com/installer/login",

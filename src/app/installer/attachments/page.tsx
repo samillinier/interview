@@ -16,11 +16,13 @@ import {
   Download,
   Trash2,
   ExternalLink,
+  Eye,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
 import { IosProfileSection } from '@/components/installer-profile/IosProfileSection'
+import { InAppFileViewer, canPreviewInApp, isViewableImage } from '@/components/InAppFileViewer'
 import './installer-attachments-mobile.css'
 
 // All document types now support multiple uploads
@@ -133,6 +135,7 @@ export default function AttachmentsPage() {
     documentType: '',
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null)
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
   const btrAutofillAttemptedRef = useRef<Set<string>>(new Set())
   const [btrAutofillBusyIds, setBtrAutofillBusyIds] = useState<Record<string, boolean>>({})
@@ -648,7 +651,23 @@ export default function AttachmentsPage() {
                     {matchingDocs.map((doc) => (
                         <div key={doc.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                           <div className="flex items-start gap-3 min-w-0">
-                            <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
+                            {isViewableImage(doc.url || doc.fileUrl, doc.name || doc.fileName) ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreview({ url: doc.url || doc.fileUrl, name: doc.name || doc.fileName })}
+                                className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white flex-shrink-0"
+                                title="View photo"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={doc.url || doc.fileUrl}
+                                  alt={doc.name || doc.fileName}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <FileText className="w-5 h-5 text-brand-green flex-shrink-0" />
+                            )}
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm sm:text-base text-slate-900 whitespace-normal break-all leading-snug">
                                 {doc.name || doc.fileName}
@@ -758,6 +777,17 @@ export default function AttachmentsPage() {
                             </div>
                           </div>
                           <div className="flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-slate-200/80">
+                            {canPreviewInApp(doc.url || doc.fileUrl, doc.name || doc.fileName) ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreview({ url: doc.url || doc.fileUrl, name: doc.name || doc.fileName })}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 text-brand-green hover:bg-brand-green/10 rounded-xl transition-colors"
+                                title="View"
+                              >
+                                <Eye className="w-5 h-5" />
+                                <span className="text-sm font-semibold">View</span>
+                              </button>
+                            ) : null}
                             <a
                               href={doc.url || doc.fileUrl}
                               target="_blank"
@@ -833,6 +863,14 @@ export default function AttachmentsPage() {
           })}
         </div>
       </main>
+
+      {preview ? (
+        <InAppFileViewer
+          url={preview.url}
+          name={preview.name}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm.show && (
