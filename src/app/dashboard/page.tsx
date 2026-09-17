@@ -2556,16 +2556,8 @@ function DashboardPageContent() {
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="grid grid-cols-1 gap-3 px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white lg:grid-cols-[1fr_auto_1fr] lg:items-center">
-              <div className="text-sm text-slate-600">
-                Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                <span className="font-semibold text-slate-900">
-                  {Math.min(currentPage * itemsPerPage, totalCount)}
-                </span>{' '}
-                of <span className="font-semibold text-slate-900">{totalCount}</span>
-              </div>
-              
-              <div className="flex w-full justify-center overflow-x-auto lg:col-start-2">
+            <div className="px-6 py-4 border-t-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex w-full justify-center overflow-x-auto">
                 <div className="flex min-w-max items-center gap-2 px-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
@@ -2604,8 +2596,6 @@ function DashboardPageContent() {
                 </button>
                 </div>
               </div>
-
-              <div className="hidden lg:block" />
             </div>
           )}
         </div>
