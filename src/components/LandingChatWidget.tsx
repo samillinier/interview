@@ -53,10 +53,13 @@ function ensureVisitorToken() {
   }
 }
 
-export function LandingChatWidget() {
+export function LandingChatWidget({
+  embed = false,
+  initialToken = '',
+}: { embed?: boolean; initialToken?: string } = {}) {
   const { data: session, status } = useSession()
   const isStaff = status === 'authenticated'
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(!embed)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
@@ -99,6 +102,7 @@ export function LandingChatWidget() {
   }
 
   useEffect(() => {
+    if (embed) return
     try {
       const stored = sessionStorage.getItem(OPEN_KEY)
       if (stored === '0') {
@@ -111,7 +115,39 @@ export function LandingChatWidget() {
     } catch {
       setOpen(true)
     }
-  }, [])
+  }, [embed])
+
+  useEffect(() => {
+    if (!embed) return
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data
+      if (data && data.source === 'fis-chat-parent' && data.type === 'open') {
+        setOpen(true)
+        try {
+          sessionStorage.setItem(OPEN_KEY, '1')
+        } catch {
+          // ignore
+        }
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [embed])
+
+  useEffect(() => {
+    if (!embed) return
+    const unread = open
+      ? 0
+      : messages.filter(
+          (message) =>
+            (message.senderType === 'admin' || message.senderType === 'alice') &&
+            new Date(message.createdAt).getTime() > seenAt,
+        ).length
+    window.parent.postMessage(
+      { source: 'fis-chat', type: 'state', open, expanded, unread, token: tokenRef.current },
+      '*',
+    )
+  }, [embed, open, expanded, messages, seenAt, token])
 
   const resetSession = () => {
     localStorage.removeItem(TOKEN_KEY)
@@ -181,7 +217,7 @@ export function LandingChatWidget() {
   useEffect(() => {
     if (status === 'authenticated') return
     let cancelled = false
-    const stored = ensureVisitorToken()
+    const stored = initialToken || ensureVisitorToken()
     if (stored) {
       tokenRef.current = stored
       setToken(stored)
@@ -210,11 +246,11 @@ export function LandingChatWidget() {
     return () => {
       cancelled = true
     }
-  }, [status])
+  }, [status, initialToken])
 
   useEffect(() => {
     if (status === 'authenticated') return
-    const stored = ensureVisitorToken()
+    const stored = initialToken || ensureVisitorToken()
     if (stored) setToken((prev) => prev || stored)
     let currentToken = stored
     const ping = () => {
@@ -235,7 +271,7 @@ export function LandingChatWidget() {
     ping()
     const timer = window.setInterval(ping, 4000)
     return () => window.clearInterval(timer)
-  }, [status])
+  }, [status, initialToken])
 
   const loadMessages = useCallback(async (nextToken = tokenRef.current, wait = false, signal?: AbortSignal) => {
     if (!nextToken) return
@@ -462,6 +498,7 @@ export function LandingChatWidget() {
   if (isStaff) return null
 
   if (!open) {
+    if (embed) return null
     return (
       <ChatLauncherButton
         onClick={() => persistOpen(true)}
@@ -472,10 +509,13 @@ export function LandingChatWidget() {
     )
   }
 
+  const sizeClass = embed
+    ? (expanded ? 'h-[720px] w-[420px]' : 'h-[560px] w-[380px]')
+    : (expanded ? 'h-[min(720px,90vh)] w-[min(100%-1.5rem,420px)]' : 'h-[min(560px,82vh)] w-[min(100%-1.5rem,380px)]')
+  const positionClass = embed ? 'bottom-0 right-0' : 'bottom-4 right-4'
+
   return (
-    <div className={`fixed bottom-4 right-4 z-40 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${
-      expanded ? 'h-[min(720px,90vh)] w-[min(100%-1.5rem,420px)]' : 'h-[min(560px,82vh)] w-[min(100%-1.5rem,380px)]'
-    }`}>
+    <div className={`fixed ${positionClass} z-40 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${sizeClass}`}>
       <div className="bg-brand-green px-4 pb-4 pt-2 text-white">
         <div className="mb-3 flex items-center justify-end gap-1">
           <button

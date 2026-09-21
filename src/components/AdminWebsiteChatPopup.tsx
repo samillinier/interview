@@ -157,7 +157,8 @@ export function AdminWebsiteChatPopup() {
     path.startsWith('/installer') ||
     path.startsWith('/property') ||
     path.startsWith('/interview') ||
-    path.startsWith('/login')
+    path.startsWith('/login') ||
+    path.startsWith('/chat-embed')
   ) {
     return null
   }
