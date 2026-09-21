@@ -1,11 +1,6 @@
 /*!
- * FIS Chat Embed Loader
- * Loaded by the FIS Chat Widget WordPress plugin. Renders the green "Chat"
- * launcher button on the WordPress page and embeds the REAL FIS chat widget
- * (the exact same React component used on the FIS site) inside an iframe, so
- * the visitor experience is pixel-identical to the main site.
- *
- * Also shows an unread badge when an admin replies while the chat is minimized.
+ * FIS Chat Embed Loader (WordPress plugin)
+ * Floating chat launcher + iframe. Stays fixed on mobile while the page scrolls.
  */
 (function () {
   'use strict';
@@ -35,22 +30,87 @@
   function lsGet(k) { try { return window.localStorage.getItem(k) || ''; } catch (e) { return ''; } }
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
 
+  function isMobile() {
+    return window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+  }
+
   function chatIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
   }
 
   var style = document.createElement('style');
   style.textContent = [
-    '.fis-chat-launcher-wrap { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; }',
-    '.fis-chat-launcher { position: relative; display: inline-flex; align-items: center; border: 0; cursor: pointer; border-radius: 9999px; padding: 6px 6px 6px 20px; background: ' + GREEN + '; color: #fff; box-shadow: 0 10px 28px rgba(74,124,35,0.38); }',
+    /* Fixed to the viewport so it floats while the WordPress page scrolls (incl. iOS). */
+    '.fis-chat-launcher-wrap,',
+    '.fis-chat-frame {',
+    '  position: fixed !important;',
+    '  right: max(12px, env(safe-area-inset-right, 0px)) !important;',
+    '  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;',
+    '  left: auto !important;',
+    '  top: auto !important;',
+    '  z-index: 2147483000 !important;',
+    '  margin: 0 !important;',
+    '  -webkit-transform: translateZ(0);',
+    '  transform: translateZ(0);',
+    '  -webkit-backface-visibility: hidden;',
+    '  backface-visibility: hidden;',
+    '}',
+    '.fis-chat-launcher {',
+    '  position: relative;',
+    '  display: inline-flex;',
+    '  align-items: center;',
+    '  border: 0;',
+    '  cursor: pointer;',
+    '  border-radius: 9999px;',
+    '  padding: 6px 6px 6px 20px;',
+    '  background: ' + GREEN + ';',
+    '  color: #fff;',
+    '  box-shadow: 0 10px 28px rgba(74,124,35,0.38);',
+    '  -webkit-tap-highlight-color: transparent;',
+    '  touch-action: manipulation;',
+    '}',
     '.fis-chat-launcher:hover { background: ' + GREEN_DARK + '; }',
-    '.fis-chat-launcher-wrap .fis-dot { position: absolute; left: 8px; bottom: -3px; z-index: 2; width: 14px; height: 14px; border-radius: 9999px; background: ' + ONLINE + '; border: 2.5px solid #fff; pointer-events: none; }',
+    '.fis-chat-launcher-wrap .fis-dot {',
+    '  position: absolute; left: 8px; bottom: -3px; z-index: 2;',
+    '  width: 14px; height: 14px; border-radius: 9999px;',
+    '  background: ' + ONLINE + '; border: 2.5px solid #fff; pointer-events: none;',
+    '}',
     '.fis-chat-launcher .fis-label { padding-right: 12px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }',
-    '.fis-chat-launcher .fis-bubble { position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; background: rgba(255,255,255,0.2); }',
+    '.fis-chat-launcher .fis-bubble {',
+    '  position: relative; display: flex; align-items: center; justify-content: center;',
+    '  width: 44px; height: 44px; border-radius: 9999px; background: rgba(255,255,255,0.2);',
+    '}',
     '.fis-chat-launcher .fis-bubble svg { width: 24px; height: 24px; fill: #fff; }',
-    '.fis-chat-badge { position: absolute; right: -4px; top: -4px; z-index: 3; min-width: 22px; min-height: 22px; padding: 0 5px; border-radius: 9999px; background: #ef4444; color: #fff; border: 2px solid #fff; font-size: 12px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.25); display: none; }',
+    '.fis-chat-badge {',
+    '  position: absolute; right: -4px; top: -4px; z-index: 3;',
+    '  min-width: 22px; min-height: 22px; padding: 0 5px; border-radius: 9999px;',
+    '  background: #ef4444; color: #fff; border: 2px solid #fff;',
+    '  font-size: 12px; font-weight: 800; line-height: 18px; text-align: center;',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25); display: none;',
+    '}',
     '.fis-chat-badge.is-on { display: inline-flex; align-items: center; justify-content: center; }',
-    '.fis-chat-frame { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; border: 0; background: transparent; display: none; }'
+    '.fis-chat-frame {',
+    '  border: 0 !important;',
+    '  background: transparent !important;',
+    '  display: none;',
+    '  max-width: calc(100vw - 24px);',
+    '  max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));',
+    '}',
+    /* Mobile: keep floating, use nearly full-width panel that stays pinned while scrolling */
+    '@media (max-width: 640px) {',
+    '  .fis-chat-launcher-wrap,',
+    '  .fis-chat-frame {',
+    '    right: max(8px, env(safe-area-inset-right, 0px)) !important;',
+    '    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;',
+    '  }',
+    '  .fis-chat-frame {',
+    '    left: max(8px, env(safe-area-inset-left, 0px)) !important;',
+    '    width: auto !important;',
+    '    max-width: none;',
+    '    height: min(85dvh, 640px) !important;',
+    '    max-height: calc(100dvh - 16px - env(safe-area-inset-bottom, 0px)) !important;',
+    '  }',
+    '}'
   ].join('\n');
   document.head.appendChild(style);
 
@@ -86,6 +146,12 @@
   frame.setAttribute('allow', 'autoplay');
 
   function setFrameSize(expanded) {
+    if (isMobile()) {
+      // Width/height handled by CSS media query so it stays viewport-fixed on scroll.
+      frame.style.width = '';
+      frame.style.height = '';
+      return;
+    }
     frame.style.width = expanded ? '420px' : '380px';
     frame.style.height = expanded ? '720px' : '560px';
   }
@@ -133,14 +199,18 @@
     if (data.type === 'state') {
       if (typeof data.expanded === 'boolean') setFrameSize(data.expanded);
       if (typeof data.unread === 'number') setUnread(data.unread);
-      // If the iframe reports it is open but the panel is hidden, keep launcher.
-      // Unread badge is the signal for new admin replies while minimized.
     }
   });
 
+  window.addEventListener('resize', function () {
+    if (frame.style.display === 'block') setFrameSize(false);
+  });
+
   function mount() {
-    document.body.appendChild(wrap);
-    document.body.appendChild(frame);
+    // Attach to <html> so theme transforms on wrappers can't make fixed scroll away.
+    var root = document.documentElement || document.body;
+    root.appendChild(wrap);
+    root.appendChild(frame);
     setFrameSize(false);
   }
 
