@@ -1815,7 +1815,7 @@ export default function MessagesPage() {
                   </div>
                 </div>
                 {selectedOnline ? (
-                  <OnlineStatusDot className="absolute -top-0.5 -right-0.5 z-20" size="sm" />
+                  <OnlineStatusDot className="absolute -bottom-0.5 -right-0.5 z-20" size="sm" />
                 ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
