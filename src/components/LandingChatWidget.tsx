@@ -327,7 +327,7 @@ export function LandingChatWidget({
   }, [])
 
   useEffect(() => {
-    if (status === 'authenticated') return
+    if (!embed && status === 'authenticated') return
     let cancelled = false
     const controller = new AbortController()
 
@@ -360,7 +360,7 @@ export function LandingChatWidget({
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [status, loadMessages])
+  }, [status, loadMessages, embed])
 
   useEffect(() => {
     return () => {
@@ -555,7 +555,11 @@ export function LandingChatWidget({
       </div>
 
       {!showThread ? (
-        <form onSubmit={startChat} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+        <form
+          onSubmit={startChat}
+          autoComplete="off"
+          className="flex min-h-0 flex-1 flex-col gap-3 p-4"
+        >
           <p className="text-sm text-slate-600">
             Name and email are optional. If you skip them, we will start the chat as a visitor.
           </p>
@@ -563,13 +567,26 @@ export function LandingChatWidget({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Your name (optional)"
+            name="fis-chat-visitor-name"
+            autoComplete="off"
+            autoCorrect="off"
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
           />
           <input
-            type="email"
+            type="text"
+            inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="Email (optional)"
+            name="fis-chat-visitor-email"
+            autoComplete="off"
+            autoCorrect="off"
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
           />
           {error ? <p className="text-xs text-red-600">{error}</p> : null}
@@ -625,13 +642,22 @@ export function LandingChatWidget({
             )}
             <div ref={bottomRef} />
           </div>
-          <form onSubmit={sendMessage} className="border-t border-slate-100 p-3">
+          <form onSubmit={sendMessage} autoComplete="off" className="border-t border-slate-100 p-3">
             {error ? <p className="mb-2 text-xs text-red-600">{error}</p> : null}
             <div className="flex items-end gap-2">
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Write a message..."
+                name="fis-chat-message"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="sentences"
+                spellCheck
+                aria-autocomplete="none"
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
                 rows={1}
                 className="min-h-[40px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 onKeyDown={(event) => {
