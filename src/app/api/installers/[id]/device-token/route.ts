@@ -6,6 +6,7 @@ import {
 } from '@/lib/installerToken'
 import { recordInstallerAccess } from '@/lib/installerAccess'
 import { getClientIp } from '@/lib/client-ip'
+import { classifyNativeOs } from '@/lib/deviceDetection'
 
 function getAuthorizedInstallerId(
   request: NextRequest,
@@ -39,11 +40,21 @@ export async function POST(
   try {
     const body = await request.json()
     const token = typeof body?.token === 'string' ? body.token.trim() : ''
+    const rawPlatform = typeof body?.platform === 'string' ? body.platform.trim().toLowerCase() : ''
+    // Never default to android — that mislabeled iOS users when platform was omitted.
     const platform =
-      typeof body?.platform === 'string' ? body.platform.trim() : 'android'
+      classifyNativeOs(rawPlatform) ||
+      classifyNativeOs(request.headers.get('user-agent')) ||
+      null
 
     if (!token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 })
+    }
+    if (platform !== 'ios' && platform !== 'android') {
+      return NextResponse.json(
+        { error: 'platform must be ios or android' },
+        { status: 400 }
+      )
     }
 
     // Upsert: reuse existing row for this token, otherwise create.
@@ -53,16 +64,15 @@ export async function POST(
       create: { token, installerId, platform },
     })
 
-    if (platform === 'ios' || platform === 'android') {
-      try {
-        await recordInstallerAccess(installerId, 'native-app', {
-          forceNative: true,
-          os: platform,
-          ipAddress: getClientIp(request),
-        })
-      } catch (err) {
-        console.error('Failed to stamp native app platform from device token:', err)
-      }
+    try {
+      await recordInstallerAccess(installerId, 'native-app', {
+        forceNative: true,
+        os: platform,
+        userAgent: request.headers.get('user-agent'),
+        ipAddress: getClientIp(request),
+      })
+    } catch (err) {
+      console.error('Failed to stamp native app platform from device token:', err)
     }
 
     return NextResponse.json({ success: true, deviceToken })

@@ -50,19 +50,25 @@ export async function recordInstallerAccess(
 ) {
   const prismaAny = prisma as any
   let hasNativeDeviceToken = Boolean(extras?.forceNative)
-  if (!hasNativeDeviceToken) {
-    try {
-      const token = await prismaAny.deviceToken.findFirst({
-        where: { installerId, platform: { in: ["ios", "android"] } },
-        select: { id: true, platform: true },
-      })
-      hasNativeDeviceToken = Boolean(token)
-      if (!extras?.os && token?.platform) {
-        extras = { ...extras, os: classifyNativeOs(token.platform) }
+  let tokenOs: 'ios' | 'android' | null = null
+  try {
+    // Most recently updated token wins — never assume the first arbitrary row.
+    const tokens = await prismaAny.deviceToken.findMany({
+      where: { installerId, platform: { in: ['ios', 'android'] } },
+      select: { platform: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+    })
+    hasNativeDeviceToken = hasNativeDeviceToken || tokens.length > 0
+    for (const token of tokens) {
+      const os = classifyNativeOs(token.platform)
+      if (os) {
+        tokenOs = os
+        break
       }
-    } catch (err) {
-      console.error("Failed to look up installer device token:", err)
     }
+  } catch (err) {
+    console.error('Failed to look up installer device token:', err)
   }
 
   let existing: string | null = null
@@ -73,12 +79,15 @@ export async function recordInstallerAccess(
     })
     existing = row?.lastPlatform || null
   } catch (err) {
-    console.error("Failed to read installer lastPlatform:", err)
+    console.error('Failed to read installer lastPlatform:', err)
   }
 
-  const os = extras?.os || classifyNativeOs(extras?.userAgent)
+  // Prefer an explicit OS from the caller, then the request UA (iPhone/Android),
+  // and only then a stored push token. Never let a stale/wrong token override a clear UA.
+  const osFromUa = classifyNativeOs(extras?.userAgent)
+  const os = extras?.os || osFromUa || tokenOs
   const lastPlatform = storedInstallerPlatform({
-    incoming: extras?.forceNative ? "native-app" : incoming,
+    incoming: extras?.forceNative ? 'native-app' : incoming,
     existing,
     hasNativeDeviceToken,
     os,
@@ -103,19 +112,20 @@ export async function platformFromNativeDeviceToken(
   if (isNativeAppPlatform(current)) return current
   try {
     const token = await (prisma as any).deviceToken.findFirst({
-      where: { installerId, platform: { in: ["ios", "android"] } },
+      where: { installerId, platform: { in: ['ios', 'android'] } },
       select: { platform: true },
+      orderBy: { updatedAt: 'desc' },
     })
     if (!token) return current
     const os = classifyNativeOs(token.platform)
-    const lastPlatform = os || "native-app"
+    const lastPlatform = os || 'native-app'
     await (prisma as any).installer.update({
       where: { id: installerId },
       data: { lastPlatform },
     })
     return lastPlatform
   } catch (err) {
-    console.error("Failed to backfill installer app platform:", err)
+    console.error('Failed to backfill installer app platform:', err)
     return current
   }
 }
