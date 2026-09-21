@@ -61,7 +61,9 @@ export function LandingChatWidget({
   // Embed (WordPress iframe) must always show the visitor chat — never hide for
   // staff or let the admin inbox take over this surface.
   const isStaff = !embed && status === 'authenticated'
-  const [open, setOpen] = useState(true)
+  // Embed starts closed — the WordPress page owns the launcher. Unread badges
+  // only work when open is false while the iframe is minimized.
+  const [open, setOpen] = useState(!embed)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
@@ -104,7 +106,15 @@ export function LandingChatWidget({
   }
 
   useEffect(() => {
-    if (embed) return
+    if (embed) {
+      try {
+        const seen = Number(localStorage.getItem(SEEN_KEY) || 0)
+        if (Number.isFinite(seen) && seen > 0) setSeenAt(seen)
+      } catch {
+        // ignore
+      }
+      return
+    }
     try {
       const stored = sessionStorage.getItem(OPEN_KEY)
       if (stored === '0') {
@@ -125,6 +135,7 @@ export function LandingChatWidget({
       const data = event.data
       if (data && data.source === 'fis-chat-parent' && data.type === 'open') {
         setOpen(true)
+        markSeen()
       }
     }
     window.addEventListener('message', onMessage)
@@ -316,11 +327,15 @@ export function LandingChatWidget({
       }
       const newestIsAdmin = next[next.length - 1]?.senderType === 'admin'
       if (newestIsAdmin && nextLastId && nextLastId !== previousLastId) {
-        setOpen(true)
-        try {
-          sessionStorage.setItem(OPEN_KEY, '1')
-        } catch {
-          // ignore
+        // On the main site, auto-open the widget. In WordPress embed, keep it
+        // minimized so the parent launcher can show an unread badge instead.
+        if (!embed) {
+          setOpen(true)
+          try {
+            sessionStorage.setItem(OPEN_KEY, '1')
+          } catch {
+            // ignore
+          }
         }
       }
     }
@@ -513,6 +528,7 @@ export function LandingChatWidget({
 
   const handleMinimize = () => {
     if (embed) {
+      setOpen(false)
       window.parent.postMessage({ source: 'fis-chat', type: 'minimize' }, '*')
       return
     }

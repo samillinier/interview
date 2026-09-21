@@ -4,9 +4,14 @@
  * launcher button on the WordPress page and embeds the REAL FIS chat widget
  * (the exact same React component used on the FIS site) inside an iframe, so
  * the visitor experience is pixel-identical to the main site.
+ *
+ * Also shows an unread badge when an admin replies while the chat is minimized.
  */
 (function () {
   'use strict';
+
+  if (window.__FIS_CHAT_MOUNTED__) return;
+  window.__FIS_CHAT_MOUNTED__ = true;
 
   var scriptEl = (typeof document !== 'undefined' && document.currentScript) || null;
   var APP_ORIGIN = 'https://job.floorinteriorservices.com';
@@ -43,6 +48,8 @@
     '.fis-chat-launcher .fis-label { padding-right: 12px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }',
     '.fis-chat-launcher .fis-bubble { position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; background: rgba(255,255,255,0.2); }',
     '.fis-chat-launcher .fis-bubble svg { width: 24px; height: 24px; fill: #fff; }',
+    '.fis-chat-badge { position: absolute; right: -4px; top: -4px; z-index: 3; min-width: 22px; min-height: 22px; padding: 0 5px; border-radius: 9999px; background: #ef4444; color: #fff; border: 2px solid #fff; font-size: 12px; font-weight: 800; line-height: 18px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.25); display: none; }',
+    '.fis-chat-badge.is-on { display: inline-flex; align-items: center; justify-content: center; }',
     '.fis-chat-frame { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; border: 0; background: transparent; display: none; }'
   ].join('\n');
   document.head.appendChild(style);
@@ -62,8 +69,13 @@
   onlineDot.className = 'fis-dot';
   onlineDot.setAttribute('aria-hidden', 'true');
 
+  var badge = document.createElement('span');
+  badge.className = 'fis-chat-badge';
+  badge.setAttribute('aria-hidden', 'true');
+
   wrap.appendChild(launcher);
   wrap.appendChild(onlineDot);
+  wrap.appendChild(badge);
 
   var initialToken = lsGet(TOKEN_KEY);
   var frame = document.createElement('iframe');
@@ -78,11 +90,30 @@
     frame.style.height = expanded ? '720px' : '560px';
   }
 
-  launcher.addEventListener('click', function () {
+  function setUnread(count) {
+    var n = Number(count) || 0;
+    if (n > 0) {
+      badge.textContent = n > 9 ? '9+' : String(n);
+      badge.classList.add('is-on');
+      launcher.setAttribute('aria-label', 'Open chat support, ' + n + ' new messages');
+    } else {
+      badge.textContent = '';
+      badge.classList.remove('is-on');
+      launcher.setAttribute('aria-label', 'Open chat support');
+    }
+  }
+
+  function openChat() {
     setFrameSize(false);
     frame.style.display = 'block';
     wrap.style.display = 'none';
-  });
+    setUnread(0);
+    try {
+      frame.contentWindow.postMessage({ source: 'fis-chat-parent', type: 'open' }, '*');
+    } catch (e) {}
+  }
+
+  launcher.addEventListener('click', openChat);
 
   window.addEventListener('message', function (event) {
     if (event.source !== frame.contentWindow) return;
@@ -99,8 +130,11 @@
       return;
     }
 
-    if (data.type === 'state' && typeof data.expanded === 'boolean') {
-      setFrameSize(data.expanded);
+    if (data.type === 'state') {
+      if (typeof data.expanded === 'boolean') setFrameSize(data.expanded);
+      if (typeof data.unread === 'number') setUnread(data.unread);
+      // If the iframe reports it is open but the panel is hidden, keep launcher.
+      // Unread badge is the signal for new admin replies while minimized.
     }
   });
 
