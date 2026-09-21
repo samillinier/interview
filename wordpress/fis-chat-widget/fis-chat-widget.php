@@ -3,7 +3,7 @@
  * Plugin Name:       FIS Chat Widget
  * Plugin URI:        https://job.floorinteriorservices.com
  * Description:       Adds the Floor Interior Services live chat widget to your WordPress site. Website visitors can start a chat, and your team answers from the FIS dashboard chat inbox.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Author:            Floor Interior Services
  * License:           GPL-2.0-or-later
  * Text Domain:       fis-chat-widget
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class FIS_Chat_Widget {
 
-	const VERSION = '1.1.0';
+	const VERSION = '1.1.1';
 	const DEFAULT_API_BASE = 'https://job.floorinteriorservices.com';
 
 	public function __construct() {

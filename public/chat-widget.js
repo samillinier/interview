@@ -1,6 +1,6 @@
 /*!
  * FIS Chat Embed Loader (WordPress plugin)
- * Floating chat launcher + iframe. Stays fixed on mobile while the page scrolls.
+ * Floating chat launcher + responsive iframe for mobile and desktop.
  */
 (function () {
   'use strict';
@@ -31,7 +31,7 @@
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
 
   function isMobile() {
-    return window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+    return window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
   }
 
   function chatIcon() {
@@ -40,20 +40,21 @@
 
   var style = document.createElement('style');
   style.textContent = [
-    /* Fixed to the viewport so it floats while the WordPress page scrolls (incl. iOS). */
     '.fis-chat-launcher-wrap,',
     '.fis-chat-frame {',
     '  position: fixed !important;',
-    '  right: max(12px, env(safe-area-inset-right, 0px)) !important;',
-    '  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;',
-    '  left: auto !important;',
-    '  top: auto !important;',
     '  z-index: 2147483000 !important;',
     '  margin: 0 !important;',
     '  -webkit-transform: translateZ(0);',
     '  transform: translateZ(0);',
     '  -webkit-backface-visibility: hidden;',
     '  backface-visibility: hidden;',
+    '}',
+    '.fis-chat-launcher-wrap {',
+    '  right: max(12px, env(safe-area-inset-right, 0px)) !important;',
+    '  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;',
+    '  left: auto !important;',
+    '  top: auto !important;',
     '}',
     '.fis-chat-launcher {',
     '  position: relative;',
@@ -93,21 +94,29 @@
     '  border: 0 !important;',
     '  background: transparent !important;',
     '  display: none;',
+    '  right: max(12px, env(safe-area-inset-right, 0px)) !important;',
+    '  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;',
+    '  left: auto !important;',
+    '  top: auto !important;',
+    '  width: 380px;',
+    '  height: 560px;',
     '  max-width: calc(100vw - 24px);',
     '  max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));',
     '}',
-    /* Mobile: keep floating, use nearly full-width panel that stays pinned while scrolling */
-    '@media (max-width: 640px) {',
-    '  .fis-chat-launcher-wrap,',
-    '  .fis-chat-frame {',
-    '    right: max(8px, env(safe-area-inset-right, 0px)) !important;',
-    '    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;',
+    /* Phones / small tablets: fill the screen so nothing is clipped */
+    '@media (max-width: 767px) {',
+    '  .fis-chat-launcher-wrap {',
+    '    right: max(10px, env(safe-area-inset-right, 0px)) !important;',
+    '    bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;',
     '  }',
     '  .fis-chat-frame {',
     '    left: max(8px, env(safe-area-inset-left, 0px)) !important;',
+    '    right: max(8px, env(safe-area-inset-right, 0px)) !important;',
+    '    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;',
+    '    top: auto !important;',
     '    width: auto !important;',
-    '    max-width: none;',
-    '    height: min(85dvh, 640px) !important;',
+    '    height: min(88dvh, 720px) !important;',
+    '    max-width: none !important;',
     '    max-height: calc(100dvh - 16px - env(safe-area-inset-bottom, 0px)) !important;',
     '  }',
     '}'
@@ -142,14 +151,25 @@
   frame.className = 'fis-chat-frame';
   frame.title = 'Chat support';
   frame.setAttribute('aria-label', 'Chat support');
+  frame.setAttribute('scrolling', 'no');
   frame.src = EMBED_URL + (initialToken.length >= 16 ? '?token=' + encodeURIComponent(initialToken) : '');
   frame.setAttribute('allow', 'autoplay');
 
+  function clearInlineSize() {
+    frame.style.removeProperty('width');
+    frame.style.removeProperty('height');
+    frame.style.removeProperty('left');
+    frame.style.removeProperty('right');
+    frame.style.removeProperty('bottom');
+    frame.style.removeProperty('top');
+    frame.style.removeProperty('max-width');
+    frame.style.removeProperty('max-height');
+  }
+
   function setFrameSize(expanded) {
+    clearInlineSize();
     if (isMobile()) {
-      // Width/height handled by CSS media query so it stays viewport-fixed on scroll.
-      frame.style.width = '';
-      frame.style.height = '';
+      // CSS media query owns mobile sizing so the panel fills the phone width.
       return;
     }
     frame.style.width = expanded ? '420px' : '380px';
@@ -205,9 +225,13 @@
   window.addEventListener('resize', function () {
     if (frame.style.display === 'block') setFrameSize(false);
   });
+  window.addEventListener('orientationchange', function () {
+    window.setTimeout(function () {
+      if (frame.style.display === 'block') setFrameSize(false);
+    }, 250);
+  });
 
   function mount() {
-    // Attach to <html> so theme transforms on wrappers can't make fixed scroll away.
     var root = document.documentElement || document.body;
     root.appendChild(wrap);
     root.appendChild(frame);

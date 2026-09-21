@@ -522,9 +522,9 @@ export function LandingChatWidget({
   }
 
   const sizeClass = embed
-    ? (expanded ? 'h-[720px] w-[420px]' : 'h-[560px] w-[380px]')
+    ? 'inset-0 h-full w-full max-h-full max-w-full rounded-[1.25rem] sm:rounded-2xl'
     : (expanded ? 'h-[min(720px,90vh)] w-[min(100%-1.5rem,420px)]' : 'h-[min(560px,82vh)] w-[min(100%-1.5rem,380px)]')
-  const positionClass = embed ? 'bottom-0 right-0' : 'bottom-4 right-4'
+  const positionClass = embed ? 'inset-0' : 'bottom-4 right-4'
 
   const handleMinimize = () => {
     if (embed) {
@@ -536,17 +536,19 @@ export function LandingChatWidget({
   }
 
   return (
-    <div className={`fixed ${positionClass} z-40 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${sizeClass}`}>
+    <div className={`fixed ${positionClass} z-40 flex flex-col overflow-hidden border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${embed ? '' : 'rounded-2xl'} ${sizeClass}`}>
       <div className="bg-brand-green px-4 pb-4 pt-2 text-white">
         <div className="mb-3 flex items-center justify-end gap-1">
-          <button
-            type="button"
-            onClick={() => setExpanded((current) => !current)}
-            className="rounded-lg p-1.5 hover:bg-white/10"
-            aria-label={expanded ? 'Shrink chat' : 'Expand chat'}
-          >
-            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
+          {!embed ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((current) => !current)}
+              className="rounded-lg p-1.5 hover:bg-white/10"
+              aria-label={expanded ? 'Shrink chat' : 'Expand chat'}
+            >
+              {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handleMinimize}

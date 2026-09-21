@@ -13,7 +13,17 @@ function ChatEmbedInner() {
 export default function ChatEmbedPage() {
   return (
     <>
-      <style>{`html, body { background: transparent !important; margin: 0 !important; }`}</style>
+      <style>{`
+        html, body, #__next {
+          background: transparent !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 100% !important;
+          overflow: hidden !important;
+        }
+      `}</style>
       <Suspense fallback={null}>
         <ChatEmbedInner />
       </Suspense>
