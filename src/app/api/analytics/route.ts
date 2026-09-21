@@ -171,7 +171,9 @@ export async function GET(request: NextRequest) {
       if (platform === 'ios') iosIds.add(token.installerId)
       else if (platform === 'android') androidIds.add(token.installerId)
     }
-    const nativeIds = new Set<string>([...iosIds, ...androidIds])
+    const nativeIds = new Set<string>()
+    iosIds.forEach((id) => nativeIds.add(id))
+    androidIds.forEach((id) => nativeIds.add(id))
     const appUsage = {
       ios: iosIds.size,
       android: androidIds.size,
