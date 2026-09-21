@@ -1714,7 +1714,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                     {conversation.installer.online ? (
-                      <OnlineStatusDot className="absolute -top-0.5 -right-0.5 z-20" size="md" />
+                      <OnlineStatusDot className="absolute -bottom-0.5 -right-0.5 z-20" size="md" />
                     ) : null}
                     </div>
                     <div className="flex-1 min-w-0">

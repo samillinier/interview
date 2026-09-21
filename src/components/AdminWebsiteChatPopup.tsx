@@ -388,7 +388,7 @@ export function AdminWebsiteChatPopup() {
                 <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-visible rounded-full bg-brand-green text-sm font-bold text-white">
                   {visitor.name.slice(0, 2).toUpperCase()}
                   {visitor.online ? (
-                    <OnlineStatusDot className="absolute -top-0.5 -right-0.5 z-20" size="sm" />
+                    <OnlineStatusDot className="absolute -bottom-0.5 -right-0.5 z-20" size="sm" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">
