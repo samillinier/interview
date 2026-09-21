@@ -522,8 +522,8 @@ export function LandingChatWidget({
   }
 
   const sizeClass = embed
-    ? 'inset-0 h-full w-full max-h-full max-w-full rounded-[1.25rem] sm:rounded-2xl'
-    : (expanded ? 'h-[min(720px,90vh)] w-[min(100%-1.5rem,420px)]' : 'h-[min(560px,82vh)] w-[min(100%-1.5rem,380px)]')
+    ? 'inset-0 h-full w-full max-h-full max-w-full rounded-none'
+    : (expanded ? 'h-[min(720px,90vh)] w-[min(100%-1.5rem,420px)] rounded-2xl' : 'h-[min(560px,82vh)] w-[min(100%-1.5rem,380px)] rounded-2xl')
   const positionClass = embed ? 'inset-0' : 'bottom-4 right-4'
 
   const handleMinimize = () => {
@@ -536,7 +536,7 @@ export function LandingChatWidget({
   }
 
   return (
-    <div className={`fixed ${positionClass} z-40 flex flex-col overflow-hidden border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${embed ? '' : 'rounded-2xl'} ${sizeClass}`}>
+    <div className={`fixed ${positionClass} z-40 flex flex-col overflow-hidden border border-slate-200 bg-white shadow-[0_12px_32px_rgba(74,124,35,0.18)] ${sizeClass}`}>
       <div className="bg-brand-green px-4 pb-4 pt-2 text-white">
         <div className="mb-3 flex items-center justify-end gap-1">
           {!embed ? (

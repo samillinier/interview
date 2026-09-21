@@ -31,7 +31,11 @@
   function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
 
   function isMobile() {
-    return window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+    try {
+      return (window.innerWidth || document.documentElement.clientWidth || 0) < 768;
+    } catch (e) {
+      return false;
+    }
   }
 
   function chatIcon() {
@@ -47,8 +51,6 @@
     '  margin: 0 !important;',
     '  -webkit-transform: translateZ(0);',
     '  transform: translateZ(0);',
-    '  -webkit-backface-visibility: hidden;',
-    '  backface-visibility: hidden;',
     '}',
     '.fis-chat-launcher-wrap {',
     '  right: max(12px, env(safe-area-inset-right, 0px)) !important;',
@@ -94,31 +96,7 @@
     '  border: 0 !important;',
     '  background: transparent !important;',
     '  display: none;',
-    '  right: max(12px, env(safe-area-inset-right, 0px)) !important;',
-    '  bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;',
-    '  left: auto !important;',
-    '  top: auto !important;',
-    '  width: 380px;',
-    '  height: 560px;',
-    '  max-width: calc(100vw - 24px);',
-    '  max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));',
-    '}',
-    /* Phones / small tablets: fill the screen so nothing is clipped */
-    '@media (max-width: 767px) {',
-    '  .fis-chat-launcher-wrap {',
-    '    right: max(10px, env(safe-area-inset-right, 0px)) !important;',
-    '    bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;',
-    '  }',
-    '  .fis-chat-frame {',
-    '    left: max(8px, env(safe-area-inset-left, 0px)) !important;',
-    '    right: max(8px, env(safe-area-inset-right, 0px)) !important;',
-    '    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;',
-    '    top: auto !important;',
-    '    width: auto !important;',
-    '    height: min(88dvh, 720px) !important;',
-    '    max-width: none !important;',
-    '    max-height: calc(100dvh - 16px - env(safe-area-inset-bottom, 0px)) !important;',
-    '  }',
+    '  overflow: hidden;',
     '}'
   ].join('\n');
   document.head.appendChild(style);
@@ -155,25 +133,34 @@
   frame.src = EMBED_URL + (initialToken.length >= 16 ? '?token=' + encodeURIComponent(initialToken) : '');
   frame.setAttribute('allow', 'autoplay');
 
-  function clearInlineSize() {
-    frame.style.removeProperty('width');
-    frame.style.removeProperty('height');
-    frame.style.removeProperty('left');
-    frame.style.removeProperty('right');
-    frame.style.removeProperty('bottom');
-    frame.style.removeProperty('top');
-    frame.style.removeProperty('max-width');
-    frame.style.removeProperty('max-height');
-  }
-
   function setFrameSize(expanded) {
-    clearInlineSize();
+    var display = frame.style.display || '';
     if (isMobile()) {
-      // CSS media query owns mobile sizing so the panel fills the phone width.
+      // Full device width so typing is easy on phones.
+      var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      var height = Math.min(Math.round(vh * 0.92), Math.round(vh - 8));
+      frame.style.setProperty('position', 'fixed', 'important');
+      frame.style.setProperty('left', '0px', 'important');
+      frame.style.setProperty('right', '0px', 'important');
+      frame.style.setProperty('bottom', '0px', 'important');
+      frame.style.setProperty('top', 'auto', 'important');
+      frame.style.setProperty('width', '100vw', 'important');
+      frame.style.setProperty('max-width', '100vw', 'important');
+      frame.style.setProperty('height', height + 'px', 'important');
+      frame.style.setProperty('max-height', height + 'px', 'important');
+      if (display) frame.style.display = display;
       return;
     }
-    frame.style.width = expanded ? '420px' : '380px';
-    frame.style.height = expanded ? '720px' : '560px';
+    frame.style.setProperty('position', 'fixed', 'important');
+    frame.style.setProperty('left', 'auto', 'important');
+    frame.style.setProperty('right', '16px', 'important');
+    frame.style.setProperty('bottom', '16px', 'important');
+    frame.style.setProperty('top', 'auto', 'important');
+    frame.style.setProperty('width', expanded ? '420px' : '380px', 'important');
+    frame.style.setProperty('height', expanded ? '720px' : '560px', 'important');
+    frame.style.setProperty('max-width', 'calc(100vw - 24px)', 'important');
+    frame.style.setProperty('max-height', 'calc(100vh - 24px)', 'important');
+    if (display) frame.style.display = display;
   }
 
   function setUnread(count) {
@@ -230,6 +217,11 @@
       if (frame.style.display === 'block') setFrameSize(false);
     }, 250);
   });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function () {
+      if (frame.style.display === 'block') setFrameSize(false);
+    });
+  }
 
   function mount() {
     var root = document.documentElement || document.body;
