@@ -30,6 +30,8 @@
   var SEEN_KEY = 'fis-website-chat-seen-at';
   var AI_FALLBACK_WAIT_MS = 45000;
 
+  var ALICE_IMG = API_BASE + '/alice-interviewer.png';
+
   // ---- Brand palette (matches tailwind.config.ts) -----------------------
   var GREEN = '#8CB63C';
   var GREEN_DARK = '#7AA32F';
@@ -95,7 +97,8 @@
     '.fis-header .fis-top button:hover { background: rgba(255,255,255,0.12); }',
     '.fis-header .fis-top svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; }',
     '.fis-header .fis-id { display: flex; align-items: center; gap: 12px; }',
-    '.fis-avatar { position: relative; flex-shrink: 0; width: 56px; height: 56px; border-radius: 9999px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff; }',
+    '.fis-avatar { position: relative; flex-shrink: 0; width: 56px; height: 56px; border-radius: 9999px; background: #fff; overflow: hidden; box-shadow: 0 0 0 2px #fff; }',
+    '.fis-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; }',
     '.fis-avatar svg { width: 32px; height: 32px; fill: ' + GREEN + '; }',
     '.fis-header .fis-title { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }',
     '.fis-header .fis-status { margin-top: 4px; display: flex; align-items: center; gap: 6px; font-size: 14px; color: rgba(255,255,255,0.9); }',
@@ -114,7 +117,8 @@
     '.fis-msg { display: flex; width: 100%; }',
     '.fis-msg.fis-from-staff { justify-content: flex-start; align-items: flex-end; gap: 10px; }',
     '.fis-msg.fis-from-visitor { justify-content: flex-end; }',
-    '.fis-msg .fis-mini-avatar { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }',
+    '.fis-msg .fis-mini-avatar { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 24px; }',
+    '.fis-msg .fis-mini-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; }',
     '.fis-msg .fis-mini-avatar svg { width: 20px; height: 20px; fill: ' + GREEN + '; }',
     '.fis-bubble { position: relative; max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }',
     '.fis-msg.fis-from-staff .fis-bubble { background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 4px; }',
@@ -140,6 +144,9 @@
   }
   function sparkleIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 5.7L19.5 9l-5.6 1.3L12 16l-1.9-5.7L4.5 9l5.6-1.3L12 2z"/></svg>';
+  }
+  function aliceImg() {
+    return '<img src="' + ALICE_IMG + '" alt="Alice" />';
   }
   function chevronIcon() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
@@ -179,7 +186,7 @@
         '<button type="button" data-act="minimize" aria-label="Minimize chat">' + chevronIcon() + '</button>' +
       '</div>' +
       '<div class="fis-id">' +
-        '<span class="fis-avatar">' + sparkleIcon() + '</span>' +
+        '<span class="fis-avatar">' + aliceImg() + '</span>' +
         '<div>' +
           '<p class="fis-title">How can we help?</p>' +
           '<p class="fis-status"><span class="fis-online-dot"></span><span data-role="status">Alice can help with onboarding</span></p>' +
@@ -297,7 +304,7 @@
         if (fromStaff) {
           var av = document.createElement('span');
           av.className = 'fis-mini-avatar';
-          av.innerHTML = sparkleIcon();
+          av.innerHTML = aliceImg();
           row.appendChild(av);
         }
 
