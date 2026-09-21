@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react'
 import { ChevronLeft, Loader2, Minus, MoreVertical, Send, X } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
+import { OnlineStatusDot } from '@/components/OnlineStatusDot'
 import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
 import { LinkifiedText } from '@/components/LinkifiedText'
 
@@ -387,7 +388,7 @@ export function AdminWebsiteChatPopup() {
                 <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-visible rounded-full bg-brand-green text-sm font-bold text-white">
                   {visitor.name.slice(0, 2).toUpperCase()}
                   {visitor.online ? (
-                    <span className="absolute -top-0.5 -right-0.5 z-20 h-3 w-3 rounded-full border-2 border-white bg-[#4ADE80] shadow-sm" />
+                    <OnlineStatusDot className="absolute -top-0.5 -right-0.5 z-20" size="sm" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">

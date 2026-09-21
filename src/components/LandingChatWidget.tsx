@@ -565,7 +565,7 @@ export function LandingChatWidget({
           <div className="min-w-0">
             <p className="text-[22px] font-semibold leading-tight tracking-tight">How can we help?</p>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#4ADE80]" />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#4ADE80' }} />
               {adminJoined ? 'A team member has joined' : 'Alice can help with onboarding'}
             </p>
           </div>

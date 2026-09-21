@@ -66,6 +66,7 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { isNativeAppPlatform } from '@/lib/deviceDetection'
 import { isVisitorOnline } from '@/lib/website-chat'
+import { OnlineStatusDot } from '@/components/OnlineStatusDot'
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -2271,10 +2272,7 @@ function DashboardPageContent() {
                         )}
                       </div>
                       {isVisitorOnline(installer.lastSeenAt) ? (
-                        <div
-                          className="absolute -bottom-1 -right-1 z-20 h-5 w-5 rounded-full border-2 border-white bg-[#4ADE80] shadow-lg"
-                          title="Online"
-                        />
+                        <OnlineStatusDot className="absolute -bottom-1 -right-1 z-20" size="lg" />
                       ) : (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') ? (
                         <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${
                           installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
@@ -2464,10 +2462,7 @@ function DashboardPageContent() {
                             </div>
                             {/* Online green dot takes the checkmark place when installer is online */}
                             {isVisitorOnline(installer.lastSeenAt) ? (
-                              <div
-                                className="absolute -bottom-1 -right-1 z-20 h-5 w-5 rounded-full border-2 border-white bg-[#4ADE80] shadow-lg"
-                                title="Online"
-                              />
+                              <OnlineStatusDot className="absolute -bottom-1 -right-1 z-20" size="lg" />
                             ) : (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') ? (
                               <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${
                                 installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'

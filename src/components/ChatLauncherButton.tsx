@@ -1,5 +1,7 @@
 'use client'
 
+import { CHAT_ONLINE_GREEN } from '@/components/OnlineStatusDot'
+
 type Props = {
   onClick: () => void
   label?: string
@@ -56,7 +58,8 @@ export function ChatLauncherButton({
       {/* Sibling of the button so border-radius clipping can't cut the online dot */}
       <span
         aria-hidden
-        className="pointer-events-none absolute bottom-0 left-2 z-10 h-3.5 w-3.5 translate-y-[3px] rounded-full border-[2.5px] border-white bg-[#4ADE80]"
+        className="pointer-events-none absolute bottom-0 left-2 z-10 h-3.5 w-3.5 translate-y-[3px] rounded-full border-[2.5px] border-white"
+        style={{ backgroundColor: CHAT_ONLINE_GREEN }}
       />
     </div>
   )
