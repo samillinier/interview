@@ -1603,7 +1603,7 @@ export default function MessagesPage() {
                   conversationFilter === 'online' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                 }`}
               >
-                <span className={`h-2 w-2 rounded-full ${conversationFilter === 'online' ? 'bg-white' : 'bg-emerald-500'} ${onlinePeopleCount > 0 ? 'animate-pulse' : ''}`} />
+                <span className={`h-2 w-2 rounded-full ${conversationFilter === 'online' ? 'bg-white' : 'bg-[#4ADE80]'} ${onlinePeopleCount > 0 ? 'animate-pulse' : ''}`} />
                 Online
                 {onlinePeopleCount > 0 ? (
                   <span className={`rounded-full px-1.5 ${conversationFilter === 'online' ? 'bg-white/20' : 'bg-emerald-200 text-emerald-800'}`}>
@@ -1713,7 +1713,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                     {conversation.installer.online ? (
-                      <span className="absolute -top-0.5 -right-0.5 z-20 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 shadow-sm" title="Online" />
+                      <span className="absolute -top-0.5 -right-0.5 z-20 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#4ADE80] shadow-sm" title="Online" />
                     ) : null}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1814,7 +1814,7 @@ export default function MessagesPage() {
                   </div>
                 </div>
                 {selectedOnline ? (
-                  <span className="absolute -top-0.5 -right-0.5 z-20 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm" title="Online" />
+                  <span className="absolute -top-0.5 -right-0.5 z-20 h-3 w-3 rounded-full border-2 border-white bg-[#4ADE80] shadow-sm" title="Online" />
                 ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
