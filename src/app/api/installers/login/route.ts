@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { resolveInstallerPlatform } from '@/lib/deviceDetection'
 import { recordInstallerAccess } from '@/lib/installerAccess'
+import { getClientIp } from '@/lib/client-ip'
 
 function getTokenSecret(): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
     try {
       await recordInstallerAccess(installer.id, incoming, {
         userAgent: userAgent || request.headers.get('user-agent'),
+        ipAddress: getClientIp(request),
       })
     } catch (err) {
       console.error('Failed to record installer platform:', err)

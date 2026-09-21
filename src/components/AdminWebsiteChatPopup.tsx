@@ -14,6 +14,7 @@ type WebsiteVisitor = {
   id: string
   name: string
   email: string
+  ipAddress?: string | null
   online: boolean
   unreadCount: number
   preview: string
@@ -90,6 +91,7 @@ export function AdminWebsiteChatPopup() {
             id: String(row.Installer?.id || row.installerId),
             name: visitorName(row),
             email: String(row.Installer?.email || ''),
+            ipAddress: String(row.Installer?.ipAddress || '') || null,
             online: Boolean(row.Installer?.online),
             unreadCount: Number(row.unreadCount || 0),
             preview: String(row.lastMessage?.content || ''),
@@ -262,6 +264,9 @@ export function AdminWebsiteChatPopup() {
                   ? `${onlineCount} online`
                   : 'No one is on the website right now'}
             </p>
+            {selected?.ipAddress ? (
+              <p className="mt-0.5 truncate text-[11px] text-white/75">IP: {selected.ipAddress}</p>
+            ) : null}
           </div>
         </div>
         <div className="flex items-center gap-1.5">

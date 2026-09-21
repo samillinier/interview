@@ -6,6 +6,7 @@ import prisma from '@/lib/db'
 import { isChatAiGloballyEnabled } from '@/lib/chat-ai-settings'
 import { aliceGreeting, isLoggedInVisitor, pickVisitorEmail, pickVisitorName, sanitizeChatText } from '@/lib/website-chat'
 import { chatHeaders, websiteChatCorsPreflight } from '@/lib/website-chat-cors'
+import { getClientIp } from '@/lib/client-ip'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,9 +70,13 @@ export async function GET(request: NextRequest) {
       },
     })
     if (chat) {
+      const ipAddress = getClientIp(request)
       await prisma.websiteChat.update({
         where: { id: chat.id },
-        data: { lastSeenAt: new Date() },
+        data: {
+          lastSeenAt: new Date(),
+          ...(ipAddress ? { ipAddress } : {}),
+        },
       })
     }
     return NextResponse.json(
@@ -110,11 +115,23 @@ export async function POST(request: NextRequest) {
       })
       if (existing) {
         const identity = resolveIdentity(body, sessionUser, existing)
+        const ipAddress = getClientIp(request)
         const chat = await prisma.websiteChat.update({
           where: { id: existing.id },
           data: presenceOnly
-            ? { name: identity.name, email: identity.email, lastSeenAt: new Date() }
-            : { name: identity.name, email: identity.email, phone, lastSeenAt: new Date() },
+            ? {
+                name: identity.name,
+                email: identity.email,
+                lastSeenAt: new Date(),
+                ...(ipAddress ? { ipAddress } : {}),
+              }
+            : {
+                name: identity.name,
+                email: identity.email,
+                phone,
+                lastSeenAt: new Date(),
+                ...(ipAddress ? { ipAddress } : {}),
+              },
         })
         return NextResponse.json(
           {
@@ -131,6 +148,7 @@ export async function POST(request: NextRequest) {
     const token = existingToken || crypto.randomBytes(24).toString('hex')
     const aliceOn = await isChatAiGloballyEnabled()
     const greet = !presenceOnly && aliceOn
+    const ipAddress = getClientIp(request)
     const chat = await prisma.websiteChat.upsert({
       where: { visitorToken: token },
       create: greet
@@ -139,6 +157,7 @@ export async function POST(request: NextRequest) {
             name: identity.name,
             email: identity.email,
             phone,
+            ipAddress: ipAddress || undefined,
             lastSeenAt: new Date(),
             messages: {
               create: {
@@ -154,11 +173,23 @@ export async function POST(request: NextRequest) {
             name: identity.name,
             email: identity.email,
             phone,
+            ipAddress: ipAddress || undefined,
             lastSeenAt: new Date(),
           },
       update: presenceOnly
-        ? { name: identity.name, email: identity.email, lastSeenAt: new Date() }
-        : { name: identity.name, email: identity.email, phone, lastSeenAt: new Date() },
+        ? {
+            name: identity.name,
+            email: identity.email,
+            lastSeenAt: new Date(),
+            ...(ipAddress ? { ipAddress } : {}),
+          }
+        : {
+            name: identity.name,
+            email: identity.email,
+            phone,
+            lastSeenAt: new Date(),
+            ...(ipAddress ? { ipAddress } : {}),
+          },
     })
     if (greet) {
       const hasAlice = await prisma.websiteChatMessage.findFirst({

@@ -73,6 +73,7 @@ interface Installer {
   photoUrl?: string
   online?: boolean
   lastSeenAt?: string | Date | null
+  ipAddress?: string | null
   aiEnabled?: boolean
 }
 
@@ -154,7 +155,13 @@ function mapWebsiteConversations(websiteData: {
     installerId: string
     lastMessage?: Message | null
     unreadCount?: number
-    Installer?: Message['Installer'] & { status?: string; online?: boolean; aiEnabled?: boolean }
+    Installer?: Message['Installer'] & {
+      status?: string
+      online?: boolean
+      aiEnabled?: boolean
+      ipAddress?: string | null
+      lastSeenAt?: string | Date | null
+    }
   }>
 }): Conversation[] {
   return (websiteData.conversations || []).map((row) => ({
@@ -166,6 +173,8 @@ function mapWebsiteConversations(websiteData: {
       status: 'website_chat',
       photoUrl: row.Installer?.photoUrl || undefined,
       online: Boolean(row.Installer?.online),
+      lastSeenAt: row.Installer?.lastSeenAt || null,
+      ipAddress: row.Installer?.ipAddress || null,
       aiEnabled: row.Installer?.aiEnabled !== false,
     },
     lastMessage: row.lastMessage || undefined,
@@ -491,7 +500,14 @@ export default function MessagesPage() {
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-                Installer?: Message['Installer'] & { status?: string; online?: boolean; lastSeenAt?: string | Date | null; aiEnabled?: boolean }
+                Installer?: Message['Installer'] & {
+                  status?: string
+                  online?: boolean
+                  lastSeenAt?: string | Date | null
+                  aiEnabled?: boolean
+                  ipAddress?: string | null
+                  lastIpAddress?: string | null
+                }
       }> = data.conversations || []
 
       const conversationMap = new Map<string, Conversation>()
@@ -510,6 +526,7 @@ export default function MessagesPage() {
           }),
           status: row.Installer?.status || found?.status || 'pending',
           lastSeenAt: row.Installer?.lastSeenAt || found?.lastSeenAt || null,
+          ipAddress: row.Installer?.ipAddress || row.Installer?.lastIpAddress || found?.ipAddress || null,
           aiEnabled: row.Installer?.aiEnabled !== false,
         })
         conversationMap.set(row.installerId, {
@@ -1815,6 +1832,9 @@ export default function MessagesPage() {
                           : 'Landing page visitor'
                       : selectedInstaller.email}
                   </p>
+                  {selectedInstaller.ipAddress ? (
+                    <p className="text-xs text-slate-400">IP: {selectedInstaller.ipAddress}</p>
+                  ) : null}
                 </div>
                 <div className="relative flex-shrink-0" ref={profileMenuRef}>
                   <button

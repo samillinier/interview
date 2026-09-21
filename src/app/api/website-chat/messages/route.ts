@@ -4,6 +4,7 @@ import { generateAliceComplianceReply, shouldGenerateAliceReply } from '@/lib/co
 import { isChatAiGloballyEnabled, isWebsiteChatAiEnabled } from '@/lib/chat-ai-settings'
 import { sanitizeChatText } from '@/lib/website-chat'
 import { chatHeaders, websiteChatCorsPreflight } from '@/lib/website-chat-cors'
+import { getClientIp } from '@/lib/client-ip'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -147,9 +148,14 @@ export async function POST(request: NextRequest) {
         isRead: false,
       },
     })
+    const ipAddress = getClientIp(request)
     await prisma.websiteChat.update({
       where: { id: chat.id },
-      data: { lastMessageAt: new Date(), lastSeenAt: new Date() },
+      data: {
+        lastMessageAt: new Date(),
+        lastSeenAt: new Date(),
+        ...(ipAddress ? { ipAddress } : {}),
+      },
     })
 
     const aliceMessage = await maybeCreateAliceReply(

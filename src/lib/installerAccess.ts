@@ -41,7 +41,12 @@ export async function requireInstallerOrAdmin(request: NextRequest, installerId:
 export async function recordInstallerAccess(
   installerId: string,
   incoming: DeviceChannel,
-  extras?: { forceNative?: boolean; os?: 'ios' | 'android' | null; userAgent?: string | null }
+  extras?: {
+    forceNative?: boolean
+    os?: 'ios' | 'android' | null
+    userAgent?: string | null
+    ipAddress?: string | null
+  }
 ) {
   const prismaAny = prisma as any
   let hasNativeDeviceToken = Boolean(extras?.forceNative)
@@ -79,9 +84,15 @@ export async function recordInstallerAccess(
     os,
   })
 
+  const ipAddress = extras?.ipAddress ? String(extras.ipAddress).trim().slice(0, 64) : ''
+
   await prismaAny.installer.update({
     where: { id: installerId },
-    data: { lastPlatform, lastSeenAt: new Date() },
+    data: {
+      lastPlatform,
+      lastSeenAt: new Date(),
+      ...(ipAddress ? { lastIpAddress: ipAddress } : {}),
+    },
   })
 }
 

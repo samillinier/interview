@@ -302,6 +302,7 @@ model Installer {
   loginTokenExpiresAt                  DateTime?
   lastPlatform                         String?
   lastSeenAt                           DateTime?
+  lastIpAddress                        String?
   paymentAccountName                   String?
   paymentAccountNumber                 String?
   paymentAccountType                   String?
@@ -1195,6 +1196,7 @@ model WebsiteChat {
   name          String
   email         String
   phone         String?
+  ipAddress     String?
   lastMessageAt DateTime             @default(now())
   lastSeenAt    DateTime?
   issueStatus   String               @default("open")

@@ -96,6 +96,7 @@ export async function GET() {
             status: 'website_chat',
             online,
             lastSeenAt: chat.lastSeenAt,
+            ipAddress: (chat as { ipAddress?: string | null }).ipAddress || null,
             issueStatus: (chat as { issueStatus?: string }).issueStatus || 'open',
             aiEnabled: aiFlags.get(chat.id) !== false,
           },

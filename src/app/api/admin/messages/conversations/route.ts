@@ -41,6 +41,8 @@ export async function GET() {
                   email: true,
                   photoUrl: true,
                   status: true,
+                  lastSeenAt: true,
+                  lastIpAddress: true,
                 },
               },
             },
@@ -76,6 +78,7 @@ export async function GET() {
         ...message.Installer,
         aiEnabled: aiFlags.get(message.installerId) !== false,
         online: isVisitorOnline((message.Installer as { lastSeenAt?: Date | null })?.lastSeenAt),
+        ipAddress: (message.Installer as { lastIpAddress?: string | null })?.lastIpAddress || null,
       },
     }))
 

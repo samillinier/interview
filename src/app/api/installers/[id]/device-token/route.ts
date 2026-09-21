@@ -5,6 +5,7 @@ import {
   getInstallerTokenFromRequest,
 } from '@/lib/installerToken'
 import { recordInstallerAccess } from '@/lib/installerAccess'
+import { getClientIp } from '@/lib/client-ip'
 
 function getAuthorizedInstallerId(
   request: NextRequest,
@@ -57,6 +58,7 @@ export async function POST(
         await recordInstallerAccess(installerId, 'native-app', {
           forceNative: true,
           os: platform,
+          ipAddress: getClientIp(request),
         })
       } catch (err) {
         console.error('Failed to stamp native app platform from device token:', err)
