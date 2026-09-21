@@ -212,7 +212,7 @@ export function LandingChatWidget({
   }, [session, name, email])
 
   useEffect(() => {
-    if (status === 'authenticated') return
+    if (!embed && status === 'authenticated') return
     let cancelled = false
     const stored = initialToken || ensureVisitorToken()
     if (stored) {
@@ -243,10 +243,10 @@ export function LandingChatWidget({
     return () => {
       cancelled = true
     }
-  }, [status, initialToken])
+  }, [status, initialToken, embed])
 
   useEffect(() => {
-    if (status === 'authenticated') return
+    if (!embed && status === 'authenticated') return
     const stored = initialToken || ensureVisitorToken()
     if (stored) setToken((prev) => prev || stored)
     let currentToken = stored
@@ -268,7 +268,7 @@ export function LandingChatWidget({
     ping()
     const timer = window.setInterval(ping, 4000)
     return () => window.clearInterval(timer)
-  }, [status, initialToken])
+  }, [status, initialToken, embed])
 
   const loadMessages = useCallback(async (nextToken = tokenRef.current, wait = false, signal?: AbortSignal) => {
     if (!nextToken) return
