@@ -1,6 +1,6 @@
 {
-  "name": "FIS Installer",
-  "short_name": "FIS Installer",
+  "name": "FIS Fastrack",
+  "short_name": "FIS Fastrack",
   "description": "Floor Interior Services Installer Portal - Manage jobs, payments, and documents on the go",
   "start_url": "/installer/login",
   "scope": "/installer",

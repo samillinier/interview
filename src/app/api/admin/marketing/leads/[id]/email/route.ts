@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { requireMarketingAdmin } from '@/lib/marketing-admin'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoImg } from '@/lib/email-brand'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -34,16 +35,21 @@ function formatEmailHtml(content: string) {
   return html.replace(/\n/g, '<br />')
 }
 
-function buildOptInEmailHtml(args: { content: string; logoUrl: string }) {
-  const safeLogoUrl = escapeHtml(args.logoUrl)
+function buildOptInEmailHtml(args: { content: string }) {
   const bodyHtml = formatEmailHtml(args.content)
+  const logoImg = emailLogoImg(56)
 
   return `
     <div style="margin:0;padding:0;background:#f6f8f5;font-family:Arial,sans-serif;color:#162015;">
       <div style="max-width:640px;margin:0 auto;padding:28px 18px;">
-        <div style="background:#ffffff;border:1px solid #e5eadf;border-radius:18px;overflow:hidden;box-shadow:0 14px 35px rgba(15,23,42,0.08);">
-          <div style="padding:24px 28px;border-bottom:1px solid #edf2e8;">
-            <img src="${safeLogoUrl}" alt="Floor Interior Services" style="height:42px;object-fit:contain;" />
+        <div style="background:#ffffff;border:1px solid #e5eadf;border-radius:18px;overflow:hidden;">
+          <div style="padding:20px 28px;border-bottom:1px solid #edf2e8;background:#ffffff;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;padding:0;">${logoImg}</td>
+                <td style="vertical-align:middle;padding:0 0 0 12px;font-size:16px;font-weight:700;color:#162015;">Floor Interior Services</td>
+              </tr>
+            </table>
           </div>
           <div style="padding:28px;font-size:15px;line-height:1.7;color:#24301f;">
             ${bodyHtml}
@@ -103,8 +109,6 @@ export async function POST(
     const resend = new Resend(resendApiKey)
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const fromName = companyDisplayName()
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
-    const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
 
     const emailResult = await resend.emails.send({
       from: `${fromName} <${fromEmail}>`,
@@ -112,7 +116,7 @@ export async function POST(
       ...(ccList.length ? { cc: ccList } : {}),
       reply_to: auth.email,
       subject: emailSubject,
-      html: buildOptInEmailHtml({ content: emailContent, logoUrl }),
+      html: buildOptInEmailHtml({ content: emailContent }),
     })
 
     if (emailResult.error) {

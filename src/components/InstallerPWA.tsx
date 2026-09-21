@@ -99,7 +99,7 @@ export default function InstallerPWA() {
                     <Download className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold">Install FIS Installer App</p>
+                    <p className="text-sm font-bold">Install FIS Fastrack App</p>
                     <p className="text-xs text-white/70 mt-0.5">
                       Quick access to your dashboard, payments &amp; documents
                     </p>
@@ -139,7 +139,7 @@ export default function InstallerPWA() {
                   <Download className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold">Install FIS Installer App</p>
+                  <p className="text-sm font-bold">Install FIS Fastrack App</p>
                   <p className="text-xs text-white/70 mt-0.5">
                     Quick access to your dashboard, payments &amp; documents
                   </p>
