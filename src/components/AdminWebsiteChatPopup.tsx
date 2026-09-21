@@ -102,11 +102,6 @@ export function AdminWebsiteChatPopup() {
             return a.name.localeCompare(b.name)
           })
         setVisitors(nextVisitors)
-        try {
-          window.dispatchEvent(new Event('dashboard-messages-changed'))
-        } catch {
-          // ignore
-        }
       } catch {
         // ignore
       }
