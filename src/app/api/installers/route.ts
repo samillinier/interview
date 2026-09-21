@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { extractLikelyPhone } from '@/lib/phone'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
+import { classifyNativeOs, isNativeAppPlatform } from '@/lib/deviceDetection'
 
 export const dynamic = 'force-dynamic'
 
@@ -438,32 +439,48 @@ export async function GET(request: NextRequest) {
                 installerId: { in: installerIds },
                 platform: { in: ['ios', 'android'] },
               },
-              select: { installerId: true },
-              distinct: ['installerId'],
+              select: { installerId: true, platform: true },
             }).catch(() => []),
           ])
         : [[], [], []]
 
-    const nativeAppInstallerIds = new Set(
-      (nativeDeviceTokens as { installerId: string }[]).map((token) => token.installerId)
-    )
-    const needsAppStamp = installers.filter(
-      (installer) =>
-        nativeAppInstallerIds.has(installer.id) && installer.lastPlatform !== 'native-app'
-    )
+    const osByInstallerId = new Map<string, Set<string>>()
+    for (const token of nativeDeviceTokens as { installerId: string; platform?: string }[]) {
+      const os = classifyNativeOs(token.platform)
+      if (!os) continue
+      const set = osByInstallerId.get(token.installerId) || new Set<string>()
+      set.add(os)
+      osByInstallerId.set(token.installerId, set)
+    }
+    const needsAppStamp = installers
+      .map((installer) => {
+        const osSet = osByInstallerId.get(installer.id)
+        if (!osSet || osSet.size === 0) return null
+        const osList = Array.from(osSet)
+        const stamp = osList.length === 1 ? osList[0] : 'native-app'
+        if (installer.lastPlatform === stamp) return null
+        if (installer.lastPlatform === 'ios' || installer.lastPlatform === 'android') return null
+        if (isNativeAppPlatform(installer.lastPlatform) && stamp === 'native-app') return null
+        return { installer, stamp }
+      })
+      .filter((row): row is { installer: (typeof installers)[number]; stamp: string } => Boolean(row))
     if (needsAppStamp.length > 0) {
       try {
-        await prisma.installer.updateMany({
-          where: { id: { in: needsAppStamp.map((installer) => installer.id) } },
-          data: { lastPlatform: 'native-app' },
-        })
-        for (const installer of needsAppStamp) {
-          installer.lastPlatform = 'native-app'
+        await Promise.all(
+          needsAppStamp.map(({ installer, stamp }) =>
+            prisma.installer.update({
+              where: { id: installer.id },
+              data: { lastPlatform: stamp },
+            })
+          )
+        )
+        for (const { installer, stamp } of needsAppStamp) {
+          installer.lastPlatform = stamp
         }
       } catch (err) {
         console.error('Failed to stamp App platform from device tokens:', err)
-        for (const installer of needsAppStamp) {
-          installer.lastPlatform = 'native-app'
+        for (const { installer, stamp } of needsAppStamp) {
+          installer.lastPlatform = stamp
         }
       }
     }

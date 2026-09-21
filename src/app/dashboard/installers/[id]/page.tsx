@@ -79,6 +79,7 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
+import { isNativeAppPlatform } from '@/lib/deviceDetection'
 import { NullAttachmentShade } from '@/components/NullAttachmentShade'
 import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
@@ -3684,10 +3685,10 @@ export default function InstallerProfileViewPage() {
                   })()}
                   {installer.lastPlatform && (
                     <div className="flex flex-wrap items-center gap-2 mt-2 mb-2">
-                      {installer.lastPlatform === 'native-app' ? (
+                      {isNativeAppPlatform(installer.lastPlatform) ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold">
                           <Smartphone className="w-3.5 h-3.5" />
-                          App
+                          {installer.lastPlatform === 'ios' ? 'iOS App' : installer.lastPlatform === 'android' ? 'Android App' : 'App'}
                         </span>
                       ) : installer.lastPlatform === 'mobile-web' ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-xs font-bold">

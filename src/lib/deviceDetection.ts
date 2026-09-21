@@ -66,6 +66,23 @@ export const DEVICE_CHANNEL_LABEL: Record<DeviceChannel, string> = {
   'desktop-web': 'Web',
 }
 
+export function isNativeAppPlatform(value?: string | null): boolean {
+  const platform = String(value || '').trim().toLowerCase()
+  return platform === 'native-app' || platform === 'ios' || platform === 'android'
+}
+
+/** Best-effort OS from UA / Capacitor platform strings. */
+export function classifyNativeOs(value?: string | null): 'ios' | 'android' | null {
+  const raw = String(value || '').trim().toLowerCase()
+  if (!raw) return null
+  if (raw === 'ios' || raw === 'iphone' || raw === 'ipad') return 'ios'
+  if (raw === 'android') return 'android'
+  if (/android/.test(raw)) return 'android'
+  if (/iphone|ipad|ipod/.test(raw)) return 'ios'
+  if (/cfnetwork/.test(raw) && /darwin/.test(raw) && !/android/.test(raw)) return 'ios'
+  return null
+}
+
 /** WKWebView heartbeats often look like Mobile Safari. Never let that erase App. */
 export function coalesceInstallerPlatform(args: {
   incoming: DeviceChannel
@@ -74,8 +91,26 @@ export function coalesceInstallerPlatform(args: {
 }): DeviceChannel {
   if (args.incoming === 'native-app') return 'native-app'
   if (args.incoming === 'desktop-web') return 'desktop-web'
-  if (args.incoming === 'mobile-web' && (args.hasNativeDeviceToken || args.existing === 'native-app')) {
+  if (args.incoming === 'mobile-web' && (args.hasNativeDeviceToken || isNativeAppPlatform(args.existing))) {
     return 'native-app'
   }
   return args.incoming
+}
+
+/** Persist lastPlatform, keeping a known iOS/Android OS when the channel is the native app. */
+export function storedInstallerPlatform(args: {
+  incoming: DeviceChannel
+  existing?: string | null
+  hasNativeDeviceToken?: boolean
+  os?: 'ios' | 'android' | null
+}): string {
+  const coalesced = coalesceInstallerPlatform({
+    incoming: args.incoming,
+    existing: isNativeAppPlatform(args.existing) ? 'native-app' : args.existing,
+    hasNativeDeviceToken: args.hasNativeDeviceToken,
+  })
+  if (coalesced !== 'native-app') return coalesced
+  if (args.os === 'ios' || args.os === 'android') return args.os
+  if (args.existing === 'ios' || args.existing === 'android') return args.existing
+  return 'native-app'
 }

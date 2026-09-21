@@ -98,7 +98,9 @@ export async function POST(request: NextRequest) {
       headerUserAgent: request.headers.get('user-agent'),
     })
     try {
-      await recordInstallerAccess(installer.id, incoming)
+      await recordInstallerAccess(installer.id, incoming, {
+        userAgent: userAgent || request.headers.get('user-agent'),
+      })
     } catch (err) {
       console.error('Failed to record installer platform:', err)
     }

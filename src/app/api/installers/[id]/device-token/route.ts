@@ -54,7 +54,10 @@ export async function POST(
 
     if (platform === 'ios' || platform === 'android') {
       try {
-        await recordInstallerAccess(installerId, 'native-app', { forceNative: true })
+        await recordInstallerAccess(installerId, 'native-app', {
+          forceNative: true,
+          os: platform,
+        })
       } catch (err) {
         console.error('Failed to stamp native app platform from device token:', err)
       }

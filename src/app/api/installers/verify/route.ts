@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
           headerUserAgent: request.headers.get('user-agent'),
         })
         try {
-          await recordInstallerAccess(payload.installerId, incoming)
+          await recordInstallerAccess(payload.installerId, incoming, {
+            userAgent: userAgent || request.headers.get('user-agent'),
+          })
         } catch (err) {
           console.error('Failed to record installer heartbeat:', err)
         }
