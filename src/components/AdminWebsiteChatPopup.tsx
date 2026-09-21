@@ -384,10 +384,10 @@ export function AdminWebsiteChatPopup() {
                 onClick={() => setSelectedId(visitor.id)}
                 className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3.5 text-left hover:bg-slate-50"
               >
-                <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-brand-green text-sm font-bold text-white">
+                <span className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-visible rounded-full bg-brand-green text-sm font-bold text-white">
                   {visitor.name.slice(0, 2).toUpperCase()}
                   {visitor.online ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" />
+                    <span className="absolute -top-0.5 -right-0.5 z-20 h-3 w-3 rounded-full border-2 border-white bg-emerald-400 shadow-sm" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">

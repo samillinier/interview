@@ -1680,8 +1680,8 @@ export default function MessagesPage() {
                     selectedInstaller?.id === conversation.installer.id ? 'bg-brand-green/5 border-l-4 border-l-brand-green' : ''
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="relative w-12 h-12 flex-shrink-0">
+                  <div className="flex items-start gap-3 overflow-visible">
+                    <div className="relative w-12 h-12 flex-shrink-0 overflow-visible">
                     <div className={`relative w-12 h-12 rounded-full overflow-hidden ring-2 ${
                       statusFlag ? `${statusFlag.ring} ${statusFlag.avatar}` : 'ring-brand-green/20 bg-brand-green'
                     }`}>
@@ -1713,7 +1713,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                     {conversation.installer.online ? (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" title="Online" />
+                      <span className="absolute -top-0.5 -right-0.5 z-20 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 shadow-sm" title="Online" />
                     ) : null}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1782,7 +1782,7 @@ export default function MessagesPage() {
             <>
               {/* Chat Header */}
               <div className="bg-white border-b border-slate-200 p-4 flex items-center gap-3 flex-shrink-0">
-                <div className="relative w-10 h-10 flex-shrink-0">
+                <div className="relative w-10 h-10 flex-shrink-0 overflow-visible">
                 <div className={`relative w-10 h-10 rounded-full overflow-hidden ring-2 ${
                   selectedStatusFlag ? `${selectedStatusFlag.ring} ${selectedStatusFlag.avatar}` : 'ring-brand-green/20 bg-brand-green'
                 }`}>
@@ -1814,7 +1814,7 @@ export default function MessagesPage() {
                   </div>
                 </div>
                 {selectedOnline ? (
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" title="Online" />
+                  <span className="absolute -top-0.5 -right-0.5 z-20 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm" title="Online" />
                 ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
