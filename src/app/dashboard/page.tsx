@@ -2433,7 +2433,7 @@ function DashboardPageContent() {
                             {/* Online green dot takes the checkmark place when installer is online */}
                             {isVisitorOnline(installer.lastSeenAt) ? (
                               <div
-                                className="absolute -bottom-1 -right-1 z-20 h-5 w-5 rounded-full border-2 border-white bg-emerald-500 shadow-lg"
+                                className="absolute -bottom-1 -right-1 z-20 h-5 w-5 rounded-full border-2 border-white bg-[#4ADE80] shadow-lg"
                                 title="Online"
                               />
                             ) : (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') ? (
