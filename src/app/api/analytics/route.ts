@@ -159,40 +159,6 @@ export async function GET(request: NextRequest) {
       installer => installer.createdAt && new Date(installer.createdAt) >= thirtyDaysAgo
     ).length
 
-    // App usage: last login/heartbeat (same source as the installer list),
-    // with iOS/Android from device tokens or lastPlatform when known.
-    const deviceTokens = await prisma.deviceToken.findMany({
-      where: { platform: { in: ['ios', 'android'] } },
-      select: { installerId: true, platform: true },
-    })
-    const iosIds = new Set<string>()
-    const androidIds = new Set<string>()
-    for (const token of deviceTokens) {
-      const platform = (token.platform || '').toLowerCase()
-      if (platform === 'ios') iosIds.add(token.installerId)
-      else if (platform === 'android') androidIds.add(token.installerId)
-    }
-    for (const installer of installers) {
-      const platform = String((installer as { lastPlatform?: string | null }).lastPlatform || '').toLowerCase()
-      if (platform === 'ios') iosIds.add(installer.id)
-      if (platform === 'android') androidIds.add(installer.id)
-    }
-    const nativeIds = new Set<string>()
-    iosIds.forEach((id) => nativeIds.add(id))
-    androidIds.forEach((id) => nativeIds.add(id))
-    for (const installer of installers) {
-      const platform = String((installer as { lastPlatform?: string | null }).lastPlatform || '').toLowerCase()
-      if (platform === 'native-app' || platform === 'ios' || platform === 'android') {
-        nativeIds.add(installer.id)
-      }
-    }
-    const appUsage = {
-      ios: iosIds.size,
-      android: androidIds.size,
-      other: Math.max(0, totalInstallers - nativeIds.size),
-      native: nativeIds.size,
-    }
-
     // Accounts with photos
     const accountsWithPhotos = installers.filter(i => i.photoUrl).length
 
@@ -817,7 +783,6 @@ export async function GET(request: NextRequest) {
       stateDistribution,
       installationCategories,
       recentRegistrations,
-      appUsage,
       accountsWithPhotos,
       accountsWithPaymentInfo,
       // New analytics
