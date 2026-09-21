@@ -463,12 +463,19 @@ export function AdminWebsiteChatPopup() {
             )}
             <div ref={bottomRef} />
           </div>
-          <form onSubmit={sendMessage} className="border-t border-slate-100 p-3">
+          <form onSubmit={sendMessage} autoComplete="off" className="border-t border-slate-100 p-3">
             <div className="flex items-end gap-2">
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Write a message..."
+                name="fis-admin-chat-message"
+                autoComplete="off"
+                autoCorrect="off"
+                aria-autocomplete="none"
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
                 rows={1}
                 className="min-h-[44px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 onKeyDown={(event) => {
