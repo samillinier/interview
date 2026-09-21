@@ -37,7 +37,7 @@ final class FIS_Chat_Widget {
 	 * Print the widget loader script in the footer.
 	 */
 	public function print_loader() {
-		$script_url = self::api_base() . '/chat-embed.js';
+		$script_url = self::api_base() . '/chat-widget.js';
 
 		echo '<script data-fis-chat-widget defer src="' . esc_url( $script_url ) . '"></script>' . "\n";
 	}
