@@ -58,3 +58,6 @@ public/uploads/
 .env*.bak*
 .env.vercel-prod
 .ruhavik-access-token.tmp
+
+# FIS chat widget plugin package
+wordpress/*.zip

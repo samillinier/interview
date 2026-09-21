@@ -5,13 +5,13 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isChatAiGloballyEnabled } from '@/lib/chat-ai-settings'
 import { aliceGreeting, isLoggedInVisitor, pickVisitorEmail, pickVisitorName, sanitizeChatText } from '@/lib/website-chat'
+import { chatHeaders, websiteChatCorsPreflight } from '@/lib/website-chat-cors'
 
 export const dynamic = 'force-dynamic'
 
-const noStoreHeaders = {
-  'Cache-Control': 'private, no-store, no-cache, must-revalidate',
-  Pragma: 'no-cache',
-} as const
+export async function OPTIONS(request: NextRequest) {
+  return websiteChatCorsPreflight(request)
+}
 
 function generatedVisitor() {
   const code = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 4)
@@ -51,11 +51,11 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (isLoggedInVisitor(session?.user)) {
-      return NextResponse.json({ success: true, chat: null, skipped: true }, { headers: noStoreHeaders })
+      return NextResponse.json({ success: true, chat: null, skipped: true }, { headers: chatHeaders(request) })
     }
     const token = visitorTokenFrom(request)
     if (!token) {
-      return NextResponse.json({ success: true, chat: null }, { headers: noStoreHeaders })
+      return NextResponse.json({ success: true, chat: null }, { headers: chatHeaders(request) })
     }
     const chat = await prisma.websiteChat.findUnique({
       where: { visitorToken: token },
@@ -76,13 +76,13 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json(
       { success: true, chat: chat ? { ...chat, messageCount: chat._count.messages } : null },
-      { headers: noStoreHeaders },
+      { headers: chatHeaders(request) },
     )
   } catch (error: any) {
     console.error('website-chat GET failed', error?.message || error)
     return NextResponse.json(
       { error: 'Failed to load chat' },
-      { status: 500, headers: noStoreHeaders },
+      { status: 500, headers: chatHeaders(request) },
     )
   }
 }
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (presenceOnly && isLoggedInVisitor(sessionUser)) {
       return NextResponse.json(
         { success: true, skipped: true, token: existingToken || '' },
-        { headers: noStoreHeaders },
+        { headers: chatHeaders(request) },
       )
     }
 
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
             token: existingToken,
             chat: { ...chat, messageCount: existing._count.messages },
           },
-          { headers: noStoreHeaders },
+          { headers: chatHeaders(request) },
         )
       }
     }
@@ -180,13 +180,13 @@ export async function POST(request: NextRequest) {
     const messageCount = await prisma.websiteChatMessage.count({ where: { chatId: chat.id } })
     return NextResponse.json(
       { success: true, token, chat: { ...chat, messageCount } },
-      { headers: noStoreHeaders },
+      { headers: chatHeaders(request) },
     )
   } catch (error: any) {
     console.error('website-chat POST failed', error?.message || error)
     return NextResponse.json(
       { error: 'Could not start chat. Please try again.' },
-      { status: 500, headers: noStoreHeaders },
+      { status: 500, headers: chatHeaders(request) },
     )
   }
 }

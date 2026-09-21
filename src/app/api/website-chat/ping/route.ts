@@ -4,13 +4,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isLoggedInVisitor, pickVisitorEmail, pickVisitorName } from '@/lib/website-chat'
+import { chatHeaders, websiteChatCorsPreflight } from '@/lib/website-chat-cors'
 
 export const dynamic = 'force-dynamic'
 
-const noStoreHeaders = {
-  'Cache-Control': 'private, no-store, no-cache, must-revalidate',
-  Pragma: 'no-cache',
-} as const
+export async function OPTIONS(request: NextRequest) {
+  return websiteChatCorsPreflight(request)
+}
 
 function generatedVisitor() {
   const code = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 4)
@@ -24,13 +24,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (isLoggedInVisitor(session?.user)) {
-      return NextResponse.json({ success: true, skipped: true }, { headers: noStoreHeaders })
+      return NextResponse.json({ success: true, skipped: true }, { headers: chatHeaders(request) })
     }
 
     const body = await request.json().catch(() => ({}))
     const token = String(request.headers.get('x-website-chat-token') || body?.token || '').trim()
     if (!token) {
-      return NextResponse.json({ error: 'Chat session required' }, { status: 401, headers: noStoreHeaders })
+      return NextResponse.json({ error: 'Chat session required' }, { status: 401, headers: chatHeaders(request) })
     }
 
     const existing = await prisma.websiteChat.findUnique({
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       select: { id: true, name: true, email: true },
     })
     if (!existing) {
-      return NextResponse.json({ success: true, token }, { headers: noStoreHeaders })
+      return NextResponse.json({ success: true, token }, { headers: chatHeaders(request) })
     }
 
     const fallback = generatedVisitor()
@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
       where: { id: existing.id },
       data: { lastSeenAt: new Date(), name, email },
     })
-    return NextResponse.json({ success: true, token, name, email }, { headers: noStoreHeaders })
+    return NextResponse.json({ success: true, token, name, email }, { headers: chatHeaders(request) })
   } catch (error: any) {
     console.error('website-chat ping failed', error?.message || error)
-    return NextResponse.json({ error: 'Failed to update presence' }, { status: 500, headers: noStoreHeaders })
+    return NextResponse.json({ error: 'Failed to update presence' }, { status: 500, headers: chatHeaders(request) })
   }
 }
