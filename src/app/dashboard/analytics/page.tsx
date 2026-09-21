@@ -13,6 +13,7 @@ import {
   XCircle,
   Clock,
   Briefcase,
+  Smartphone,
   MapPin,
   Calendar,
   LayoutDashboard,
@@ -71,6 +72,12 @@ interface AnalyticsData {
     tile: number
   }
   recentRegistrations: number
+  appUsage?: {
+    ios: number
+    android: number
+    other: number
+    native: number
+  }
   accountsWithPhotos: number
   accountsWithPaymentInfo: number
   // New analytics
@@ -657,12 +664,14 @@ export default function AnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Avg. Experience</p>
-                  <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{analytics.averageExperience.toFixed(1)}</h3>
-                  <p className="text-sm text-slate-500">Years of experience</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">App Users</p>
+                  <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{analytics.appUsage?.native ?? 0}</h3>
+                  <p className="text-sm text-slate-500">
+                    iOS {analytics.appUsage?.ios ?? 0} · Android {analytics.appUsage?.android ?? 0} · Other {analytics.appUsage?.other ?? 0}
+                  </p>
                 </div>
                 <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/20 flex items-center justify-center shadow-sm">
-                  <Briefcase className="w-6 h-6 text-brand-green" />
+                  <Smartphone className="w-6 h-6 text-brand-green" />
                 </div>
               </div>
             </motion.div>

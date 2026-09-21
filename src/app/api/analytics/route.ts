@@ -159,6 +159,26 @@ export async function GET(request: NextRequest) {
       installer => installer.createdAt && new Date(installer.createdAt) >= thirtyDaysAgo
     ).length
 
+    // Native app usage (iOS / Android from device tokens; everyone else is Other)
+    const deviceTokens = await prisma.deviceToken.findMany({
+      where: { platform: { in: ['ios', 'android'] } },
+      select: { installerId: true, platform: true },
+    })
+    const iosIds = new Set<string>()
+    const androidIds = new Set<string>()
+    for (const token of deviceTokens) {
+      const platform = (token.platform || '').toLowerCase()
+      if (platform === 'ios') iosIds.add(token.installerId)
+      else if (platform === 'android') androidIds.add(token.installerId)
+    }
+    const nativeIds = new Set<string>([...iosIds, ...androidIds])
+    const appUsage = {
+      ios: iosIds.size,
+      android: androidIds.size,
+      other: Math.max(0, totalInstallers - nativeIds.size),
+      native: nativeIds.size,
+    }
+
     // Accounts with photos
     const accountsWithPhotos = installers.filter(i => i.photoUrl).length
 
@@ -783,6 +803,7 @@ export async function GET(request: NextRequest) {
       stateDistribution,
       installationCategories,
       recentRegistrations,
+      appUsage,
       accountsWithPhotos,
       accountsWithPaymentInfo,
       // New analytics
