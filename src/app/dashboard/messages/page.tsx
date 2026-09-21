@@ -1713,7 +1713,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                     {conversation.installer.online ? (
-                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" title="Online" />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" title="Online" />
                     ) : null}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1814,7 +1814,7 @@ export default function MessagesPage() {
                   </div>
                 </div>
                 {selectedOnline ? (
-                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" title="Online" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" title="Online" />
                 ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
