@@ -730,9 +730,9 @@ function DashboardPageContent() {
     }
   }
 
-  const fetchInstallers = async (page: number = currentPage) => {
+  const fetchInstallers = async (page: number = currentPage, opts?: { silent?: boolean }) => {
     try {
-      setIsLoading(true)
+      if (!opts?.silent) setIsLoading(true)
       const params = new URLSearchParams()
       if (debouncedSearchQuery.trim()) params.append('search', debouncedSearchQuery.trim())
       if (statusFilter !== 'all') params.append('status', statusFilter)
@@ -757,7 +757,9 @@ function DashboardPageContent() {
       }
       
       const data = await response.json()
-      console.log('Fetched installers:', data.installers?.length || 0, 'total:', data.pagination?.total || 0)
+      if (!opts?.silent) {
+        console.log('Fetched installers:', data.installers?.length || 0, 'total:', data.pagination?.total || 0)
+      }
       setInstallers(data.installers || [])
       
       if (data.pagination) {
@@ -775,7 +777,7 @@ function DashboardPageContent() {
       console.error('Error details:', error.message || 'Network error')
       // Keep the previous list to avoid UI flicker while typing/searching
     } finally {
-      setIsLoading(false)
+      if (!opts?.silent) setIsLoading(false)
       setHasLoadedInstallersOnce(true)
     }
   }
@@ -1573,6 +1575,36 @@ function DashboardPageContent() {
       setCurrentPage(1)
     }
   }, [debouncedSearchQuery, statusFilter, experienceFilter, stateFilter, skillFilter, surfaceFilter, certificateRiskFilter, workroomFilter, countyFilter, accountTypeFilter])
+
+  // Live online status — silent poll like Messages / Approvals badges (no full-page refresh)
+  useEffect(() => {
+    if (status !== 'authenticated' || !hasLoadedInstallersOnce) return
+
+    const refreshPresence = () => {
+      void fetchInstallers(currentPage, { silent: true })
+    }
+
+    const interval = window.setInterval(refreshPresence, 5000)
+    window.addEventListener('focus', refreshPresence)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refreshPresence)
+    }
+  }, [
+    status,
+    hasLoadedInstallersOnce,
+    currentPage,
+    debouncedSearchQuery,
+    statusFilter,
+    experienceFilter,
+    stateFilter,
+    skillFilter,
+    surfaceFilter,
+    certificateRiskFilter,
+    workroomFilter,
+    countyFilter,
+    accountTypeFilter,
+  ])
 
 
   const getInitials = (firstName: string, lastName: string) => {
