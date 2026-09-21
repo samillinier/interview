@@ -353,6 +353,17 @@ export default function MessagesPage() {
           setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
           return next
         })
+        setSelectedInstaller((current) => {
+          if (!current || !isWebsiteChatId(current.id)) return current
+          const live = websiteConvs.find((conv) => conv.installer.id === current.id)?.installer
+          if (!live) return current
+          return {
+            ...current,
+            online: live.online,
+            ipAddress: live.ipAddress || current.ipAddress || null,
+            email: live.email || current.email,
+          }
+        })
       } catch {
         // ignore
       }
@@ -1081,6 +1092,11 @@ export default function MessagesPage() {
   const selectedOnline = Boolean(
     selectedInstaller && conversations.find((conv) => conv.installer.id === selectedInstaller.id)?.installer.online
   )
+  const selectedIpAddress =
+    (selectedInstaller &&
+      (conversations.find((conv) => conv.installer.id === selectedInstaller.id)?.installer.ipAddress ||
+        selectedInstaller.ipAddress)) ||
+    null
   const selectedStatusFlag = chatStatusFlag(selectedInstaller?.status)
 
   const filteredConversations = conversations
@@ -1832,9 +1848,9 @@ export default function MessagesPage() {
                           : 'Landing page visitor'
                       : selectedInstaller.email}
                   </p>
-                  {selectedInstaller.ipAddress ? (
-                    <p className="text-xs text-slate-400">IP: {selectedInstaller.ipAddress}</p>
-                  ) : null}
+                  <p className="text-sm text-slate-500">
+                    IP: <span className="font-medium text-slate-700">{selectedIpAddress || 'Not captured yet'}</span>
+                  </p>
                 </div>
                 <div className="relative flex-shrink-0" ref={profileMenuRef}>
                   <button

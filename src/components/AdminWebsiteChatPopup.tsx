@@ -264,8 +264,10 @@ export function AdminWebsiteChatPopup() {
                   ? `${onlineCount} online`
                   : 'No one is on the website right now'}
             </p>
-            {selected?.ipAddress ? (
-              <p className="mt-0.5 truncate text-[11px] text-white/75">IP: {selected.ipAddress}</p>
+            {selected ? (
+              <p className="mt-0.5 truncate text-xs text-white/90">
+                IP: {selected.ipAddress || 'Not captured yet'}
+              </p>
             ) : null}
           </div>
         </div>
