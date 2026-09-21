@@ -122,9 +122,13 @@
     '.fis-msg .fis-mini-avatar { flex-shrink: 0; width: 32px; height: 32px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 24px; }',
     '.fis-msg .fis-mini-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; }',
     '.fis-msg .fis-mini-avatar svg { width: 20px; height: 20px; fill: ' + GREEN + '; }',
-    '.fis-bubble { position: relative; max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }',
+    '.fis-bubble-wrap { position: relative; }',
+    '.fis-bubble { padding: 12px 16px; border-radius: 16px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }',
     '.fis-msg.fis-from-staff .fis-bubble { background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 4px; }',
-    '.fis-msg.fis-from-visitor .fis-bubble { background: ' + GREEN + '; color: #fff; font-weight: 500; border-bottom-right-radius: 4px; }',
+    '.fis-msg.fis-from-visitor .fis-bubble { padding: 10px 16px; background: ' + GREEN + '; color: #fff; font-weight: 500; border-bottom-right-radius: 4px; }',
+    '.fis-bubble-tail { position: absolute; bottom: 12px; width: 10px; height: 10px; transform: rotate(45deg); }',
+    '.fis-msg.fis-from-staff .fis-bubble-tail { left: -5px; background: #f1f5f9; }',
+    '.fis-msg.fis-from-visitor .fis-bubble-tail { right: -5px; background: ' + GREEN + '; }',
     '.fis-msg .fis-time { font-size: 12px; color: #94a3b8; margin-top: 6px; padding-left: 4px; }',
     '.fis-bubble a { color: inherit; text-decoration: underline; }',
     '.fis-compose { border-top: 1px solid #f1f5f9; padding: 12px; }',
@@ -311,11 +315,18 @@
         }
 
         var wrap = document.createElement('div');
-        wrap.style.maxWidth = fromStaff ? 'calc(100% - 42px)' : '78%';
+        wrap.style.maxWidth = fromStaff ? 'calc(100% - 44px)' : '78%';
+        var bubbleWrap = document.createElement('div');
+        bubbleWrap.className = 'fis-bubble-wrap';
         var bubble = document.createElement('div');
         bubble.className = 'fis-bubble';
         bubble.appendChild(linkify(msg.content));
-        wrap.appendChild(bubble);
+        bubbleWrap.appendChild(bubble);
+        var tail = document.createElement('span');
+        tail.className = 'fis-bubble-tail';
+        tail.setAttribute('aria-hidden', 'true');
+        bubbleWrap.appendChild(tail);
+        wrap.appendChild(bubbleWrap);
 
         if (fromStaff) {
           var time = document.createElement('p');
