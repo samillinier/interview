@@ -65,6 +65,7 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { isNativeAppPlatform } from '@/lib/deviceDetection'
+import { isVisitorOnline } from '@/lib/website-chat'
 
 const DOCUMENT_TYPES: Array<{
   id: string
@@ -2237,13 +2238,18 @@ function DashboardPageContent() {
                           />
                         )}
                       </div>
-                      {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
+                      {isVisitorOnline(installer.lastSeenAt) ? (
+                        <div
+                          className="absolute -bottom-1 -right-1 z-20 h-5 w-5 rounded-full border-2 border-white bg-emerald-500 shadow-lg"
+                          title="Online"
+                        />
+                      ) : (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') ? (
                         <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${
                           installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
                         }`}>
                           <CheckCircle2 className="w-3 h-3 text-white" />
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-slate-900 text-base mb-1">
@@ -2424,14 +2430,19 @@ function DashboardPageContent() {
                               />
                             )}
                             </div>
-                            {/* Checkmark badge */}
-                            {(installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') && (
+                            {/* Online green dot takes the checkmark place when installer is online */}
+                            {isVisitorOnline(installer.lastSeenAt) ? (
+                              <div
+                                className="absolute -bottom-1 -right-1 z-20 h-5 w-5 rounded-full border-2 border-white bg-emerald-500 shadow-lg"
+                                title="Online"
+                              />
+                            ) : (installer.status === 'active' || installer.status === 'passed' || installer.status === 'qualified') ? (
                               <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-lg z-20 ${
                                 installer.status === 'active' ? 'bg-brand-green' : 'bg-blue-500'
                               }`}>
                                 <CheckCircle2 className="w-3 h-3 text-white" />
                               </div>
-                            )}
+                            ) : null}
                           </div>
                           <div>
                             <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
