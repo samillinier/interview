@@ -81,7 +81,9 @@
   // ---- DOM scaffolding ----------------------------------------------------
   var style = document.createElement('style');
   style.textContent = [
-    '.fis-chat-root, .fis-chat-root * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif; }',
+    '.fis-chat-root, .fis-chat-root * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif; line-height: 1.5; }',
+    '.fis-chat-root button, .fis-chat-root textarea, .fis-chat-root input { font-family: inherit; font-size: inherit; letter-spacing: normal; text-transform: none; }',
+    '.fis-chat-root[hidden], .fis-chat-root [hidden] { display: none !important; }',
     '.fis-chat-launcher { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; display: inline-flex; align-items: center; border: 0; cursor: pointer; border-radius: 9999px; padding: 6px 6px 6px 20px; background: #ffffff; color: ' + GREEN + '; box-shadow: 0 10px 28px rgba(15,23,42,0.18); }',
     '.fis-chat-launcher:hover { background: #f8fafc; }',
     '.fis-chat-launcher .fis-label { font-size: 17px; font-weight: 600; padding-right: 12px; letter-spacing: -0.01em; }',
@@ -167,7 +169,7 @@
   // ---- Build DOM ----------------------------------------------------------
   var launcher = document.createElement('button');
   launcher.type = 'button';
-  launcher.className = 'fis-chat-launcher';
+  launcher.className = 'fis-chat-root fis-chat-launcher';
   launcher.setAttribute('aria-label', 'Open chat support');
   launcher.innerHTML =
     '<span class="fis-dot"></span>' +
@@ -176,7 +178,7 @@
     '<span class="fis-badge" hidden></span>';
 
   var win = document.createElement('div');
-  win.className = 'fis-chat-window';
+  win.className = 'fis-chat-root fis-chat-window';
   win.setAttribute('role', 'dialog');
   win.setAttribute('aria-label', 'Chat support');
   win.innerHTML =
