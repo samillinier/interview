@@ -78,30 +78,27 @@ export function AdminMobileMenu({ pathname }: Props) {
     let cancelled = false
     const loadMessages = async () => {
       try {
-        const [res, websiteRes] = await Promise.all([
-          fetch('/api/notifications?type=message', { cache: 'no-store' }),
-          fetch('/api/admin/website-chats', { cache: 'no-store' }),
-        ])
-        const data = res.ok ? await res.json().catch(() => null) : null
-        const messages = data?.notifications || []
-        // Only count unread messages from installers (not from admin)
-        const unreadCount = messages.filter((m: any) => {
-          const isFromInstaller = !m.senderId || (m.senderId !== 'admin' && m.senderType !== 'admin')
-          return !m.isRead && isFromInstaller
-        }).length
-        const websiteData = websiteRes.ok ? await websiteRes.json().catch(() => null) : null
-        const websiteUnread = Number(websiteData?.unreadCount || 0)
-        const total = unreadCount + (Number.isFinite(websiteUnread) ? websiteUnread : 0)
-        if (!cancelled && Number.isFinite(total)) setUnreadMessagesCount(total)
+        const res = await fetch('/api/admin/messages/unread-count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setUnreadMessagesCount(count)
       } catch {
         // ignore
       }
     }
+    const refresh = () => {
+      void loadMessages()
+    }
     loadMessages()
-    const interval = setInterval(loadMessages, 30000)
+    const interval = setInterval(loadMessages, 3000)
+    window.addEventListener('dashboard-messages-changed', refresh)
+    window.addEventListener('focus', refresh)
     return () => {
       cancelled = true
       clearInterval(interval)
+      window.removeEventListener('dashboard-messages-changed', refresh)
+      window.removeEventListener('focus', refresh)
     }
   }, [])
 

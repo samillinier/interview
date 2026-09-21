@@ -90,14 +90,42 @@ export function AdminSidebar({ pathname }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    const loadMessageBadge = async () => {
+      try {
+        const res = await fetch('/api/admin/messages/unread-count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setUnreadMessagesCount(count)
+      } catch {
+        // ignore
+      }
+    }
+
+    const refresh = () => {
+      void loadMessageBadge()
+    }
+
+    loadMessageBadge()
+    const interval = window.setInterval(loadMessageBadge, 3000)
+    window.addEventListener('dashboard-messages-changed', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      window.removeEventListener('dashboard-messages-changed', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, messagesRes, websiteChatRes, bolRes, padTransferRes, invCycleRes, travelRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
-          fetch('/api/notifications?type=message', { cache: 'no-store' }),
-          fetch('/api/admin/website-chats', { cache: 'no-store' }),
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
@@ -123,19 +151,6 @@ export function AdminSidebar({ pathname }: Props) {
           const count = Number(data?.count ?? 0)
           if (Number.isFinite(count)) setUpdatesCount(count)
         }
-
-        let installerUnread = 0
-        if (messagesRes.ok) {
-          const data = await messagesRes.json().catch(() => null)
-          const messages = Array.isArray(data?.notifications) ? data.notifications : []
-          installerUnread = messages.filter((message: any) => {
-            const isFromInstaller = !message.senderId || (message.senderId !== 'admin' && message.senderType !== 'admin')
-            return !message.isRead && isFromInstaller
-          }).length
-        }
-        const websiteData = websiteChatRes.ok ? await websiteChatRes.json().catch(() => null) : null
-        const websiteUnread = Number(websiteData?.unreadCount || 0)
-        setUnreadMessagesCount(installerUnread + (Number.isFinite(websiteUnread) ? websiteUnread : 0))
 
         if (bolRes.ok) {
           const data = await bolRes.json().catch(() => null)

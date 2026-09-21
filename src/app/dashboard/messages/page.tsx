@@ -304,7 +304,7 @@ export default function MessagesPage() {
       fetchAllMessages()
       const interval = window.setInterval(() => {
         void fetchAllMessages()
-      }, 12000)
+      }, 3000)
       return () => window.clearInterval(interval)
     }
   }, [status])
@@ -390,6 +390,20 @@ export default function MessagesPage() {
 
   const markMessagesAsRead = async (installerId: string) => {
     try {
+      // Optimistically clear this conversation's badge so the UI updates immediately.
+      setConversations((prev) => {
+        const next = prev.map((conv) =>
+          conv.installer.id === installerId ? { ...conv, unreadCount: 0 } : conv,
+        )
+        setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
+        return next
+      })
+      try {
+        window.dispatchEvent(new Event('dashboard-messages-changed'))
+      } catch {
+        // ignore
+      }
+
       const response = isWebsiteChatId(installerId)
         ? await fetch(`/api/admin/website-chats/${installerId}`, { method: 'PATCH' })
         : await fetch(`/api/installers/${installerId}/notifications/mark-all-read`, {
@@ -401,6 +415,11 @@ export default function MessagesPage() {
         // Refresh messages and update badge count
         await fetchMessagesForInstaller(installerId)
         await fetchAllMessages()
+        try {
+          window.dispatchEvent(new Event('dashboard-messages-changed'))
+        } catch {
+          // ignore
+        }
       }
     } catch (error) {
       console.error('Error marking messages as read:', error)
@@ -517,14 +536,14 @@ export default function MessagesPage() {
         return new Date(b.lastMessage!.createdAt).getTime() - new Date(a.lastMessage!.createdAt).getTime()
       })
 
-      setConversations((prev) => {
-        const website = prev.filter(
-          (conv) => isWebsiteChatId(conv.installer.id) && isRealWebsiteConversation(conv),
-        )
-        const next = applyAiOverrides([...website, ...installerConversations], aiEnabledOverrideRef.current)
-        setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
-        return next
-      })
+        setConversations((prev) => {
+          const website = prev.filter(
+            (conv) => isWebsiteChatId(conv.installer.id) && isRealWebsiteConversation(conv),
+          )
+          const next = applyAiOverrides([...website, ...installerConversations], aiEnabledOverrideRef.current)
+          setUnreadMessagesCount(next.reduce((sum, conv) => sum + conv.unreadCount, 0))
+          return next
+        })
     } catch (error) {
       console.error('Error fetching messages:', error)
     }
