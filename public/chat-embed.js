@@ -36,9 +36,10 @@
 
   var style = document.createElement('style');
   style.textContent = [
-    '.fis-chat-launcher { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; display: inline-flex; align-items: center; border: 0; cursor: pointer; border-radius: 9999px; padding: 6px 6px 6px 20px; background: ' + GREEN + '; color: #fff; box-shadow: 0 10px 28px rgba(74,124,35,0.38); }',
+    '.fis-chat-launcher-wrap { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; }',
+    '.fis-chat-launcher { position: relative; display: inline-flex; align-items: center; border: 0; cursor: pointer; border-radius: 9999px; padding: 6px 6px 6px 20px; background: ' + GREEN + '; color: #fff; box-shadow: 0 10px 28px rgba(74,124,35,0.38); }',
     '.fis-chat-launcher:hover { background: ' + GREEN_DARK + '; }',
-    '.fis-chat-launcher .fis-dot { position: absolute; left: 8px; bottom: -2px; width: 14px; height: 14px; border-radius: 9999px; background: ' + ONLINE + '; border: 2.5px solid #fff; }',
+    '.fis-chat-launcher-wrap .fis-dot { position: absolute; left: 8px; bottom: -3px; z-index: 2; width: 14px; height: 14px; border-radius: 9999px; background: ' + ONLINE + '; border: 2.5px solid #fff; pointer-events: none; }',
     '.fis-chat-launcher .fis-label { padding-right: 12px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }',
     '.fis-chat-launcher .fis-bubble { position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; background: rgba(255,255,255,0.2); }',
     '.fis-chat-launcher .fis-bubble svg { width: 24px; height: 24px; fill: #fff; }',
@@ -46,14 +47,23 @@
   ].join('\n');
   document.head.appendChild(style);
 
+  var wrap = document.createElement('div');
+  wrap.className = 'fis-chat-launcher-wrap';
+
   var launcher = document.createElement('button');
   launcher.type = 'button';
   launcher.className = 'fis-chat-launcher';
   launcher.setAttribute('aria-label', 'Open chat support');
   launcher.innerHTML =
-    '<span class="fis-dot"></span>' +
     '<span class="fis-label">Chat</span>' +
     '<span class="fis-bubble">' + chatIcon() + '</span>';
+
+  var onlineDot = document.createElement('span');
+  onlineDot.className = 'fis-dot';
+  onlineDot.setAttribute('aria-hidden', 'true');
+
+  wrap.appendChild(launcher);
+  wrap.appendChild(onlineDot);
 
   var initialToken = lsGet(TOKEN_KEY);
   var frame = document.createElement('iframe');
@@ -71,6 +81,7 @@
   launcher.addEventListener('click', function () {
     setFrameSize(false);
     frame.style.display = 'block';
+    wrap.style.display = 'none';
   });
 
   window.addEventListener('message', function (event) {
@@ -84,6 +95,7 @@
 
     if (data.type === 'minimize') {
       frame.style.display = 'none';
+      wrap.style.display = '';
       return;
     }
 
@@ -93,7 +105,7 @@
   });
 
   function mount() {
-    document.body.appendChild(launcher);
+    document.body.appendChild(wrap);
     document.body.appendChild(frame);
     setFrameSize(false);
   }
