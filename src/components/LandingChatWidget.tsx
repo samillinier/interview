@@ -31,7 +31,9 @@ export function LandingChatWidget({
   initialToken = '',
 }: { embed?: boolean; initialToken?: string } = {}) {
   const { data: session, status } = useSession()
-  const isStaff = status === 'authenticated'
+  // In embed mode (WordPress iframe) always show the visitor send form —
+  // never hide for staff or leak the admin inbox into the public site.
+  const isStaff = !embed && status === 'authenticated'
   const [open, setOpen] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')

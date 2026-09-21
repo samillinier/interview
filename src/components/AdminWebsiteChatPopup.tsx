@@ -153,11 +153,13 @@ export function AdminWebsiteChatPopup() {
 
   if (status !== 'authenticated') return null
   const path = pathname || ''
+  // Never show the admin inbox on the public WordPress / website embed.
   if (
     path.startsWith('/installer') ||
     path.startsWith('/property') ||
     path.startsWith('/interview') ||
-    path.startsWith('/login')
+    path.startsWith('/login') ||
+    path.startsWith('/chat-embed')
   ) {
     return null
   }
