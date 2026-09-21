@@ -1,16 +1,43 @@
 'use client'
 
-import { FormEvent, useEffect, useRef, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import { ChevronDown, Loader2, Maximize2, Minimize2, Send } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
+import { LinkifiedText } from '@/components/LinkifiedText'
+import { AI_FALLBACK_WAIT_MS } from '@/lib/website-chat'
 
 const TOKEN_KEY = 'fis-website-chat-token'
 const OPEN_KEY = 'fis-website-chat-open'
 const NAME_KEY = 'fis-website-chat-name'
 const EMAIL_KEY = 'fis-website-chat-email'
+const SEEN_KEY = 'fis-website-chat-seen-at'
+
+type ChatMessage = {
+  id: string
+  senderType: string
+  senderName?: string | null
+  content: string
+  createdAt: string
+}
+
+function formatRelativeTime(dateString: string) {
+  const diff = Date.now() - new Date(dateString).getTime()
+  if (!Number.isFinite(diff) || diff < 0) return 'Just now'
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
+  const years = Math.floor(days / 365)
+  return `${years} year${years === 1 ? '' : 's'} ago`
+}
 
 function ensureVisitorToken() {
   try {
@@ -31,22 +58,41 @@ export function LandingChatWidget({
   initialToken = '',
 }: { embed?: boolean; initialToken?: string } = {}) {
   const { data: session, status } = useSession()
-  // In embed mode (WordPress iframe) always show the visitor send form —
-  // never hide for staff or leak the admin inbox into the public site.
+  // Embed (WordPress iframe) must always show the visitor chat — never hide for
+  // staff or let the admin inbox take over this surface.
   const isStaff = !embed && status === 'authenticated'
   const [open, setOpen] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [message, setMessage] = useState('')
   const [token, setToken] = useState('')
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
+  const [started, setStarted] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
+  const [starting, setStarting] = useState(false)
+  const [sending, setSending] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [seenAt, setSeenAt] = useState(0)
+  const bottomRef = useRef<HTMLDivElement>(null)
   const identityRef = useRef({ name: '', email: '' })
   const tokenRef = useRef('')
+  const startedRef = useRef(false)
+  const lastIdRef = useRef('')
+  const aiFallbackTimerRef = useRef<number | null>(null)
 
   tokenRef.current = token
+  startedRef.current = started
+  lastIdRef.current = messages[messages.length - 1]?.id || ''
+
+  const markSeen = () => {
+    const next = Date.now()
+    setSeenAt(next)
+    try {
+      localStorage.setItem(SEEN_KEY, String(next))
+    } catch {
+      // ignore
+    }
+  }
 
   const persistOpen = (next: boolean) => {
     setOpen(next)
@@ -61,7 +107,13 @@ export function LandingChatWidget({
     if (embed) return
     try {
       const stored = sessionStorage.getItem(OPEN_KEY)
-      setOpen(stored !== '0')
+      if (stored === '0') {
+        setOpen(false)
+      } else {
+        setOpen(true)
+      }
+      const seen = Number(localStorage.getItem(SEEN_KEY) || 0)
+      if (Number.isFinite(seen) && seen > 0) setSeenAt(seen)
     } catch {
       setOpen(true)
     }
@@ -81,11 +133,54 @@ export function LandingChatWidget({
 
   useEffect(() => {
     if (!embed) return
+    const unread = open
+      ? 0
+      : messages.filter(
+          (message) =>
+            (message.senderType === 'admin' || message.senderType === 'alice') &&
+            new Date(message.createdAt).getTime() > seenAt,
+        ).length
     window.parent.postMessage(
-      { source: 'fis-chat', type: 'state', open, expanded, token: tokenRef.current },
+      { source: 'fis-chat', type: 'state', open, expanded, unread, token: tokenRef.current },
       '*',
     )
-  }, [embed, open, expanded, token])
+  }, [embed, open, expanded, messages, seenAt, token])
+
+  const resetSession = () => {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(SEEN_KEY)
+    setToken('')
+    setStarted(false)
+    setMessages([])
+    setSeenAt(0)
+  }
+
+  const applyKnownIdentity = (nextName?: string | null, nextEmail?: string | null) => {
+    setName((current) => {
+      if (current.trim()) return current
+      if (nextName && !String(nextName).startsWith('Visitor ')) {
+        try {
+          localStorage.setItem(NAME_KEY, nextName)
+        } catch {
+          // ignore
+        }
+        return nextName
+      }
+      return current
+    })
+    setEmail((current) => {
+      if (current.trim()) return current
+      if (nextEmail && !String(nextEmail).endsWith('@noreply.local')) {
+        try {
+          localStorage.setItem(EMAIL_KEY, nextEmail)
+        } catch {
+          // ignore
+        }
+        return nextEmail
+      }
+      return current
+    })
+  }
 
   useEffect(() => {
     identityRef.current = {
@@ -116,10 +211,9 @@ export function LandingChatWidget({
     if (!email && session?.user?.email) setEmail(session.user.email)
   }, [session, name, email])
 
-  // Ensure a visitor token exists (associates the sent message with a chat the
-  // admin can see in the dashboard). This does NOT load or display any history.
   useEffect(() => {
     if (status === 'authenticated') return
+    let cancelled = false
     const stored = initialToken || ensureVisitorToken()
     if (stored) {
       tokenRef.current = stored
@@ -135,54 +229,252 @@ export function LandingChatWidget({
     })
       .then((res) => res.json())
       .then((data) => {
-        if (!data?.token) return
+        if (cancelled || !data?.token) return
         localStorage.setItem(TOKEN_KEY, data.token)
         tokenRef.current = data.token
         setToken(data.token)
+        applyKnownIdentity(data.chat?.name, data.chat?.email)
+        if (Number(data.chat?.messageCount || 0) > 0) {
+          startedRef.current = true
+          setStarted(true)
+        }
       })
       .catch(() => {})
+    return () => {
+      cancelled = true
+    }
   }, [status, initialToken])
 
-  const sendMessage = async (event: FormEvent) => {
-    event.preventDefault()
-    const content = message.trim()
-    if (!content || sending) return
-    setSending(true)
-    setError('')
-    try {
-      const t = token || ensureVisitorToken()
-      tokenRef.current = t
-      setToken(t)
-      localStorage.setItem(TOKEN_KEY, t)
-
-      // Make sure the chat exists with the visitor's identity.
-      const ensureRes = await fetch('/api/website-chat', {
+  useEffect(() => {
+    if (status === 'authenticated') return
+    const stored = initialToken || ensureVisitorToken()
+    if (stored) setToken((prev) => prev || stored)
+    let currentToken = stored
+    const ping = () => {
+      const headerToken = currentToken || tokenRef.current || ensureVisitorToken()
+      if (!headerToken) return
+      currentToken = headerToken
+      void fetch('/api/website-chat/ping', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-website-chat-token': t,
+          'x-website-chat-token': headerToken,
         },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify(identityRef.current),
+        cache: 'no-store',
+        keepalive: true,
+      }).catch(() => {})
+    }
+    ping()
+    const timer = window.setInterval(ping, 4000)
+    return () => window.clearInterval(timer)
+  }, [status, initialToken])
+
+  const loadMessages = useCallback(async (nextToken = tokenRef.current, wait = false, signal?: AbortSignal) => {
+    if (!nextToken) return
+    const res = await fetch('/api/website-chat/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-website-chat-token': nextToken,
+      },
+      body: JSON.stringify({
+        poll: true,
+        sinceId: lastIdRef.current,
+        waitMs: wait ? 8000 : 0,
+        t: Date.now(),
+      }),
+      signal,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.status === 404) return
+    if (res.ok && Array.isArray(data.messages)) {
+      const next = data.messages as ChatMessage[]
+      const previousLastId = lastIdRef.current
+      const nextLastId = next[next.length - 1]?.id || ''
+      lastIdRef.current = nextLastId || previousLastId
+      setMessages((current) => {
+        if (
+          current.length === next.length &&
+          current[current.length - 1]?.id === next[next.length - 1]?.id
+        ) {
+          return current
+        }
+        return next
       })
-      const ensureData = await ensureRes.json().catch(() => ({}))
-      const chatToken = String(ensureData.token || t || '')
+      const staffWrote = next.some((message) => message.senderType === 'admin' || message.senderType === 'alice')
+      if (next.length > 0 && staffWrote) {
+        startedRef.current = true
+        setStarted(true)
+      }
+      const newestIsStaff = next[next.length - 1]?.senderType === 'admin' || next[next.length - 1]?.senderType === 'alice'
+      if (newestIsStaff && nextLastId && nextLastId !== previousLastId) {
+        if (aiFallbackTimerRef.current) {
+          window.clearTimeout(aiFallbackTimerRef.current)
+          aiFallbackTimerRef.current = null
+        }
+      }
+      const newestIsAdmin = next[next.length - 1]?.senderType === 'admin'
+      if (newestIsAdmin && nextLastId && nextLastId !== previousLastId) {
+        setOpen(true)
+        try {
+          sessionStorage.setItem(OPEN_KEY, '1')
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (status === 'authenticated') return
+    let cancelled = false
+    const controller = new AbortController()
+
+    const run = async () => {
+      while (!cancelled) {
+        const nextToken = tokenRef.current || ensureVisitorToken()
+        if (nextToken) tokenRef.current = nextToken
+        if (!nextToken) {
+          await new Promise((resolve) => window.setTimeout(resolve, 400))
+          continue
+        }
+        try {
+          await loadMessages(nextToken, true, controller.signal)
+        } catch (err) {
+          if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) return
+          await new Promise((resolve) => window.setTimeout(resolve, 800))
+        }
+      }
+    }
+
+    void run()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadMessages(tokenRef.current).catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      cancelled = true
+      controller.abort()
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [status, loadMessages])
+
+  useEffect(() => {
+    return () => {
+      if (aiFallbackTimerRef.current) window.clearTimeout(aiFallbackTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    markSeen()
+  }, [open, messages.length])
+
+  useEffect(() => {
+    if (!open) return
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length, open])
+
+  const startChat = async (event: FormEvent) => {
+    event.preventDefault()
+    setError('')
+    setStarting(true)
+    try {
+      const chatToken = token || ensureVisitorToken()
       if (chatToken) {
         tokenRef.current = chatToken
         setToken(chatToken)
-        localStorage.setItem(TOKEN_KEY, chatToken)
       }
+      const res = await fetch('/api/website-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(chatToken ? { 'x-website-chat-token': chatToken } : {}),
+        },
+        body: JSON.stringify({ name, email }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not start chat')
+      const nextToken = String(data.token || chatToken || '')
+      if (nextToken) {
+        localStorage.setItem(TOKEN_KEY, nextToken)
+        tokenRef.current = nextToken
+        setToken(nextToken)
+      }
+      if (data.chat?.name) setName(data.chat.name)
+      if (data.chat?.email && !String(data.chat.email).endsWith('@noreply.local')) {
+        setEmail(data.chat.email)
+      }
+      startedRef.current = true
+      setStarted(true)
+      await loadMessages(nextToken || tokenRef.current)
+    } catch (err: any) {
+      setError(err.message || 'Could not start chat')
+    } finally {
+      setStarting(false)
+    }
+  }
 
-      // Send the message. The reply (Alice / admin) is stored server-side for
-      // the dashboard inbox, but is not shown back to the visitor.
+  const sendMessage = async (event: FormEvent) => {
+    event.preventDefault()
+    const content = draft.trim()
+    if (!content || !token) return
+    setSending(true)
+    setError('')
+    try {
       const res = await fetch('/api/website-chat/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-website-chat-token': chatToken },
+        headers: { 'Content-Type': 'application/json', 'x-website-chat-token': token },
         body: JSON.stringify({ content }),
       })
       const data = await res.json().catch(() => ({}))
+      if (res.status === 404) {
+        resetSession()
+        throw new Error('Chat ended. Please start a new chat.')
+      }
       if (!res.ok) throw new Error(data.error || 'Could not send')
-      setMessage('')
-      setSent(true)
+      setDraft('')
+      setMessages((current) => {
+        const next = [...current]
+        if (data.message && !next.some((message) => message.id === data.message.id)) {
+          next.push(data.message)
+        }
+        if (data.aliceMessage && !next.some((message) => message.id === data.aliceMessage.id)) {
+          next.push(data.aliceMessage)
+        }
+        return next
+      })
+      if (data.aliceMessage) {
+        if (aiFallbackTimerRef.current) {
+          window.clearTimeout(aiFallbackTimerRef.current)
+          aiFallbackTimerRef.current = null
+        }
+      } else {
+        const chatToken = token
+        if (aiFallbackTimerRef.current) window.clearTimeout(aiFallbackTimerRef.current)
+        aiFallbackTimerRef.current = window.setTimeout(async () => {
+          aiFallbackTimerRef.current = null
+          try {
+            const res = await fetch('/api/website-chat/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-website-chat-token': chatToken },
+              body: JSON.stringify({ requestAi: true }),
+            })
+            const fallback = await res.json().catch(() => ({}))
+            if (fallback.aliceMessage) {
+              setMessages((current) => {
+                if (current.some((message) => message.id === fallback.aliceMessage.id)) return current
+                return [...current, fallback.aliceMessage]
+              })
+            }
+          } catch {
+            // ignore
+          }
+        }, AI_FALLBACK_WAIT_MS)
+      }
     } catch (err: any) {
       setError(err.message || 'Could not send')
     } finally {
@@ -190,11 +482,28 @@ export function LandingChatWidget({
     }
   }
 
+  const adminJoined = messages.some((message) => message.senderType === 'admin')
+  const showThread = started || adminJoined || messages.some((message) => message.senderType === 'alice')
+  const unreadCount = open
+    ? 0
+    : messages.filter(
+        (message) =>
+          (message.senderType === 'admin' || message.senderType === 'alice') &&
+          new Date(message.createdAt).getTime() > seenAt,
+      ).length
+
   if (isStaff) return null
 
   if (!open) {
     if (embed) return null
-    return <ChatLauncherButton onClick={() => persistOpen(true)} ariaLabel="Open chat support" variant="white" />
+    return (
+      <ChatLauncherButton
+        onClick={() => persistOpen(true)}
+        ariaLabel={unreadCount > 0 ? `Open chat support, ${unreadCount} new messages` : 'Open chat support'}
+        variant="white"
+        unreadCount={unreadCount}
+      />
+    )
   }
 
   const sizeClass = embed
@@ -239,63 +548,111 @@ export function LandingChatWidget({
             <p className="text-[22px] font-semibold leading-tight tracking-tight">How can we help?</p>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90">
               <span className="h-2.5 w-2.5 rounded-full bg-[#4ADE80]" />
-              Send us a message
+              {adminJoined ? 'A team member has joined' : 'Alice can help with onboarding'}
             </p>
           </div>
         </div>
       </div>
 
-      <form onSubmit={sendMessage} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-        {sent ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-green/10 text-brand-green">
-              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-            </span>
-            <p className="text-base font-semibold text-slate-800">Message sent</p>
-            <p className="text-sm text-slate-500">Thanks — our team will get back to you.</p>
-            <button
-              type="button"
-              onClick={() => setSent(false)}
-              className="mt-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              Send another message
-            </button>
+      {!showThread ? (
+        <form onSubmit={startChat} className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+          <p className="text-sm text-slate-600">
+            Name and email are optional. If you skip them, we will start the chat as a visitor.
+          </p>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Your name (optional)"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email (optional)"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+          />
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          <button
+            type="submit"
+            disabled={starting}
+            className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-60"
+          >
+            {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Start chat
+          </button>
+        </form>
+      ) : (
+        <>
+          <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto bg-white px-4 py-5">
+            {messages.length === 0 ? (
+              <p className="text-center text-sm text-slate-500">Ask about onboarding, insurance, or required documents.</p>
+            ) : (
+              messages.map((message) => {
+                const fromStaff = message.senderType === 'admin' || message.senderType === 'alice'
+                return (
+                  <div key={message.id} className={`flex ${fromStaff ? 'items-end gap-2.5 justify-start' : 'justify-end'}`}>
+                    {fromStaff ? (
+                      <span className="relative mb-6 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                        <Image src={alicePhoto} alt="Support" className="h-full w-full object-cover object-top" />
+                      </span>
+                    ) : null}
+                    <div className={`min-w-0 ${fromStaff ? 'max-w-[calc(100%-2.75rem)]' : 'max-w-[78%]'}`}>
+                      <div className="relative">
+                        <div
+                          className={`relative z-[1] break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${
+                            fromStaff
+                              ? 'whitespace-pre-wrap rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
+                              : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
+                          }`}
+                        >
+                          {fromStaff ? <LinkifiedText text={message.content} /> : message.content}
+                        </div>
+                        <span
+                          aria-hidden
+                          className={`absolute bottom-3 h-2.5 w-2.5 rotate-45 ${
+                            fromStaff ? '-left-[5px] bg-slate-100' : '-right-[5px] bg-brand-green'
+                          }`}
+                        />
+                      </div>
+                      {fromStaff ? (
+                        <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+            <div ref={bottomRef} />
           </div>
-        ) : (
-          <>
-            <p className="text-sm text-slate-600">Name and email are optional.</p>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Your name (optional)"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-            />
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Email (optional)"
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-            />
-            <textarea
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Type your message..."
-              rows={5}
-              className="min-h-[120px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-            />
-            {error ? <p className="text-xs text-red-600">{error}</p> : null}
-            <button
-              type="submit"
-              disabled={sending || !message.trim()}
-              className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-60"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Send message
-            </button>
-          </>
-        )}
-      </form>
+          <form onSubmit={sendMessage} className="border-t border-slate-100 p-3">
+            {error ? <p className="mb-2 text-xs text-red-600">{error}</p> : null}
+            <div className="flex items-end gap-2">
+              <textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Write a message..."
+                rows={1}
+                className="min-h-[40px] flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    event.currentTarget.form?.requestSubmit()
+                  }
+                }}
+              />
+              <button
+                type="submit"
+                disabled={sending || !draft.trim()}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-50"
+                aria-label="Send"
+              >
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
     </div>
   )
 }
