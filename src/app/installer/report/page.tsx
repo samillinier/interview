@@ -302,13 +302,14 @@ export default function EstimatorWeeklyReportPage() {
                         placeholder="Customer name"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5 min-w-0">
+                    <label className="flex flex-col gap-1.5 min-w-0 w-full overflow-hidden">
                       <span className="text-sm font-semibold text-slate-700">Date</span>
                       <input
                         type="date"
                         value={line.date}
                         onChange={(e) => updateLine(index, 'date', e.target.value)}
                         className={`${fieldClass} min-w-0 max-w-full box-border`}
+                        style={{ width: '100%', maxWidth: '100%' }}
                       />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
