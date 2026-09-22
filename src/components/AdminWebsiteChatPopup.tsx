@@ -8,7 +8,7 @@ import { ChevronLeft, Loader2, Minus, MoreVertical, Send, X } from 'lucide-react
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 import { OnlineStatusDot } from '@/components/OnlineStatusDot'
-import { isStaffSender, isWebsiteChatId } from '@/lib/website-chat'
+import { isStaffSender, isWebsiteChatId, isVisitorOnline } from '@/lib/website-chat'
 import { LinkifiedText } from '@/components/LinkifiedText'
 
 type WebsiteVisitor = {
@@ -58,6 +58,7 @@ export function AdminWebsiteChatPopup() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
+  const [anyoneOnline, setAnyoneOnline] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const persistOpen = (next: boolean) => {
@@ -83,28 +84,55 @@ export function AdminWebsiteChatPopup() {
     let cancelled = false
     const load = async () => {
       try {
-        const res = await fetch('/api/admin/website-chats', { cache: 'no-store' })
-        const data = await res.json().catch(() => ({}))
-        if (cancelled || !res.ok) return
-        const nextVisitors: WebsiteVisitor[] = (data.conversations || [])
-          .filter((row: { installerId?: string }) => isWebsiteChatId(row.installerId))
-          .map((row: any) => ({
-            id: String(row.Installer?.id || row.installerId),
-            name: visitorName(row),
-            email: String(row.Installer?.email || ''),
-            ipAddress: String(row.Installer?.ipAddress || '') || null,
-            online: Boolean(row.Installer?.online),
-            unreadCount: Number(row.unreadCount || 0),
-            preview: String(row.lastMessage?.content || ''),
-            issueStatus: String(row.Installer?.issueStatus || 'open'),
-            aiEnabled: row.Installer?.aiEnabled !== false,
-          }))
-          .sort((a: WebsiteVisitor, b: WebsiteVisitor) => {
-            if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount
-            if (a.online !== b.online) return a.online ? -1 : 1
-            return a.name.localeCompare(b.name)
+        const [websiteRes, messagesRes] = await Promise.all([
+          fetch('/api/admin/website-chats', { cache: 'no-store' }),
+          fetch('/api/admin/messages/conversations', { cache: 'no-store' }),
+        ])
+        const websiteData = await websiteRes.json().catch(() => ({}))
+        const messagesData = await messagesRes.json().catch(() => ({}))
+        if (cancelled) return
+
+        let websiteOnline = false
+        if (websiteRes.ok) {
+          const nextVisitors: WebsiteVisitor[] = (websiteData.conversations || [])
+            .filter((row: { installerId?: string }) => isWebsiteChatId(row.installerId))
+            .map((row: any) => {
+              const lastSeenAt = row.Installer?.lastSeenAt || null
+              const online =
+                Boolean(row.Installer?.online) || isVisitorOnline(lastSeenAt)
+              return {
+                id: String(row.Installer?.id || row.installerId),
+                name: visitorName(row),
+                email: String(row.Installer?.email || ''),
+                ipAddress: String(row.Installer?.ipAddress || '') || null,
+                online,
+                unreadCount: Number(row.unreadCount || 0),
+                preview: String(row.lastMessage?.content || ''),
+                issueStatus: String(row.Installer?.issueStatus || 'open'),
+                aiEnabled: row.Installer?.aiEnabled !== false,
+              }
+            })
+            .sort((a: WebsiteVisitor, b: WebsiteVisitor) => {
+              if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount
+              if (a.online !== b.online) return a.online ? -1 : 1
+              return a.name.localeCompare(b.name)
+            })
+          setVisitors(nextVisitors)
+          websiteOnline =
+            Number(websiteData.onlineCount) > 0 || nextVisitors.some((row) => row.online)
+        }
+
+        let installerOnline = false
+        if (messagesRes.ok) {
+          installerOnline = (messagesData.conversations || []).some((row: any) => {
+            if (isWebsiteChatId(row.installerId)) return false
+            return (
+              Boolean(row.Installer?.online) || isVisitorOnline(row.Installer?.lastSeenAt)
+            )
           })
-        setVisitors(nextVisitors)
+        }
+
+        if (!cancelled) setAnyoneOnline(websiteOnline || installerOnline)
       } catch {
         // ignore
       }
@@ -231,7 +259,7 @@ export function AdminWebsiteChatPopup() {
         className={positionClass}
         zClass="z-[200]"
         unreadCount={unreadCount}
-        online={onlineCount > 0}
+        online={anyoneOnline}
       />
     )
   }
