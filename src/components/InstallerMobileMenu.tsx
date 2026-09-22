@@ -15,6 +15,7 @@ import {
   User,
   X,
   HelpCircle,
+  CalendarDays,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -39,6 +40,9 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, surveyCou
   const items = useMemo(
     () => [
       { href: '/installer/profile', label: 'Profile', icon: User },
+      ...(isEstimator
+        ? [{ href: '/installer/report', label: 'Report', icon: CalendarDays }]
+        : []),
       { href: '/installer/agreements', label: 'Form', icon: FileText },
       { href: '/installer/attachments', label: 'Attachments', icon: Paperclip },
       { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },

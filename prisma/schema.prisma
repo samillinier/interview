@@ -370,8 +370,23 @@ model Installer {
   LtrSurveyDelivery                    LtrSurveyDelivery[]
   Notification                         Notification[]
   StaffMember                          StaffMember[]
+  EstimatorWeeklyReport                EstimatorWeeklyReport[]
 
   @@index([referredByInstallerId])
+}
+
+model EstimatorWeeklyReport {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  installerId        String
+  subcontractorName  String
+  weekEnding         DateTime
+  /// JSON array: [{ poNumber, customer, date, mileage, total }]
+  lines              Json
+  Installer          Installer @relation(fields: [installerId], references: [id], onDelete: Cascade)
+
+  @@index([installerId, weekEnding])
 }
 
 model InstallerAgreement {

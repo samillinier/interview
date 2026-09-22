@@ -85,6 +85,7 @@ import { NullAttachmentShade } from '@/components/NullAttachmentShade'
 import type { InterviewRecapPayload } from '@/lib/interviewRecap'
 import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
+import { AdminEstimatorWeeklyReports } from '@/components/AdminEstimatorWeeklyReports'
 
 
 const DOCUMENT_TYPES: Array<{
@@ -9432,6 +9433,8 @@ export default function InstallerProfileViewPage() {
               </motion.div>
             )
           })()}
+
+          {isEstimator ? <AdminEstimatorWeeklyReports installerId={installerId} /> : null}
 
         </main>
       </div>

@@ -14,6 +14,7 @@ import {
   Paperclip,
   HelpCircle,
   ClipboardList,
+  CalendarDays,
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
@@ -35,6 +36,7 @@ interface InstallerSidebarProps {
 
 export default function InstallerSidebar({ notificationCount = 0, surveyCount = 0, installer, sidebarOpen, onToggleSidebar, onLogout }: InstallerSidebarProps) {
   const pathname = usePathname()
+  const isEstimator = installer?.accountType === 'estimator'
 
   function isActive(href: string) {
     return pathname.startsWith(href)
@@ -56,7 +58,7 @@ export default function InstallerSidebar({ notificationCount = 0, surveyCount = 
           </div>
           {sidebarOpen && (
             <div>
-              <h1 className="font-bold text-primary-900 text-sm">Installer Portal</h1>
+              <h1 className="font-bold text-primary-900 text-sm">{isEstimator ? 'Estimator Portal' : 'Installer Portal'}</h1>
               <p className="text-xs text-primary-500">Portal</p>
             </div>
           )}
@@ -82,6 +84,17 @@ export default function InstallerSidebar({ notificationCount = 0, surveyCount = 
           <User className="w-5 h-5 flex-shrink-0" />
           {sidebarOpen && <span>Profile</span>}
         </Link>
+        {isEstimator ? (
+          <Link
+            href="/installer/report"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              isActive('/installer/report') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+            }`}
+          >
+            <CalendarDays className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Report</span>}
+          </Link>
+        ) : null}
         <Link
           href="/installer/agreements"
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
