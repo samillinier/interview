@@ -241,53 +241,38 @@ export default function EstimatorWeeklyReportPage() {
           onSubmit={handleSubmit}
           className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-8 shadow-lg backdrop-blur-sm"
         >
-          <div className="mb-6 flex items-center justify-between gap-3 border-b border-slate-200 pb-5">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">
-                {editingId ? 'Edit weekly report' : 'New weekly report'}
-              </h2>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Subcontractor name, week ending, and job lines
-              </p>
-            </div>
-            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-brand-green/10">
-              <Calendar className="h-6 w-6 text-brand-green" />
-            </div>
-          </div>
-
           <div className="grid gap-4 sm:grid-cols-2 mb-6">
             <label className="flex flex-col gap-1.5 sm:col-span-2">
-              <span className="text-sm font-semibold text-slate-700">Independent Subcontractor Name</span>
               <input
                 value={subcontractorName}
                 onChange={(e) => setSubcontractorName(e.target.value)}
                 required
                 className={fieldClass}
+                placeholder="Independent subcontractor name"
+                aria-label="Independent subcontractor name"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-semibold text-slate-700">Week Ending</span>
               <input
                 type="date"
                 value={weekEnding}
                 onChange={(e) => setWeekEnding(e.target.value)}
                 required
                 className={fieldClass}
+                aria-label="Week ending"
               />
             </label>
           </div>
 
           <div className="mb-3">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Jobs</h3>
             <div className="space-y-4">
               {lines.map((line, index) => (
                 <div
                   key={`line-${index}`}
                   className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5"
                 >
-                  <div className="mb-4 flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-900">Job {index + 1}</p>
-                    {lines.length > 1 ? (
+                  {lines.length > 1 ? (
+                    <div className="mb-4 flex justify-end">
                       <button
                         type="button"
                         onClick={() => removeLine(index)}
@@ -296,8 +281,8 @@ export default function EstimatorWeeklyReportPage() {
                         <Trash2 className="h-4 w-4" />
                         Remove
                       </button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                   <div className="grid gap-4">
                     <label className="flex flex-col gap-1.5">
                       <span className="text-sm font-semibold text-slate-700">PO #</span>
