@@ -66,7 +66,8 @@ import {
   AlertTriangle,
   Smartphone,
   Monitor,
-  Globe
+  Globe,
+  Sparkles,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -81,6 +82,7 @@ import { DigitalIdDisplay } from '@/components/DigitalIdDisplay'
 import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 import { isNativeAppPlatform } from '@/lib/deviceDetection'
 import { NullAttachmentShade } from '@/components/NullAttachmentShade'
+import type { InterviewRecapPayload } from '@/lib/interviewRecap'
 import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
 
@@ -606,6 +608,10 @@ export default function InstallerProfileViewPage() {
   const [showRemarkDate, setShowRemarkDate] = useState(false)
   const [showAddRemarkForm, setShowAddRemarkForm] = useState(false)
   const [isSavingRemark, setIsSavingRemark] = useState(false)
+  const [interviewRecap, setInterviewRecap] = useState<InterviewRecapPayload | null>(null)
+  const [interviewRecapLoading, setInterviewRecapLoading] = useState(false)
+  const [interviewRecapLoaded, setInterviewRecapLoaded] = useState(false)
+  const [showFullInterviewAnswers, setShowFullInterviewAnswers] = useState(false)
   const [deleteRemarkConfirm, setDeleteRemarkConfirm] = useState<{ show: boolean; index: number | null }>({ show: false, index: null })
   const [documents, setDocuments] = useState<any[]>([])
   const [agreements, setAgreements] = useState<any[]>([])
@@ -764,6 +770,42 @@ export default function InstallerProfileViewPage() {
       return () => clearInterval(interval)
     }
   }, [sessionStatus, installerId, router])
+
+  // Load AI interview Q&A recap when admin opens remarks (once per installer).
+  useEffect(() => {
+    if (!showRemarkPopover || !installerId || interviewRecapLoaded) return
+    let cancelled = false
+    const load = async () => {
+      setInterviewRecapLoading(true)
+      try {
+        const res = await fetch(`/api/installers/${installerId}/interview-recap`, { cache: 'no-store' })
+        const data = await res.json().catch(() => null)
+        if (cancelled) return
+        if (res.ok && data?.recap) {
+          setInterviewRecap(data.recap as InterviewRecapPayload)
+        } else {
+          setInterviewRecap(null)
+        }
+      } catch {
+        if (!cancelled) setInterviewRecap(null)
+      } finally {
+        if (!cancelled) {
+          setInterviewRecapLoading(false)
+          setInterviewRecapLoaded(true)
+        }
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [showRemarkPopover, installerId, interviewRecapLoaded])
+
+  useEffect(() => {
+    setInterviewRecap(null)
+    setInterviewRecapLoaded(false)
+    setShowFullInterviewAnswers(false)
+  }, [installerId])
 
   // Handle scrolling to a specific section when a hash is present
   useEffect(() => {
@@ -3082,14 +3124,14 @@ export default function InstallerProfileViewPage() {
                   <button
                     onClick={() => setShowRemarkPopover(!showRemarkPopover)}
                     className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-medium ${
-                      visibleRemarks.length > 0 || canShowManagerRemarksToAdmin
+                      visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.answers?.length)
                         ? 'bg-brand-green/10 text-brand-green border-2 border-brand-green/30' 
                         : 'bg-slate-100 text-slate-700'
                     }`}
                     title={remarkButtonTitle}
                   >
                     <StickyNote className="w-5 h-5" />
-                    {(visibleRemarks.length > 0 || canShowManagerRemarksToAdmin) && (
+                    {(visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.answers?.length)) && (
                       <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-green rounded-full border-2 border-white" />
                     )}
                   </button>
@@ -3131,6 +3173,102 @@ export default function InstallerProfileViewPage() {
                         
                         {/* Content area */}
                         <div className="flex-1 overflow-hidden flex flex-col p-6">
+
+                        {/* AI Interview Recap — what the installer answered */}
+                        <div className="mb-4 rounded-xl border border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-white p-4">
+                          <div className="mb-3 flex items-start gap-3">
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-green/15">
+                              <Sparkles className="h-4 w-4 text-brand-green" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-slate-900">AI Interview Recap</p>
+                              <p className="text-xs text-slate-500">
+                                What this installer answered during the AI interview
+                              </p>
+                            </div>
+                            {interviewRecap?.passed === true ? (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                                Passed
+                              </span>
+                            ) : interviewRecap?.passed === false ? (
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700">
+                                Not passed
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {interviewRecapLoading ? (
+                            <div className="flex items-center gap-2 py-3 text-sm text-slate-500">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading interview answers…
+                            </div>
+                          ) : !interviewRecap || (interviewRecap.answers.length === 0 && interviewRecap.highlights.length === 0) ? (
+                            <p className="py-2 text-sm text-slate-500">
+                              No AI interview answers yet for this installer.
+                            </p>
+                          ) : (
+                            <div className="space-y-3">
+                              {interviewRecap.highlights.length > 0 ? (
+                                <ul className="space-y-1.5">
+                                  {interviewRecap.highlights.slice(0, 10).map((line) => (
+                                    <li key={line} className="flex gap-2 text-sm text-slate-700">
+                                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-green" />
+                                      <span>{line}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+
+                              {interviewRecap.answers.length > 0 ? (
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowFullInterviewAnswers((v) => !v)}
+                                    className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-green hover:text-brand-green-dark"
+                                  >
+                                    {showFullInterviewAnswers ? (
+                                      <ChevronUp className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <ChevronDown className="h-3.5 w-3.5" />
+                                    )}
+                                    {showFullInterviewAnswers
+                                      ? 'Hide full Q&A'
+                                      : `Show full Q&A (${interviewRecap.answers.length})`}
+                                  </button>
+                                  {showFullInterviewAnswers ? (
+                                    <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                                      {interviewRecap.answers.map((row) => (
+                                        <div
+                                          key={`${row.questionId}-${row.label}`}
+                                          className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                                        >
+                                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                            {row.label}
+                                          </p>
+                                          <p className="mt-1 text-sm font-medium text-slate-900 whitespace-pre-wrap">
+                                            {row.answer}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
+
+                              {interviewRecap.completedAt ? (
+                                <p className="text-[11px] text-slate-400">
+                                  Completed{' '}
+                                  {new Date(interviewRecap.completedAt).toLocaleString()}
+                                </p>
+                              ) : interviewRecap.startedAt ? (
+                                <p className="text-[11px] text-slate-400">
+                                  Started {new Date(interviewRecap.startedAt).toLocaleString()}
+                                  {interviewRecap.status === 'in_progress' ? ' · in progress' : ''}
+                                </p>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
                         
                         {/* Display all saved remarks */}
                         <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
