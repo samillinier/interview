@@ -18,7 +18,8 @@ const noStore = {
 } as const
 
 /**
- * Admin-facing AI interview recap: a short summary note + “don’t miss” watch notes.
+ * Dashboard interview recap for admins and managers:
+ * short summary note + “don’t miss” watch notes.
  */
 export async function GET(
   _request: NextRequest,
@@ -31,8 +32,16 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: noStore })
     }
 
+    const sessionRole = String((session?.user as any)?.role || '').toUpperCase()
+    const allowedRoles = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR'])
+
     const admin = await prisma.admin.findUnique({ where: { email } })
-    if (!admin?.isActive) {
+    const dbRole = String((admin as any)?.role || '').toUpperCase()
+    const canView =
+      (Boolean(admin?.isActive) && (allowedRoles.has(dbRole) || !dbRole)) ||
+      allowedRoles.has(sessionRole)
+
+    if (!canView) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: noStore })
     }
 

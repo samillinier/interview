@@ -770,9 +770,9 @@ export default function InstallerProfileViewPage() {
     }
   }, [sessionStatus, installerId, router])
 
-  // Load AI interview Q&A recap when admin opens remarks (once per installer).
+  // Load AI interview summary for admins and managers (remarks panel).
   useEffect(() => {
-    if (!showRemarkPopover || !installerId || interviewRecapLoaded) return
+    if (sessionStatus !== 'authenticated' || !installerId) return
     let cancelled = false
     const load = async () => {
       setInterviewRecapLoading(true)
@@ -798,7 +798,7 @@ export default function InstallerProfileViewPage() {
     return () => {
       cancelled = true
     }
-  }, [showRemarkPopover, installerId, interviewRecapLoaded])
+  }, [sessionStatus, installerId])
 
   useEffect(() => {
     setInterviewRecap(null)
@@ -3182,7 +3182,7 @@ export default function InstallerProfileViewPage() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-slate-900">AI Interview Recap</p>
                               <p className="text-xs text-slate-500">
-                                Summarized note from the interview for admins
+                                Summarized note from the interview — visible to admins and managers
                               </p>
                             </div>
                             {interviewRecap?.passed === true ? (
