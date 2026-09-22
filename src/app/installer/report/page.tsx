@@ -44,11 +44,7 @@ export default function EstimatorWeeklyReportPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [subcontractorName, setSubcontractorName] = useState('')
   const [weekEnding, setWeekEnding] = useState('')
-  const [lines, setLines] = useState<WeeklyReportLine[]>([
-    emptyWeeklyReportLine(),
-    emptyWeeklyReportLine(),
-    emptyWeeklyReportLine(),
-  ])
+  const [lines, setLines] = useState<WeeklyReportLine[]>([emptyWeeklyReportLine()])
 
   const fullName = useMemo(() => {
     if (!installer) return ''
@@ -59,7 +55,7 @@ export default function EstimatorWeeklyReportPage() {
     setEditingId(null)
     setSubcontractorName(name)
     setWeekEnding('')
-    setLines([emptyWeeklyReportLine(), emptyWeeklyReportLine(), emptyWeeklyReportLine()])
+    setLines([emptyWeeklyReportLine()])
   }
 
   const loadReports = async (installerId: string, authToken: string) => {
@@ -145,11 +141,8 @@ export default function EstimatorWeeklyReportPage() {
     setEditingId(report.id)
     setSubcontractorName(report.subcontractorName)
     setWeekEnding(weekEndingToInputValue(report.weekEnding))
-    setLines(
-      normalizeWeeklyReportLines(report.lines).concat(
-        report.lines.length < 2 ? [emptyWeeklyReportLine()] : []
-      )
-    )
+    const nextLines = normalizeWeeklyReportLines(report.lines)
+    setLines(nextLines.length > 0 ? nextLines : [emptyWeeklyReportLine()])
     setSuccess('')
     setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -279,48 +272,79 @@ export default function EstimatorWeeklyReportPage() {
           </div>
 
           <div className="mb-3">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Job lines</h3>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <th className="px-3 py-2.5 w-10">#</th>
-                    <th className="px-3 py-2.5">PO #</th>
-                    <th className="px-3 py-2.5">Customer</th>
-                    <th className="px-3 py-2.5">Date</th>
-                    <th className="px-3 py-2.5">Mileage</th>
-                    <th className="px-3 py-2.5">Total</th>
-                    <th className="px-3 py-2.5 w-12" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {lines.map((line, index) => (
-                    <tr key={`line-${index}`} className="bg-white">
-                      <td className="px-3 py-2 text-center font-medium text-slate-500">{index + 1}</td>
-                      {(['poNumber', 'customer', 'date', 'mileage', 'total'] as const).map((key) => (
-                        <td key={key} className="px-2 py-1.5">
-                          <input
-                            type={key === 'date' ? 'date' : 'text'}
-                            value={line[key]}
-                            onChange={(e) => updateLine(index, key, e.target.value)}
-                            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-                          />
-                        </td>
-                      ))}
-                      <td className="px-2 py-1.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeLine(index)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                          title="Remove row"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Jobs</h3>
+            <div className="space-y-4">
+              {lines.map((line, index) => (
+                <div
+                  key={`line-${index}`}
+                  className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">Job {index + 1}</p>
+                    {lines.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => removeLine(index)}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-4">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-semibold text-slate-700">PO #</span>
+                      <input
+                        value={line.poNumber}
+                        onChange={(e) => updateLine(index, 'poNumber', e.target.value)}
+                        className={fieldClass}
+                        placeholder="Purchase order number"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-semibold text-slate-700">Customer</span>
+                      <input
+                        value={line.customer}
+                        onChange={(e) => updateLine(index, 'customer', e.target.value)}
+                        className={fieldClass}
+                        placeholder="Customer name"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-semibold text-slate-700">Date</span>
+                      <input
+                        type="date"
+                        value={line.date}
+                        onChange={(e) => updateLine(index, 'date', e.target.value)}
+                        className={fieldClass}
+                      />
+                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="flex flex-col gap-1.5">
+                        <span className="text-sm font-semibold text-slate-700">Mileage</span>
+                        <input
+                          value={line.mileage}
+                          onChange={(e) => updateLine(index, 'mileage', e.target.value)}
+                          className={fieldClass}
+                          placeholder="0"
+                          inputMode="decimal"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1.5">
+                        <span className="text-sm font-semibold text-slate-700">Total</span>
+                        <input
+                          value={line.total}
+                          onChange={(e) => updateLine(index, 'total', e.target.value)}
+                          className={fieldClass}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -331,7 +355,7 @@ export default function EstimatorWeeklyReportPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <Plus className="h-4 w-4" />
-              Add row
+              Add another job
             </button>
             <div className="flex items-center gap-2">
               {editingId ? (
@@ -377,7 +401,7 @@ export default function EstimatorWeeklyReportPage() {
                       <p className="font-semibold text-slate-900">{report.subcontractorName}</p>
                       <p className="text-sm text-slate-500">
                         Week ending {new Date(report.weekEnding).toLocaleDateString()} · {lineCount}{' '}
-                        {lineCount === 1 ? 'line' : 'lines'}
+                        {lineCount === 1 ? 'job' : 'jobs'}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
