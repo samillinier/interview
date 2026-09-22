@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Calendar, Loader2, FileSpreadsheet } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Calendar, Download, Loader2, FileSpreadsheet } from 'lucide-react'
+import { downloadExcel } from '@/lib/export-utils'
 import {
   normalizeWeeklyReportLines,
   type WeeklyReportLine,
@@ -15,11 +16,42 @@ type WeeklyReport = {
   createdAt: string
 }
 
+type DateFilter = 'week' | 'month' | 'year'
+
+function toDateKey(value: string | Date): string {
+  const d = value instanceof Date ? value : new Date(value)
+  if (!Number.isFinite(d.getTime())) return ''
+  return d.toISOString().slice(0, 10)
+}
+
+function monthKey(value: string | Date): string {
+  return toDateKey(value).slice(0, 7)
+}
+
+function yearKey(value: string | Date): string {
+  const key = toDateKey(value)
+  return key ? key.slice(0, 4) : ''
+}
+
+function todayMonthInput(): string {
+  return new Date().toISOString().slice(0, 7)
+}
+
+function filledLines(report: WeeklyReport) {
+  return normalizeWeeklyReportLines(report.lines).filter(
+    (line) => line.poNumber || line.customer || line.date || line.mileage || line.total
+  )
+}
+
 export function AdminEstimatorWeeklyReports({ installerId }: { installerId: string }) {
   const [reports, setReports] = useState<WeeklyReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [dateFilter, setDateFilter] = useState<DateFilter>('month')
+  const [weekValue, setWeekValue] = useState(() => new Date().toISOString().slice(0, 10))
+  const [monthValue, setMonthValue] = useState(todayMonthInput)
+  const [yearValue, setYearValue] = useState(() => String(new Date().getUTCFullYear()))
 
   useEffect(() => {
     let cancelled = false
@@ -49,20 +81,150 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
     }
   }, [installerId])
 
+  const yearOptions = useMemo(() => {
+    const years = new Set<string>([String(new Date().getUTCFullYear())])
+    for (const report of reports) {
+      const y = yearKey(report.weekEnding)
+      if (y) years.add(y)
+    }
+    return Array.from(years).sort((a, b) => Number(b) - Number(a))
+  }, [reports])
+
+  const filteredReports = useMemo(() => {
+    return reports.filter((report) => {
+      if (dateFilter === 'week') return toDateKey(report.weekEnding) === weekValue
+      if (dateFilter === 'month') return monthKey(report.weekEnding) === monthValue
+      return yearKey(report.weekEnding) === yearValue
+    })
+  }, [reports, dateFilter, weekValue, monthValue, yearValue])
+
+  const handleDownloadExcel = () => {
+    const rows = filteredReports.flatMap((report) => {
+      const lines = filledLines(report)
+      const weekEndingLabel = new Date(report.weekEnding).toLocaleDateString()
+      if (lines.length === 0) {
+        return [
+          {
+            'Subcontractor Name': report.subcontractorName,
+            'Week Ending': weekEndingLabel,
+            'PO #': '',
+            Customer: '',
+            Date: '',
+            Mileage: '',
+            Total: '',
+          },
+        ]
+      }
+      return lines.map((line) => ({
+        'Subcontractor Name': report.subcontractorName,
+        'Week Ending': weekEndingLabel,
+        'PO #': line.poNumber,
+        Customer: line.customer,
+        Date: line.date,
+        Mileage: line.mileage,
+        Total: line.total,
+      }))
+    })
+
+    if (rows.length === 0) return
+
+    const nameHint =
+      filteredReports[0]?.subcontractorName?.replace(/[^\w\-]+/g, '_').slice(0, 40) || 'estimator'
+    const rangeHint =
+      dateFilter === 'week' ? weekValue : dateFilter === 'month' ? monthValue : yearValue
+    downloadExcel(rows, `weekly-reports-${nameHint}-${rangeHint}`)
+  }
+
+  const filterTabs: { id: DateFilter; label: string }[] = [
+    { id: 'week', label: 'Week' },
+    { id: 'month', label: 'Month' },
+    { id: 'year', label: 'Year' },
+  ]
+
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-green/10 flex items-center justify-center">
             <FileSpreadsheet className="w-5 h-5 text-brand-green" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 mb-0.5">Weekly Reports</h2>
-            <p className="text-sm text-slate-500">Submitted by this estimator (estimators only)</p>
+            <p className="text-sm text-slate-500">Submitted by this estimator</p>
           </div>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-          {reports.length} {reports.length === 1 ? 'report' : 'reports'}
+        <button
+          type="button"
+          onClick={handleDownloadExcel}
+          disabled={filteredReports.length === 0}
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          Download Excel
+        </button>
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setDateFilter(tab.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
+                dateFilter === tab.id
+                  ? 'bg-brand-green text-white'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {dateFilter === 'week' ? (
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <span className="font-medium">Week ending</span>
+            <input
+              type="date"
+              value={weekValue}
+              onChange={(e) => setWeekValue(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+            />
+          </label>
+        ) : null}
+
+        {dateFilter === 'month' ? (
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <span className="font-medium">Month</span>
+            <input
+              type="month"
+              value={monthValue}
+              onChange={(e) => setMonthValue(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+            />
+          </label>
+        ) : null}
+
+        {dateFilter === 'year' ? (
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <span className="font-medium">Year</span>
+            <select
+              value={yearValue}
+              onChange={(e) => setYearValue(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <span className="ml-auto rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 border border-slate-200">
+          {filteredReports.length} {filteredReports.length === 1 ? 'report' : 'reports'}
         </span>
       </div>
 
@@ -78,13 +240,16 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
           <Calendar className="mx-auto mb-2 h-8 w-8 text-slate-300" />
           <p className="text-sm text-slate-500">No weekly reports submitted yet.</p>
         </div>
+      ) : filteredReports.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
+          <Calendar className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+          <p className="text-sm text-slate-500">No reports match this {dateFilter} filter.</p>
+        </div>
       ) : (
         <div className="space-y-3">
-          {reports.map((report) => {
+          {filteredReports.map((report) => {
             const open = expandedId === report.id
-            const lines = normalizeWeeklyReportLines(report.lines).filter(
-              (line) => line.poNumber || line.customer || line.date || line.mileage || line.total
-            )
+            const lines = filledLines(report)
             return (
               <div key={report.id} className="overflow-hidden rounded-xl border border-slate-200">
                 <button
@@ -96,7 +261,7 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
                     <p className="font-semibold text-slate-900">{report.subcontractorName}</p>
                     <p className="text-sm text-slate-500">
                       Week ending {new Date(report.weekEnding).toLocaleDateString()} · {lines.length}{' '}
-                      {lines.length === 1 ? 'line' : 'lines'}
+                      {lines.length === 1 ? 'job' : 'jobs'}
                     </p>
                   </div>
                   <span className="text-xs font-bold uppercase tracking-wide text-brand-green">
@@ -104,41 +269,41 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
                   </span>
                 </button>
                 {open ? (
-                  <div className="overflow-x-auto border-t border-slate-200">
-                    <table className="min-w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="bg-white text-left text-xs font-bold uppercase tracking-wide text-slate-600">
-                          <th className="border-b border-slate-200 px-3 py-2">#</th>
-                          <th className="border-b border-slate-200 px-3 py-2">PO #</th>
-                          <th className="border-b border-slate-200 px-3 py-2">Customer</th>
-                          <th className="border-b border-slate-200 px-3 py-2">Date</th>
-                          <th className="border-b border-slate-200 px-3 py-2">Mileage</th>
-                          <th className="border-b border-slate-200 px-3 py-2">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lines.map((line, index) => (
-                          <tr key={`${report.id}-${index}`} className="bg-white">
-                            <td className="border-b border-slate-100 px-3 py-2 text-slate-500">{index + 1}</td>
-                            <td className="border-b border-slate-100 px-3 py-2 font-medium text-slate-900">
-                              {line.poNumber || '—'}
-                            </td>
-                            <td className="border-b border-slate-100 px-3 py-2 text-slate-800">
-                              {line.customer || '—'}
-                            </td>
-                            <td className="border-b border-slate-100 px-3 py-2 text-slate-800">
-                              {line.date || '—'}
-                            </td>
-                            <td className="border-b border-slate-100 px-3 py-2 text-slate-800">
-                              {line.mileage || '—'}
-                            </td>
-                            <td className="border-b border-slate-100 px-3 py-2 font-semibold text-slate-900">
-                              {line.total || '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="space-y-3 border-t border-slate-200 bg-white p-4">
+                    {lines.length === 0 ? (
+                      <p className="text-sm text-slate-500">No job details on this report.</p>
+                    ) : (
+                      lines.map((line, index) => (
+                        <div
+                          key={`${report.id}-${index}`}
+                          className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                        >
+                          <p className="mb-3 text-sm font-semibold text-slate-900">Job {index + 1}</p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <p className="text-xs font-medium text-slate-500">PO #</p>
+                              <p className="text-sm font-medium text-slate-900">{line.poNumber || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-slate-500">Customer</p>
+                              <p className="text-sm text-slate-900">{line.customer || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-slate-500">Date</p>
+                              <p className="text-sm text-slate-900">{line.date || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-slate-500">Mileage</p>
+                              <p className="text-sm text-slate-900">{line.mileage || '—'}</p>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <p className="text-xs font-medium text-slate-500">Total</p>
+                              <p className="text-sm font-semibold text-slate-900">{line.total || '—'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 ) : null}
               </div>
