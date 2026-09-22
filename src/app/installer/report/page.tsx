@@ -42,6 +42,7 @@ export default function EstimatorWeeklyReportPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [viewingId, setViewingId] = useState<string | null>(null)
   const [subcontractorName, setSubcontractorName] = useState('')
   const [weekEnding, setWeekEnding] = useState('')
   const [lines, setLines] = useState<WeeklyReportLine[]>([emptyWeeklyReportLine()])
@@ -56,6 +57,10 @@ export default function EstimatorWeeklyReportPage() {
     setSubcontractorName(name)
     setWeekEnding('')
     setLines([emptyWeeklyReportLine()])
+  }
+
+  const startView = (reportId: string) => {
+    setViewingId((prev) => (prev === reportId ? null : reportId))
   }
 
   const loadReports = async (installerId: string, authToken: string) => {
@@ -138,6 +143,7 @@ export default function EstimatorWeeklyReportPage() {
   }
 
   const startEdit = (report: WeeklyReport) => {
+    setViewingId(null)
     setEditingId(report.id)
     setSubcontractorName(report.subcontractorName)
     setWeekEnding(weekEndingToInputValue(report.weekEnding))
@@ -389,37 +395,96 @@ export default function EstimatorWeeklyReportPage() {
           ) : (
             <div className="space-y-3">
               {reports.map((report) => {
-                const lineCount = normalizeWeeklyReportLines(report.lines).filter(
+                const lines = normalizeWeeklyReportLines(report.lines).filter(
                   (line) => line.poNumber || line.customer || line.date || line.mileage || line.total
-                ).length
+                )
+                const isViewing = viewingId === report.id
                 return (
                   <div
                     key={report.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
                   >
-                    <div>
-                      <p className="font-semibold text-slate-900">{report.subcontractorName}</p>
-                      <p className="text-sm text-slate-500">
-                        Week ending {new Date(report.weekEnding).toLocaleDateString()} · {lineCount}{' '}
-                        {lineCount === 1 ? 'job' : 'jobs'}
-                      </p>
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <div>
+                        <p className="font-semibold text-slate-900">{report.subcontractorName}</p>
+                        <p className="text-sm text-slate-500">
+                          Week ending {new Date(report.weekEnding).toLocaleDateString()} ·{' '}
+                          {lines.length} {lines.length === 1 ? 'job' : 'jobs'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startView(report.id)}
+                          className="rounded-lg border border-brand-green/30 bg-white px-3 py-1.5 text-sm font-semibold text-brand-green hover:bg-brand-green/5"
+                        >
+                          {isViewing ? 'Hide' : 'View'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(report)}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(report.id)}
+                          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(report)}
-                        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(report.id)}
-                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    {isViewing ? (
+                      <div className="space-y-3 border-t border-slate-200 bg-white p-4">
+                        {lines.length === 0 ? (
+                          <p className="text-sm text-slate-500">No job details on this report.</p>
+                        ) : (
+                          lines.map((line, index) => (
+                            <div
+                              key={`${report.id}-view-${index}`}
+                              className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-4"
+                            >
+                              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                                <div>
+                                  <p className="text-xs font-medium text-slate-500 mb-1">Job</p>
+                                  <p className="text-sm font-semibold text-slate-900">{index + 1}</p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-slate-500 mb-1">PO #</p>
+                                  <p className="text-sm font-medium text-slate-900 truncate">
+                                    {line.poNumber || '—'}
+                                  </p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-slate-500 mb-1">Customer</p>
+                                  <p className="text-sm text-slate-900 truncate">
+                                    {line.customer || '—'}
+                                  </p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-slate-500 mb-1">Date</p>
+                                  <p className="text-sm text-slate-900 truncate">{line.date || '—'}</p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-slate-500 mb-1">Mileage</p>
+                                  <p className="text-sm text-slate-900 truncate">
+                                    {line.mileage || '—'}
+                                  </p>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-slate-500 mb-1">Total</p>
+                                  <p className="text-sm font-semibold text-slate-900 truncate">
+                                    {line.total || '—'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}
