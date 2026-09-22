@@ -50,3 +50,18 @@
   height: 20px;
   width: 20px;
 }
+
+/* Hide native empty date text so our in-box "Date" / "Week ending" shows */
+.report-date-input--empty {
+  color: transparent !important;
+}
+
+.report-date-input--empty::-webkit-datetime-edit,
+.report-date-input--empty::-webkit-datetime-edit-fields-wrapper,
+.report-date-input--empty::-webkit-datetime-edit-text,
+.report-date-input--empty::-webkit-datetime-edit-month-field,
+.report-date-input--empty::-webkit-datetime-edit-day-field,
+.report-date-input--empty::-webkit-datetime-edit-year-field,
+.report-date-input--empty::-webkit-date-and-time-value {
+  color: transparent !important;
+}

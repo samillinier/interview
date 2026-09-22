@@ -40,22 +40,30 @@ function ReportDateInput({
   value,
   onChange,
   required,
+  placeholder = 'Date',
   'aria-label': ariaLabel,
 }: {
   value: string
   onChange: (value: string) => void
   required?: boolean
+  placeholder?: string
   'aria-label'?: string
 }) {
+  const empty = !value
   return (
-    <div className="w-full min-w-0 max-w-full overflow-hidden">
+    <div className="relative w-full min-w-0 max-w-full overflow-hidden">
+      {empty ? (
+        <span className="pointer-events-none absolute inset-y-0 left-3 z-10 flex items-center text-sm text-slate-400">
+          {placeholder}
+        </span>
+      ) : null}
       <input
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        aria-label={ariaLabel}
-        className={dateFieldClass}
+        aria-label={ariaLabel || placeholder}
+        className={`${dateFieldClass}${empty ? ' report-date-input--empty' : ''}`}
       />
     </div>
   )
@@ -286,7 +294,7 @@ export default function EstimatorWeeklyReportPage() {
                 value={weekEnding}
                 onChange={setWeekEnding}
                 required
-                aria-label="Week ending"
+                placeholder="Week ending"
               />
             </label>
           </div>
@@ -330,10 +338,10 @@ export default function EstimatorWeeklyReportPage() {
                       />
                     </label>
                     <label className="flex flex-col gap-1.5 min-w-0">
-                      <span className="text-sm font-semibold text-slate-700">Date</span>
                       <ReportDateInput
                         value={line.date}
                         onChange={(value) => updateLine(index, 'date', value)}
+                        placeholder="Date"
                       />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2 min-w-0">
