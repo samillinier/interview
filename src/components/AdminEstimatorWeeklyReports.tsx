@@ -61,7 +61,7 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
       try {
         const res = await fetch(`/api/installers/${installerId}/weekly-reports`, { cache: 'no-store' })
         const data = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(data?.error || 'Failed to load weekly reports')
+        if (!res.ok) throw new Error(data?.error || 'Failed to load weekly invoices')
         if (cancelled) return
         const next = (data?.reports || []).map((report: any) => ({
           ...report,
@@ -70,7 +70,7 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
         setReports(next)
         if (next[0]?.id) setExpandedId(next[0].id)
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load weekly reports')
+        if (!cancelled) setError(e?.message || 'Failed to load weekly invoices')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -132,7 +132,7 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
       filteredReports[0]?.subcontractorName?.replace(/[^\w\-]+/g, '_').slice(0, 40) || 'estimator'
     const rangeHint =
       dateFilter === 'week' ? weekValue : dateFilter === 'month' ? monthValue : yearValue
-    downloadExcel(rows, `weekly-reports-${nameHint}-${rangeHint}`)
+    downloadExcel(rows, `weekly-invoices-${nameHint}-${rangeHint}`)
   }
 
   const filterTabs: { id: DateFilter; label: string }[] = [
@@ -149,7 +149,7 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
             <FileSpreadsheet className="w-5 h-5 text-brand-green" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-0.5">Weekly Reports</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-0.5">Weekly Invoices</h2>
             <p className="text-sm text-slate-500">Submitted by this estimator</p>
           </div>
         </div>
@@ -224,26 +224,26 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
         ) : null}
 
         <span className="ml-auto rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 border border-slate-200">
-          {filteredReports.length} {filteredReports.length === 1 ? 'report' : 'reports'}
+          {filteredReports.length} {filteredReports.length === 1 ? 'invoice' : 'invoices'}
         </span>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-sm text-slate-500 justify-center">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading weekly reports…
+          Loading weekly invoices…
         </div>
       ) : error ? (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
       ) : reports.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
           <Calendar className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-          <p className="text-sm text-slate-500">No weekly reports submitted yet.</p>
+          <p className="text-sm text-slate-500">No weekly invoices submitted yet.</p>
         </div>
       ) : filteredReports.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
           <Calendar className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-          <p className="text-sm text-slate-500">No reports match this {dateFilter} filter.</p>
+          <p className="text-sm text-slate-500">No invoices match this {dateFilter} filter.</p>
         </div>
       ) : (
         <div className="space-y-3">

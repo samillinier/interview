@@ -1957,7 +1957,11 @@ export default function InstallerProfilePage() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">My Profile</h1>
-                <p className="text-sm text-slate-500 mb-4">Manage your installer profile and information</p>
+                <p className="text-sm text-slate-500 mb-4">
+                  {isEstimator
+                    ? 'Manage your estimator profile and information'
+                    : 'Manage your installer profile and information'}
+                </p>
                 
                 {/* Profile Completion Progress */}
                 <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 border border-slate-200/60 shadow-sm">

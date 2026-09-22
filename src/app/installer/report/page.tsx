@@ -106,7 +106,7 @@ export default function EstimatorWeeklyReportPage() {
       cache: 'no-store',
     })
     const data = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(data?.error || 'Failed to load weekly reports')
+    if (!res.ok) throw new Error(data?.error || 'Failed to load weekly invoices')
     setReports(
       (data?.reports || []).map((report: any) => ({
         ...report,
@@ -161,7 +161,7 @@ export default function EstimatorWeeklyReportPage() {
         setSubcontractorName(name)
         await loadReports(installerId, authToken)
       } catch (e: any) {
-        setError(e?.message || 'Failed to load weekly reports')
+        setError(e?.message || 'Failed to load weekly invoices')
       } finally {
         setIsLoading(false)
       }
@@ -216,13 +216,13 @@ export default function EstimatorWeeklyReportPage() {
         body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || 'Failed to save weekly report')
+      if (!res.ok) throw new Error(data?.error || 'Failed to save weekly invoice')
 
       await loadReports(installer.id, token)
-      setSuccess(editingId ? 'Weekly report updated.' : 'Weekly report created.')
+      setSuccess(editingId ? 'Weekly invoice updated.' : 'Weekly invoice created.')
       resetForm(fullName)
     } catch (e: any) {
-      setError(e?.message || 'Failed to save weekly report')
+      setError(e?.message || 'Failed to save weekly invoice')
     } finally {
       setIsSaving(false)
     }
@@ -230,7 +230,7 @@ export default function EstimatorWeeklyReportPage() {
 
   const handleDelete = async (reportId: string) => {
     if (!installer || !token) return
-    if (!window.confirm('Delete this weekly report?')) return
+    if (!window.confirm('Delete this weekly invoice?')) return
     setError('')
     try {
       const res = await fetch(`/api/installers/${installer.id}/weekly-reports/${reportId}`, {
@@ -238,12 +238,12 @@ export default function EstimatorWeeklyReportPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || 'Failed to delete report')
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete invoice')
       await loadReports(installer.id, token)
       if (editingId === reportId) resetForm(fullName)
-      setSuccess('Weekly report deleted.')
+      setSuccess('Weekly invoice deleted.')
     } catch (e: any) {
-      setError(e?.message || 'Failed to delete report')
+      setError(e?.message || 'Failed to delete invoice')
     }
   }
 
@@ -259,8 +259,8 @@ export default function EstimatorWeeklyReportPage() {
     <IosProfileRoot>
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
-          <h1 className="text-3xl font-bold text-slate-900 mb-1">Weekly Report</h1>
-          <p className="text-sm text-slate-500">Create and manage your weekly submissions.</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">Weekly Invoice</h1>
+          <p className="text-sm text-slate-500">Create and manage your weekly invoices.</p>
         </div>
       </header>
 
@@ -397,7 +397,7 @@ export default function EstimatorWeeklyReportPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-60"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {editingId ? 'Update report' : 'Save weekly report'}
+                {editingId ? 'Update invoice' : 'Save weekly invoice'}
               </button>
             </div>
           </div>
@@ -406,10 +406,10 @@ export default function EstimatorWeeklyReportPage() {
         <section className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-8 shadow-lg backdrop-blur-sm">
           <div className="mb-5 flex items-center gap-2 border-b border-slate-200 pb-5">
             <Calendar className="h-5 w-5 text-brand-green" />
-            <h3 className="text-xl font-bold text-slate-900">Your weekly reports</h3>
+            <h3 className="text-xl font-bold text-slate-900">Your weekly invoices</h3>
           </div>
           {reports.length === 0 ? (
-            <p className="text-sm text-slate-500">No weekly reports yet. Create your first one above.</p>
+            <p className="text-sm text-slate-500">No weekly invoices yet. Create your first one above.</p>
           ) : (
             <div className="space-y-3">
               {reports.map((report) => {

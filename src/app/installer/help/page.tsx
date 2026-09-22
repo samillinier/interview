@@ -109,6 +109,10 @@ export default function InstallerHelpPage() {
     )
   }
 
+  const isEstimator = installer?.accountType === 'estimator'
+  const portalLabel = isEstimator ? 'Estimator Portal' : 'Installer Portal'
+  const profileLabel = isEstimator ? 'estimator profile' : 'installer profile'
+
   return (
     <div className="ios-installer-help">
       {/* Main Content */}
@@ -116,7 +120,7 @@ export default function InstallerHelpPage() {
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
           <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Help & Documentation</h1>
-            <p className="text-sm text-slate-500">Step-by-step guide for using the Installer Portal</p>
+            <p className="text-sm text-slate-500">Step-by-step guide for using the {portalLabel}</p>
           </div>
         </header>
 
@@ -135,7 +139,7 @@ export default function InstallerHelpPage() {
                     <HelpCircle className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Installer Portal Guide</h2>
+                    <h2 className="text-xl font-bold text-slate-900">{portalLabel} Guide</h2>
                     <p className="text-sm text-slate-600 mt-1">Complete guide to navigate and use all features</p>
                   </div>
                 </div>
@@ -167,9 +171,9 @@ export default function InstallerHelpPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-slate-900 group-hover:text-brand-green transition-colors">
-                          How to Complete Installer Profile
+                          How to Complete {isEstimator ? 'Estimator' : 'Installer'} Profile
                         </h4>
-                        <p className="text-sm text-slate-600 mt-1">Step-by-step guide to complete your installer profile</p>
+                        <p className="text-sm text-slate-600 mt-1">Step-by-step guide to complete your {profileLabel}</p>
                         <div className="mt-2 flex items-center gap-2 text-sm text-brand-green">
                           <span>Watch Tutorial</span>
                           <ExternalLink className="w-4 h-4" />
@@ -215,7 +219,7 @@ export default function InstallerHelpPage() {
                         <h4 className="font-semibold text-slate-900 group-hover:text-brand-green transition-colors">
                           How to Use Messaging Feature
                         </h4>
-                        <p className="text-sm text-slate-600 mt-1">Guide to using the messaging feature on your installer profile</p>
+                        <p className="text-sm text-slate-600 mt-1">Guide to using the messaging feature on your {profileLabel}</p>
                         <div className="mt-2 flex items-center gap-2 text-sm text-brand-green">
                           <span>Watch Tutorial</span>
                           <ExternalLink className="w-4 h-4" />

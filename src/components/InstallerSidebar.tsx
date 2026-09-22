@@ -91,7 +91,7 @@ export default function InstallerSidebar({ notificationCount = 0, surveyCount = 
             }`}
           >
             <CalendarDays className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Report</span>}
+            {sidebarOpen && <span>Invoice</span>}
           </Link>
         ) : null}
         <Link
