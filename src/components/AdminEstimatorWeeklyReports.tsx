@@ -58,7 +58,7 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 mb-0.5">Weekly Reports</h2>
-            <p className="text-sm text-slate-500">Submitted by this estimator</p>
+            <p className="text-sm text-slate-500">Submitted by this estimator (estimators only)</p>
           </div>
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">

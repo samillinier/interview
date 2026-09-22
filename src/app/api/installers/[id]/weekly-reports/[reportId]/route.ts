@@ -30,6 +30,17 @@ export async function PATCH(
       return NextResponse.json({ error: access.error }, { status: access.status, headers: noStore })
     }
 
+    const account = await prisma.installer.findUnique({
+      where: { id: installerId },
+      select: { accountType: true },
+    })
+    if (String(account?.accountType || '') !== 'estimator') {
+      return NextResponse.json(
+        { error: 'Weekly reports are only available for estimators' },
+        { status: 403, headers: noStore }
+      )
+    }
+
     const existing = await (prisma as any).estimatorWeeklyReport.findFirst({
       where: { id: reportId, installerId },
     })
@@ -84,6 +95,17 @@ export async function DELETE(
     const access = await requireInstallerOrAdmin(request, installerId)
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status, headers: noStore })
+    }
+
+    const account = await prisma.installer.findUnique({
+      where: { id: installerId },
+      select: { accountType: true },
+    })
+    if (String(account?.accountType || '') !== 'estimator') {
+      return NextResponse.json(
+        { error: 'Weekly reports are only available for estimators' },
+        { status: 403, headers: noStore }
+      )
     }
 
     const existing = await (prisma as any).estimatorWeeklyReport.findFirst({

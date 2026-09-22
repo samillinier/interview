@@ -17,6 +17,22 @@ async function resolveParams(context: { params: Promise<{ id: string }> | { id: 
   return context.params instanceof Promise ? await context.params : context.params
 }
 
+async function requireEstimatorAccount(installerId: string) {
+  const installer = await prisma.installer.findUnique({
+    where: { id: installerId },
+    select: { id: true, firstName: true, lastName: true, accountType: true },
+  })
+  if (!installer) return { ok: false as const, status: 404 as const, error: 'Not found' }
+  if (String(installer.accountType || '') !== 'estimator') {
+    return {
+      ok: false as const,
+      status: 403 as const,
+      error: 'Weekly reports are only available for estimators',
+    }
+  }
+  return { ok: true as const, installer }
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -26,6 +42,15 @@ export async function GET(
     const access = await requireInstallerOrAdmin(request, installerId)
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status, headers: noStore })
+    }
+
+    const estimator = await requireEstimatorAccount(installerId)
+    if (!estimator.ok) {
+      // Non-estimators: no weekly reports (empty for admins browsing installer profiles).
+      if (estimator.status === 403) {
+        return NextResponse.json({ success: true, reports: [] }, { headers: noStore })
+      }
+      return NextResponse.json({ error: estimator.error }, { status: estimator.status, headers: noStore })
     }
 
     const reports = await (prisma as any).estimatorWeeklyReport.findMany({
@@ -54,20 +79,12 @@ export async function POST(
       return NextResponse.json({ error: access.error }, { status: access.status, headers: noStore })
     }
 
-    // Only estimators (or admins acting on an estimator) create weekly reports.
-    const installer = await prisma.installer.findUnique({
-      where: { id: installerId },
-      select: { id: true, firstName: true, lastName: true, accountType: true },
-    })
-    if (!installer) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404, headers: noStore })
+    // Estimators only — never for regular installers.
+    const estimator = await requireEstimatorAccount(installerId)
+    if (!estimator.ok) {
+      return NextResponse.json({ error: estimator.error }, { status: estimator.status, headers: noStore })
     }
-    if (String(installer.accountType || '') !== 'estimator' && access.actor === 'installer') {
-      return NextResponse.json(
-        { error: 'Weekly reports are only available for estimators' },
-        { status: 403, headers: noStore }
-      )
-    }
+    const installer = estimator.installer
 
     const body = await request.json().catch(() => ({}))
     const weekEnding = parseWeekEnding(body?.weekEnding)

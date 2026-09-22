@@ -225,7 +225,7 @@ export default function EstimatorWeeklyReportPage() {
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-1">Weekly Report</h1>
-          <p className="text-sm text-slate-500">Create and manage your weekly estimator reports.</p>
+          <p className="text-sm text-slate-500">Estimator-only weekly reports — create and manage your submissions.</p>
         </div>
       </header>
 
