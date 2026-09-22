@@ -252,13 +252,14 @@ export default function EstimatorWeeklyReportPage() {
                 aria-label="Independent subcontractor name"
               />
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-1.5 min-w-0 w-full overflow-hidden">
               <input
                 type="date"
                 value={weekEnding}
                 onChange={(e) => setWeekEnding(e.target.value)}
                 required
-                className={fieldClass}
+                className={`${fieldClass} min-w-0 max-w-full box-border`}
+                style={{ width: '100%', maxWidth: '100%' }}
                 aria-label="Week ending"
               />
             </label>
