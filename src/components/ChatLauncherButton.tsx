@@ -10,6 +10,8 @@ type Props = {
   unreadCount?: number
   zClass?: string
   variant?: 'green' | 'white'
+  /** Show the green presence dot only while a user is online. */
+  online?: boolean
 }
 
 export function ChatLauncherButton({
@@ -20,6 +22,7 @@ export function ChatLauncherButton({
   unreadCount = 0,
   zClass = 'z-40',
   variant = 'green',
+  online = false,
 }: Props) {
   const isWhite = variant === 'white'
   return (
@@ -55,12 +58,14 @@ export function ChatLauncherButton({
           </span>
         ) : null}
       </button>
-      {/* Sibling of the button so border-radius clipping can't cut the online dot */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute bottom-0 left-2 z-10 h-3.5 w-3.5 translate-y-[3px] rounded-full border-[2.5px] border-white"
-        style={{ backgroundColor: CHAT_ONLINE_GREEN }}
-      />
+      {online ? (
+        <span
+          aria-hidden
+          title="Online"
+          className="pointer-events-none absolute bottom-0 left-2 z-10 h-3.5 w-3.5 translate-y-[3px] rounded-full border-[2.5px] border-white"
+          style={{ backgroundColor: CHAT_ONLINE_GREEN }}
+        />
+      ) : null}
     </div>
   )
 }

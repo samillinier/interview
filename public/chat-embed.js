@@ -115,6 +115,7 @@
   var onlineDot = document.createElement('span');
   onlineDot.className = 'fis-dot';
   onlineDot.setAttribute('aria-hidden', 'true');
+  onlineDot.style.display = 'none';
 
   var badge = document.createElement('span');
   badge.className = 'fis-chat-badge';

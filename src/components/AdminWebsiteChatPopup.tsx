@@ -231,6 +231,7 @@ export function AdminWebsiteChatPopup() {
         className={positionClass}
         zClass="z-[200]"
         unreadCount={unreadCount}
+        online={onlineCount > 0}
       />
     )
   }
