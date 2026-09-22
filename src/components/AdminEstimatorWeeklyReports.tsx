@@ -276,29 +276,35 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
                       lines.map((line, index) => (
                         <div
                           key={`${report.id}-${index}`}
-                          className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                          className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3"
                         >
-                          <p className="mb-3 text-sm font-semibold text-slate-900">Job {index + 1}</p>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
+                          <div className="grid grid-cols-[auto_minmax(5rem,1fr)_minmax(6rem,1.4fr)_minmax(6rem,1fr)_minmax(4rem,0.8fr)_minmax(4rem,0.8fr)] items-end gap-4">
+                            <p className="text-sm font-semibold text-slate-900 self-center whitespace-nowrap">
+                              Job {index + 1}
+                            </p>
+                            <div className="min-w-0">
                               <p className="text-xs font-medium text-slate-500">PO #</p>
-                              <p className="text-sm font-medium text-slate-900">{line.poNumber || '—'}</p>
+                              <p className="text-sm font-medium text-slate-900 truncate">
+                                {line.poNumber || '—'}
+                              </p>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-xs font-medium text-slate-500">Customer</p>
-                              <p className="text-sm text-slate-900">{line.customer || '—'}</p>
+                              <p className="text-sm text-slate-900 truncate">{line.customer || '—'}</p>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-xs font-medium text-slate-500">Date</p>
-                              <p className="text-sm text-slate-900">{line.date || '—'}</p>
+                              <p className="text-sm text-slate-900 truncate">{line.date || '—'}</p>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-xs font-medium text-slate-500">Mileage</p>
-                              <p className="text-sm text-slate-900">{line.mileage || '—'}</p>
+                              <p className="text-sm text-slate-900 truncate">{line.mileage || '—'}</p>
                             </div>
-                            <div className="sm:col-span-2">
+                            <div className="min-w-0">
                               <p className="text-xs font-medium text-slate-500">Total</p>
-                              <p className="text-sm font-semibold text-slate-900">{line.total || '—'}</p>
+                              <p className="text-sm font-semibold text-slate-900 truncate">
+                                {line.total || '—'}
+                              </p>
                             </div>
                           </div>
                         </div>
