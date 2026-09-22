@@ -4,6 +4,7 @@ import { extractInterviewData, generateInterviewAdminRecap } from '@/lib/openai'
 import { calculateScore, determinePassFail } from '@/lib/utils'
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { notifyAngelaOfCarpetTileApplicant } from '@/lib/carpetTileApplyNotify'
 
 const QUALIFIED_LOGIN_URL = 'https://job.floorinteriorservices.com/installer/login'
 
@@ -205,6 +206,23 @@ export async function POST(request: NextRequest) {
         transcript,
       },
     })
+
+    // Notify Angela when a carpet and/or tile installer finishes applying
+    try {
+      await notifyAngelaOfCarpetTileApplicant({
+        id: updatedInstaller.id,
+        firstName: updatedInstaller.firstName,
+        lastName: updatedInstaller.lastName,
+        email: updatedInstaller.email,
+        phone: updatedInstaller.phone,
+        flooringSkills: updatedInstaller.flooringSkills,
+        primaryFlooringSurface: updatedInstaller.primaryFlooringSurface,
+        status: updatedInstaller.status,
+        carpetTileNotifyEmailSentAt: (updatedInstaller as any).carpetTileNotifyEmailSentAt,
+      })
+    } catch (err) {
+      console.error('Carpet/tile applicant notify failed:', err)
+    }
 
     // Send one-time email when installer passes (qualified)
     if (passed && updatedInstaller.email && !updatedInstaller.passedInterviewEmailSentAt) {

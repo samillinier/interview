@@ -349,6 +349,7 @@ model Installer {
   complianceStatus                     ComplianceStatus?
   primaryFlooringSurface               String?
   passedInterviewEmailSentAt           DateTime?
+  carpetTileNotifyEmailSentAt          DateTime?
   managerRemarks                       String?
   aiChatEnabled                        Boolean                  @default(true)
   cilioEnterpriseGroupNumber           Int?
