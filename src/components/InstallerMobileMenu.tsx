@@ -6,7 +6,6 @@ import Image from 'next/image'
 import {
   Bell,
   ClipboardList,
-  ExternalLink,
   FileText,
   Languages,
   LogOut,
@@ -45,7 +44,6 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, surveyCou
         : []),
       { href: '/installer/agreements', label: 'Form', icon: FileText },
       { href: '/installer/attachments', label: 'Attachments', icon: Paperclip },
-      { href: '/installer/referrals', label: 'Referrals', icon: ExternalLink },
       ...(isEstimator
         ? []
         : [{ href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount }]),
