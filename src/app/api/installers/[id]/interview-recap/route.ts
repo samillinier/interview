@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { generateInterviewAdminRecap } from '@/lib/openai'
 import {
-  buildInterviewHighlights,
-  mapInterviewAnswers,
+  buildTranscriptFromResponses,
+  parseInterviewAnalysis,
   type InterviewRecapPayload,
 } from '@/lib/interviewRecap'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const noStore = {
   'Cache-Control': 'private, no-store, no-cache, must-revalidate',
@@ -16,8 +18,7 @@ const noStore = {
 } as const
 
 /**
- * Admin-facing AI interview recap: Q&A answers + key highlights from the
- * latest interview for this installer.
+ * Admin-facing AI interview recap: a short summary note + “don’t miss” watch notes.
  */
 export async function GET(
   _request: NextRequest,
@@ -48,7 +49,6 @@ export async function GET(
         InterviewResponse: {
           orderBy: { createdAt: 'asc' },
           select: {
-            questionId: true,
             questionText: true,
             answerText: true,
           },
@@ -57,27 +57,53 @@ export async function GET(
     })
 
     if (!interview) {
-      return NextResponse.json(
-        { success: true, recap: null },
-        { status: 200, headers: noStore }
-      )
+      return NextResponse.json({ success: true, recap: null }, { status: 200, headers: noStore })
     }
 
     let extracted: Record<string, unknown> = {}
-    let analysis: { score?: number; passed?: boolean; reason?: string } = {}
     try {
       if (interview.extractedData) extracted = JSON.parse(interview.extractedData)
     } catch {
       extracted = {}
     }
-    try {
-      if (interview.aiAnalysis) analysis = JSON.parse(interview.aiAnalysis)
-    } catch {
-      analysis = {}
-    }
 
-    const answers = mapInterviewAnswers(interview.InterviewResponse)
-    const highlights = buildInterviewHighlights(extracted, analysis)
+    let analysis = parseInterviewAnalysis(interview.aiAnalysis)
+    let summary = String(analysis.adminSummary || '').trim()
+    let watchNotes = Array.isArray(analysis.adminWatchNotes)
+      ? analysis.adminWatchNotes.map((n) => String(n || '').trim()).filter(Boolean)
+      : []
+
+    const transcript =
+      String(interview.transcript || '').trim() ||
+      buildTranscriptFromResponses(interview.InterviewResponse)
+
+    // Lazy-generate once for older interviews that never got an admin memo.
+    if (!summary && transcript.length > 40) {
+      try {
+        const generated = await generateInterviewAdminRecap({
+          transcript,
+          extractedData: extracted,
+          analysis,
+        })
+        summary = generated.summary
+        watchNotes = generated.watchNotes
+
+        analysis = {
+          ...analysis,
+          adminSummary: summary,
+          adminWatchNotes: watchNotes,
+        }
+        await prisma.interview.update({
+          where: { id: interview.id },
+          data: { aiAnalysis: JSON.stringify(analysis) },
+        })
+      } catch (err) {
+        console.error('Failed to generate interview admin recap:', err)
+        summary = analysis.reason
+          ? `Interview reviewed. ${analysis.reason}`
+          : 'Interview on file. Open the profile for extracted details.'
+      }
+    }
 
     const recap: InterviewRecapPayload = {
       interviewId: interview.id,
@@ -87,8 +113,12 @@ export async function GET(
       score: typeof analysis.score === 'number' ? analysis.score : null,
       passed: typeof analysis.passed === 'boolean' ? analysis.passed : null,
       reason: analysis.reason ? String(analysis.reason) : null,
-      highlights,
-      answers,
+      summary:
+        summary ||
+        (transcript
+          ? 'Interview answers are on file. Summary is still generating — reopen remarks in a moment.'
+          : ''),
+      watchNotes,
     }
 
     return NextResponse.json({ success: true, recap }, { headers: noStore })

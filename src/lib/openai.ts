@@ -215,3 +215,67 @@ export async function extractInterviewData(transcript: string): Promise<{
     return {}
   }
 }
+
+export type InterviewAdminRecap = {
+  summary: string
+  watchNotes: string[]
+}
+
+/**
+ * Short admin memo + “don’t miss this” notes from the AI interview transcript.
+ */
+export async function generateInterviewAdminRecap(args: {
+  transcript: string
+  extractedData?: Record<string, unknown> | null
+  analysis?: { score?: number; passed?: boolean; reason?: string } | null
+}): Promise<InterviewAdminRecap> {
+  const openai = getOpenAIClient()
+  const contextBits = [
+    args.analysis?.passed === true ? 'Qualification result: passed' : null,
+    args.analysis?.passed === false ? 'Qualification result: not passed' : null,
+    typeof args.analysis?.score === 'number' ? `Score: ${args.analysis.score}` : null,
+    args.analysis?.reason ? `Pass/fail reason: ${args.analysis.reason}` : null,
+    args.extractedData ? `Extracted fields JSON: ${JSON.stringify(args.extractedData)}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: `You write brief notes for flooring-company admins reviewing installer AI interviews.
+
+Return ONLY valid JSON:
+{
+  "summary": "string — 2 to 4 short sentences. Write like an internal remark note: who they are, experience/skills, insurance/crew/travel readiness, and overall fit. Plain language. No bullet lists.",
+  "watchNotes": ["string", ...] — 0 to 5 short notes for anything the admin should not miss: vague/incomplete answers, missing insurance/docs, background concerns, contradictions vs extracted data, travel limits, low experience, anything said that may not be captured on the profile yet. Each note one sentence. If nothing to flag, return []."
+}`,
+      },
+      {
+        role: 'user',
+        content: `${contextBits ? `${contextBits}\n\n` : ''}Interview transcript:\n${args.transcript}`,
+      },
+    ],
+    temperature: 0.35,
+    response_format: { type: 'json_object' },
+  })
+
+  try {
+    const data = JSON.parse(completion.choices[0]?.message?.content || '{}')
+    const summary = String(data.summary || '').trim()
+    const watchNotes = Array.isArray(data.watchNotes)
+      ? data.watchNotes.map((n: unknown) => String(n || '').trim()).filter(Boolean).slice(0, 5)
+      : []
+    return {
+      summary: summary || 'Interview completed. Review the installer profile for details.',
+      watchNotes,
+    }
+  } catch {
+    return {
+      summary: 'Interview completed. Review the installer profile for details.',
+      watchNotes: [],
+    }
+  }
+}

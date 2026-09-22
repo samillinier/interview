@@ -611,7 +611,6 @@ export default function InstallerProfileViewPage() {
   const [interviewRecap, setInterviewRecap] = useState<InterviewRecapPayload | null>(null)
   const [interviewRecapLoading, setInterviewRecapLoading] = useState(false)
   const [interviewRecapLoaded, setInterviewRecapLoaded] = useState(false)
-  const [showFullInterviewAnswers, setShowFullInterviewAnswers] = useState(false)
   const [deleteRemarkConfirm, setDeleteRemarkConfirm] = useState<{ show: boolean; index: number | null }>({ show: false, index: null })
   const [documents, setDocuments] = useState<any[]>([])
   const [agreements, setAgreements] = useState<any[]>([])
@@ -804,7 +803,6 @@ export default function InstallerProfileViewPage() {
   useEffect(() => {
     setInterviewRecap(null)
     setInterviewRecapLoaded(false)
-    setShowFullInterviewAnswers(false)
   }, [installerId])
 
   // Handle scrolling to a specific section when a hash is present
@@ -3124,14 +3122,14 @@ export default function InstallerProfileViewPage() {
                   <button
                     onClick={() => setShowRemarkPopover(!showRemarkPopover)}
                     className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-medium ${
-                      visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.answers?.length)
+                      visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.summary)
                         ? 'bg-brand-green/10 text-brand-green border-2 border-brand-green/30' 
                         : 'bg-slate-100 text-slate-700'
                     }`}
                     title={remarkButtonTitle}
                   >
                     <StickyNote className="w-5 h-5" />
-                    {(visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.answers?.length)) && (
+                    {(visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.summary)) && (
                       <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-green rounded-full border-2 border-white" />
                     )}
                   </button>
@@ -3174,7 +3172,7 @@ export default function InstallerProfileViewPage() {
                         {/* Content area */}
                         <div className="flex-1 overflow-hidden flex flex-col p-6">
 
-                        {/* AI Interview Recap — what the installer answered */}
+                        {/* AI Interview Recap — summarized admin note + miss notes */}
                         <div className="mb-4 rounded-xl border border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-white p-4">
                           <div className="mb-3 flex items-start gap-3">
                             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-green/15">
@@ -3183,7 +3181,7 @@ export default function InstallerProfileViewPage() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-bold text-slate-900">AI Interview Recap</p>
                               <p className="text-xs text-slate-500">
-                                What this installer answered during the AI interview
+                                Summarized note from the interview for admins
                               </p>
                             </div>
                             {interviewRecap?.passed === true ? (
@@ -3200,58 +3198,37 @@ export default function InstallerProfileViewPage() {
                           {interviewRecapLoading ? (
                             <div className="flex items-center gap-2 py-3 text-sm text-slate-500">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading interview answers…
+                              Writing summary…
                             </div>
-                          ) : !interviewRecap || (interviewRecap.answers.length === 0 && interviewRecap.highlights.length === 0) ? (
+                          ) : !interviewRecap?.summary ? (
                             <p className="py-2 text-sm text-slate-500">
-                              No AI interview answers yet for this installer.
+                              No AI interview summary yet for this installer.
                             </p>
                           ) : (
                             <div className="space-y-3">
-                              {interviewRecap.highlights.length > 0 ? (
-                                <ul className="space-y-1.5">
-                                  {interviewRecap.highlights.slice(0, 10).map((line) => (
-                                    <li key={line} className="flex gap-2 text-sm text-slate-700">
-                                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-green" />
-                                      <span>{line}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : null}
+                              <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
+                                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                  Summary note
+                                </p>
+                                <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+                                  {interviewRecap.summary}
+                                </p>
+                              </div>
 
-                              {interviewRecap.answers.length > 0 ? (
-                                <div>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowFullInterviewAnswers((v) => !v)}
-                                    className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-green hover:text-brand-green-dark"
-                                  >
-                                    {showFullInterviewAnswers ? (
-                                      <ChevronUp className="h-3.5 w-3.5" />
-                                    ) : (
-                                      <ChevronDown className="h-3.5 w-3.5" />
-                                    )}
-                                    {showFullInterviewAnswers
-                                      ? 'Hide full Q&A'
-                                      : `Show full Q&A (${interviewRecap.answers.length})`}
-                                  </button>
-                                  {showFullInterviewAnswers ? (
-                                    <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                                      {interviewRecap.answers.map((row) => (
-                                        <div
-                                          key={`${row.questionId}-${row.label}`}
-                                          className="rounded-lg border border-slate-200 bg-white px-3 py-2"
-                                        >
-                                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                                            {row.label}
-                                          </p>
-                                          <p className="mt-1 text-sm font-medium text-slate-900 whitespace-pre-wrap">
-                                            {row.answer}
-                                          </p>
-                                        </div>
-                                      ))}
+                              {interviewRecap.watchNotes.length > 0 ? (
+                                <div className="space-y-2">
+                                  <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                                    Don’t miss
+                                  </p>
+                                  {interviewRecap.watchNotes.map((note) => (
+                                    <div
+                                      key={note}
+                                      className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                                    >
+                                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-amber-600" />
+                                      <span>{note}</span>
                                     </div>
-                                  ) : null}
+                                  ))}
                                 </div>
                               ) : null}
 

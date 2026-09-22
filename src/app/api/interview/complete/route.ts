@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { extractInterviewData } from '@/lib/openai'
+import { extractInterviewData, generateInterviewAdminRecap } from '@/lib/openai'
 import { calculateScore, determinePassFail } from '@/lib/utils'
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
@@ -175,7 +175,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update interview with analysis
+    // Update interview with analysis + admin summary note
+    let adminSummary = ''
+    let adminWatchNotes: string[] = []
+    try {
+      const adminRecap = await generateInterviewAdminRecap({
+        transcript,
+        extractedData: extractedData as Record<string, unknown>,
+        analysis: { score, passed, reason },
+      })
+      adminSummary = adminRecap.summary
+      adminWatchNotes = adminRecap.watchNotes
+    } catch (err) {
+      console.error('Failed to generate admin interview recap at complete:', err)
+    }
+
     await prisma.interview.update({
       where: { id: interviewId },
       data: {
@@ -185,6 +199,8 @@ export async function POST(request: NextRequest) {
           passed,
           reason,
           extractedFields: Object.keys(extractedData),
+          adminSummary,
+          adminWatchNotes,
         }),
         transcript,
       },
