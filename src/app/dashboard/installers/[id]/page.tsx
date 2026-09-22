@@ -3101,27 +3101,27 @@ export default function InstallerProfileViewPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-3 max-w-full">
                 {error && (
-                  <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <div className="max-w-[220px] truncate px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm" title={error}>
                     {error}
                   </div>
                 )}
                 {success && (
-                  <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                  <div className="max-w-[220px] truncate px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm" title={success}>
                     {success}
                   </div>
                 )}
                 
                 {/* Remarks - managers only see manager remarks; admins see admin remarks plus manager notes. */}
                 <div 
-                  className="relative"
+                  className="relative flex-shrink-0"
                   onMouseEnter={() => setShowRemarkPopover(true)}
                   onMouseLeave={() => setShowRemarkPopover(false)}
                 >
                   <button
                     onClick={() => setShowRemarkPopover(!showRemarkPopover)}
-                    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-medium ${
+                    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-medium flex-shrink-0 ${
                       visibleRemarks.length > 0 || canShowManagerRemarksToAdmin || Boolean(interviewRecap?.summary)
                         ? 'bg-brand-green/10 text-brand-green border-2 border-brand-green/30' 
                         : 'bg-slate-100 text-slate-700'
@@ -3142,14 +3142,14 @@ export default function InstallerProfileViewPage() {
                         onClick={() => setShowRemarkPopover(false)}
                       />
                       
-                      {/* Popover - Made bigger and nicer */}
+                      {/* Popover — fixed height + scroll so long notes never hide Add Remark */}
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: -10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="absolute right-0 top-full mt-2 w-[520px] max-h-[650px] bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 flex flex-col overflow-hidden"
+                        className="absolute right-0 top-full mt-2 flex w-[min(520px,calc(100vw-2rem))] h-[min(650px,calc(100vh-7rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl z-50"
                       >
                         {/* Header with gradient */}
-                        <div className="bg-gradient-to-r from-brand-green/10 to-brand-green/5 px-6 py-4 border-b border-slate-200">
+                        <div className="flex-shrink-0 bg-gradient-to-r from-brand-green/10 to-brand-green/5 px-6 py-4 border-b border-slate-200">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-brand-green/20 flex items-center justify-center">
@@ -3169,11 +3169,12 @@ export default function InstallerProfileViewPage() {
                           </div>
                         </div>
                         
-                        {/* Content area */}
-                        <div className="flex-1 overflow-hidden flex flex-col p-6">
+                        {/* Scrollable body */}
+                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
 
                         {/* AI Interview Recap — summarized admin note + miss notes */}
-                        <div className="mb-4 rounded-xl border border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-white p-4">
+                        <div className="rounded-xl border border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-white p-4">
                           <div className="mb-3 flex items-start gap-3">
                             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-green/15">
                               <Sparkles className="h-4 w-4 text-brand-green" />
@@ -3248,7 +3249,7 @@ export default function InstallerProfileViewPage() {
                         </div>
                         
                         {/* Display all saved remarks */}
-                        <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
+                        <div className="space-y-3">
                           {visibleRemarks.length > 0 ? (
                             visibleRemarks.map((remark, index) => (
                               <div key={index} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative">
@@ -3275,7 +3276,7 @@ export default function InstallerProfileViewPage() {
                                     })}
                                   </p>
                                 )}
-                                <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">
                                   <span className="font-semibold">Note:</span>{' '}
                                   {remark.note}
                                 </p>
@@ -3318,7 +3319,7 @@ export default function InstallerProfileViewPage() {
                                       })}
                                     </p>
                                   )}
-                                  <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                  <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">
                                     <span className="font-semibold">Note:</span>{' '}
                                     {remark.note}
                                   </p>
@@ -3336,7 +3337,10 @@ export default function InstallerProfileViewPage() {
                             </div>
                           )}
                         </div>
-                        
+                        </div>
+
+                        {/* Footer actions always visible */}
+                        <div className="flex-shrink-0 border-t border-slate-200 bg-white p-4">
                         {/* Show "Add remark" button if form is hidden */}
                         {!showAddRemarkForm && (
                           <motion.button
@@ -3356,7 +3360,7 @@ export default function InstallerProfileViewPage() {
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="space-y-4 bg-slate-50 rounded-xl p-4 border border-slate-200"
+                            className="space-y-4 bg-slate-50 rounded-xl p-4 border border-slate-200 max-h-[40vh] overflow-y-auto"
                           >
                             {/* Date field - hidden by default, shown when admin clicks "Add Date" */}
                             {showRemarkDate && (
@@ -3439,6 +3443,7 @@ export default function InstallerProfileViewPage() {
                           </motion.div>
                         )}
                         </div>
+                        </div>
                       </motion.div>
                     </>
                   )}
@@ -3447,7 +3452,7 @@ export default function InstallerProfileViewPage() {
                 {!isManager && (
                   <>
                     {!isEditing ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-shrink-0">
                         <button
                           onClick={() => setIsEditing(true)}
                           className="flex items-center gap-2 px-6 py-2.5 bg-brand-green text-white rounded-xl hover:bg-brand-green-dark transition-colors font-medium shadow-lg shadow-brand-green/30"
