@@ -30,7 +30,9 @@ type InstallerProfile = {
 }
 
 const fieldClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20'
+  'w-full max-w-full min-w-0 box-border rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20'
+
+const dateFieldClass = `${fieldClass} appearance-none [-webkit-appearance:none] [&::-webkit-date-and-time-value]:text-left`
 
 export default function EstimatorWeeklyReportPage() {
   const router = useRouter()
@@ -227,7 +229,7 @@ export default function EstimatorWeeklyReportPage() {
         </div>
       </header>
 
-      <main className="px-4 lg:px-6 py-6 space-y-6 max-w-5xl mx-auto">
+      <main className="px-4 lg:px-6 py-6 space-y-6 max-w-5xl mx-auto min-w-0 overflow-x-hidden">
         {error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
         ) : null}
@@ -239,10 +241,10 @@ export default function EstimatorWeeklyReportPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-8 shadow-lg backdrop-blur-sm"
+          className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-8 shadow-lg backdrop-blur-sm min-w-0 overflow-hidden"
         >
-          <div className="grid gap-4 sm:grid-cols-2 mb-6">
-            <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <div className="grid gap-4 sm:grid-cols-2 mb-6 min-w-0">
+            <label className="flex flex-col gap-1.5 sm:col-span-2 min-w-0">
               <input
                 value={subcontractorName}
                 onChange={(e) => setSubcontractorName(e.target.value)}
@@ -252,24 +254,24 @@ export default function EstimatorWeeklyReportPage() {
                 aria-label="Independent subcontractor name"
               />
             </label>
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-1.5 min-w-0 overflow-hidden">
               <input
                 type="date"
                 value={weekEnding}
                 onChange={(e) => setWeekEnding(e.target.value)}
                 required
-                className={fieldClass}
+                className={dateFieldClass}
                 aria-label="Week ending"
               />
             </label>
           </div>
 
-          <div className="mb-3">
+          <div className="mb-3 min-w-0">
             <div className="space-y-4">
               {lines.map((line, index) => (
                 <div
                   key={`line-${index}`}
-                  className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5"
+                  className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5 min-w-0 overflow-hidden"
                 >
                   {lines.length > 1 ? (
                     <div className="mb-4 flex justify-end">
@@ -283,8 +285,8 @@ export default function EstimatorWeeklyReportPage() {
                       </button>
                     </div>
                   ) : null}
-                  <div className="grid gap-4">
-                    <label className="flex flex-col gap-1.5">
+                  <div className="grid gap-4 min-w-0">
+                    <label className="flex flex-col gap-1.5 min-w-0">
                       <span className="text-sm font-semibold text-slate-700">PO #</span>
                       <input
                         value={line.poNumber}
@@ -293,7 +295,7 @@ export default function EstimatorWeeklyReportPage() {
                         placeholder="Purchase order number"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5">
+                    <label className="flex flex-col gap-1.5 min-w-0">
                       <span className="text-sm font-semibold text-slate-700">Customer</span>
                       <input
                         value={line.customer}
@@ -302,13 +304,13 @@ export default function EstimatorWeeklyReportPage() {
                         placeholder="Customer name"
                       />
                     </label>
-                    <label className="flex flex-col gap-1.5">
+                    <label className="flex flex-col gap-1.5 min-w-0 overflow-hidden">
                       <span className="text-sm font-semibold text-slate-700">Date</span>
                       <input
                         type="date"
                         value={line.date}
                         onChange={(e) => updateLine(index, 'date', e.target.value)}
-                        className={fieldClass}
+                        className={dateFieldClass}
                       />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">

@@ -41,6 +41,15 @@ body {
   select {
     font-size: 16px !important;
   }
+
+  /* Keep native date controls from overflowing their card on iOS */
+  input[type="date"] {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
 }
 
 /* Custom scrollbar */
