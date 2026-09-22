@@ -2,11 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { Loader2, Plus, Trash2, Save, Calendar } from 'lucide-react'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
-import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import {
   emptyWeeklyReportLine,
   normalizeWeeklyReportLines,
@@ -31,7 +29,8 @@ type InstallerProfile = {
   accountType?: string | null
 }
 
-const COMPANY_ADDRESS = ['4420 E ADAMO DR. STE 203', 'TAMPA, FL 33605', 'PH: 813-867-4714']
+const fieldClass =
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20'
 
 export default function EstimatorWeeklyReportPage() {
   const router = useRouter()
@@ -225,7 +224,7 @@ export default function EstimatorWeeklyReportPage() {
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
         <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
           <h1 className="text-3xl font-bold text-slate-900 mb-1">Weekly Report</h1>
-          <p className="text-sm text-slate-500">Estimator-only weekly reports — create and manage your submissions.</p>
+          <p className="text-sm text-slate-500">Create and manage your weekly submissions.</p>
         </div>
       </header>
 
@@ -241,100 +240,95 @@ export default function EstimatorWeeklyReportPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="overflow-hidden rounded-2xl border-2 border-slate-800 bg-white shadow-lg"
+          className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-8 shadow-lg backdrop-blur-sm"
         >
-          <div className="grid gap-4 border-b-2 border-slate-800 px-4 py-4 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
-            <div className="flex items-center gap-3">
-              <Image src={logo} alt="Floor Interior Services" width={48} height={48} className="h-12 w-12 object-contain" />
-              <div>
-                <p className="text-sm font-bold text-slate-900 leading-tight">Floor Interior</p>
-                <p className="text-[11px] text-slate-500">Services</p>
-              </div>
+          <div className="mb-6 flex items-center justify-between gap-3 border-b border-slate-200 pb-5">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">
+                {editingId ? 'Edit weekly report' : 'New weekly report'}
+              </h2>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Subcontractor name, week ending, and job lines
+              </p>
             </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-black tracking-tight text-slate-900">Weekly Report</h2>
-            </div>
-            <div className="text-right text-[11px] leading-relaxed text-slate-600 sm:justify-self-end">
-              {COMPANY_ADDRESS.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
+            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-brand-green/10">
+              <Calendar className="h-6 w-6 text-brand-green" />
             </div>
           </div>
 
-          <div className="grid gap-4 border-b-2 border-slate-800 px-4 py-3 sm:grid-cols-[1.4fr_auto]">
-            <label className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-700 whitespace-nowrap">
-                Independent Subcontractor Name
-              </span>
+          <div className="grid gap-4 sm:grid-cols-2 mb-6">
+            <label className="flex flex-col gap-1.5 sm:col-span-2">
+              <span className="text-sm font-semibold text-slate-700">Independent Subcontractor Name</span>
               <input
                 value={subcontractorName}
                 onChange={(e) => setSubcontractorName(e.target.value)}
                 required
-                className="w-full rounded border border-slate-300 bg-[#FFF59D] px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                className={fieldClass}
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Week Ending</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-semibold text-slate-700">Week Ending</span>
               <input
                 type="date"
                 value={weekEnding}
                 onChange={(e) => setWeekEnding(e.target.value)}
                 required
-                className="rounded border border-slate-300 bg-[#FFF59D] px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                className={fieldClass}
               />
             </label>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-100 text-left text-xs font-bold uppercase tracking-wide text-slate-700">
-                  <th className="border border-slate-800 px-2 py-2 w-10">#</th>
-                  <th className="border border-slate-800 px-2 py-2">PO #</th>
-                  <th className="border border-slate-800 px-2 py-2">Customer</th>
-                  <th className="border border-slate-800 px-2 py-2">Date</th>
-                  <th className="border border-slate-800 px-2 py-2">Mileage</th>
-                  <th className="border border-slate-800 px-2 py-2">Total</th>
-                  <th className="border border-slate-800 px-2 py-2 w-12" />
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, index) => (
-                  <tr key={`line-${index}`}>
-                    <td className="border border-slate-800 px-2 py-1 text-center font-semibold text-slate-700">
-                      {index + 1}
-                    </td>
-                    {(['poNumber', 'customer', 'date', 'mileage', 'total'] as const).map((key) => (
-                      <td key={key} className="border border-slate-800 p-0">
-                        <input
-                          type={key === 'date' ? 'date' : 'text'}
-                          value={line[key]}
-                          onChange={(e) => updateLine(index, key, e.target.value)}
-                          className="w-full bg-[#FFF59D] px-2 py-2 text-sm text-slate-900 outline-none"
-                        />
-                      </td>
-                    ))}
-                    <td className="border border-slate-800 px-1 py-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeLine(index)}
-                        className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
-                        title="Remove row"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Job lines</h3>
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-3 py-2.5 w-10">#</th>
+                    <th className="px-3 py-2.5">PO #</th>
+                    <th className="px-3 py-2.5">Customer</th>
+                    <th className="px-3 py-2.5">Date</th>
+                    <th className="px-3 py-2.5">Mileage</th>
+                    <th className="px-3 py-2.5">Total</th>
+                    <th className="px-3 py-2.5 w-12" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {lines.map((line, index) => (
+                    <tr key={`line-${index}`} className="bg-white">
+                      <td className="px-3 py-2 text-center font-medium text-slate-500">{index + 1}</td>
+                      {(['poNumber', 'customer', 'date', 'mileage', 'total'] as const).map((key) => (
+                        <td key={key} className="px-2 py-1.5">
+                          <input
+                            type={key === 'date' ? 'date' : 'text'}
+                            value={line[key]}
+                            onChange={(e) => updateLine(index, key, e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                          />
+                        </td>
+                      ))}
+                      <td className="px-2 py-1.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeLine(index)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          title="Remove row"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-slate-800 bg-slate-50 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={addLine}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <Plus className="h-4 w-4" />
               Add row
@@ -344,7 +338,7 @@ export default function EstimatorWeeklyReportPage() {
                 <button
                   type="button"
                   onClick={() => resetForm(fullName)}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Cancel edit
                 </button>
@@ -352,7 +346,7 @@ export default function EstimatorWeeklyReportPage() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-green px-4 py-2 text-sm font-bold text-white hover:bg-brand-green-dark disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:opacity-60"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {editingId ? 'Update report' : 'Save weekly report'}
@@ -361,10 +355,10 @@ export default function EstimatorWeeklyReportPage() {
           </div>
         </form>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
+        <section className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-8 shadow-lg backdrop-blur-sm">
+          <div className="mb-5 flex items-center gap-2 border-b border-slate-200 pb-5">
             <Calendar className="h-5 w-5 text-brand-green" />
-            <h3 className="text-lg font-bold text-slate-900">Your weekly reports</h3>
+            <h3 className="text-xl font-bold text-slate-900">Your weekly reports</h3>
           </div>
           {reports.length === 0 ? (
             <p className="text-sm text-slate-500">No weekly reports yet. Create your first one above.</p>
