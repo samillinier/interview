@@ -1,5 +1,19 @@
 import OpenAI from 'openai'
-import { COMPLIANCE_CONTACT_EMAIL, COMPLIANCE_CONTACT_PHONE, COMPLIANCE_KNOWLEDGE_BASE, FIS_APP_ANDROID_URL, FIS_APP_IOS_URL, FIS_APP_NAME, SCHEDULING_CONTACT_EMAIL, SCHEDULING_CONTACT_NAME, SCHEDULING_CONTACT_PHONE } from '@/lib/compliance-knowledge-base'
+import {
+  COMPLIANCE_CONTACT_EMAIL,
+  COMPLIANCE_CONTACT_PHONE,
+  COMPLIANCE_KNOWLEDGE_BASE,
+  CORPORATE_ADDRESS,
+  CORPORATE_PHONE,
+  FIS_APP_ANDROID_URL,
+  FIS_APP_IOS_URL,
+  FIS_APP_NAME,
+  formatWorkroomDirectory,
+  SCHEDULING_CONTACT_EMAIL,
+  SCHEDULING_CONTACT_NAME,
+  SCHEDULING_CONTACT_PHONE,
+  WORKROOM_DIRECTORY,
+} from '@/lib/compliance-knowledge-base'
 import { AI_FALLBACK_WAIT_MS, HUMAN_STAFF_ACTIVE_MS, isAliceSender } from '@/lib/website-chat'
 
 export { AI_FALLBACK_WAIT_MS, HUMAN_STAFF_ACTIVE_MS }
@@ -65,6 +79,8 @@ VOICE:
 - Sound like a person, not a policy dump.
 - Answer only what they asked.
 - If they asked for certificate holder wording, give a brief intro then paste the 3-line address so they can copy it.
+- If they asked for the corporate / company / main office address or phone, give exactly: ${CORPORATE_PHONE} and ${CORPORATE_ADDRESS}. Do not use the compliance phone for that.
+- If they asked about workrooms, branches, work rooms, or a city office location, use the workroom directory in the knowledge base. Give only the matching workroom if they named a city; otherwise list all.
 - If they asked for the additional insured statement, paste the exact Description of Operations wording from the COI sample.
 - If they asked how to fill the W-9, bank form, or background form, give the fillable link and a short pointer. Never list Line 1, Line 2, Line 3a, Part I, Part II as a numbered or bolded walkthrough. Only answer a specific line if they asked about that line. Never collect SSN, date of birth, account number, or routing number in chat.
 - Never use markdown numbered lists like "1. **Line 1**:" for forms.
@@ -142,6 +158,31 @@ export function fallbackComplianceReply(question: string) {
   const wantsJobs = includesAny(q, ['jobs', 'work order', 'guarantee', 'how many jobs', 'employee'])
   const wantsApproval = includesAny(q, ['am i approved', 'approved', 'compliant', 'can i start', 'cleared'])
   const wantsContact = includesAny(q, ['email', 'phone', 'call', 'contact', 'who do i send', 'reach'])
+  const wantsCorporate =
+    includesAny(q, ['corporate', 'main office', 'head office', 'headquarters', 'hq', 'company address', 'company phone', 'oficina principal', 'dirección corporativa']) ||
+    (includesAny(q, ['address', 'dirección', 'ubicacion', 'ubicación']) &&
+      includesAny(q, ['corporate', 'company', 'fis', 'office', 'tampa']) &&
+      !includesAny(q, ['workroom', 'work room', 'branch', 'certificate holder', 'cert holder']))
+  const wantsWorkroom = includesAny(q, [
+    'workroom',
+    'work room',
+    'work-room',
+    'branch',
+    'branches',
+    'locations',
+    'offices',
+    'sala de trabajo',
+    'sucursal',
+    'naples',
+    'lakeland',
+    'sarasota',
+    'dothan',
+    'albany',
+    'gainesville',
+    'tallahassee',
+    'panama city',
+    'fort myers',
+  ])
   const wantsVideo = includesAny(q, ['video', 'youtube', 'tutorial', 'how to upload', 'how to fill'])
   const wantsApp = includesAny(q, ['the app', 'an app', 'your app', 'iphone', 'android', 'google play', 'app store', 'mobile', 'fasttrack', 'fast track', 'download app'])
   const wantsSchedulingOrMeasure = includesAny(q, [
@@ -161,6 +202,26 @@ export function fallbackComplianceReply(question: string) {
     parts.push(
       `For scheduling and measurement, please contact ${SCHEDULING_CONTACT_NAME} at ${SCHEDULING_CONTACT_PHONE} or ${SCHEDULING_CONTACT_EMAIL}.`,
     )
+  }
+
+  if (wantsCorporate) {
+    parts.push(`Our corporate office:\n${CORPORATE_ADDRESS}\nPhone: ${CORPORATE_PHONE}`)
+  }
+
+  if (wantsWorkroom && !wantsCorporate) {
+    const match = WORKROOM_DIRECTORY.find((w) => q.includes(w.name.toLowerCase()))
+    if (match) {
+      parts.push(`${match.name} workroom:\n${match.address}\nPhone: ${match.phone}\nHours: ${match.hours}`)
+    } else if (includesAny(q, ['tampa'])) {
+      parts.push(`Corporate / Tampa office:\n${CORPORATE_ADDRESS}\nPhone: ${CORPORATE_PHONE}`)
+    } else if (includesAny(q, ['fort myers', 'ft myers', 'ft. myers'])) {
+      const shared = WORKROOM_DIRECTORY.filter((w) => w.address.toLowerCase().includes('alico'))
+      parts.push(
+        shared.map((w) => `${w.name} workroom:\n${w.address}\nPhone: ${w.phone}\nHours: ${w.hours}`).join('\n\n'),
+      )
+    } else {
+      parts.push(`Here are our workrooms:\n\n${formatWorkroomDirectory()}`)
+    }
   }
 
   if (wantsHolder) {
@@ -267,7 +328,7 @@ It asks for company name, contact, phone, business address, email, bank name, ac
     return `I can help with onboarding, documents, insurance, LEAD certs, badge photos, and how work orders work. What do you need? You can also reach ${COMPLIANCE_CONTACT_EMAIL}, ${COMPLIANCE_CONTACT_PHONE}.`
   }
 
-  if (!wantsDocs && !wantsGl && !wantsAuto && !wantsHolder && !wantsAdditionalInsured && !wantsPrice && !wantsApproval && !wantsW9 && !wantsBank && !wantsBackground) {
+  if (!wantsDocs && !wantsGl && !wantsAuto && !wantsHolder && !wantsAdditionalInsured && !wantsPrice && !wantsApproval && !wantsW9 && !wantsBank && !wantsBackground && !wantsCorporate && !wantsWorkroom) {
     parts.push('Happy to pull up another requirement if you need it.')
   } else if (wantsGl && !wantsAuto && !wantsWc) {
     parts.push('Need the auto or workers’ comp minimums too?')

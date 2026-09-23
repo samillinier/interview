@@ -3,9 +3,69 @@ export const COMPLIANCE_CONTACT_PHONE = 'O: (813) 867-4712 Ext: 441'
 export const SCHEDULING_CONTACT_NAME = 'Adriana Vansickle'
 export const SCHEDULING_CONTACT_PHONE = '(813) 867-7028'
 export const SCHEDULING_CONTACT_EMAIL = 'avansickle@fiscorponline.com'
+export const CORPORATE_PHONE = '813-797-3494'
+export const CORPORATE_ADDRESS = '4420 E Adamo Dr Suite 203, Tampa, FL 33605'
 export const FIS_APP_NAME = 'FIS FastTrack'
 export const FIS_APP_IOS_URL = 'https://apps.apple.com/us/app/fis-fasttrack/id6793172089'
 export const FIS_APP_ANDROID_URL = 'https://play.google.com/store/apps/details?id=com.fis.installer'
+
+/** Workroom directory Alice should use when asked about branch / workroom locations. */
+export const WORKROOM_DIRECTORY = [
+  {
+    name: 'Naples',
+    address: '17190 Alico Center Road, Fort Myers FL 33967',
+    phone: '239-354-7929',
+    hours: 'M-F, 8:00AM – 5:00PM EC',
+  },
+  {
+    name: 'Lakeland',
+    address: '17190 Alico Center Road, Fort Myers FL 33967',
+    phone: '239-354-7929',
+    hours: 'M-F, 8:00AM – 5:00PM EC',
+  },
+  {
+    name: 'Sarasota',
+    address: '1890 Barber Rd Sarasota, FL 34240',
+    phone: '941-554-8530',
+    hours: 'M-F, 8:00AM – 5:00PM EC',
+  },
+  {
+    name: 'Dothan',
+    address: '131 Woodburn Dr Suites 1 – 2 -3 Dothan AL 36305',
+    phone: '334-500-4557',
+    hours: 'M-F, 8:00AM – 5:00PM CT',
+  },
+  {
+    name: 'Albany',
+    address: '2325 E Broad Ave, Albany GA 31705',
+    phone: '229-715-7284',
+    hours: 'M-F, 8:00AM – 5:00PM EC',
+  },
+  {
+    name: 'Gainesville',
+    address: '7065 NW 22nd St Suite A Gainesville 32653',
+    phone: '321-353-6654',
+    hours: 'M-F, 8:00AM – 5:00PM EC',
+  },
+  {
+    name: 'Tallahassee',
+    address: '4329 W Pensacola St, Tallahassee FL 32304',
+    phone: '904-207-7906',
+    hours: 'M-F, 8:00AM – 5:00PM EC',
+  },
+  {
+    name: 'Panama City',
+    address: '2009 Poplar Pl unit 305, Panama City FL 32405',
+    phone: '239-354-7929',
+    hours: 'M-F, 8:00AM – 5:00PM CT',
+  },
+] as const
+
+export function formatWorkroomDirectory() {
+  return WORKROOM_DIRECTORY.map(
+    (w) => `${w.name}: ${w.address}. Phone: ${w.phone}. Hours: ${w.hours}.`,
+  ).join('\n')
+}
 
 export const COMPLIANCE_KNOWLEDGE_BASE = `
 LIVE CHAT CONTACT (give this when someone asks who to email or call about onboarding/compliance):
@@ -51,6 +111,22 @@ Floor Interior Services (FIS) is a flooring installation company that manages in
 FIS coordinates the installation side of the process: receiving installation projects, coordinating projects, assigning work orders to approved subcontractors, and supporting the installation process according to project requirements.
 Core relationship flow:
 Lowe’s → FIS → Qualified Subcontractor → Customer
+
+2a. CORPORATE ADDRESS AND PHONE (use this whenever someone asks for the corporate / company / main office address or phone — not for compliance contact, not for certificate-holder wording unless they also asked for certificate holder):
+Phone: 813-797-3494
+Address: 4420 E Adamo Dr Suite 203, Tampa, FL 33605
+Do not invent other corporate phones or addresses.
+
+2b. WORKROOM / BRANCH LOCATIONS (use when someone asks about workrooms, branches, work rooms, office locations by city, or where a specific workroom is):
+Naples — 17190 Alico Center Road, Fort Myers FL 33967 — 239-354-7929 — M-F, 8:00AM – 5:00PM EC
+Lakeland — 17190 Alico Center Road, Fort Myers FL 33967 — 239-354-7929 — M-F, 8:00AM – 5:00PM EC
+Sarasota — 1890 Barber Rd Sarasota, FL 34240 — 941-554-8530 — M-F, 8:00AM – 5:00PM EC
+Dothan — 131 Woodburn Dr Suites 1 – 2 -3 Dothan AL 36305 — 334-500-4557 — M-F, 8:00AM – 5:00PM CT
+Albany — 2325 E Broad Ave, Albany GA 31705 — 229-715-7284 — M-F, 8:00AM – 5:00PM EC
+Gainesville — 7065 NW 22nd St Suite A Gainesville 32653 — 321-353-6654 — M-F, 8:00AM – 5:00PM EC
+Tallahassee — 4329 W Pensacola St, Tallahassee FL 32304 — 904-207-7906 — M-F, 8:00AM – 5:00PM EC
+Panama City — 2009 Poplar Pl unit 305, Panama City FL 32405 — 239-354-7929 — M-F, 8:00AM – 5:00PM CT
+If they ask for one city, give only that workroom’s address, phone, and hours. If they ask for all workrooms / branches, list all of the above. If they ask about Tampa corporate / main office, use the corporate address and phone in 2a. Do not invent workroom addresses or phones that are not listed here.
 3. HOW THE SUBCONTRACTOR PARTNERSHIP WORKS
 When a flooring installation project is assigned to FIS, FIS coordinates the project and issues a work order to an approved subcontractor based on factors including service area, capabilities, availability, and project requirements.
 The subcontractor is responsible for completing the installation according to the work order and project requirements.
@@ -389,6 +465,12 @@ FIS means?
 Floor Interior Services.
 FIS operates where?
 Across Florida, through 10 different branches.
+Corporate address?
+4420 E Adamo Dr Suite 203, Tampa, FL 33605
+Corporate phone?
+813-797-3494
+Workroom / branch locations?
+Naples: 17190 Alico Center Road, Fort Myers FL 33967, 239-354-7929, M-F 8:00AM–5:00PM EC. Lakeland: same Fort Myers address/phone/hours. Sarasota: 1890 Barber Rd Sarasota FL 34240, 941-554-8530, M-F 8:00AM–5:00PM EC. Dothan: 131 Woodburn Dr Suites 1–2-3 Dothan AL 36305, 334-500-4557, M-F 8:00AM–5:00PM CT. Albany: 2325 E Broad Ave Albany GA 31705, 229-715-7284, M-F 8:00AM–5:00PM EC. Gainesville: 7065 NW 22nd St Suite A Gainesville 32653, 321-353-6654, M-F 8:00AM–5:00PM EC. Tallahassee: 4329 W Pensacola St Tallahassee FL 32304, 904-207-7906, M-F 8:00AM–5:00PM EC. Panama City: 2009 Poplar Pl unit 305 Panama City FL 32405, 239-354-7929, M-F 8:00AM–5:00PM CT.
 FIS manages installation services for whom?
 Lowe’s customers.
 Contractor relationship?
