@@ -154,6 +154,11 @@ export default function GPSPage() {
     }
     if (status === 'authenticated') {
       const userType = ((session?.user as any)?.userType || '').toUpperCase()
+      const role = String((session?.user as any)?.role || '').toUpperCase()
+      if (role === 'ACCOUNTING') {
+        router.push('/dashboard')
+        return
+      }
       const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
       if (!allowedTypes.includes(userType)) {
         router.push('/property/login')

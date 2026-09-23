@@ -310,6 +310,10 @@ export default function SafetyWalkPage() {
     }
 
     if (status === 'authenticated') {
+      if (role === 'ACCOUNTING') {
+        router.push('/dashboard')
+        return
+      }
       if (userType && userType !== 'property' && !isAdmin) {
         router.push(userType === 'admin' ? '/dashboard' : '/property/login')
         return

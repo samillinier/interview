@@ -594,7 +594,7 @@ export default function TrackingPage() {
   useEffect(() => {
     if (sessionStatus !== 'authenticated') return
     const role = String((session?.user as any)?.role || '').toUpperCase()
-    if (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN') return
+    if (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN' && role !== 'ACCOUNTING') return
     loadOnboardingMatrix()
   }, [sessionStatus, session, loadOnboardingMatrix, matrixStatusFilter])
 
@@ -852,7 +852,7 @@ export default function TrackingPage() {
   ) => {
     const role = String((session?.user as any)?.role || '').toUpperCase()
     const canEditNote = role === 'ADMIN' || role === 'SUPER_ADMIN'
-    const canReadNote = canEditNote || role === 'MANAGER' || role === 'MODERATOR'
+    const canReadNote = canEditNote || role === 'MANAGER' || role === 'MODERATOR' || role === 'ACCOUNTING'
     if (!canReadNote) return
     e.stopPropagation()
 

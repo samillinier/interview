@@ -213,7 +213,10 @@ export default function RingCentralPage() {
       const role = String((session?.user as any)?.role || '').toUpperCase()
       const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
       if (hasLoadedProfile.current && property) return
-      if (userType !== 'property' && userType && !isAdminRole) { router.push('/dashboard'); return }
+      if (role === 'ACCOUNTING' || (userType !== 'property' && userType && !isAdminRole)) {
+        router.push('/dashboard')
+        return
+      }
       hasLoadedProfile.current = true
       loadPropertyProfile()
     }

@@ -167,7 +167,7 @@ export default function TravelRequestPage() {
   const { data: session, status: sessionStatus } = useSession()
   const { sidebarOpen } = useSidebarOpen()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
-  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(normalizedRole)
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
   const canReview = normalizedRole === 'SUPER_ADMIN'
 
   const [showForm, setShowForm] = useState(false)
