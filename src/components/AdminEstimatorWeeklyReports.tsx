@@ -109,6 +109,11 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
       setReports((prev) => prev.filter((report) => report.id !== reportId))
       if (expandedId === reportId) setExpandedId(null)
       setSuccess('Weekly invoice deleted.')
+      try {
+        window.dispatchEvent(new Event('dashboard-invoices-changed'))
+      } catch {
+        // ignore
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to delete invoice')
     } finally {

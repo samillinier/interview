@@ -89,6 +89,7 @@ export function AdminSidebar({ pathname }: Props) {
   const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
+  const [invoiceCount, setInvoiceCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -119,6 +120,45 @@ export function AdminSidebar({ pathname }: Props) {
       window.removeEventListener('focus', refresh)
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const canInvoice =
+      normalizedRole === 'ADMIN' ||
+      normalizedRole === 'SUPER_ADMIN' ||
+      normalizedRole === 'ACCOUNTING'
+    if (!canInvoice) {
+      setInvoiceCount(0)
+      return
+    }
+
+    const loadInvoiceBadge = async () => {
+      try {
+        const res = await fetch('/api/admin/invoices/count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setInvoiceCount(count)
+      } catch {
+        // ignore
+      }
+    }
+
+    const refresh = () => {
+      void loadInvoiceBadge()
+    }
+
+    loadInvoiceBadge()
+    const interval = window.setInterval(loadInvoiceBadge, 3000)
+    window.addEventListener('dashboard-invoices-changed', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      window.removeEventListener('dashboard-invoices-changed', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [normalizedRole])
 
   useEffect(() => {
     let cancelled = false
@@ -220,12 +260,13 @@ export function AdminSidebar({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(normalizedRole === 'ACCOUNTING'
+      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ACCOUNTING'
         ? [
             {
               href: '/dashboard/corporate/invoice',
               label: 'Invoice',
               icon: Receipt,
+              badge: invoiceCount,
               match: (path: string) => path.startsWith('/dashboard/corporate/invoice'),
             },
           ]
@@ -278,7 +319,7 @@ export function AdminSidebar({ pathname }: Props) {
     if (portalNav.length === 0) return filtered
 
     return [...filtered, ...portalNav]
-  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount])
+  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, invoiceCount])
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 

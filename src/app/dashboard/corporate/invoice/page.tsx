@@ -247,6 +247,11 @@ export default function DashboardInvoicePage() {
       setInvoices((prev) => prev.filter((row) => row.id !== invoice.id))
       if (expandedId === invoice.id) setExpandedId(null)
       setSuccess('Weekly invoice deleted.')
+      try {
+        window.dispatchEvent(new Event('dashboard-invoices-changed'))
+      } catch {
+        // ignore
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to delete invoice')
     } finally {

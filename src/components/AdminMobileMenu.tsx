@@ -47,6 +47,7 @@ export function AdminMobileMenu({ pathname }: Props) {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
   const [updatesCount, setUpdatesCount] = useState<number>(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState<number>(0)
+  const [invoiceCount, setInvoiceCount] = useState<number>(0)
 
   const isDetailPage =
     pathname.startsWith('/dashboard/installers/')
@@ -102,6 +103,41 @@ export function AdminMobileMenu({ pathname }: Props) {
       window.removeEventListener('focus', refresh)
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const role = String((session?.user as any)?.role || '').toUpperCase()
+    const canInvoice = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+    if (!canInvoice) {
+      setInvoiceCount(0)
+      return
+    }
+
+    const loadInvoices = async () => {
+      try {
+        const res = await fetch('/api/admin/invoices/count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setInvoiceCount(count)
+      } catch {
+        // ignore
+      }
+    }
+    const refresh = () => {
+      void loadInvoices()
+    }
+    loadInvoices()
+    const interval = setInterval(loadInvoices, 3000)
+    window.addEventListener('dashboard-invoices-changed', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      window.removeEventListener('dashboard-invoices-changed', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [session?.user])
 
   useEffect(() => {
     let cancelled = false
@@ -198,12 +234,13 @@ export function AdminMobileMenu({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(role === 'ACCOUNTING'
+      ...(role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
         ? [
             {
               href: '/dashboard/corporate/invoice',
               label: 'Invoice',
               icon: Receipt,
+              badge: invoiceCount,
               match: (p: string) => p.startsWith('/dashboard/corporate/invoice'),
             },
           ]
@@ -261,7 +298,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       },
     ] as typeof base
     return withPropertyPortal
-  }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingTravelRequestCount, session?.user])
+  }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingTravelRequestCount, invoiceCount, session?.user])
 
   const isActive = (href: string, match?: (p: string) => boolean) => {
     if (match) return match(pathname)
