@@ -570,7 +570,7 @@ export default function TrackingPage() {
       router.push('/login')
     } else if (sessionStatus === 'authenticated') {
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      const canView = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || role === 'SUPER_ADMIN'
+      const canView = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
       if (!canView) {
         router.push('/dashboard')
       } else {
@@ -851,7 +851,7 @@ export default function TrackingPage() {
     note?: string | null
   ) => {
     const role = String((session?.user as any)?.role || '').toUpperCase()
-    const canEditNote = role === 'ADMIN' || role === 'SUPER_ADMIN'
+    const canEditNote = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
     const canReadNote = canEditNote || role === 'MANAGER' || role === 'MODERATOR'
     if (!canReadNote) return
     e.stopPropagation()
@@ -1794,8 +1794,8 @@ export default function TrackingPage() {
   }
 
   const role = String((session?.user as any)?.role || '').toUpperCase()
-  const canView = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || role === 'SUPER_ADMIN'
-  const canEdit = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const canView = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+  const canEdit = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
   if (!canView) {
     return null
   }

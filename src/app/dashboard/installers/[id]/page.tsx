@@ -85,6 +85,7 @@ import { NullAttachmentShade } from '@/components/NullAttachmentShade'
 import type { InterviewRecapPayload } from '@/lib/interviewRecap'
 import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
+import { canAccessInvoices } from '@/lib/invoiceAccess'
 import { AdminEstimatorWeeklyReports } from '@/components/AdminEstimatorWeeklyReports'
 
 
@@ -9434,7 +9435,9 @@ export default function InstallerProfileViewPage() {
             )
           })()}
 
-          {isEstimator ? <AdminEstimatorWeeklyReports installerId={installerId} /> : null}
+          {isEstimator && canAccessInvoices(normalizedRole) ? (
+            <AdminEstimatorWeeklyReports installerId={installerId} />
+          ) : null}
 
         </main>
       </div>

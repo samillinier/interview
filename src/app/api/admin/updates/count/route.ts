@@ -19,7 +19,7 @@ export async function GET() {
 
     const admin = await prisma.admin.findUnique({ where: { email } })
     const role = String((admin as any)?.role || '').toUpperCase()
-    const canView = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+    const canView = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
     if (!admin?.isActive || !canView) return NextResponse.json({ count: 0 }, { headers: noStoreHeaders })
 
     const count = await getDashboardUpdatesNavBadgeCount()

@@ -119,14 +119,14 @@ export default function ReportPage() {
     sessionStatus === 'authenticated' &&
     (() => {
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      return role === 'ADMIN' || role === 'SUPER_ADMIN'
+      return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
     })()
 
   const canReadReportNotes =
     sessionStatus === 'authenticated' &&
     (() => {
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      return role === 'ADMIN' || role === 'MODERATOR' || role === 'SUPER_ADMIN'
+      return role === 'ADMIN' || role === 'MODERATOR' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
     })()
 
   // Column visibility — persisted server-side via API
@@ -195,7 +195,7 @@ export default function ReportPage() {
       router.push('/login')
     } else if (sessionStatus === 'authenticated') {
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      const canView = role === 'ADMIN' || role === 'MODERATOR' || role === 'SUPER_ADMIN'
+      const canView = role === 'ADMIN' || role === 'MODERATOR' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
       if (!canView) router.push('/dashboard')
     }
   }, [sessionStatus, session, router])
@@ -225,7 +225,7 @@ export default function ReportPage() {
   useEffect(() => {
     if (sessionStatus === 'authenticated') {
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      if (role === 'ADMIN' || role === 'MODERATOR' || role === 'SUPER_ADMIN') {
+      if (role === 'ADMIN' || role === 'MODERATOR' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING') {
         loadReport()
       }
     }

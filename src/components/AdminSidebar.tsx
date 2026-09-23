@@ -25,7 +25,6 @@ import {
   PanelLeftOpen,
   Plane,
   Radar,
-  Receipt,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -197,17 +196,6 @@ export function AdminSidebar({ pathname }: Props) {
   }, [])
 
   const items = useMemo((): NavItem[] => {
-    if (normalizedRole === 'ACCOUNTING') {
-      return [
-        {
-          href: '/dashboard/corporate/invoice',
-          label: 'Invoice',
-          icon: Receipt,
-          match: (path) => path.startsWith('/dashboard/corporate/invoice'),
-        },
-      ]
-    }
-
     const base: NavItem[] = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (path) => path === '/dashboard' },
       { href: '/dashboard', label: 'Installers', icon: Users, match: (path) => path.startsWith('/dashboard/installers') },
@@ -227,12 +215,11 @@ export function AdminSidebar({ pathname }: Props) {
             { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
             { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
             { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
-            { href: '/dashboard/corporate/invoice', label: 'Invoice', icon: Receipt, match: (path: string) => path.startsWith('/dashboard/corporate/invoice') },
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
+      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ACCOUNTING'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]
         : []),
       { href: '/dashboard/ltr', label: 'Survey', icon: ClipboardList },
@@ -266,7 +253,7 @@ export function AdminSidebar({ pathname }: Props) {
         match: (path) => path.startsWith('/property'),
       })
     }
-    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
+    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'ACCOUNTING') {
       const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount
       portalNav.push({
         href: '/dashboard/corporate',

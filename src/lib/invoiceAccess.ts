@@ -1,4 +1,4 @@
-export const INVOICE_ACCESS_ROLES = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTING'] as const
+export const INVOICE_ACCESS_ROLES = ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTING'] as const
 
 export type InvoiceAccessRole = (typeof INVOICE_ACCESS_ROLES)[number]
 

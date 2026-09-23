@@ -144,7 +144,7 @@ export default function MarketingPage() {
   const router = useRouter()
   const pathname = usePathname()
   const role = String((session?.user as any)?.role || '').toUpperCase()
-  const canView = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const canView = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
   const { sidebarOpen } = useSidebarOpen()
 
   const [query, setQuery] = useState('Floor installers')

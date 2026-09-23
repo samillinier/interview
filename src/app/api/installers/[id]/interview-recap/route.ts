@@ -33,7 +33,7 @@ export async function GET(
     }
 
     const sessionRole = String((session?.user as any)?.role || '').toUpperCase()
-    const allowedRoles = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR'])
+    const allowedRoles = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR', 'ACCOUNTING'])
 
     const admin = await prisma.admin.findUnique({ where: { email } })
     const dbRole = String((admin as any)?.role || '').toUpperCase()

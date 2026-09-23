@@ -11,6 +11,7 @@ import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { canAccessInvoices } from '@/lib/invoiceAccess'
 import {
   CORPORATE_DOCUMENT_SECTIONS,
   CORPORATE_DOCUMENT_SECTION_ICON,
@@ -120,10 +121,6 @@ export default function CorporatePage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
-    if (status === 'authenticated' && normalizedRole === 'ACCOUNTING') {
-      router.replace('/dashboard/corporate/invoice')
-      return
-    }
     if (status === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
   }, [status, router, canAccess, normalizedRole])
 
@@ -155,6 +152,16 @@ export default function CorporatePage() {
 
   if (!canAccess) return null
 
+  const visibleGroups = corporateGroups.map((group) => ({
+    ...group,
+    cards: group.cards.filter((card) => {
+      if (card.href === '/dashboard/corporate/invoice') {
+        return canAccessInvoices(normalizedRole)
+      }
+      return true
+    }),
+  }))
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <AdminSidebar pathname={pathname} />
@@ -174,7 +181,7 @@ export default function CorporatePage() {
 
         <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
           <div className="grid grid-cols-1 gap-6">
-            {corporateGroups.map((group, groupIndex) => (
+            {visibleGroups.map((group, groupIndex) => (
               <motion.section
                 key={group.title}
                 initial={{ opacity: 0, y: 16 }}

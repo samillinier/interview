@@ -283,7 +283,7 @@ export const authOptions: NextAuthOptions = {
             const normalizedRole = String(admin?.role || '').toUpperCase()
             if (admin?.isActive && (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR' || normalizedRole === 'ACCOUNTING')) {
               ;(token as any).role = normalizedRole
-              ;(token as any).isAdmin = normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
+              ;(token as any).isAdmin = normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ACCOUNTING'
               if (!(token as any).isProperty) {
                 ;(token as any).userType = 'admin'
               }

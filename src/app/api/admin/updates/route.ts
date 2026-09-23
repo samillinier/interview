@@ -21,11 +21,11 @@ async function getDashboardAdmin() {
 }
 
 function canView(role: string) {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
 }
 
 function canCreate(role: string) {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
 }
 
 export async function GET() {

@@ -126,7 +126,7 @@ export default function SettingsPage() {
       router.push('/login')
     } else if (status === 'authenticated') {
       const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | undefined
-      if (role === 'MODERATOR' || role === 'ACCOUNTING') {
+      if (role === 'MODERATOR') {
         router.push('/auth/access-denied')
         return
       }
@@ -459,10 +459,10 @@ export default function SettingsPage() {
   }
 
   const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | undefined
-  if (currentRole === 'MODERATOR' || currentRole === 'ACCOUNTING') {
+  if (currentRole === 'MODERATOR') {
     return null
   }
-  const canManageInstallerCredentials = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
+  const canManageInstallerCredentials = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN' || currentRole === 'ACCOUNTING'
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -1068,7 +1068,7 @@ export default function SettingsPage() {
                   <option value="ADMIN">Admin (full access)</option>
                   <option value="MODERATOR">Moderator (qualified-only)</option>
                   <option value="MANAGER">Manager (restricted access)</option>
-                  <option value="ACCOUNTING">Accounting (invoices only)</option>
+                  <option value="ACCOUNTING">Accounting (full access + invoices)</option>
                 </select>
               </div>
 

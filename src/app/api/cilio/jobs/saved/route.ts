@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     const role = String((session.user as any).role || '').toUpperCase()
-    if (!['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(role)) {
+    if (!['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 

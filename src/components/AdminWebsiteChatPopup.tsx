@@ -184,10 +184,8 @@ export function AdminWebsiteChatPopup() {
 
   if (status !== 'authenticated') return null
   const path = pathname || ''
-  const role = String((session?.user as any)?.role || '').toUpperCase()
   // Never show the admin inbox on the public WordPress / website embed.
   if (
-    role === 'ACCOUNTING' ||
     path.startsWith('/installer') ||
     path.startsWith('/property') ||
     path.startsWith('/interview') ||
