@@ -93,7 +93,6 @@ export default function CorporatePage() {
     normalizedRole === 'ADMIN' ||
     normalizedRole === 'MANAGER' ||
     normalizedRole === 'MODERATOR' ||
-    normalizedRole === 'ACCOUNTING' ||
     isSuperAdmin
 
   const [pendingBolCount, setPendingBolCount] = useState(0)
@@ -121,6 +120,10 @@ export default function CorporatePage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
+    if (status === 'authenticated' && normalizedRole === 'ACCOUNTING') {
+      router.replace('/dashboard/corporate/invoice')
+      return
+    }
     if (status === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
   }, [status, router, canAccess, normalizedRole])
 

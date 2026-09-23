@@ -85,6 +85,7 @@ export default function PropertyDashboardPage() {
     
     if (status === 'authenticated') {
       const userType = ((session?.user as any)?.userType || '').toUpperCase()
+      const role = String((session?.user as any)?.role || '').toUpperCase()
 
       const userEmail = session?.user?.email
       
@@ -94,6 +95,11 @@ export default function PropertyDashboardPage() {
       }
       
       console.log('🔍 Property Dashboard - User Type:', userType, 'Email:', userEmail)
+
+      if (role === 'ACCOUNTING') {
+        router.push('/dashboard')
+        return
+      }
       
       // If userType is not set, try to load profile anyway (it will auto-create if needed)
       // This handles the case where userType hasn't been set yet in the session

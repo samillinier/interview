@@ -73,7 +73,7 @@ export default function CorporateSectionPage({ category, title, description, add
   const pathname = usePathname()
   const role = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | ''
   const isSuperAdmin = role === 'SUPER_ADMIN'
-  const canAccess = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || role === 'ACCOUNTING' || isSuperAdmin
+  const canAccess = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || isSuperAdmin
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [loading, setLoading] = useState(true)

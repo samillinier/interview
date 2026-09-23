@@ -29,6 +29,7 @@ import {
   PhoneCall,
   Megaphone,
   Radar,
+  Receipt,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -197,6 +198,16 @@ export function AdminMobileMenu({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
+      ...(role === 'ACCOUNTING'
+        ? [
+            {
+              href: '/dashboard/corporate/invoice',
+              label: 'Invoice',
+              icon: Receipt,
+              match: (p: string) => p.startsWith('/dashboard/corporate/invoice'),
+            },
+          ]
+        : []),
       ...(role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (p: string) => p.startsWith('/dashboard/marketing') }]
         : []),
@@ -205,7 +216,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/updates', label: 'Updates', icon: Megaphone, badge: updatesCount },
     ]
     const withCorporate =
-      role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'ACCOUNTING'
+      role === 'SUPER_ADMIN' || role === 'ADMIN'
         ? [
             ...base,
             {
@@ -236,6 +247,9 @@ export function AdminMobileMenu({ pathname }: Props) {
           it.href !== '/dashboard/ltr' &&
           it.href !== '/dashboard/settings',
       )
+    }
+    if (role === 'ACCOUNTING') {
+      return withCorporate
     }
     const withPropertyPortal = [
       ...withCorporate,

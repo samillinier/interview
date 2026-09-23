@@ -25,6 +25,7 @@ import {
   PanelLeftOpen,
   Plane,
   Radar,
+  Receipt,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -219,6 +220,16 @@ export function AdminSidebar({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
+      ...(normalizedRole === 'ACCOUNTING'
+        ? [
+            {
+              href: '/dashboard/corporate/invoice',
+              label: 'Invoice',
+              icon: Receipt,
+              match: (path: string) => path.startsWith('/dashboard/corporate/invoice'),
+            },
+          ]
+        : []),
       ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ACCOUNTING'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]
         : []),
@@ -245,7 +256,7 @@ export function AdminSidebar({ pathname }: Props) {
     })
 
     const portalNav: NavItem[] = []
-    if (normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR') {
+    if (normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR' && normalizedRole !== 'ACCOUNTING') {
       portalNav.push({
         href: '/property/dashboard',
         label: 'Property Portal',
@@ -253,7 +264,7 @@ export function AdminSidebar({ pathname }: Props) {
         match: (path) => path.startsWith('/property'),
       })
     }
-    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'ACCOUNTING') {
+    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
       const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount
       portalNav.push({
         href: '/dashboard/corporate',
