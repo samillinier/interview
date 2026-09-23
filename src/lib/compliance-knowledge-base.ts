@@ -1,14 +1,23 @@
 export const COMPLIANCE_CONTACT_EMAIL = 'svudaru@fiscorponline.com'
 export const COMPLIANCE_CONTACT_PHONE = 'O: (813) 867-4712 Ext: 441'
+export const SCHEDULING_CONTACT_NAME = 'Adriana Vansickle'
+export const SCHEDULING_CONTACT_PHONE = '(813) 867-7028'
+export const SCHEDULING_CONTACT_EMAIL = 'avansickle@fiscorponline.com'
 export const FIS_APP_NAME = 'FIS FastTrack'
 export const FIS_APP_IOS_URL = 'https://apps.apple.com/us/app/fis-fasttrack/id6793172089'
 export const FIS_APP_ANDROID_URL = 'https://play.google.com/store/apps/details?id=com.fis.installer'
 
 export const COMPLIANCE_KNOWLEDGE_BASE = `
-LIVE CHAT CONTACT (give this when someone asks who to email or call):
+LIVE CHAT CONTACT (give this when someone asks who to email or call about onboarding/compliance):
 Email: svudaru@fiscorponline.com
 Phone: O: (813) 867-4712 Ext: 441
 Documents can also be uploaded in the Installer Portal.
+
+SCHEDULING AND MEASUREMENT CONTACT (required whenever someone asks about scheduling, schedule, appointment, measuring, measurement, measure job, site measure, or similar):
+Name: Adriana Vansickle
+Phone: (813) 867-7028
+Email: avansickle@fiscorponline.com
+Do not invent other scheduling or measurement contacts. Direct those questions to Adriana with her phone and email.
 
 FIS FastTrack is the official FIS installer app. Recommend it when talking about the portal, uploading documents, onboarding, or when someone asks about an app, phone, or mobile. It is faster, sleeker, and easier to use than the website.
 iPhone: https://apps.apple.com/us/app/fis-fasttrack/id6793172089
@@ -468,5 +477,6 @@ Bank Form PDF: https://job.floorinteriorservices.com/forms/bank-form.pdf
 Background Form PDF: https://job.floorinteriorservices.com/forms/background-form.pdf
 COI sample: https://job.floorinteriorservices.com/forms/coi-sample.jpg
 Compliance contact: compliance@floorinteriorservices.com
+Scheduling / measurement contact: Adriana Vansickle — (813) 867-7028 — avansickle@fiscorponline.com
 END OF KNOWLEDGE BASE. This document reflects the information supplied for this FIS AI assistant knowledge base. If a future FIS policy, form, insurance requirement, portal instruction, or onboarding procedure conflicts with this document, the current official FIS instruction should be treated as controlling.
 `.trim()

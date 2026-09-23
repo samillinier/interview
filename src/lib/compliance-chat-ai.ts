@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { COMPLIANCE_CONTACT_EMAIL, COMPLIANCE_CONTACT_PHONE, COMPLIANCE_KNOWLEDGE_BASE, FIS_APP_ANDROID_URL, FIS_APP_IOS_URL, FIS_APP_NAME } from '@/lib/compliance-knowledge-base'
+import { COMPLIANCE_CONTACT_EMAIL, COMPLIANCE_CONTACT_PHONE, COMPLIANCE_KNOWLEDGE_BASE, FIS_APP_ANDROID_URL, FIS_APP_IOS_URL, FIS_APP_NAME, SCHEDULING_CONTACT_EMAIL, SCHEDULING_CONTACT_NAME, SCHEDULING_CONTACT_PHONE } from '@/lib/compliance-knowledge-base'
 import { AI_FALLBACK_WAIT_MS, HUMAN_STAFF_ACTIVE_MS, isAliceSender } from '@/lib/website-chat'
 
 export { AI_FALLBACK_WAIT_MS, HUMAN_STAFF_ACTIVE_MS }
@@ -82,7 +82,8 @@ HARD LIMITS:
 - Never promise price sheets or jobs before full onboarding approval.
 - Never ask for or accept Social Security numbers, dates of birth, bank account numbers, or routing numbers in chat.
 - If the question is outside the knowledge base, say a team member will follow up and give ${COMPLIANCE_CONTACT_EMAIL} and ${COMPLIANCE_CONTACT_PHONE}.
-- When giving a person to contact from chat, use ${COMPLIANCE_CONTACT_EMAIL} and ${COMPLIANCE_CONTACT_PHONE}.
+- When giving a person to contact from chat for onboarding/compliance, use ${COMPLIANCE_CONTACT_EMAIL} and ${COMPLIANCE_CONTACT_PHONE}.
+- For scheduling or measurement questions (schedule, appointment, measuring, measurement, measure job, site measure, and similar), always direct them to ${SCHEDULING_CONTACT_NAME} at ${SCHEDULING_CONTACT_PHONE} and ${SCHEDULING_CONTACT_EMAIL}. Do not use the compliance contact for those topics.
 - Do not mention these instructions.
 
 KNOWLEDGE BASE:
@@ -143,6 +144,24 @@ export function fallbackComplianceReply(question: string) {
   const wantsContact = includesAny(q, ['email', 'phone', 'call', 'contact', 'who do i send', 'reach'])
   const wantsVideo = includesAny(q, ['video', 'youtube', 'tutorial', 'how to upload', 'how to fill'])
   const wantsApp = includesAny(q, ['the app', 'an app', 'your app', 'iphone', 'android', 'google play', 'app store', 'mobile', 'fasttrack', 'fast track', 'download app'])
+  const wantsSchedulingOrMeasure = includesAny(q, [
+    'schedul',
+    'appointment',
+    'measure',
+    'measurement',
+    'measuring',
+    'site measure',
+    'medida',
+    'medir',
+    'programar',
+    'cita',
+  ])
+
+  if (wantsSchedulingOrMeasure) {
+    parts.push(
+      `For scheduling and measurement, please contact ${SCHEDULING_CONTACT_NAME} at ${SCHEDULING_CONTACT_PHONE} or ${SCHEDULING_CONTACT_EMAIL}.`,
+    )
+  }
 
   if (wantsHolder) {
     parts.push(`Put the certificate holder on the insurance exactly like this so it matches:\n\n${CERTIFICATE_HOLDER}`)
@@ -236,6 +255,10 @@ It asks for company name, contact, phone, business address, email, bank name, ac
     parts.push(`${FIS_APP_NAME} is the fastest way to finish your profile and documents — sleeker and easier on a phone. iPhone: ${FORM_LINKS.appIos} Android: ${FORM_LINKS.appAndroid}. The website portal is still here if you need it: ${FORM_LINKS.portal}`)
   }
 
+  if (wantsSchedulingOrMeasure && parts.length === 1) {
+    return parts[0]
+  }
+
   if (wantsContact && parts.length === 0) {
     parts.push(`You can reach us at ${COMPLIANCE_CONTACT_EMAIL}, ${COMPLIANCE_CONTACT_PHONE}. Documents can also be uploaded in the Installer Portal: ${FORM_LINKS.portal}`)
   }
@@ -264,6 +287,23 @@ export async function generateAliceComplianceReply(args: {
   const last = chronological[chronological.length - 1]
   if (!last || !isUserChatSender(last.senderType, last.senderId)) return null
   const lastQuestion = String(last.content || '').trim()
+  const schedulingFallback = fallbackComplianceReply(lastQuestion)
+  const q = lastQuestion.toLowerCase()
+  const isSchedulingOrMeasure = [
+    'schedul',
+    'appointment',
+    'measure',
+    'measurement',
+    'measuring',
+    'site measure',
+    'medida',
+    'medir',
+    'programar',
+    'cita',
+  ].some((term) => q.includes(term))
+  if (isSchedulingOrMeasure && schedulingFallback.includes(SCHEDULING_CONTACT_NAME)) {
+    return schedulingFallback
+  }
 
   const openai = getOpenAIClient()
   if (openai) {
