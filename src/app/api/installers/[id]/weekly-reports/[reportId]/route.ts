@@ -106,6 +106,28 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string; reportId: string }> | { id: string; reportId: string } }
 ) {
+  return deleteWeeklyReport(request, context)
+}
+
+/** POST { action: 'delete' } — fallback when DELETE is blocked by the client/WebView. */
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string; reportId: string }> | { id: string; reportId: string } }
+) {
+  const body = await request.json().catch(() => ({}))
+  if (String(body?.action || '').toLowerCase() !== 'delete') {
+    return NextResponse.json(
+      { error: 'Unsupported action. Use PATCH to update, or POST with action=delete.' },
+      { status: 400, headers: noStore }
+    )
+  }
+  return deleteWeeklyReport(request, context)
+}
+
+async function deleteWeeklyReport(
+  request: NextRequest,
+  context: { params: Promise<{ id: string; reportId: string }> | { id: string; reportId: string } }
+) {
   try {
     const { id: installerId, reportId } = await resolveParams(context)
     const access = await requireInstallerOrAdmin(request, installerId)
@@ -138,7 +160,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invoice id is required' }, { status: 400, headers: noStore })
     }
 
-    const existing = await (prisma as any).estimatorWeeklyReport.findFirst({
+    const prismaAny = prisma as any
+    const existing = await prismaAny.estimatorWeeklyReport.findFirst({
       where: { id: reportId, installerId },
       select: { id: true },
     })
@@ -146,7 +169,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Report not found' }, { status: 404, headers: noStore })
     }
 
-    await (prisma as any).estimatorWeeklyReport.delete({ where: { id: reportId } })
+    await prismaAny.estimatorWeeklyReport.delete({ where: { id: reportId } })
     return NextResponse.json({ success: true }, { headers: noStore })
   } catch (error: any) {
     console.error('weekly-reports DELETE failed', error)

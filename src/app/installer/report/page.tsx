@@ -81,6 +81,7 @@ export default function EstimatorWeeklyReportPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingId, setViewingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [subcontractorName, setSubcontractorName] = useState('')
   const [weekEnding, setWeekEnding] = useState('')
   const [lines, setLines] = useState<WeeklyReportLine[]>([emptyWeeklyReportLine()])
@@ -241,26 +242,50 @@ export default function EstimatorWeeklyReportPage() {
       router.push('/installer/login')
       return
     }
-    if (!window.confirm('Delete this weekly invoice? This cannot be undone.')) return
+
+    // Two-step confirm (window.confirm is unreliable in iOS / Capacitor WebViews)
+    if (pendingDeleteId !== reportId) {
+      setPendingDeleteId(reportId)
+      setError('')
+      setSuccess('')
+      return
+    }
 
     setError('')
     setSuccess('')
     setDeletingId(reportId)
     try {
-      const res = await fetch(`/api/installers/${installer.id}/weekly-reports/${reportId}`, {
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${authToken}`,
+        'X-Installer-Token': authToken,
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      }
+      const url = `/api/installers/${installer.id}/weekly-reports/${reportId}`
+
+      let res = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          'Cache-Control': 'no-store',
-        },
+        headers,
         cache: 'no-store',
       })
+
+      // Some WebViews / proxies block DELETE — fall back to POST action.
+      if (res.status === 405 || res.status === 404 || res.status === 501) {
+        res = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'delete' }),
+          cache: 'no-store',
+        })
+      }
+
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || data?.details || 'Failed to delete invoice')
+      if (!res.ok) throw new Error(data?.error || data?.details || `Failed to delete invoice (${res.status})`)
 
       setReports((prev) => prev.filter((report) => report.id !== reportId))
       if (editingId === reportId) resetForm(fullName)
       if (viewingId === reportId) setViewingId(null)
+      setPendingDeleteId(null)
       setSuccess('Weekly invoice deleted.')
       await loadReports(installer.id, authToken).catch(() => null)
     } catch (e: any) {
@@ -453,7 +478,7 @@ export default function EstimatorWeeklyReportPage() {
                           {lines.length} {lines.length === 1 ? 'job' : 'jobs'}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => startView(report.id)}
@@ -463,23 +488,55 @@ export default function EstimatorWeeklyReportPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => startEdit(report)}
+                          onClick={() => {
+                            setPendingDeleteId(null)
+                            startEdit(report)
+                          }}
                           className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                         >
                           Edit
                         </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            void handleDelete(report.id)
-                          }}
-                          disabled={deletingId === report.id}
-                          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          {deletingId === report.id ? 'Deleting…' : 'Delete'}
-                        </button>
+                        {pendingDeleteId === report.id ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                void handleDelete(report.id)
+                              }}
+                              disabled={deletingId === report.id}
+                              className="rounded-lg border border-red-600 bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                              {deletingId === report.id ? 'Deleting…' : 'Confirm delete'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setPendingDeleteId(null)
+                              }}
+                              disabled={deletingId === report.id}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              void handleDelete(report.id)
+                            }}
+                            disabled={deletingId === report.id}
+                            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                     {isViewing ? (
