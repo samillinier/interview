@@ -107,7 +107,7 @@ export default function RingCentralPage() {
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
   const role = String((session?.user as any)?.role || '').toUpperCase()
-  const isManager = role === 'MANAGER'
+  const isManager = role === 'MANAGER' || role === 'ACCOUNTING'
   const [property, setProperty] = useState<PropertyProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -211,9 +211,9 @@ export default function RingCentralPage() {
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
       if (hasLoadedProfile.current && property) return
-      if (role === 'ACCOUNTING' || (userType !== 'property' && userType && !isAdminRole)) {
+      if (userType !== 'property' && userType && !isAdminRole) {
         router.push('/dashboard')
         return
       }

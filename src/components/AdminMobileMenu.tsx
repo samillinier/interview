@@ -229,7 +229,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
-      ...(role === 'MANAGER'
+      ...(role === 'MANAGER' || role === 'ACCOUNTING'
         ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },

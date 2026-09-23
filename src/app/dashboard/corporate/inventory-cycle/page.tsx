@@ -73,7 +73,7 @@ export default function InventoryCyclePage() {
   const router = useRouter()
   const { data: session, status: sessionStatus } = useSession()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
-  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(normalizedRole)
   const canModify = ['ADMIN', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
   const { sidebarOpen } = useSidebarOpen()
 

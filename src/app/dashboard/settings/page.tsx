@@ -1068,7 +1068,7 @@ export default function SettingsPage() {
                   <option value="ADMIN">Admin (full access)</option>
                   <option value="MODERATOR">Moderator (qualified-only)</option>
                   <option value="MANAGER">Manager (restricted access)</option>
-                  <option value="ACCOUNTING">Accounting (manager-like + invoices)</option>
+                  <option value="ACCOUNTING">Accounting (same as Manager + invoices)</option>
                 </select>
               </div>
 

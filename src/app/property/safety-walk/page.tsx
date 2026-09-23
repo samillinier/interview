@@ -300,8 +300,8 @@ export default function SafetyWalkPage() {
 
   const userType = (session?.user as any)?.userType
   const role = String((session?.user as any)?.role || '').toUpperCase()
-  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
-  const isManager = role === 'MANAGER'
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
+  const isManager = role === 'MANAGER' || role === 'ACCOUNTING'
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -310,10 +310,6 @@ export default function SafetyWalkPage() {
     }
 
     if (status === 'authenticated') {
-      if (role === 'ACCOUNTING') {
-        router.push('/dashboard')
-        return
-      }
       if (userType && userType !== 'property' && !isAdmin) {
         router.push(userType === 'admin' ? '/dashboard' : '/property/login')
         return
