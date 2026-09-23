@@ -99,24 +99,32 @@ export default function CorporatePage() {
   const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
+  const [invoiceCount, setInvoiceCount] = useState(0)
 
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [bolRes, ptRes, icRes, travelRes] = await Promise.all([
+        const [bolRes, ptRes, icRes, travelRes, invoiceRes] = await Promise.all([
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
           fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
+          canAccessInvoices(normalizedRole)
+            ? fetch('/api/admin/invoices/count', { cache: 'no-store' })
+            : Promise.resolve(null),
         ])
         if (bolRes.ok) { const d = await bolRes.json(); setPendingBolCount(Number(d?.count ?? 0)) }
         if (ptRes.ok) { const d = await ptRes.json(); setPendingPadTransferCount(Number(d?.count ?? 0)) }
         if (icRes.ok) { const d = await icRes.json(); setPendingInventoryCycleCount(Number(d?.count ?? 0)) }
         if (travelRes.ok) { const d = await travelRes.json(); setPendingTravelRequestCount(Number(d?.count ?? 0)) }
+        if (invoiceRes && invoiceRes.ok) {
+          const d = await invoiceRes.json()
+          setInvoiceCount(Number(d?.count ?? 0))
+        }
       } catch {}
     }
-    loadCounts()
-  }, [])
+    if (status === 'authenticated') loadCounts()
+  }, [status, normalizedRole])
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -242,9 +250,21 @@ export default function CorporatePage() {
 
                           <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
                             {card.cta}
-                            {(card.title === 'BOL' && pendingBolCount > 0) || (card.title === 'Pad Transfer' && pendingPadTransferCount > 0) || (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) || (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ? (
+                            {(card.title === 'BOL' && pendingBolCount > 0) ||
+                            (card.title === 'Pad Transfer' && pendingPadTransferCount > 0) ||
+                            (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) ||
+                            (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ||
+                            (card.title === 'Invoice' && invoiceCount > 0) ? (
                               <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
-                                {card.title === 'BOL' ? pendingBolCount : card.title === 'Pad Transfer' ? pendingPadTransferCount : card.title === 'Inventory Cycle' ? pendingInventoryCycleCount : pendingTravelRequestCount}
+                                {card.title === 'BOL'
+                                  ? pendingBolCount
+                                  : card.title === 'Pad Transfer'
+                                    ? pendingPadTransferCount
+                                    : card.title === 'Inventory Cycle'
+                                      ? pendingInventoryCycleCount
+                                      : card.title === 'Travel Request'
+                                        ? pendingTravelRequestCount
+                                        : invoiceCount}
                               </span>
                             ) : null}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
