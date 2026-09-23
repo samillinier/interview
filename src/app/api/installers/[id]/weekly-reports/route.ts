@@ -5,6 +5,7 @@ import {
   normalizeWeeklyReportLines,
   parseWeekEnding,
 } from '@/lib/weeklyReport'
+import { notifyAccountantOfWeeklyInvoice } from '@/lib/weeklyInvoiceNotify'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ async function resolveParams(context: { params: Promise<{ id: string }> | { id: 
 async function requireEstimatorAccount(installerId: string) {
   const installer = await prisma.installer.findUnique({
     where: { id: installerId },
-    select: { id: true, firstName: true, lastName: true, accountType: true },
+    select: { id: true, firstName: true, lastName: true, email: true, accountType: true },
   })
   if (!installer) return { ok: false as const, status: 404 as const, error: 'Not found' }
   if (String(installer.accountType || '') !== 'estimator') {
@@ -117,6 +118,19 @@ export async function POST(
         lines,
       },
     })
+
+    if (access.actor === 'installer') {
+      const estimatorName = `${installer.firstName || ''} ${installer.lastName || ''}`.trim() || subcontractorName
+      void notifyAccountantOfWeeklyInvoice({
+        installerId,
+        estimatorName,
+        estimatorEmail: installer.email,
+        subcontractorName,
+        weekEnding,
+        lines,
+        action: 'created',
+      }).catch((err) => console.error('weekly invoice notify failed', err))
+    }
 
     return NextResponse.json({ success: true, report }, { status: 201, headers: noStore })
   } catch (error: any) {

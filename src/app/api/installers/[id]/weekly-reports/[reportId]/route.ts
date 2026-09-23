@@ -5,6 +5,7 @@ import {
   normalizeWeeklyReportLines,
   parseWeekEnding,
 } from '@/lib/weeklyReport'
+import { notifyAccountantOfWeeklyInvoice } from '@/lib/weeklyInvoiceNotify'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export async function PATCH(
 
     const account = await prisma.installer.findUnique({
       where: { id: installerId },
-      select: { accountType: true },
+      select: { firstName: true, lastName: true, email: true, accountType: true },
     })
     if (String(account?.accountType || '') !== 'estimator') {
       return NextResponse.json(
@@ -76,6 +77,21 @@ export async function PATCH(
       data,
     })
 
+    if (access.actor === 'installer') {
+      const estimatorName =
+        `${account?.firstName || ''} ${account?.lastName || ''}`.trim() ||
+        String(report.subcontractorName || 'Estimator')
+      void notifyAccountantOfWeeklyInvoice({
+        installerId,
+        estimatorName,
+        estimatorEmail: account?.email,
+        subcontractorName: String(report.subcontractorName || estimatorName),
+        weekEnding: report.weekEnding,
+        lines: normalizeWeeklyReportLines(report.lines),
+        action: 'updated',
+      }).catch((err) => console.error('weekly invoice notify failed', err))
+    }
+
     return NextResponse.json({ success: true, report }, { headers: noStore })
   } catch (error: any) {
     console.error('weekly-reports PATCH failed', error)
@@ -97,6 +113,16 @@ export async function DELETE(
       return NextResponse.json({ error: access.error }, { status: access.status, headers: noStore })
     }
 
+    if (access.actor === 'admin') {
+      const role = String((access.admin as any)?.role || '').toUpperCase()
+      if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+        return NextResponse.json(
+          { error: 'Only admins can delete invoices' },
+          { status: 403, headers: noStore }
+        )
+      }
+    }
+
     const account = await prisma.installer.findUnique({
       where: { id: installerId },
       select: { accountType: true },
@@ -106,6 +132,10 @@ export async function DELETE(
         { error: 'Weekly reports are only available for estimators' },
         { status: 403, headers: noStore }
       )
+    }
+
+    if (!reportId || !String(reportId).trim()) {
+      return NextResponse.json({ error: 'Invoice id is required' }, { status: 400, headers: noStore })
     }
 
     const existing = await (prisma as any).estimatorWeeklyReport.findFirst({

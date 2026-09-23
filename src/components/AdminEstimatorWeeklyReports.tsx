@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, Download, Loader2, FileSpreadsheet } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { Calendar, Download, Loader2, FileSpreadsheet, Trash2 } from 'lucide-react'
 import { downloadExcel } from '@/lib/export-utils'
+import { canDeleteInvoices } from '@/lib/invoiceAccess'
 import {
   normalizeWeeklyReportLines,
   type WeeklyReportLine,
@@ -44,14 +46,31 @@ function filledLines(report: WeeklyReport) {
 }
 
 export function AdminEstimatorWeeklyReports({ installerId }: { installerId: string }) {
+  const { data: session } = useSession()
+  const role = String((session?.user as any)?.role || '').toUpperCase()
+  const canDelete = canDeleteInvoices(role)
   const [reports, setReports] = useState<WeeklyReport[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [dateFilter, setDateFilter] = useState<DateFilter>('month')
   const [weekValue, setWeekValue] = useState(() => new Date().toISOString().slice(0, 10))
   const [monthValue, setMonthValue] = useState(todayMonthInput)
   const [yearValue, setYearValue] = useState(() => String(new Date().getUTCFullYear()))
+
+  const reload = async () => {
+    const res = await fetch(`/api/installers/${installerId}/weekly-reports`, { cache: 'no-store' })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(data?.error || 'Failed to load weekly invoices')
+    const next = (data?.reports || []).map((report: any) => ({
+      ...report,
+      lines: normalizeWeeklyReportLines(report.lines),
+    }))
+    setReports(next)
+    return next as WeeklyReport[]
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -59,15 +78,8 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
       setLoading(true)
       setError('')
       try {
-        const res = await fetch(`/api/installers/${installerId}/weekly-reports`, { cache: 'no-store' })
-        const data = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(data?.error || 'Failed to load weekly invoices')
+        const next = await reload()
         if (cancelled) return
-        const next = (data?.reports || []).map((report: any) => ({
-          ...report,
-          lines: normalizeWeeklyReportLines(report.lines),
-        }))
-        setReports(next)
         if (next[0]?.id) setExpandedId(next[0].id)
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load weekly invoices')
@@ -80,6 +92,29 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
       cancelled = true
     }
   }, [installerId])
+
+  const handleDelete = async (reportId: string) => {
+    if (!canDelete) return
+    if (!window.confirm('Delete this weekly invoice? This cannot be undone.')) return
+    setDeletingId(reportId)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/installers/${installerId}/weekly-reports/${reportId}`, {
+        method: 'DELETE',
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete invoice')
+      setReports((prev) => prev.filter((report) => report.id !== reportId))
+      if (expandedId === reportId) setExpandedId(null)
+      setSuccess('Weekly invoice deleted.')
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete invoice')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const yearOptions = useMemo(() => {
     const years = new Set<string>([String(new Date().getUTCFullYear())])
@@ -228,6 +263,12 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
         </span>
       </div>
 
+      {success ? (
+        <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {success}
+        </p>
+      ) : null}
+
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-sm text-slate-500 justify-center">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -252,22 +293,39 @@ export function AdminEstimatorWeeklyReports({ installerId }: { installerId: stri
             const lines = filledLines(report)
             return (
               <div key={report.id} className="overflow-hidden rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setExpandedId(open ? null : report.id)}
-                  className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-900">{report.subcontractorName}</p>
-                    <p className="text-sm text-slate-500">
-                      Week ending {new Date(report.weekEnding).toLocaleDateString()} · {lines.length}{' '}
-                      {lines.length === 1 ? 'job' : 'jobs'}
-                    </p>
-                  </div>
-                  <span className="text-xs font-bold uppercase tracking-wide text-brand-green">
-                    {open ? 'Hide' : 'View'}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2 bg-slate-50 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(open ? null : report.id)}
+                    className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left hover:opacity-90"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{report.subcontractorName}</p>
+                      <p className="text-sm text-slate-500">
+                        Week ending {new Date(report.weekEnding).toLocaleDateString()} · {lines.length}{' '}
+                        {lines.length === 1 ? 'job' : 'jobs'}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-brand-green">
+                      {open ? 'Hide' : 'View'}
+                    </span>
+                  </button>
+                  {canDelete ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void handleDelete(report.id)
+                      }}
+                      disabled={deletingId === report.id}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {deletingId === report.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  ) : null}
+                </div>
                 {open ? (
                   <div className="space-y-3 border-t border-slate-200 bg-white p-4">
                     {lines.length === 0 ? (

@@ -80,6 +80,7 @@ export default function EstimatorWeeklyReportPage() {
   const [success, setSuccess] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingId, setViewingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [subcontractorName, setSubcontractorName] = useState('')
   const [weekEnding, setWeekEnding] = useState('')
   const [lines, setLines] = useState<WeeklyReportLine[]>([emptyWeeklyReportLine()])
@@ -229,21 +230,43 @@ export default function EstimatorWeeklyReportPage() {
   }
 
   const handleDelete = async (reportId: string) => {
-    if (!installer || !token) return
-    if (!window.confirm('Delete this weekly invoice?')) return
+    if (!installer) {
+      setError('Not signed in. Please refresh and try again.')
+      return
+    }
+    const authToken =
+      (typeof window !== 'undefined' ? localStorage.getItem('installerToken') : null) || token
+    if (!authToken) {
+      setError('Session expired. Please sign in again.')
+      router.push('/installer/login')
+      return
+    }
+    if (!window.confirm('Delete this weekly invoice? This cannot be undone.')) return
+
     setError('')
+    setSuccess('')
+    setDeletingId(reportId)
     try {
       const res = await fetch(`/api/installers/${installer.id}/weekly-reports/${reportId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Cache-Control': 'no-store',
+        },
+        cache: 'no-store',
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || 'Failed to delete invoice')
-      await loadReports(installer.id, token)
+      if (!res.ok) throw new Error(data?.error || data?.details || 'Failed to delete invoice')
+
+      setReports((prev) => prev.filter((report) => report.id !== reportId))
       if (editingId === reportId) resetForm(fullName)
+      if (viewingId === reportId) setViewingId(null)
       setSuccess('Weekly invoice deleted.')
+      await loadReports(installer.id, authToken).catch(() => null)
     } catch (e: any) {
       setError(e?.message || 'Failed to delete invoice')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -447,10 +470,15 @@ export default function EstimatorWeeklyReportPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => void handleDelete(report.id)}
-                          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            void handleDelete(report.id)
+                          }}
+                          disabled={deletingId === report.id}
+                          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
                         >
-                          Delete
+                          {deletingId === report.id ? 'Deleting…' : 'Delete'}
                         </button>
                       </div>
                     </div>

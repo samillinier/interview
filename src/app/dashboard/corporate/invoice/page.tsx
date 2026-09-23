@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Loader2,
   Search,
+  Trash2,
   User,
 } from 'lucide-react'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
@@ -18,7 +19,7 @@ import { AdminSidebar } from '@/components/AdminSidebar'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { downloadExcel } from '@/lib/export-utils'
-import { canAccessInvoices } from '@/lib/invoiceAccess'
+import { canAccessInvoices, canDeleteInvoices } from '@/lib/invoiceAccess'
 import {
   normalizeWeeklyReportLines,
   type WeeklyReportLine,
@@ -79,12 +80,15 @@ export default function DashboardInvoicePage() {
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
   const role = String((session?.user as any)?.role || '').toUpperCase()
+  const canDelete = canDeleteInvoices(role)
 
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [selectedInstallerId, setSelectedInstallerId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [dateFilter, setDateFilter] = useState<DateFilter>('month')
   const [weekValue, setWeekValue] = useState(() => new Date().toISOString().slice(0, 10))
   const [monthValue, setMonthValue] = useState(() => new Date().toISOString().slice(0, 7))
@@ -225,6 +229,29 @@ export default function DashboardInvoicePage() {
       dateFilter === 'week' ? weekValue : dateFilter === 'month' ? monthValue : dateFilter === 'year' ? yearValue : 'all'
     const nameHint = selectedEstimator?.name?.replace(/[^\w\-]+/g, '_').slice(0, 40) || 'all'
     downloadExcel(rows, `weekly-invoices-${nameHint}-${rangeHint}`)
+  }
+
+  const handleDeleteInvoice = async (invoice: InvoiceRow) => {
+    if (!canDelete) return
+    if (!window.confirm('Delete this weekly invoice? This cannot be undone.')) return
+    setDeletingId(invoice.id)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/installers/${invoice.installerId}/weekly-reports/${invoice.id}`, {
+        method: 'DELETE',
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete invoice')
+      setInvoices((prev) => prev.filter((row) => row.id !== invoice.id))
+      if (expandedId === invoice.id) setExpandedId(null)
+      setSuccess('Weekly invoice deleted.')
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete invoice')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const openEstimator = (installerId: string) => {
@@ -408,13 +435,20 @@ export default function DashboardInvoicePage() {
               ) : null}
             </div>
 
+            {success ? (
+              <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {success}
+              </p>
+            ) : null}
+            {error ? (
+              <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+            ) : null}
+
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading…
               </div>
-            ) : error ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
             ) : !selectedEstimator ? (
               estimators.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
@@ -460,22 +494,39 @@ export default function DashboardInvoicePage() {
                   const lines = filledLines(invoice.lines)
                   return (
                     <div key={invoice.id} className="overflow-hidden rounded-xl border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedId(open ? null : invoice.id)}
-                        className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 truncate">{invoice.subcontractorName}</p>
-                          <p className="text-sm text-slate-500">
-                            Week ending {new Date(invoice.weekEnding).toLocaleDateString()} · {lines.length}{' '}
-                            {lines.length === 1 ? 'job' : 'jobs'}
-                          </p>
-                        </div>
-                        <span className="text-xs font-bold uppercase tracking-wide text-brand-green">
-                          {open ? 'Hide' : 'View'}
-                        </span>
-                      </button>
+                      <div className="flex items-center gap-2 bg-slate-50 px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(open ? null : invoice.id)}
+                          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left hover:opacity-90"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">{invoice.subcontractorName}</p>
+                            <p className="text-sm text-slate-500">
+                              Week ending {new Date(invoice.weekEnding).toLocaleDateString()} · {lines.length}{' '}
+                              {lines.length === 1 ? 'job' : 'jobs'}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-brand-green">
+                            {open ? 'Hide' : 'View'}
+                          </span>
+                        </button>
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              void handleDeleteInvoice(invoice)
+                            }}
+                            disabled={deletingId === invoice.id}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {deletingId === invoice.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        ) : null}
+                      </div>
                       {open ? (
                         <div className="space-y-3 border-t border-slate-200 bg-white p-4">
                           {lines.length === 0 ? (
