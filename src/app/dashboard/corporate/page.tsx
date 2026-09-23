@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -61,6 +61,14 @@ const corporateGroups = [
         cta: 'Travel Request',
         highlights: ['Hotel & flights', 'Car rentals', 'Review & approve'],
       },
+      {
+        title: 'Invoice',
+        description: 'Review weekly invoices submitted by estimators — open by estimator and export to Excel.',
+        href: '/dashboard/corporate/invoice',
+        icon: Receipt,
+        cta: 'Invoice',
+        highlights: ['Estimator invoices', 'Week / month / year', 'Excel export'],
+      },
       ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
         title: section.title,
         description: section.description,
@@ -78,9 +86,14 @@ export default function CorporatePage() {
   const router = useRouter()
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
-  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | ''
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | ''
   const isSuperAdmin = normalizedRole === 'SUPER_ADMIN'
-  const canAccess = normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR' || isSuperAdmin
+  const canAccess =
+    normalizedRole === 'ADMIN' ||
+    normalizedRole === 'MANAGER' ||
+    normalizedRole === 'MODERATOR' ||
+    normalizedRole === 'ACCOUNTING' ||
+    isSuperAdmin
 
   const [pendingBolCount, setPendingBolCount] = useState(0)
   const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
@@ -107,6 +120,10 @@ export default function CorporatePage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
+    if (status === 'authenticated' && normalizedRole === 'ACCOUNTING') {
+      router.replace('/dashboard/corporate/invoice')
+      return
+    }
     if (status === 'authenticated' && normalizedRole && !canAccess) router.push('/dashboard')
   }, [status, router, canAccess, normalizedRole])
 

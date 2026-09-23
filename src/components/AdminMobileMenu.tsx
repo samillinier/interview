@@ -182,10 +182,10 @@ export function AdminMobileMenu({ pathname }: Props) {
     if (role === 'ACCOUNTING') {
       return [
         {
-          href: '/dashboard/invoice',
+          href: '/dashboard/corporate/invoice',
           label: 'Invoice',
           icon: Receipt,
-          match: (p: string) => p.startsWith('/dashboard/invoice'),
+          match: (p: string) => p.startsWith('/dashboard/corporate/invoice'),
         },
       ]
     }
@@ -201,17 +201,11 @@ export function AdminMobileMenu({ pathname }: Props) {
         icon: Activity,
         match: (p: string) => p.startsWith('/dashboard/tracking'),
       },
-      {
-        href: '/dashboard/invoice',
-        label: 'Invoice',
-        icon: Receipt,
-        match: (p: string) => p.startsWith('/dashboard/invoice'),
-      },
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
       ...(role === 'MANAGER'
-        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }]
+        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }, { href: '/dashboard/corporate/invoice', label: 'Invoice', icon: Receipt, match: (p: string) => p.startsWith('/dashboard/corporate/invoice') }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
@@ -223,11 +217,11 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/updates', label: 'Updates', icon: Megaphone, badge: updatesCount },
     ]
     const withCorporate =
-      role === 'SUPER_ADMIN'
+      role === 'SUPER_ADMIN' || role === 'ADMIN'
         ? [
             ...base,
             {
-              href: '/dashboard/corporate/claims',
+              href: '/dashboard/corporate',
               label: 'Corporate',
               icon: FileText,
               match: (p: string) => p.startsWith('/dashboard/corporate'),

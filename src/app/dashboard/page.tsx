@@ -317,7 +317,7 @@ function DashboardPageContent() {
 
   useEffect(() => {
     if (status === 'authenticated' && normalizedRole === 'ACCOUNTING') {
-      router.replace('/dashboard/invoice')
+      router.replace('/dashboard/corporate/invoice')
     }
   }, [status, normalizedRole, router])
   
