@@ -248,7 +248,7 @@ export function AdminSidebar({ pathname }: Props) {
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
-      ...(normalizedRole === 'MANAGER'
+      ...(normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
         ? [
             { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },
             { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (path: string) => path === '/property/ring-central' },
@@ -260,7 +260,7 @@ export function AdminSidebar({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ACCOUNTING'
+      ...(normalizedRole === 'ACCOUNTING'
         ? [
             {
               href: '/dashboard/corporate/invoice',
@@ -271,7 +271,7 @@ export function AdminSidebar({ pathname }: Props) {
             },
           ]
         : []),
-      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ACCOUNTING'
+      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]
         : []),
       { href: '/dashboard/ltr', label: 'Survey', icon: ClipboardList },
@@ -280,7 +280,7 @@ export function AdminSidebar({ pathname }: Props) {
     ]
 
     const filtered = base.filter((item) => {
-      if (normalizedRole === 'MANAGER') {
+      if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
         return ![
           '/dashboard/approvals',
           '/dashboard/signature',
@@ -306,7 +306,8 @@ export function AdminSidebar({ pathname }: Props) {
       })
     }
     if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
-      const corporatePendingTotal = pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount
+      const corporatePendingTotal =
+        pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + invoiceCount
       portalNav.push({
         href: '/dashboard/corporate',
         label: 'Corporate',

@@ -229,12 +229,12 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
-      ...(role === 'MANAGER'
+      ...(role === 'MANAGER' || role === 'ACCOUNTING'
         ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+      ...(role === 'ACCOUNTING'
         ? [
             {
               href: '/dashboard/corporate/invoice',
@@ -245,7 +245,7 @@ export function AdminMobileMenu({ pathname }: Props) {
             },
           ]
         : []),
-      ...(role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+      ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (p: string) => p.startsWith('/dashboard/marketing') }]
         : []),
       { href: '/dashboard/ltr', label: 'Survey', icon: ClipboardList },
@@ -260,12 +260,13 @@ export function AdminMobileMenu({ pathname }: Props) {
               href: '/dashboard/corporate',
               label: 'Corporate',
               icon: FileText,
+              badge: invoiceCount > 0 ? invoiceCount : undefined,
               match: (p: string) => p.startsWith('/dashboard/corporate'),
             },
           ]
         : base
 
-    if (role === 'MANAGER') {
+    if (role === 'MANAGER' || role === 'ACCOUNTING') {
       return withCorporate.filter(
         (it) =>
           it.href !== '/dashboard/approvals' &&
@@ -284,9 +285,6 @@ export function AdminMobileMenu({ pathname }: Props) {
           it.href !== '/dashboard/ltr' &&
           it.href !== '/dashboard/settings',
       )
-    }
-    if (role === 'ACCOUNTING') {
-      return withCorporate
     }
     const withPropertyPortal = [
       ...withCorporate,
