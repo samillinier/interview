@@ -1,7 +1,7 @@
 import 'next-auth'
 
 declare module 'next-auth' {
-  type AdminRole = 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
+  type AdminRole = 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING'
 
   interface Session {
     user?: {

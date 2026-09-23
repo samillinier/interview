@@ -195,7 +195,9 @@ export async function PATCH(
                 ? 'MODERATOR'
                 : requestedRole === 'MANAGER'
                   ? 'MANAGER'
-                  : 'ADMIN',
+                  : requestedRole === 'ACCOUNTING'
+                    ? 'ACCOUNTING'
+                    : 'ADMIN',
         }),
       },
       select: {

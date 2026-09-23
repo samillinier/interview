@@ -313,7 +313,13 @@ function DashboardPageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | ''
+  const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | ''
+
+  useEffect(() => {
+    if (status === 'authenticated' && normalizedRole === 'ACCOUNTING') {
+      router.replace('/dashboard/invoice')
+    }
+  }, [status, normalizedRole, router])
   
   // Initialize state from URL params
   const urlPage = searchParams?.get('page') ? parseInt(searchParams.get('page')!) : 1

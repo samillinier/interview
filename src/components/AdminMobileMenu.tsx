@@ -29,6 +29,7 @@ import {
   PhoneCall,
   Megaphone,
   Radar,
+  Receipt,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -170,7 +171,25 @@ export function AdminMobileMenu({ pathname }: Props) {
   }, [])
 
   const items = useMemo(() => {
-    const role = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | ''
+    const role = String((session?.user as any)?.role || '').toUpperCase() as
+      | 'ADMIN'
+      | 'MODERATOR'
+      | 'MANAGER'
+      | 'SUPER_ADMIN'
+      | 'ACCOUNTING'
+      | ''
+
+    if (role === 'ACCOUNTING') {
+      return [
+        {
+          href: '/dashboard/invoice',
+          label: 'Invoice',
+          icon: Receipt,
+          match: (p: string) => p.startsWith('/dashboard/invoice'),
+        },
+      ]
+    }
+
     const base = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/dashboard', label: 'Installers', icon: Users, match: (p: string) => p.startsWith('/dashboard/installers') },
@@ -181,6 +200,12 @@ export function AdminMobileMenu({ pathname }: Props) {
         label: 'Tracking',
         icon: Activity,
         match: (p: string) => p.startsWith('/dashboard/tracking'),
+      },
+      {
+        href: '/dashboard/invoice',
+        label: 'Invoice',
+        icon: Receipt,
+        match: (p: string) => p.startsWith('/dashboard/invoice'),
       },
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },

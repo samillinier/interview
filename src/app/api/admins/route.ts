@@ -401,7 +401,9 @@ export async function POST(request: NextRequest) {
               ? 'MODERATOR'
               : requestedRole === 'MANAGER'
                 ? 'MANAGER'
-                : 'ADMIN',
+                : requestedRole === 'ACCOUNTING'
+                  ? 'ACCOUNTING'
+                  : 'ADMIN',
         createdBy: currentAdmin.id,
         isActive: true,
       },

@@ -48,7 +48,7 @@ function visitorName(row: {
 
 export function AdminWebsiteChatPopup() {
   const pathname = usePathname()
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const [open, setOpen] = useState(false)
   const [visitors, setVisitors] = useState<WebsiteVisitor[]>([])
   const [selectedId, setSelectedId] = useState('')
@@ -184,8 +184,10 @@ export function AdminWebsiteChatPopup() {
 
   if (status !== 'authenticated') return null
   const path = pathname || ''
+  const role = String((session?.user as any)?.role || '').toUpperCase()
   // Never show the admin inbox on the public WordPress / website embed.
   if (
+    role === 'ACCOUNTING' ||
     path.startsWith('/installer') ||
     path.startsWith('/property') ||
     path.startsWith('/interview') ||

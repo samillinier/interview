@@ -25,6 +25,7 @@ import {
   PanelLeftOpen,
   Plane,
   Radar,
+  Receipt,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -54,6 +55,7 @@ export function AdminSidebar({ pathname }: Props) {
     normalizedRole === 'ADMIN' ? 'Admin' :
     normalizedRole === 'MANAGER' ? 'Manager' :
     normalizedRole === 'MODERATOR' ? 'Moderator' :
+    normalizedRole === 'ACCOUNTING' ? 'Accounting' :
     'Dashboard'
 
   // Self-managed sidebar state — synced to localStorage, no external prop needed
@@ -195,6 +197,17 @@ export function AdminSidebar({ pathname }: Props) {
   }, [])
 
   const items = useMemo((): NavItem[] => {
+    if (normalizedRole === 'ACCOUNTING') {
+      return [
+        {
+          href: '/dashboard/invoice',
+          label: 'Invoice',
+          icon: Receipt,
+          match: (path) => path.startsWith('/dashboard/invoice'),
+        },
+      ]
+    }
+
     const base: NavItem[] = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (path) => path === '/dashboard' },
       { href: '/dashboard', label: 'Installers', icon: Users, match: (path) => path.startsWith('/dashboard/installers') },
@@ -203,6 +216,12 @@ export function AdminSidebar({ pathname }: Props) {
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck, badge: signatureNotSignedCount },
       { href: '/dashboard/tracking', label: 'Tracking', icon: Activity, match: (path) => path.startsWith('/dashboard/tracking') },
       { href: '/dashboard/report', label: 'Report', icon: FileText, match: (path) => path.startsWith('/dashboard/report') },
+      {
+        href: '/dashboard/invoice',
+        label: 'Invoice',
+        icon: Receipt,
+        match: (path) => path.startsWith('/dashboard/invoice'),
+      },
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },

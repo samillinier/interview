@@ -51,7 +51,7 @@ interface Admin {
   email: string
   name: string | null
   isActive: boolean
-  role: 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
+  role: 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING'
   createdAt: string
   createdBy: string | null
 }
@@ -87,7 +87,7 @@ export default function SettingsPage() {
   const [newAdmin, setNewAdmin] = useState({
     email: '',
     name: '',
-    role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN',
+    role: 'ADMIN' as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING',
   })
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [signatureNotSignedCount, setSignatureNotSignedCount] = useState(0)
@@ -125,8 +125,8 @@ export default function SettingsPage() {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
-      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | undefined
-      if (role === 'MODERATOR') {
+      const role = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | undefined
+      if (role === 'MODERATOR' || role === 'ACCOUNTING') {
         router.push('/auth/access-denied')
         return
       }
@@ -458,8 +458,8 @@ export default function SettingsPage() {
     return null
   }
 
-  const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | undefined
-  if (currentRole === 'MODERATOR') {
+  const currentRole = (session?.user as any)?.role as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | undefined
+  if (currentRole === 'MODERATOR' || currentRole === 'ACCOUNTING') {
     return null
   }
   const canManageInstallerCredentials = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
@@ -735,20 +735,24 @@ export default function SettingsPage() {
                           className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
                             admin.role === 'SUPER_ADMIN'
                               ? 'bg-purple-100 text-purple-700'
-                              : (String((admin as any).role || '').toUpperCase() === 'ADMIN' || String((admin as any).role || '').toUpperCase() === 'SUPER_ADMIN')
+                              : String((admin as any).role || '').toUpperCase() === 'ADMIN'
                                 ? 'bg-brand-green/10 text-brand-green'
                                 : admin.role === 'MANAGER'
                                   ? 'bg-blue-100 text-blue-700'
-                                  : 'bg-slate-200 text-slate-700'
+                                  : admin.role === 'ACCOUNTING'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-slate-200 text-slate-700'
                           }`}
                         >
                           {admin.role === 'SUPER_ADMIN'
                             ? 'Super Admin'
-                            : (String((admin as any).role || '').toUpperCase() === 'ADMIN' || String((admin as any).role || '').toUpperCase() === 'SUPER_ADMIN')
+                            : String((admin as any).role || '').toUpperCase() === 'ADMIN'
                               ? 'Admin'
                               : admin.role === 'MANAGER'
                                 ? 'Manager'
-                                : 'Moderator'}
+                                : admin.role === 'ACCOUNTING'
+                                  ? 'Accounting'
+                                  : 'Moderator'}
                         </span>
                         {admin.isActive ? (
                           <span className="px-2 py-0.5 bg-success-100 text-success-700 text-xs font-semibold rounded-full">
@@ -782,7 +786,7 @@ export default function SettingsPage() {
                     <select
                       value={admin.role}
                       onChange={async (e) => {
-                        const role = e.target.value as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
+                        const role = e.target.value as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING'
                         try {
                           const res = await fetch(`/api/admins/${admin.id}`, {
                             method: 'PATCH',
@@ -805,6 +809,7 @@ export default function SettingsPage() {
                       <option value="ADMIN">Admin</option>
                       <option value="MODERATOR">Moderator</option>
                       <option value="MANAGER">Manager</option>
+                      <option value="ACCOUNTING">Accounting</option>
                     </select>
                   </div>
                   <button
@@ -1063,6 +1068,7 @@ export default function SettingsPage() {
                   <option value="ADMIN">Admin (full access)</option>
                   <option value="MODERATOR">Moderator (qualified-only)</option>
                   <option value="MANAGER">Manager (restricted access)</option>
+                  <option value="ACCOUNTING">Accounting (invoices only)</option>
                 </select>
               </div>
 
