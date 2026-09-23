@@ -6,10 +6,12 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   Calendar,
+  ChevronLeft,
   Download,
   FileSpreadsheet,
   Loader2,
   Search,
+  User,
 } from 'lucide-react'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -39,6 +41,16 @@ type InvoiceRow = {
   } | null
 }
 
+type EstimatorGroup = {
+  installerId: string
+  name: string
+  email: string
+  companyName: string
+  invoiceCount: number
+  latestWeekEnding: string
+  invoices: InvoiceRow[]
+}
+
 type DateFilter = 'week' | 'month' | 'year' | 'all'
 
 function toDateKey(value: string | Date): string {
@@ -53,6 +65,14 @@ function filledLines(lines: WeeklyReportLine[]) {
   )
 }
 
+function estimatorName(invoice: InvoiceRow) {
+  return (
+    `${invoice.installer?.firstName || ''} ${invoice.installer?.lastName || ''}`.trim() ||
+    invoice.subcontractorName ||
+    'Estimator'
+  )
+}
+
 export default function DashboardInvoicePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -63,6 +83,7 @@ export default function DashboardInvoicePage() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedInstallerId, setSelectedInstallerId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [dateFilter, setDateFilter] = useState<DateFilter>('month')
   const [weekValue, setWeekValue] = useState(() => new Date().toISOString().slice(0, 10))
@@ -101,9 +122,12 @@ export default function DashboardInvoicePage() {
         const next = (data?.invoices || []).map((row: any) => ({
           ...row,
           lines: normalizeWeeklyReportLines(row.lines),
-        }))
+        })) as InvoiceRow[]
         setInvoices(next)
-        if (next[0]?.id) setExpandedId(next[0].id)
+        setSelectedInstallerId((current) => {
+          if (!current) return null
+          return next.some((row) => row.installerId === current) ? current : null
+        })
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load invoices')
       } finally {
@@ -115,6 +139,38 @@ export default function DashboardInvoicePage() {
       cancelled = true
     }
   }, [status, role, search, dateFilter, weekValue, monthValue, yearValue])
+
+  const estimators = useMemo(() => {
+    const map = new Map<string, EstimatorGroup>()
+    for (const invoice of invoices) {
+      const existing = map.get(invoice.installerId)
+      if (existing) {
+        existing.invoices.push(invoice)
+        existing.invoiceCount += 1
+        if (new Date(invoice.weekEnding).getTime() > new Date(existing.latestWeekEnding).getTime()) {
+          existing.latestWeekEnding = invoice.weekEnding
+        }
+      } else {
+        map.set(invoice.installerId, {
+          installerId: invoice.installerId,
+          name: estimatorName(invoice),
+          email: invoice.installer?.email || '',
+          companyName: invoice.installer?.companyName || invoice.subcontractorName || '',
+          invoiceCount: 1,
+          latestWeekEnding: invoice.weekEnding,
+          invoices: [invoice],
+        })
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [invoices])
+
+  const selectedEstimator = useMemo(
+    () => estimators.find((row) => row.installerId === selectedInstallerId) || null,
+    [estimators, selectedInstallerId]
+  )
+
+  const visibleInvoices = selectedEstimator?.invoices || []
 
   const yearOptions = useMemo(() => {
     const years = new Set<string>([String(new Date().getUTCFullYear())])
@@ -128,19 +184,19 @@ export default function DashboardInvoicePage() {
   const handleSearch = (event: FormEvent) => {
     event.preventDefault()
     setSearch(searchInput.trim())
+    setSelectedInstallerId(null)
   }
 
   const handleDownloadExcel = () => {
-    const rows = invoices.flatMap((invoice) => {
+    const source = selectedEstimator ? selectedEstimator.invoices : invoices
+    const rows = source.flatMap((invoice) => {
       const lines = filledLines(invoice.lines)
       const weekEndingLabel = new Date(invoice.weekEnding).toLocaleDateString()
-      const estimatorName =
-        `${invoice.installer?.firstName || ''} ${invoice.installer?.lastName || ''}`.trim() ||
-        invoice.subcontractorName
+      const name = estimatorName(invoice)
       if (lines.length === 0) {
         return [
           {
-            Estimator: estimatorName,
+            Estimator: name,
             Email: invoice.installer?.email || '',
             'Subcontractor Name': invoice.subcontractorName,
             'Week Ending': weekEndingLabel,
@@ -153,7 +209,7 @@ export default function DashboardInvoicePage() {
         ]
       }
       return lines.map((line) => ({
-        Estimator: estimatorName,
+        Estimator: name,
         Email: invoice.installer?.email || '',
         'Subcontractor Name': invoice.subcontractorName,
         'Week Ending': weekEndingLabel,
@@ -167,7 +223,13 @@ export default function DashboardInvoicePage() {
     if (rows.length === 0) return
     const rangeHint =
       dateFilter === 'week' ? weekValue : dateFilter === 'month' ? monthValue : dateFilter === 'year' ? yearValue : 'all'
-    downloadExcel(rows, `weekly-invoices-${rangeHint}`)
+    const nameHint = selectedEstimator?.name?.replace(/[^\w\-]+/g, '_').slice(0, 40) || 'all'
+    downloadExcel(rows, `weekly-invoices-${nameHint}-${rangeHint}`)
+  }
+
+  const openEstimator = (installerId: string) => {
+    setSelectedInstallerId(installerId)
+    setExpandedId(null)
   }
 
   if (status === 'loading' || (status === 'authenticated' && !canAccessInvoices(role) && !error)) {
@@ -195,15 +257,34 @@ export default function DashboardInvoicePage() {
           <div className="px-4 lg:px-6 pt-20 2xl:pt-6 pb-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 mb-1">Invoice</h1>
+                {selectedEstimator ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedInstallerId(null)
+                      setExpandedId(null)
+                    }}
+                    className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-green hover:text-brand-green-dark"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    All estimators
+                  </button>
+                ) : null}
+                <h1 className="text-3xl font-bold text-slate-900 mb-1">
+                  {selectedEstimator ? selectedEstimator.name : 'Invoice'}
+                </h1>
                 <p className="text-sm text-slate-500">
-                  Weekly invoices submitted by estimators — also saved on each estimator profile.
+                  {selectedEstimator
+                    ? `${selectedEstimator.invoiceCount} weekly ${
+                        selectedEstimator.invoiceCount === 1 ? 'invoice' : 'invoices'
+                      } for this estimator`
+                    : 'Open an estimator to view their weekly invoices'}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleDownloadExcel}
-                disabled={invoices.length === 0}
+                disabled={(selectedEstimator ? visibleInvoices : invoices).length === 0}
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
@@ -221,7 +302,7 @@ export default function DashboardInvoicePage() {
                 <input
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search estimator or subcontractor"
+                  placeholder="Search estimator"
                   className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 />
               </div>
@@ -238,7 +319,11 @@ export default function DashboardInvoicePage() {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setDateFilter(tab.id)}
+                  onClick={() => {
+                    setDateFilter(tab.id)
+                    setSelectedInstallerId(null)
+                    setExpandedId(null)
+                  }}
                   className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                     dateFilter === tab.id ? 'bg-brand-green text-white' : 'text-slate-600 hover:bg-white'
                   }`}
@@ -252,7 +337,10 @@ export default function DashboardInvoicePage() {
               <input
                 type="date"
                 value={weekValue}
-                onChange={(e) => setWeekValue(e.target.value)}
+                onChange={(e) => {
+                  setWeekValue(e.target.value)
+                  setSelectedInstallerId(null)
+                }}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm"
               />
             ) : null}
@@ -260,14 +348,20 @@ export default function DashboardInvoicePage() {
               <input
                 type="month"
                 value={monthValue}
-                onChange={(e) => setMonthValue(e.target.value)}
+                onChange={(e) => {
+                  setMonthValue(e.target.value)
+                  setSelectedInstallerId(null)
+                }}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm"
               />
             ) : null}
             {dateFilter === 'year' ? (
               <select
                 value={yearValue}
-                onChange={(e) => setYearValue(e.target.value)}
+                onChange={(e) => {
+                  setYearValue(e.target.value)
+                  setSelectedInstallerId(null)
+                }}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm"
               >
                 {yearOptions.map((year) => (
@@ -279,41 +373,91 @@ export default function DashboardInvoicePage() {
             ) : null}
 
             <span className="ml-auto rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-              {invoices.length} {invoices.length === 1 ? 'invoice' : 'invoices'}
+              {selectedEstimator
+                ? `${visibleInvoices.length} ${visibleInvoices.length === 1 ? 'invoice' : 'invoices'}`
+                : `${estimators.length} ${estimators.length === 1 ? 'estimator' : 'estimators'}`}
             </span>
           </div>
 
           <div className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-lg">
             <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-green/10">
-                <FileSpreadsheet className="h-5 w-5 text-brand-green" />
+                {selectedEstimator ? (
+                  <FileSpreadsheet className="h-5 w-5 text-brand-green" />
+                ) : (
+                  <User className="h-5 w-5 text-brand-green" />
+                )}
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Weekly invoices</h2>
-                <p className="text-sm text-slate-500">All estimator submissions</p>
+                <h2 className="text-xl font-bold text-slate-900">
+                  {selectedEstimator ? 'Weekly invoices' : 'Estimators'}
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {selectedEstimator
+                    ? selectedEstimator.email || 'Select an invoice to view details'
+                    : 'Choose an estimator to open their invoices'}
+                </p>
               </div>
+              {selectedEstimator ? (
+                <Link
+                  href={`/dashboard/installers/${selectedEstimator.installerId}`}
+                  className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Profile
+                </Link>
+              ) : null}
             </div>
 
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading invoices…
+                Loading…
               </div>
             ) : error ? (
               <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
-            ) : invoices.length === 0 ? (
+            ) : !selectedEstimator ? (
+              estimators.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
+                  <Calendar className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                  <p className="text-sm text-slate-500">No estimators with invoices match this filter.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {estimators.map((estimator) => (
+                    <button
+                      key={estimator.installerId}
+                      type="button"
+                      onClick={() => openEstimator(estimator.installerId)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{estimator.name}</p>
+                        <p className="text-sm text-slate-500 truncate">
+                          {estimator.email || estimator.companyName || 'Estimator'} · Latest week{' '}
+                          {new Date(estimator.latestWeekEnding).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 border border-slate-200">
+                          {estimator.invoiceCount}{' '}
+                          {estimator.invoiceCount === 1 ? 'invoice' : 'invoices'}
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-brand-green">Open</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : visibleInvoices.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
                 <Calendar className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                <p className="text-sm text-slate-500">No invoices match this filter yet.</p>
+                <p className="text-sm text-slate-500">No invoices for this estimator in the selected range.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {invoices.map((invoice) => {
+                {visibleInvoices.map((invoice) => {
                   const open = expandedId === invoice.id
                   const lines = filledLines(invoice.lines)
-                  const estimatorName =
-                    `${invoice.installer?.firstName || ''} ${invoice.installer?.lastName || ''}`.trim() ||
-                    invoice.subcontractorName
                   return (
                     <div key={invoice.id} className="overflow-hidden rounded-xl border border-slate-200">
                       <button
@@ -322,25 +466,15 @@ export default function DashboardInvoicePage() {
                         className="flex w-full items-center justify-between gap-3 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100"
                       >
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 truncate">{estimatorName}</p>
+                          <p className="font-semibold text-slate-900 truncate">{invoice.subcontractorName}</p>
                           <p className="text-sm text-slate-500">
-                            {invoice.subcontractorName} · Week ending{' '}
-                            {new Date(invoice.weekEnding).toLocaleDateString()} · {lines.length}{' '}
+                            Week ending {new Date(invoice.weekEnding).toLocaleDateString()} · {lines.length}{' '}
                             {lines.length === 1 ? 'job' : 'jobs'}
                           </p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Link
-                            href={`/dashboard/installers/${invoice.installerId}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Profile
-                          </Link>
-                          <span className="text-xs font-bold uppercase tracking-wide text-brand-green">
-                            {open ? 'Hide' : 'View'}
-                          </span>
-                        </div>
+                        <span className="text-xs font-bold uppercase tracking-wide text-brand-green">
+                          {open ? 'Hide' : 'View'}
+                        </span>
                       </button>
                       {open ? (
                         <div className="space-y-3 border-t border-slate-200 bg-white p-4">
