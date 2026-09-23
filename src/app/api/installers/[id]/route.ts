@@ -373,7 +373,7 @@ export async function GET(
         referralsCount,
         pendingChangeRequestsCount,
       } as any
-      if (requesterRole === 'MANAGER') {
+      if (requesterRole === 'MANAGER' || requesterRole === 'ACCOUNTING') {
         responseInstaller.remarks = null
       }
 
@@ -934,12 +934,12 @@ export async function PATCH(
         )
       }
 
-      if (adminRole === 'MANAGER') {
+      if (adminRole === 'MANAGER' || adminRole === 'ACCOUNTING') {
         const requestedKeys = Object.keys(cleanedData)
         const managerAllowed = requestedKeys.length > 0 && requestedKeys.every((key) => key === 'managerRemarks')
         if (!managerAllowed) {
           return NextResponse.json(
-            { error: 'Forbidden', details: 'Managers can only update manager remarks' },
+            { error: 'Forbidden', details: 'This role can only update manager remarks' },
             { status: 403 }
           )
         }

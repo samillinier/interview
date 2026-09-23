@@ -25,7 +25,7 @@ function canView(role: string) {
 }
 
 function canCreate(role: string) {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
 }
 
 export async function GET() {

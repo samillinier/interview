@@ -155,8 +155,8 @@ export async function GET(request: NextRequest) {
     if (!currentAdminForRole?.isActive) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-    if (currentAdminForRole.role !== 'ADMIN' && currentAdminForRole.role !== 'MANAGER' && currentAdminForRole.role !== 'SUPER_ADMIN' && currentAdminForRole.role !== 'ACCOUNTING') {
-      return NextResponse.json({ error: 'Admin, Manager, Accounting, or Super Admin role required' }, { status: 403 })
+    if (currentAdminForRole.role !== 'ADMIN' && currentAdminForRole.role !== 'MANAGER' && currentAdminForRole.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     // Return admins list
@@ -358,8 +358,8 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN', 'ACCOUNTING'].includes(String((currentAdmin as any).role))) {
-      return NextResponse.json({ error: 'Admin, Manager, Accounting, or Super Admin role required' }, { status: 403 })
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     const { email, name, role } = await request.json()

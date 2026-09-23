@@ -96,7 +96,7 @@ export async function GET(_request: NextRequest) {
 
     const admin = await prisma.admin.findUnique({ where: { email } })
     const role = String((admin as any)?.role || '').toUpperCase()
-    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN')) {
+    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN' && role !== 'ACCOUNTING')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403, headers: noStoreHeaders })
     }
 

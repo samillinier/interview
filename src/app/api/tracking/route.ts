@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     
     // Admins, managers, and moderators can view tracking (read-only in UI for non-admins).
     const role = String((admin as any)?.role || '').toUpperCase()
-    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN')) {
+    if (!admin?.isActive || (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN' && role !== 'ACCOUNTING')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 

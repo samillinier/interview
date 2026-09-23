@@ -39,14 +39,14 @@ export async function GET(request: NextRequest) {
 
     const admin = await (prisma as any).admin.findUnique({ where: { email } })
     const role = String(admin?.role || '').toUpperCase()
-    if (!admin?.isActive || !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(role)) {
+    if (!admin?.isActive || !['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTING'].includes(role)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403, headers: noStoreHeaders })
     }
 
     // Fetch all installers that have remarks
     const installers = await (prisma as any).installer.findMany({
       where: {
-        ...(role === 'MANAGER'
+        ...(role === 'MANAGER' || role === 'ACCOUNTING'
           ? { managerRemarks: { not: null } }
           : { OR: [{ remarks: { not: null } }, { managerRemarks: { not: null } }] }),
       },
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     // Parse remarks for each installer and format the response
     const installersWithRemarks = installers.map((installer: any) => {
-      const adminRemarks = role === 'MANAGER' ? [] : parseRemarkList(installer.remarks).map((remark) => ({ ...remark, source: 'admin' }))
+      const adminRemarks = role === 'MANAGER' || role === 'ACCOUNTING' ? [] : parseRemarkList(installer.remarks).map((remark) => ({ ...remark, source: 'admin' }))
       const managerRemarks = parseRemarkList(installer.managerRemarks).map((remark) => ({ ...remark, source: 'manager' }))
       const parsedRemarks = [...adminRemarks, ...managerRemarks].sort(
         (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

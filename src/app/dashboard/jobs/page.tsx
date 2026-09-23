@@ -67,7 +67,7 @@ export default function JobsHubPage() {
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | ''
-  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(normalizedRole)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')

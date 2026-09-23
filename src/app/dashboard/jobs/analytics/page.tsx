@@ -136,7 +136,7 @@ export default function JobsAnalyticsPage() {
   const router = useRouter()
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
-  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(String((session?.user as any)?.role || '').toUpperCase())
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(String((session?.user as any)?.role || '').toUpperCase())
 
   const [data, setData] = useState<JobsAnalytics | null>(null)
   const [loading, setLoading] = useState(true)

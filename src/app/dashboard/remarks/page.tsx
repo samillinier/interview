@@ -154,7 +154,7 @@ export default function RemarksPage() {
   useEffect(() => {
     if (status === 'authenticated') {
       fetchUpdatesCount()
-      if (role === 'MANAGER') {
+      if (role === 'MANAGER' || role === 'ACCOUNTING') {
         const interval = setInterval(fetchUpdatesCount, 30000)
         return () => clearInterval(interval)
       }
@@ -349,10 +349,10 @@ export default function RemarksPage() {
                 <div className="p-2 bg-brand-green/10 rounded-xl">
                   <StickyNote className="w-6 h-6 text-brand-green" />
                 </div>
-              <h1 className="text-3xl font-bold text-slate-900">{role === 'MANAGER' ? 'Manager Remarks' : 'Installer Remarks'}</h1>
+              <h1 className="text-3xl font-bold text-slate-900">{role === 'MANAGER' || role === 'ACCOUNTING' ? 'Manager Remarks' : 'Installer Remarks'}</h1>
               </div>
               <p className="text-slate-600 ml-14">
-                {role === 'MANAGER' ? 'Track manager remarks you add for installers' : 'Track and manage admin and manager remarks for installers'}
+                {role === 'MANAGER' || role === 'ACCOUNTING' ? 'Track manager remarks you add for installers' : 'Track and manage admin and manager remarks for installers'}
               </p>
             </div>
             <button

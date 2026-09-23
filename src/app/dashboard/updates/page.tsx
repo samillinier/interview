@@ -102,7 +102,7 @@ export default function UpdatesPage() {
   const pathname = usePathname()
   const role = String((session?.user as any)?.role || '').toUpperCase()
   const canView = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
-  const canCreate = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+  const canCreate = role === 'ADMIN' || role === 'SUPER_ADMIN'
 
   const { sidebarOpen } = useSidebarOpen()
   const [updates, setUpdates] = useState<DashboardUpdate[]>([])

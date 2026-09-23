@@ -851,7 +851,7 @@ export default function TrackingPage() {
     note?: string | null
   ) => {
     const role = String((session?.user as any)?.role || '').toUpperCase()
-    const canEditNote = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+    const canEditNote = role === 'ADMIN' || role === 'SUPER_ADMIN'
     const canReadNote = canEditNote || role === 'MANAGER' || role === 'MODERATOR'
     if (!canReadNote) return
     e.stopPropagation()
@@ -1795,7 +1795,7 @@ export default function TrackingPage() {
 
   const role = String((session?.user as any)?.role || '').toUpperCase()
   const canView = role === 'ADMIN' || role === 'MANAGER' || role === 'MODERATOR' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
-  const canEdit = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+  const canEdit = role === 'ADMIN' || role === 'SUPER_ADMIN'
   if (!canView) {
     return null
   }

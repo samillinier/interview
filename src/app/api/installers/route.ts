@@ -554,7 +554,7 @@ export async function GET(request: NextRequest) {
     const adminRole = String(admin.role || '').toUpperCase()
     const installersWithCompletion = installers.map((installer) => ({
       ...installer,
-      remarks: adminRole === 'MANAGER' ? null : installer.remarks,
+      remarks: adminRole === 'MANAGER' || adminRole === 'ACCOUNTING' ? null : installer.remarks,
       matchedStaffMember: matchedStaffByInstallerId.get(installer.id) || null,
       profileCompletionPercent: calculateProfileCompletionPercent(installer),
     }))

@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/db"
 import type { NextRequest } from "next/server"
 
-export const CILIO_ACCESS_ROLES = ["ADMIN", "MANAGER", "MODERATOR", "SUPER_ADMIN"] as const
+export const CILIO_ACCESS_ROLES = ["ADMIN", "MANAGER", "MODERATOR", "SUPER_ADMIN", "ACCOUNTING"] as const
 export const CILIO_DIAGNOSTIC_ROLES = ["ADMIN", "SUPER_ADMIN"] as const
 
 type Role = (typeof CILIO_ACCESS_ROLES)[number] | (typeof CILIO_DIAGNOSTIC_ROLES)[number]

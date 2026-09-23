@@ -161,7 +161,7 @@ export default function JobsReportsPage() {
   const router = useRouter()
   const pathname = usePathname()
   const { sidebarOpen } = useSidebarOpen()
-  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN'].includes(
+  const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(
     String((session?.user as any)?.role || '').toUpperCase()
   )
 

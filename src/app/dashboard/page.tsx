@@ -260,7 +260,7 @@ function getInstallerSearchHeadsUp(installer: Installer, role: string) {
     new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   const items: Array<{ type: 'remark' | 'expired' | 'expiring' | 'compliant' | 'not_compliant' | 'in_progress'; label: string; detail: string }> = []
-  const isManager = role === 'MANAGER'
+  const isManager = role === 'MANAGER' || role === 'ACCOUNTING'
   const remark = formatInstallerRemark(isManager ? installer.managerRemarks : installer.remarks)
   const managerRemark = isManager ? '' : formatInstallerRemark(installer.managerRemarks)
 
@@ -2195,7 +2195,7 @@ function DashboardPageContent() {
                 <option value="estimator">Estimators</option>
               </select>
 
-              {normalizedRole !== 'MANAGER' ? (
+              {normalizedRole !== 'MANAGER' && normalizedRole !== 'ACCOUNTING' ? (
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base"
@@ -2530,7 +2530,7 @@ function DashboardPageContent() {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          {(normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR') && (
+                          {(normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR' && normalizedRole !== 'ACCOUNTING') && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()

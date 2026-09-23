@@ -368,8 +368,8 @@ export default function InstallerProfileViewPage() {
   const installerId = params?.id as string
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
   
-  // Check if user is a manager or moderator (restricted access)
-  const isManager = normalizedRole === 'MANAGER'
+  // Check if user is a manager-like role (Manager or Accounting — restricted / view-only profiles)
+  const isManager = normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
   const isModerator = normalizedRole === 'MODERATOR'
   const canDelete = !isManager && !isModerator
   

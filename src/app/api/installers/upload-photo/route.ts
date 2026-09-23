@@ -71,7 +71,7 @@ export async function DELETE(request: NextRequest) {
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status })
     }
-    if (access.admin.role === 'MANAGER') {
+    if (access.admin.role === 'MANAGER' || access.admin.role === 'ACCOUNTING') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

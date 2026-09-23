@@ -55,8 +55,8 @@ export async function DELETE(
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN', 'ACCOUNTING'].includes(String((currentAdmin as any).role))) {
-      return NextResponse.json({ error: 'Admin, Manager, Accounting, or Super Admin role required' }, { status: 403 })
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     const params = context.params
@@ -152,8 +152,8 @@ export async function PATCH(
         { status: 403 }
       )
     }
-    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN', 'ACCOUNTING'].includes(String((currentAdmin as any).role))) {
-      return NextResponse.json({ error: 'Admin, Manager, Accounting, or Super Admin role required' }, { status: 403 })
+    if ((currentAdmin as any).role && !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(String((currentAdmin as any).role))) {
+      return NextResponse.json({ error: 'Admin, Manager, or Super Admin role required' }, { status: 403 })
     }
 
     const params = context.params

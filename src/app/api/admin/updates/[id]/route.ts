@@ -11,7 +11,7 @@ const noStoreHeaders = {
 } as const
 
 function canCreate(role: string) {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'ACCOUNTING'
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
 }
 
 function parseOptionalBadgeCount(value: unknown) {
