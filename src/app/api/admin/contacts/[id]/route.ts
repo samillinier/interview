@@ -29,6 +29,7 @@ function buildData(body: any) {
     externalId: typeof body.externalId === 'string' && body.externalId.trim() ? body.externalId.trim() : undefined,
     isHidden: typeof body.isHidden === 'boolean' ? body.isHidden : undefined,
     workroom: typeof body.workroom === 'string' ? body.workroom.trim() || null : undefined,
+    managedLocally: typeof body.managedLocally === 'boolean' ? body.managedLocally : undefined,
   }
 }
 
@@ -42,6 +43,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const id = params.id
     const body = await request.json().catch(() => ({}))
     const data = buildData(body)
+
+    // A hide toggle sends only `isHidden`. Anything else is a manual content
+    // edit, which should mark the contact as locally managed so the sync never
+    // overwrites it.
+    const keys = Object.keys(body)
+    const isHideOnly = keys.length > 0 && keys.every((k) => k === 'isHidden')
+    if (!isHideOnly) {
+      data.managedLocally = true
+    }
 
     const contact = await prisma.contact.update({ where: { id }, data })
     return NextResponse.json({ contact })

@@ -46,6 +46,7 @@ model Contact {
   lastSyncedAt DateTime?
   isHidden     Boolean   @default(false)
   workroom     String?
+  managedLocally Boolean @default(false)
 
   @@index([category])
   @@index([name])

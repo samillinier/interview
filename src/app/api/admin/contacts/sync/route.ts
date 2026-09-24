@@ -39,6 +39,9 @@ async function upsertContact(item: { name: string; email?: string; phone?: strin
   }
 
   if (item.externalId) {
+    const existing = await prisma.contact.findUnique({ where: { externalId: item.externalId } })
+    // Never overwrite a contact the admin edited manually.
+    if (existing?.managedLocally) return
     await prisma.contact.upsert({
       where: { externalId: item.externalId },
       update: data,
@@ -49,6 +52,7 @@ async function upsertContact(item: { name: string; email?: string; phone?: strin
 
   if (item.email) {
     const existing = await prisma.contact.findFirst({ where: { email: item.email } })
+    if (existing?.managedLocally) return
     if (existing) {
       await prisma.contact.update({ where: { id: existing.id }, data })
     } else {
@@ -81,9 +85,10 @@ async function runSync(request: NextRequest) {
     await upsertContact(seed)
   }
 
-  // Remove any previously-seeded workroom rows (no longer part of the directory).
+  // Remove any previously-seeded workroom rows (no longer part of the directory),
+  // but never delete a contact the admin edited manually.
   await prisma.contact.deleteMany({
-    where: { externalId: { startsWith: 'workroom-' } },
+    where: { externalId: { startsWith: 'workroom-' }, managedLocally: false },
   })
 
   // 1) RingCentral company directory (explicit source, or auto when no external URL)

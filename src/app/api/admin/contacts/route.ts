@@ -33,6 +33,7 @@ function serialize(row: any) {
     lastSyncedAt: row.lastSyncedAt ? row.lastSyncedAt.toISOString() : null,
     isHidden: Boolean(row.isHidden),
     workroom: row.workroom || '',
+    managedLocally: Boolean(row.managedLocally),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
