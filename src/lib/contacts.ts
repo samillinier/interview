@@ -96,16 +96,17 @@ function normalize(s: string) {
 
 const NORMALIZED_WORKROOMS = WORKROOMS.map((w) => ({ name: w, norm: normalize(w) }))
 
-/** Detect a workroom from a RingCentral user's department + name fields. */
+/** Detect a workroom from a RingCentral user's site + department + name fields. */
 export function detectWorkroom(e: any): string | undefined {
-  const haystack = normalize([e.department, e.name, e.jobTitle].filter(Boolean).join(' '))
+  const siteName = typeof e?.site?.name === 'string' ? e.site.name : ''
+  const haystack = normalize([siteName, e?.department, e?.name, e?.jobTitle].filter(Boolean).join(' '))
   if (!haystack) return undefined
   const match = NORMALIZED_WORKROOMS.find((w) => haystack.includes(w.norm))
   return match?.name
 }
 
 /** Map RingCentral company-directory users into the contact shape. */
-export function ringCentralContacts(entries: any[], groupMap?: Map<string, string[]>): NormalizedContact[] {
+export function ringCentralContacts(entries: any[]): NormalizedContact[] {
   return (entries || [])
     .filter((e) => e && (e.type === 'User' || e.type === undefined))
     .map((e) => {
@@ -121,14 +122,11 @@ export function ringCentralContacts(entries: any[], groupMap?: Map<string, strin
         [e.firstName, e.lastName].filter(Boolean).join(' ')
       if (!name) return null
 
-      // Prefer RingCentral user-group membership to resolve the workroom. If a
-      // group name isn't a known workroom, still surface it so the group is visible.
-      const extKey = String(e.extensionNumber || '').trim()
-      const emailKey = String(e.email || '').trim().toLowerCase()
-      const groups =
-        groupMap?.get(extKey) || (emailKey ? groupMap?.get(emailKey) : undefined) || []
-      const groupWorkroom = groups.map((g) => detectWorkroom({ department: g })).find(Boolean)
-      const workroom = groupWorkroom || groups[0] || detectWorkroom(e)
+      // RingCentral represents physical locations as "sites". Use the site name
+      // as the workroom, normalized to a known workroom name when possible.
+      const siteName = typeof e?.site?.name === 'string' ? e.site.name.trim() : ''
+      const detected = detectWorkroom(e)
+      const workroom = detected || siteName || undefined
 
       const department = typeof e.department === 'string' ? e.department.trim() : ''
       // If the department is actually the workroom, don't duplicate it as a category.

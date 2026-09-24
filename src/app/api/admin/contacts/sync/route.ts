@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { defaultContacts, extractContacts, ringCentralContacts } from '@/lib/contacts'
-import { buildUserGroupMap, getCompanyDirectory } from '@/lib/ringCentral'
+import { getCompanyDirectory } from '@/lib/ringCentral'
 
 export const dynamic = 'force-dynamic'
 
@@ -95,8 +95,12 @@ async function runSync(request: NextRequest) {
   if (syncSource === 'ringcentral' || (ringCentralConfigured && !syncUrl)) {
     try {
       const entries = await getCompanyDirectory()
-      const groupMap = await buildUserGroupMap().catch(() => new Map<string, string[]>())
-      const contacts = ringCentralContacts(entries, groupMap)
+      const contacts = ringCentralContacts(entries)
+      // Diagnostics: how many entries expose a site / department / workroom.
+      const withSite = entries.filter((e) => e?.site?.name).length
+      const withDepartment = entries.filter((e) => typeof e?.department === 'string' && e.department.trim()).length
+      const withWorkroom = contacts.filter((c) => c.workroom).length
+      console.log(`[contacts-sync] entries=${entries.length} withSite=${withSite} withDepartment=${withDepartment} withWorkroom=${withWorkroom}`)
       let created = 0
       let updated = 0
       for (const c of contacts) {
@@ -113,6 +117,7 @@ async function runSync(request: NextRequest) {
         updated,
         total: contacts.length,
         source: 'ringcentral',
+        diagnostics: { withSite, withDepartment, withWorkroom },
       })
     } catch (error: any) {
       const message = String(error?.message || error)
