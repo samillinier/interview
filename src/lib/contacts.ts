@@ -121,15 +121,23 @@ export function ringCentralContacts(entries: any[]): NormalizedContact[] {
         [e.firstName, e.lastName].filter(Boolean).join(' ')
       if (!name) return null
 
+      const workroom = detectWorkroom(e)
+      const department = typeof e.department === 'string' ? e.department.trim() : ''
+      // If the department is actually the workroom, don't duplicate it as a category.
+      const category =
+        workroom && department && normalize(department).includes(normalize(workroom))
+          ? 'RingCentral'
+          : department || 'RingCentral'
+
       return {
         name,
         email: e.email || undefined,
         phone: direct || (e.extensionNumber ? `Ext ${e.extensionNumber}` : undefined),
-        category: (e.department && e.department.trim()) || (e.site && e.site.name) || 'RingCentral',
+        category,
         role: e.jobTitle || e.title || undefined,
         notes: e.extensionNumber ? `Extension ${e.extensionNumber}` : undefined,
         externalId: e.contactId || e.id,
-        workroom: detectWorkroom(e),
+        workroom,
       }
     })
     .filter(Boolean) as NormalizedContact[]
