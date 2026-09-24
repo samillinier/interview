@@ -15,6 +15,7 @@ import {
   X,
   HelpCircle,
   CalendarDays,
+  BookUser,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -49,6 +50,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, surveyCou
         : [{ href: '/installer/survey', label: 'Survey', icon: ClipboardList, badge: surveyCount }]),
       { href: '/installer/notifications', label: 'Notifications', icon: Bell, badge: notificationCount },
       { href: '/installer/translate', label: 'Translator', icon: Languages },
+      { href: '/installer/contact', label: 'Contact', icon: BookUser },
       { href: '/installer/help', label: 'Help', icon: HelpCircle },
     ],
     [notificationCount, surveyCount, isEstimator]
