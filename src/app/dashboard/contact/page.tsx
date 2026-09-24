@@ -17,6 +17,8 @@ import {
   Building2,
   X,
   StickyNote,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -35,6 +37,7 @@ interface Contact {
   sortOrder: number
   externalId: string
   lastSyncedAt: string | null
+  isHidden: boolean
   createdAt: string
   updatedAt: string
 }
@@ -185,6 +188,22 @@ export default function ContactPage() {
     }
   }
 
+  const handleToggleHidden = async (c: Contact) => {
+    try {
+      const res = await fetch(`/api/admin/contacts/${c.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isHidden: !c.isHidden }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to update contact')
+      setToast(c.isHidden ? 'Contact is now visible' : 'Contact hidden from other roles')
+      await fetchContacts()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update contact')
+    }
+  }
+
   const handleSync = async () => {
     setSyncing(true)
     setError('')
@@ -320,14 +339,28 @@ export default function ContactPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {items.map((c) => (
-                      <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                      <div key={c.id} className={`bg-white rounded-2xl shadow-sm border p-5 hover:shadow-md transition-shadow ${c.isHidden ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-slate-900 truncate">{c.name}</h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-lg font-bold text-slate-900 truncate">{c.name}</h3>
+                              {c.isHidden && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                                  <EyeOff className="w-3 h-3" /> Hidden
+                                </span>
+                              )}
+                            </div>
                             {c.role && <p className="text-sm text-slate-500">{c.role}</p>}
                           </div>
                           {canEdit && (
                             <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => handleToggleHidden(c)}
+                                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                title={c.isHidden ? 'Show to other roles' : 'Hide from other roles'}
+                              >
+                                {c.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                              </button>
                               <button
                                 onClick={() => openEdit(c)}
                                 className="p-2 text-slate-400 hover:text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"

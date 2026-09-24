@@ -44,6 +44,7 @@ model Contact {
   sortOrder    Int       @default(0)
   externalId   String?   @unique
   lastSyncedAt DateTime?
+  isHidden     Boolean   @default(false)
 
   @@index([category])
   @@index([name])

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 
 const VIEW_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTING', 'MODERATOR'])
 const WRITE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN'])
+const HIDE_MANAGED_ROLES = new Set(['MANAGER', 'ACCOUNTING', 'MODERATOR'])
 
 async function resolveRole() {
   const session = await getServerSession(authOptions)
@@ -30,6 +31,7 @@ function serialize(row: any) {
     sortOrder: row.sortOrder ?? 0,
     externalId: row.externalId || '',
     lastSyncedAt: row.lastSyncedAt ? row.lastSyncedAt.toISOString() : null,
+    isHidden: Boolean(row.isHidden),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -46,6 +48,7 @@ function buildData(body: any) {
     notes: typeof body.notes === 'string' ? body.notes.trim() || null : null,
     sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 0,
     externalId: typeof body.externalId === 'string' && body.externalId.trim() ? body.externalId.trim() : null,
+    isHidden: typeof body.isHidden === 'boolean' ? body.isHidden : undefined,
   }
 }
 
@@ -56,7 +59,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Non-admin viewers only see non-hidden contacts. Admins see everything.
+    const where = HIDE_MANAGED_ROLES.has(access.role) ? { isHidden: false } : undefined
+
     const contacts = await prisma.contact.findMany({
+      where,
       orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
     })
 

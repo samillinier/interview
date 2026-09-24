@@ -27,6 +27,7 @@ function buildData(body: any) {
     notes: typeof body.notes === 'string' ? body.notes.trim() || null : undefined,
     sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : undefined,
     externalId: typeof body.externalId === 'string' && body.externalId.trim() ? body.externalId.trim() : undefined,
+    isHidden: typeof body.isHidden === 'boolean' ? body.isHidden : undefined,
   }
 }
 
