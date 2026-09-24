@@ -74,11 +74,16 @@ async function runSync(request: NextRequest) {
     process.env.RINGCENTRAL_JWT_TOKEN
   )
 
-  // Always keep the corporate + workroom location entries present.
+  // Always keep the corporate / compliance / scheduling entries present.
   const seeds = defaultContacts()
   for (const seed of seeds) {
     await upsertContact(seed)
   }
+
+  // Remove any previously-seeded workroom rows (no longer part of the directory).
+  await prisma.contact.deleteMany({
+    where: { externalId: { startsWith: 'workroom-' } },
+  })
 
   // 1) RingCentral company directory (explicit source, or auto when no external URL)
   if (syncSource === 'ringcentral' || (ringCentralConfigured && !syncUrl)) {

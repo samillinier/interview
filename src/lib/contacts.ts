@@ -1,4 +1,4 @@
-import { CORPORATE_ADDRESS, CORPORATE_PHONE, WORKROOM_DIRECTORY } from '@/lib/compliance-knowledge-base'
+import { CORPORATE_ADDRESS, CORPORATE_PHONE } from '@/lib/compliance-knowledge-base'
 
 export type SeedContact = {
   name: string
@@ -14,7 +14,7 @@ export type SeedContact = {
 
 /** Built-in directory seed so the Contact page is never empty before the first external sync. */
 export function defaultContacts(): SeedContact[] {
-  const rows: SeedContact[] = [
+  return [
     {
       name: 'Floor Interior Services',
       category: 'Corporate',
@@ -51,22 +51,8 @@ export function defaultContacts(): SeedContact[] {
       sortOrder: 30,
     },
   ]
-
-  WORKROOM_DIRECTORY.forEach((w, i) => {
-    rows.push({
-      name: `${w.name} Workroom`,
-      category: 'Workroom',
-      role: w.name,
-      phone: w.phone,
-      address: w.address,
-      notes: `Hours: ${w.hours}`,
-      externalId: `workroom-${w.name.toLowerCase().replace(/\s+/g, '-')}`,
-      sortOrder: 100 + i * 10,
-    })
-  })
-
-  return rows
 }
+
 
 /** Normalize an arbitrary object from an external sync source into a contact-like shape. */
 function pick(obj: Record<string, any>, keys: string[]): string | undefined {
