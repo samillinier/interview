@@ -196,7 +196,9 @@ export default function ContactPage() {
       setToast(
         data.source === 'builtin'
           ? `Directory refreshed (${data.seeded ?? 0} entries)`
-          : `Synced ${data.total ?? 0} contacts (${data.created ?? 0} new, ${data.updated ?? 0} updated)`,
+          : data.source === 'ringcentral'
+            ? `Synced ${data.total ?? 0} contacts from RingCentral (${data.created ?? 0} new, ${data.updated ?? 0} updated)`
+            : `Synced ${data.total ?? 0} contacts (${data.created ?? 0} new, ${data.updated ?? 0} updated)`,
       )
     } catch (e: any) {
       setError(e?.message || 'Sync failed')

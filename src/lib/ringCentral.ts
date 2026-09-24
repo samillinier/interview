@@ -154,6 +154,53 @@ export async function getAccountInfo(): Promise<any> {
   return rcFetch("/account/~/")
 }
 
+export interface RCDirectoryEntry {
+  id: string
+  contactId?: string
+  type?: "User" | "Department"
+  status?: string
+  firstName?: string
+  lastName?: string
+  name?: string
+  extensionNumber?: string
+  email?: string
+  department?: string
+  jobTitle?: string
+  title?: string
+  site?: { id?: string; name?: string } | null
+  phoneNumbers?: { type?: string; phoneNumber?: string }[]
+}
+
+export interface RCDirectoryResponse {
+  uri: string
+  records: RCDirectoryEntry[]
+  paging: { page: number; perPage: number; totalPages: number; totalElements: number }
+  navigation: { firstPage?: { uri: string }; nextPage?: { uri: string }; previousPage?: { uri: string } }
+}
+
+/**
+ * Fetch the full company directory (all users) from RingCentral.
+ * Requires the "ReadAccounts" permission on the RingCentral app.
+ */
+export async function getCompanyDirectory(): Promise<RCDirectoryEntry[]> {
+  const entries: RCDirectoryEntry[] = []
+  let page = 1
+  const perPage = 250
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const sp = new URLSearchParams({ perPage: String(perPage), page: String(page) })
+    const data = await rcFetch<RCDirectoryResponse>("/account/~/directory/entries", sp)
+    entries.push(...(data.records || []))
+
+    const totalPages = data.paging?.totalPages || 0
+    if (!data.navigation?.nextPage || page >= totalPages) break
+    page += 1
+  }
+
+  return entries
+}
+
 /** Get token info to inspect granted scopes. */
 export async function getTokenInfo(): Promise<any> {
   const token = await getAccessToken()

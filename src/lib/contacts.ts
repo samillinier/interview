@@ -89,6 +89,36 @@ export type NormalizedContact = {
   externalId?: string
 }
 
+/** Map RingCentral company-directory users into the contact shape. */
+export function ringCentralContacts(entries: any[]): NormalizedContact[] {
+  return (entries || [])
+    .filter((e) => e && (e.type === 'User' || e.type === undefined))
+    .map((e) => {
+      const phones = Array.isArray(e.phoneNumbers) ? e.phoneNumbers : []
+      const direct =
+        (phones.find((p: any) => p.type === 'DirectNumber' || p.type === 'BusinessPhone')?.phoneNumber) ||
+        (phones.find((p: any) => p.type === 'MobilePhone')?.phoneNumber) ||
+        (phones.find((p: any) => p.type === 'VoiceFax')?.phoneNumber) ||
+        (phones[0]?.phoneNumber as string | undefined) ||
+        ''
+      const name =
+        (typeof e.name === 'string' && e.name.trim()) ||
+        [e.firstName, e.lastName].filter(Boolean).join(' ')
+      if (!name) return null
+
+      return {
+        name,
+        email: e.email || undefined,
+        phone: direct || (e.extensionNumber ? `Ext ${e.extensionNumber}` : undefined),
+        category: (e.department && e.department.trim()) || (e.site && e.site.name) || 'RingCentral',
+        role: e.jobTitle || e.title || undefined,
+        notes: e.extensionNumber ? `Extension ${e.extensionNumber}` : undefined,
+        externalId: e.contactId || e.id,
+      }
+    })
+    .filter(Boolean) as NormalizedContact[]
+}
+
 /**
  * Tolerant parser: accepts an array of contacts or an object that wraps one
  * under a common key (contacts / data / results / items / records / values).

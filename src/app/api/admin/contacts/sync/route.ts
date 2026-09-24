@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { defaultContacts, extractContacts } from '@/lib/contacts'
+import { defaultContacts, extractContacts, ringCentralContacts } from '@/lib/contacts'
+import { getCompanyDirectory } from '@/lib/ringCentral'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,13 +67,58 @@ async function runSync(request: NextRequest) {
   }
 
   const syncUrl = process.env.CONTACTS_SYNC_URL?.trim()
+  const syncSource = (process.env.CONTACTS_SOURCE || '').trim().toLowerCase()
+  const ringCentralConfigured = !!(
+    process.env.RINGCENTRAL_CLIENT_ID &&
+    process.env.RINGCENTRAL_CLIENT_SECRET &&
+    process.env.RINGCENTRAL_JWT_TOKEN
+  )
+
+  // Always keep the corporate + workroom location entries present.
+  const seeds = defaultContacts()
+  for (const seed of seeds) {
+    await upsertContact(seed)
+  }
+
+  // 1) RingCentral company directory (explicit source, or auto when no external URL)
+  if (syncSource === 'ringcentral' || (ringCentralConfigured && !syncUrl)) {
+    try {
+      const entries = await getCompanyDirectory()
+      const contacts = ringCentralContacts(entries)
+      let created = 0
+      let updated = 0
+      for (const c of contacts) {
+        const existed = await prisma.contact.findUnique({
+          where: { externalId: c.externalId as string },
+        })
+        await upsertContact(c)
+        if (existed) updated += 1
+        else created += 1
+      }
+      return NextResponse.json({
+        success: true,
+        created,
+        updated,
+        total: contacts.length,
+        source: 'ringcentral',
+      })
+    } catch (error: any) {
+      const message = String(error?.message || error)
+      if (message.includes('not configured')) {
+        return NextResponse.json(
+          { success: false, message: 'RingCentral credentials are not configured.' },
+          { status: 503 },
+        )
+      }
+      return NextResponse.json(
+        { success: false, message: `RingCentral sync failed: ${message}` },
+        { status: 502 },
+      )
+    }
+  }
 
   if (!syncUrl) {
-    // No external source configured: ensure the built-in directory is present.
-    const seeds = defaultContacts()
-    for (const seed of seeds) {
-      await upsertContact(seed)
-    }
+    // No external source configured beyond the built-in directory.
     return NextResponse.json({
       success: true,
       seeded: seeds.length,
