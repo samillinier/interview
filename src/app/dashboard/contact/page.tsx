@@ -371,11 +371,6 @@ export default function ContactPage() {
                                   {c.workroom}
                                 </span>
                               )}
-                              {c.managedLocally && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                  Manual
-                                </span>
-                              )}
                               {c.isHidden && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
                                   <EyeOff className="w-3 h-3" /> Hidden
