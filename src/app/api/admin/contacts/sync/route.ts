@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { defaultContacts, extractContacts, ringCentralContacts } from '@/lib/contacts'
-import { getCompanyDirectory } from '@/lib/ringCentral'
+import { buildUserGroupMap, getCompanyDirectory } from '@/lib/ringCentral'
 
 export const dynamic = 'force-dynamic'
 
@@ -95,7 +95,8 @@ async function runSync(request: NextRequest) {
   if (syncSource === 'ringcentral' || (ringCentralConfigured && !syncUrl)) {
     try {
       const entries = await getCompanyDirectory()
-      const contacts = ringCentralContacts(entries)
+      const groupMap = await buildUserGroupMap().catch(() => new Map<string, string[]>())
+      const contacts = ringCentralContacts(entries, groupMap)
       let created = 0
       let updated = 0
       for (const c of contacts) {

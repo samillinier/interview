@@ -201,6 +201,89 @@ export async function getCompanyDirectory(): Promise<RCDirectoryEntry[]> {
   return entries
 }
 
+export interface RCUserGroup {
+  id: string
+  name?: string
+  description?: string
+}
+
+export interface RCUserGroupsResponse {
+  uri: string
+  records: RCUserGroup[]
+  paging: { page: number; perPage: number; totalPages: number; totalElements: number }
+  navigation: { nextPage?: { uri: string } }
+}
+
+/** Fetch all user groups in the account. */
+export async function getUserGroups(): Promise<RCUserGroup[]> {
+  const groups: RCUserGroup[] = []
+  let page = 1
+  const perPage = 250
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const sp = new URLSearchParams({ perPage: String(perPage), page: String(page) })
+    const data = await rcFetch<RCUserGroupsResponse>('/account/~/user-groups', sp)
+    groups.push(...(data.records || []))
+    const totalPages = data.paging?.totalPages || 0
+    if (!data.navigation?.nextPage || page >= totalPages) break
+    page += 1
+  }
+  return groups
+}
+
+/** Fetch members of a single user group (extensions). */
+export async function getGroupMembers(groupId: string): Promise<any[]> {
+  const members: any[] = []
+  let page = 1
+  const perPage = 250
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const sp = new URLSearchParams({ perPage: String(perPage), page: String(page) })
+    const data = await rcFetch<any>(`/account/~/user-groups/${groupId}/members`, sp)
+    members.push(...(data.records || []))
+    const totalPages = data.paging?.totalPages || 0
+    if (!data.navigation?.nextPage || page >= totalPages) break
+    page += 1
+  }
+  return members
+}
+
+/**
+ * Build a map of extension number -> group names by reading every user group
+ * and its members. Returns an empty map on any failure so callers can fall back
+ * to department-based workroom detection.
+ */
+export async function buildUserGroupMap(): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>()
+  try {
+    const groups = await getUserGroups()
+    for (const g of groups) {
+      const name = g.name?.trim()
+      if (!name) continue
+      let members: any[] = []
+      try {
+        members = await getGroupMembers(g.id)
+      } catch {
+        continue // skip groups we don't have permission to read
+      }
+      for (const m of members) {
+        const keys: string[] = []
+        if (m.extensionNumber) keys.push(String(m.extensionNumber).trim())
+        if (m.email) keys.push(String(m.email).trim().toLowerCase())
+        for (const key of keys) {
+          if (!key) continue
+          const list = map.get(key) || []
+          if (!list.includes(name)) list.push(name)
+          map.set(key, list)
+        }
+      }
+    }
+  } catch {
+    // Swallow; the caller falls back to department detection.
+  }
+  return map
+}
+
 /** Get token info to inspect granted scopes. */
 export async function getTokenInfo(): Promise<any> {
   const token = await getAccessToken()

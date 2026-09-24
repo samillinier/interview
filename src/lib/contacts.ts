@@ -105,7 +105,7 @@ export function detectWorkroom(e: any): string | undefined {
 }
 
 /** Map RingCentral company-directory users into the contact shape. */
-export function ringCentralContacts(entries: any[]): NormalizedContact[] {
+export function ringCentralContacts(entries: any[], groupMap?: Map<string, string[]>): NormalizedContact[] {
   return (entries || [])
     .filter((e) => e && (e.type === 'User' || e.type === undefined))
     .map((e) => {
@@ -121,7 +121,15 @@ export function ringCentralContacts(entries: any[]): NormalizedContact[] {
         [e.firstName, e.lastName].filter(Boolean).join(' ')
       if (!name) return null
 
-      const workroom = detectWorkroom(e)
+      // Prefer RingCentral user-group membership to resolve the workroom. If a
+      // group name isn't a known workroom, still surface it so the group is visible.
+      const extKey = String(e.extensionNumber || '').trim()
+      const emailKey = String(e.email || '').trim().toLowerCase()
+      const groups =
+        groupMap?.get(extKey) || (emailKey ? groupMap?.get(emailKey) : undefined) || []
+      const groupWorkroom = groups.map((g) => detectWorkroom({ department: g })).find(Boolean)
+      const workroom = groupWorkroom || groups[0] || detectWorkroom(e)
+
       const department = typeof e.department === 'string' ? e.department.trim() : ''
       // If the department is actually the workroom, don't duplicate it as a category.
       const category =
