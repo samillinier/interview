@@ -73,6 +73,35 @@ export type NormalizedContact = {
   role?: string
   notes?: string
   externalId?: string
+  workroom?: string
+}
+
+/** Canonical workroom names (case-insensitive, whitespace-insensitive matching). */
+const WORKROOMS = [
+  'Albany',
+  'Sarasota',
+  'Tampa',
+  'Naples',
+  'Ocala',
+  'Lakeland',
+  'Panama City',
+  'Gainesville',
+  'Tallahassee',
+  'Dothan',
+]
+
+function normalize(s: string) {
+  return s.toLowerCase().replace(/[^a-z]/g, '')
+}
+
+const NORMALIZED_WORKROOMS = WORKROOMS.map((w) => ({ name: w, norm: normalize(w) }))
+
+/** Detect a workroom from a RingCentral user's department + name fields. */
+export function detectWorkroom(e: any): string | undefined {
+  const haystack = normalize([e.department, e.name, e.jobTitle].filter(Boolean).join(' '))
+  if (!haystack) return undefined
+  const match = NORMALIZED_WORKROOMS.find((w) => haystack.includes(w.norm))
+  return match?.name
 }
 
 /** Map RingCentral company-directory users into the contact shape. */
@@ -100,6 +129,7 @@ export function ringCentralContacts(entries: any[]): NormalizedContact[] {
         role: e.jobTitle || e.title || undefined,
         notes: e.extensionNumber ? `Extension ${e.extensionNumber}` : undefined,
         externalId: e.contactId || e.id,
+        workroom: detectWorkroom(e),
       }
     })
     .filter(Boolean) as NormalizedContact[]

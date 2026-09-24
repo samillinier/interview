@@ -45,9 +45,11 @@ model Contact {
   externalId   String?   @unique
   lastSyncedAt DateTime?
   isHidden     Boolean   @default(false)
+  workroom     String?
 
   @@index([category])
   @@index([name])
+  @@index([workroom])
 }
 
 model AdminAuditLog {

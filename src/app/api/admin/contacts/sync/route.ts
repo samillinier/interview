@@ -25,7 +25,7 @@ async function isAuthorizedAdmin() {
   return WRITE_ROLES.has(String((admin as any)?.role || '').toUpperCase())
 }
 
-async function upsertContact(item: { name: string; email?: string; phone?: string; address?: string; category?: string; role?: string; notes?: string; externalId?: string }) {
+async function upsertContact(item: { name: string; email?: string; phone?: string; address?: string; category?: string; role?: string; notes?: string; externalId?: string; workroom?: string }) {
   const data = {
     name: item.name,
     email: item.email || null,
@@ -34,6 +34,7 @@ async function upsertContact(item: { name: string; email?: string; phone?: strin
     category: item.category || null,
     role: item.role || null,
     notes: item.notes || null,
+    workroom: item.workroom || null,
     lastSyncedAt: new Date(),
   }
 

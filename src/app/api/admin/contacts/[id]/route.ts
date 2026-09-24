@@ -28,6 +28,7 @@ function buildData(body: any) {
     sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : undefined,
     externalId: typeof body.externalId === 'string' && body.externalId.trim() ? body.externalId.trim() : undefined,
     isHidden: typeof body.isHidden === 'boolean' ? body.isHidden : undefined,
+    workroom: typeof body.workroom === 'string' ? body.workroom.trim() || null : undefined,
   }
 }
 

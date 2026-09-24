@@ -32,6 +32,7 @@ function serialize(row: any) {
     externalId: row.externalId || '',
     lastSyncedAt: row.lastSyncedAt ? row.lastSyncedAt.toISOString() : null,
     isHidden: Boolean(row.isHidden),
+    workroom: row.workroom || '',
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -49,6 +50,7 @@ function buildData(body: any) {
     sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 0,
     externalId: typeof body.externalId === 'string' && body.externalId.trim() ? body.externalId.trim() : null,
     isHidden: typeof body.isHidden === 'boolean' ? body.isHidden : undefined,
+    workroom: typeof body.workroom === 'string' ? body.workroom.trim() || null : null,
   }
 }
 

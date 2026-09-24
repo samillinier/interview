@@ -38,6 +38,7 @@ interface Contact {
   externalId: string
   lastSyncedAt: string | null
   isHidden: boolean
+  workroom: string
   createdAt: string
   updatedAt: string
 }
@@ -50,6 +51,7 @@ const EMPTY_FORM = {
   category: '',
   role: '',
   notes: '',
+  workroom: '',
 }
 
 export default function ContactPage() {
@@ -64,6 +66,7 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [workroomFilter, setWorkroomFilter] = useState<string>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Contact | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -106,6 +109,12 @@ export default function ContactPage() {
     return Array.from(set).sort()
   }, [contacts])
 
+  const workrooms = useMemo(() => {
+    const set = new Set<string>()
+    contacts.forEach((c) => c.workroom && set.add(c.workroom))
+    return Array.from(set).sort()
+  }, [contacts])
+
   const filtered = contacts.filter((c) => {
     const q = searchQuery.toLowerCase()
     const matchesSearch =
@@ -116,7 +125,8 @@ export default function ContactPage() {
       c.address.toLowerCase().includes(q) ||
       c.role.toLowerCase().includes(q)
     const matchesCategory = categoryFilter === 'all' || c.category === categoryFilter
-    return matchesSearch && matchesCategory
+    const matchesWorkroom = workroomFilter === 'all' || c.workroom === workroomFilter
+    return matchesSearch && matchesCategory && matchesWorkroom
   })
 
   const grouped = useMemo(() => {
@@ -146,6 +156,7 @@ export default function ContactPage() {
       category: c.category,
       role: c.role,
       notes: c.notes,
+      workroom: c.workroom,
     })
     setError('')
     setModalOpen(true)
@@ -296,11 +307,21 @@ export default function ContactPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="md:w-56 px-4 py-2.5 border border-slate-300 rounded-xl focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none bg-slate-50 focus:bg-white cursor-pointer"
+              className="md:w-52 px-4 py-2.5 border border-slate-300 rounded-xl focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none bg-slate-50 focus:bg-white cursor-pointer"
             >
               <option value="all">All categories</option>
               {categories.map((c) => (
                 <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              value={workroomFilter}
+              onChange={(e) => setWorkroomFilter(e.target.value)}
+              className="md:w-52 px-4 py-2.5 border border-slate-300 rounded-xl focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none bg-slate-50 focus:bg-white cursor-pointer"
+            >
+              <option value="all">All workrooms</option>
+              {workrooms.map((w) => (
+                <option key={w} value={w}>{w}</option>
               ))}
             </select>
           </div>
@@ -344,6 +365,11 @@ export default function ContactPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-lg font-bold text-slate-900 truncate">{c.name}</h3>
+                              {c.workroom && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-green/10 text-brand-green border border-brand-green/20">
+                                  {c.workroom}
+                                </span>
+                              )}
                               {c.isHidden && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
                                   <EyeOff className="w-3 h-3" /> Hidden
@@ -436,6 +462,7 @@ export default function ContactPage() {
                 { key: 'name', label: 'Name *', placeholder: 'e.g. Adriana Vansickle' },
                 { key: 'role', label: 'Title / Department', placeholder: 'e.g. Scheduling & Measurement' },
                 { key: 'category', label: 'Category', placeholder: 'e.g. Corporate, Workroom, Compliance, Scheduling' },
+                { key: 'workroom', label: 'Workroom', placeholder: 'e.g. Albany, Ocala, Tampa, Naples…' },
                 { key: 'email', label: 'Email', placeholder: 'name@fiscorponline.com', type: 'email' },
                 { key: 'phone', label: 'Phone', placeholder: 'e.g. (813) 867-7028' },
                 { key: 'address', label: 'Address', placeholder: 'Street, City, State ZIP' },
