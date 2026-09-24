@@ -12,6 +12,7 @@ import {
   Briefcase,
   Building2,
   ClipboardList,
+  Contact,
   FileCheck,
   FileText,
   Hammer,
@@ -248,6 +249,7 @@ export function AdminSidebar({ pathname }: Props) {
       { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
+      { href: '/dashboard/contact', label: 'Contact', icon: Contact, match: (path) => path === '/dashboard/contact' },
       ...(normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
         ? [
             { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },

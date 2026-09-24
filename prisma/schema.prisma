@@ -30,6 +30,25 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
+model Contact {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  name         String
+  email        String?
+  phone        String?
+  address      String?
+  category     String?
+  role         String?
+  notes        String?
+  sortOrder    Int       @default(0)
+  externalId   String?   @unique
+  lastSyncedAt DateTime?
+
+  @@index([category])
+  @@index([name])
+}
+
 model AdminAuditLog {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
