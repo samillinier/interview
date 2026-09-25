@@ -340,6 +340,101 @@ It asks for company name, contact, phone, business address, email, bank name, ac
   return parts.join('\n\n')
 }
 
+/** Canonical workroom names Alice recognizes (lowercase, for matching). */
+const WORKROOM_NAMES = [
+  'tampa',
+  'naples',
+  'lakeland',
+  'sarasota',
+  'dothan',
+  'albany',
+  'gainesville',
+  'tallahassee',
+  'panama city',
+  'ocala',
+  'fort myers',
+]
+
+function normalizeWorkroom(s: string) {
+  return s.toLowerCase().replace(/[^a-z]/g, '')
+}
+
+/** Return the canonical workroom name found in a message, if any. */
+function detectWorkroomName(text: string): string | undefined {
+  const t = ` ${text.toLowerCase()} `
+  for (const w of WORKROOM_NAMES) {
+    if (t.includes(` ${w} `) || t.includes(w)) {
+      if (w === 'fort myers') return 'Naples'
+      if (w === 'panama city') return 'Panama City'
+      if (w === 'ocala') return 'Ocala'
+      return w.charAt(0).toUpperCase() + w.slice(1)
+    }
+  }
+  return undefined
+}
+
+/** Terms that signal an on-the-job installation question (not onboarding). */
+const INSTALL_JOB_TERMS = [
+  'water heater',
+  'removal',
+  'remove ',
+  'tear out',
+  'rip out',
+  'cut around',
+  'around it',
+  'subfloor',
+  'underlayment',
+  'baseboard',
+  'threshold',
+  'transition',
+  'grout',
+  'tack strip',
+  'reinstall',
+  're-install',
+  'install around',
+  'move the',
+]
+
+function wantsInstallJob(text: string): boolean {
+  const t = ` ${text.toLowerCase()} `
+  if (INSTALL_JOB_TERMS.some((term) => t.includes(term))) return true
+  if (t.includes('install') && /(project|customer|homeowner|job|room|kitchen|bath|house|stairs|floor|closet|around)/.test(t)) return true
+  return false
+}
+
+function formatPhone(p?: string | null): string {
+  if (!p) return ''
+  const digits = p.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  return p
+}
+
+/** Look up a workroom's General Manager from the live contact directory. */
+async function findGeneralManager(workroom: string): Promise<{ name: string; phone: string } | null> {
+  try {
+    const contacts = await prisma.contact.findMany({
+      where: { role: { contains: 'General Manager', mode: 'insensitive' } },
+      select: { name: true, phone: true, workroom: true },
+    })
+    const target = normalizeWorkroom(workroom)
+    for (const c of contacts) {
+      if (!c.workroom) continue
+      const covered = c.workroom.split(/[,/&+]/).map((s) => s.trim())
+      if (covered.some((w) => normalizeWorkroom(w) === target)) {
+        return { name: c.name, phone: c.phone || '' }
+      }
+    }
+  } catch {
+    // ignore — caller falls back
+  }
+  return null
+}
+
 /** Build a compact, non-hidden contact directory for Alice to cite names/emails/phones/workrooms from. */
 async function buildContactDirectoryContext(): Promise<string> {
   try {
@@ -375,6 +470,31 @@ export async function generateAliceComplianceReply(args: {
   const lastQuestion = String(last.content || '').trim()
   const schedulingFallback = fallbackComplianceReply(lastQuestion)
   const q = lastQuestion.toLowerCase()
+
+  // Installation job questions (water heater, remove, tear out, "install around",
+  // etc.) route to the workroom's General Manager — never a generic scheduling
+  // contact. If we don't know the workroom yet, ask for it first.
+  const recentUserText = chronological
+    .filter((t) => isUserChatSender(t.senderType, t.senderId))
+    .slice(-4)
+    .map((t) => String(t.content || ''))
+  const recentInstallIntent = recentUserText.some((m) => wantsInstallJob(m))
+  const workroomInLatest = detectWorkroomName(lastQuestion)
+  if (wantsInstallJob(lastQuestion) || (recentInstallIntent && workroomInLatest)) {
+    if (workroomInLatest) {
+      const gm = await findGeneralManager(workroomInLatest)
+      if (gm) {
+        const gmPhone = formatPhone(gm.phone)
+        return `Happy to help with that! For ${workroomInLatest}, your General Manager is ${gm.name}${gmPhone ? ` — you can reach them directly at ${gmPhone}` : ''}. Let me know if you need anything else!`
+      }
+      const wr = WORKROOM_DIRECTORY.find((w) => w.name.toLowerCase() === workroomInLatest.toLowerCase())
+      if (wr) {
+        return `Happy to help with that! Here's the ${wr.name} workroom: ${wr.address} — Phone: ${wr.phone}. Let me know if you need anything else!`
+      }
+    }
+    return `Happy to help with that! Could you tell me which workroom or location you're with (for example Tampa, Naples, Ocala, Sarasota)? That way I can connect you with the right General Manager for your area.`
+  }
+
   const isSchedulingOrMeasure = [
     'schedul',
     'appointment',
