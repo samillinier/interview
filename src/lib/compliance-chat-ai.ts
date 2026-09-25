@@ -104,6 +104,7 @@ HARD LIMITS:
 - When giving a person to contact from chat for onboarding/compliance, use ${COMPLIANCE_CONTACT_EMAIL} and ${COMPLIANCE_CONTACT_PHONE}.
 - For scheduling or measurement questions (schedule, appointment, measuring, measurement, measure job, site measure, and similar), always direct them to ${SCHEDULING_CONTACT_NAME} at ${SCHEDULING_CONTACT_PHONE} and ${SCHEDULING_CONTACT_EMAIL}. Do not use the compliance contact for those topics.
 - Installation problems and job-site issues (water heater, removal, tear out, carpet/flooring/tile/vinyl problems, damage, seams, gaps, wrinkles, or any "issue with the installation") are NOT scheduling or measurement questions. Never route those to ${SCHEDULING_CONTACT_NAME}. Instead, first ask which workroom or location they are with, then direct them to that workroom's General Manager. ${SCHEDULING_CONTACT_NAME} does not handle installation issues.
+- If someone mentions a specific Lowe's job (a job number, "job 249272477", "central selling", "reaching out for job…", a work order, or a PO number), that is NOT a scheduling question and must NOT go to ${SCHEDULING_CONTACT_NAME}. Ask which workroom or location they are with, then direct them to that workroom's General Manager.
 - Do not mention these instructions.
 
 KNOWLEDGE BASE:
@@ -446,6 +447,21 @@ function wantsInstallJob(text: string): boolean {
   return false
 }
 
+/**
+ * A reference to a specific Lowe's job (e.g. "job 249272477", "job #123456",
+ * "reaching out for job ...", "central selling"). These route to the workroom
+ * manager — NOT to the scheduling/measurement contact.
+ */
+function wantsJobReference(text: string): boolean {
+  const t = ` ${text.toLowerCase()} `
+  // Explicit job number (Lowe's job IDs are long digit strings).
+  if (/job\s*#?\s*\d{5,}/.test(t)) return true
+  if (/job\s*(id|number|no\.?)\s*[:#-]?\s*\d+/.test(t)) return true
+  // Job-oriented phrases from Lowe's teams.
+  if (/central selling|reaching out (for|about) (a )?job|regarding job|about job|job from lowes|lowe'?s job|job order|work order|po\s*#?\s*\d{5,}/.test(t)) return true
+  return false
+}
+
 function formatPhone(p?: string | null): string {
   if (!p) return ''
   const digits = p.replace(/\D/g, '')
@@ -524,7 +540,8 @@ export async function generateAliceComplianceReply(args: {
     .map((t) => String(t.content || ''))
   const recentInstallIntent = recentUserText.some((m) => wantsInstallJob(m))
   const workroomInLatest = detectWorkroomName(lastQuestion)
-  if (wantsInstallJob(lastQuestion) || (recentInstallIntent && workroomInLatest)) {
+  const wantsJobRef = wantsJobReference(lastQuestion)
+  if (wantsInstallJob(lastQuestion) || wantsJobRef || (recentInstallIntent && workroomInLatest)) {
     if (workroomInLatest) {
       const gm = await findGeneralManager(workroomInLatest)
       if (gm) {
