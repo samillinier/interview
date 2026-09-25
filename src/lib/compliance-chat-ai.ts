@@ -366,6 +366,33 @@ export async function generateAliceComplianceReply(args: {
     return schedulingFallback
   }
 
+  // Deterministic workroom lookup: when a specific workroom city is named (or a
+  // branch/location term is used), give that location's own address + phone
+  // directly instead of letting the LLM reroute it to a scheduling contact.
+  const workroomTerms = [
+    'workroom',
+    'work room',
+    'work-room',
+    'branch',
+    'branches',
+    'locations',
+    'offices',
+    'sala de trabajo',
+    'sucursal',
+    'naples',
+    'lakeland',
+    'sarasota',
+    'dothan',
+    'albany',
+    'gainesville',
+    'tallahassee',
+    'panama city',
+    'fort myers',
+  ]
+  if (workroomTerms.some((t) => q.includes(t))) {
+    return fallbackComplianceReply(lastQuestion)
+  }
+
   const openai = getOpenAIClient()
   if (openai) {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
