@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import prisma from '@/lib/db'
 import {
   COMPLIANCE_CONTACT_EMAIL,
   COMPLIANCE_CONTACT_PHONE,
@@ -91,6 +92,8 @@ VOICE:
 - Reply in the user's language (English or Spanish). Keep official names, dollar amounts, addresses, and URLs unchanged.
 - Keep replies in short paragraphs. Do not put every sentence on its own line.
 - Do not dump every form field. Point them to the fillable form unless they asked about one specific field.
+- Be polite, friendly, and warm — treat everyone like family. Lowe's providers and partners (associates, vendors, store teams, installers) are valued; welcome them and answer helpfully. If they identify as a Lowe's associate or provider, greet them warmly and reassure them you're here to help.
+- When someone asks who to contact, or asks for a person's email, phone, or workroom, use the CONTACT DIRECTORY below. Give the exact name, email, phone, and workroom from the directory. Never invent a contact or phone number.
 
 HARD LIMITS:
 - Never say they are approved, onboarded, hired, or guaranteed work.
@@ -337,6 +340,28 @@ It asks for company name, contact, phone, business address, email, bank name, ac
   return parts.join('\n\n')
 }
 
+/** Build a compact, non-hidden contact directory for Alice to cite names/emails/phones/workrooms from. */
+async function buildContactDirectoryContext(): Promise<string> {
+  try {
+    const contacts = await prisma.contact.findMany({
+      where: { isHidden: false },
+      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+      select: { name: true, role: true, category: true, workroom: true, email: true, phone: true },
+      take: 300,
+    })
+    if (!contacts.length) return ''
+    const lines = contacts.map((c) => {
+      const label = [c.name, c.role].filter(Boolean).join(' — ')
+      const loc = c.workroom ? ` (${c.workroom})` : ''
+      const reach = [c.email, c.phone].filter(Boolean).join(', ')
+      return `- ${label}${loc}${reach ? `: ${reach}` : ''}`
+    })
+    return `\n\nCONTACT DIRECTORY (cite these exact people, emails, phones, and workrooms when asked who to contact; never invent a contact):\n${lines.join('\n')}`
+  } catch {
+    return ''
+  }
+}
+
 export async function generateAliceComplianceReply(args: {
   visitorName?: string | null
   history: ComplianceChatTurn[]
@@ -395,8 +420,9 @@ export async function generateAliceComplianceReply(args: {
 
   const openai = getOpenAIClient()
   if (openai) {
+    const directory = await buildContactDirectoryContext()
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: SYSTEM_PROMPT + directory },
     ]
 
     const greetName = String(args.visitorName || '').trim()
