@@ -80,7 +80,10 @@ export function isStaffSender(senderType?: string | null, senderId?: string | nu
   return senderType === 'admin' || senderId === 'admin' || isAliceSender(senderType, senderId)
 }
 
-export const VISITOR_ONLINE_MS = 45_000
+// Generous "online" window. Browsers throttle setInterval for background tabs
+// (Chrome ~1/min, Safari longer), so a tight window makes the online dot flash
+// on/off even though the visitor is still present. 3 minutes keeps it stable.
+export const VISITOR_ONLINE_MS = 3 * 60 * 1000
 export const HUMAN_STAFF_ACTIVE_MS = 3 * 60 * 1000
 export const AI_FALLBACK_WAIT_MS = 45 * 1000
 

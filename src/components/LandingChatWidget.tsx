@@ -278,7 +278,18 @@ export function LandingChatWidget({
     }
     ping()
     const timer = window.setInterval(ping, 4000)
-    return () => window.clearInterval(timer)
+    // Re-ping immediately when the tab becomes visible/focused so presence stays
+    // fresh (avoids the online dot flickering in the admin messages list).
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') ping()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', ping)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', ping)
+    }
   }, [status, initialToken, embed])
 
   const loadMessages = useCallback(async (nextToken = tokenRef.current, wait = false, signal?: AbortSignal) => {
