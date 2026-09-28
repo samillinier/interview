@@ -375,8 +375,8 @@ function detectWorkroomName(text: string): string | undefined {
   return undefined
 }
 
-/** Terms that signal an on-the-job installation question (not onboarding). */
-const INSTALL_JOB_TERMS = [
+/** Physical job-site actions that alone signal an on-the-job installation question. */
+const INSTALL_PHYSICAL_TERMS = [
   'water heater',
   'removal',
   'remove ',
@@ -395,6 +395,10 @@ const INSTALL_JOB_TERMS = [
   're-install',
   'install around',
   'move the',
+]
+
+/** Problem/defect words that only signal an install issue when tied to a flooring material. */
+const INSTALL_PROBLEM_TERMS = [
   'issue',
   'problem',
   'concern',
@@ -437,14 +441,25 @@ const FLOORING_MATERIALS = [
 
 function wantsInstallJob(text: string): boolean {
   const t = ` ${text.toLowerCase()} `
-  if (INSTALL_JOB_TERMS.some((term) => t.includes(term))) return true
-  const hasInstall = /install|installed|installation|installer/.test(t)
+  if (INSTALL_PHYSICAL_TERMS.some((term) => t.includes(term))) return true
   const hasMaterial = FLOORING_MATERIALS.some((m) => t.includes(m))
-  const hasIssue = /issue|problem|concern|wrong|defect|damag|gap|seam|wrinkle|buckle|fray|lippage|uneven|stain|loose|peeling|hole/.test(t)
-  if (hasInstall && hasMaterial) return true
-  if (hasIssue && hasMaterial) return true
-  if (hasInstall && /(project|customer|homeowner|job|room|kitchen|bath|house|stairs|floor|closet|around)/.test(t)) return true
+  const hasProblem = INSTALL_PROBLEM_TERMS.some((term) => t.includes(term))
+  if (hasProblem && hasMaterial) return true
+  // "install/installation" counts only when tied to a physical job/location —
+  // NOT a self-description like "tile installation company".
+  if (
+    /install|installed|installation|installer/.test(t) &&
+    /(project|customer|homeowner|job|room|kitchen|bath|house|stairs|floor|closet|around|site)/.test(t)
+  ) {
+    return true
+  }
   return false
+}
+
+/** Insurance / coverage questions must be answered from the KB, never routed to a GM. */
+function wantsInsurance(text: string): boolean {
+  const t = ` ${text.toLowerCase()} `
+  return /insurance|commercial auto|personal auto|auto policy|liability|coverage|workers.?comp|general liability|certificate of insurance|insured|policy|limits|gl\b/.test(t)
 }
 
 /**
@@ -541,6 +556,12 @@ export async function generateAliceComplianceReply(args: {
   const recentInstallIntent = recentUserText.some((m) => wantsInstallJob(m))
   const workroomInLatest = detectWorkroomName(lastQuestion)
   const wantsJobRef = wantsJobReference(lastQuestion)
+  const isInsurance = wantsInsurance(lastQuestion)
+  // Insurance / coverage questions are answered from the knowledge base and must
+  // never be redirected to a General Manager or the scheduling contact.
+  if (isInsurance) {
+    return schedulingFallback
+  }
   if (wantsInstallJob(lastQuestion) || wantsJobRef || (recentInstallIntent && workroomInLatest)) {
     if (workroomInLatest) {
       const gm = await findGeneralManager(workroomInLatest)
