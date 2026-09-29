@@ -53,6 +53,23 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
     ],
     sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'],
   },
+  {
+    key: 's639-shirt',
+    name: 'Port Authority Plaid Pattern Easy Care Shirt. S639',
+    sku: 'S639',
+    price: 48.88,
+    description: [
+      'A not-too-bold plaid pattern offers a welcome break from a solid color. Designed for comfort and wrinkle-resistant convenience, this yarn-dyed poplin shirt is ideal for both dress and casual wear.',
+      '3.2-ounce, 55/45 cotton/poly',
+      'Button-down collar · Pearlized buttons · Left chest pocket · Back box pleat · Rounded adjustable cuffs',
+    ],
+    image: `${IMG_BASE}/bd265bf7b49732832e62d73f873d35959d7a6129`,
+    colors: [
+      { name: 'Navy', image: `${IMG_BASE}/bd265bf7b49732832e62d73f873d35959d7a6129`, swatch: `${SWATCH_BASE}/bd265bf7b49732832e62d73f873d35959d7a6129` },
+      { name: 'White', image: `${IMG_BASE}/7f0802d9677663f0d7336d742dcccb99dd36aefc`, swatch: `${SWATCH_BASE}/7f0802d9677663f0d7336d742dcccb99dd36aefc` },
+    ],
+    sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'],
+  },
 ]
 
 export const EMPLOYEE_APPAREL_INDEX: Record<string, ApparelProduct> = Object.fromEntries(

@@ -391,7 +391,7 @@ export default function EmployeeApparelPage() {
                       const size = selectedSize[product.key] || product.sizes[0] || ''
                       const qty = quantities[product.key] || 0
                       return (
-                        <section key={product.key} className="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_1fr] gap-8">
+                        <section key={product.key} className="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_1fr] gap-8 pt-8 first:pt-0 border-t border-slate-100 first:border-t-0">
                           {/* Image + swatches */}
                           <div>
                             <button
