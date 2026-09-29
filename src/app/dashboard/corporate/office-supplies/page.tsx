@@ -89,6 +89,44 @@ function Field({ label, required, hint, children }: { label: string; required?: 
   )
 }
 
+function ItemThumb({ src, icon: Icon, alt, size = 'md', href }: { src?: string; icon: typeof Package; alt?: string; size?: 'sm' | 'md'; href?: string }) {
+  const [error, setError] = useState(false)
+  const dim = size === 'sm' ? 'h-10 w-10 rounded-lg' : 'h-14 w-14 rounded-xl'
+  const iconDim = size === 'sm' ? 'h-5 w-5' : 'h-6 w-6'
+
+  const inner = !src || error ? (
+    <div className={`${dim} flex flex-shrink-0 items-center justify-center bg-brand-green/10 text-brand-green`}>
+      <Icon className={iconDim} />
+    </div>
+  ) : (
+    <div className={`${dim} flex-shrink-0 overflow-hidden bg-slate-100 ring-1 ring-slate-200`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt || ''}
+        loading="lazy"
+        onError={() => setError(true)}
+        className="h-full w-full object-cover"
+      />
+    </div>
+  )
+
+  if (!href) return inner
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View product"
+      onClick={(e) => e.stopPropagation()}
+      className="block flex-shrink-0 rounded-xl transition-opacity hover:opacity-80"
+    >
+      {inner}
+    </a>
+  )
+}
+
 export default function OfficeSuppliesPage() {
   const pathname = usePathname()
   const router = useRouter()
@@ -162,6 +200,8 @@ export default function OfficeSuppliesPage() {
         price: item.price,
         quantity: quantities[item.key] || 0,
         section: section.title,
+        imageUrl: item.imageUrl,
+        productUrl: item.productUrl,
       })),
   )
 
@@ -419,10 +459,13 @@ export default function OfficeSuppliesPage() {
                               return (
                                 <div key={item.key} className={`rounded-xl border p-4 transition-colors ${qty > 0 ? 'border-brand-green/40 bg-brand-green/5' : 'border-slate-200 bg-slate-50/40'}`}>
                                   <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-semibold text-slate-800 leading-snug">{item.name}</p>
-                                      <p className="mt-1 text-sm font-bold text-brand-green">{formatCurrency(item.price)} <span className="text-slate-400 font-normal">each</span></p>
-                                      <p className="mt-0.5 text-[11px] text-slate-400">On Hand Min {item.min} · Max {item.max}</p>
+                                    <div className="flex min-w-0 gap-3">
+                                      <ItemThumb src={item.imageUrl} icon={SECTION_ICONS[section.key] || Package} alt={item.name} href={item.productUrl} />
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-800 leading-snug">{item.name}</p>
+                                        <p className="mt-1 text-sm font-bold text-brand-green">{formatCurrency(item.price)} <span className="text-slate-400 font-normal">each</span></p>
+                                        <p className="mt-0.5 text-[11px] text-slate-400">On Hand Min {item.min} · Max {item.max}</p>
+                                      </div>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                       <button onClick={() => setQuantity(item.key, qty - 1)}
@@ -643,7 +686,12 @@ export default function OfficeSuppliesPage() {
                                           <tbody>
                                             {o.items.map((i) => (
                                               <tr key={i.key} className="border-t border-slate-50">
-                                                <td className="py-2 text-slate-700">{i.name}</td>
+                                                <td className="py-2">
+                                                  <div className="flex items-center gap-2.5">
+                                                    <ItemThumb src={i.imageUrl} icon={Package} alt={i.name} size="sm" href={i.productUrl} />
+                                                    <span className="text-slate-700">{i.name}</span>
+                                                  </div>
+                                                </td>
                                                 <td className="py-2 text-slate-400">{i.section}</td>
                                                 <td className="py-2 text-right text-slate-600">{i.quantity}</td>
                                                 <td className="py-2 text-right text-slate-600">{formatCurrency(i.price)}</td>

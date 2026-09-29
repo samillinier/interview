@@ -5,6 +5,8 @@ export type OfficeSupplyItem = {
   max: number
   min: number
   description?: string
+  imageUrl?: string
+  productUrl?: string
 }
 
 export type OfficeSupplySection = {
@@ -30,6 +32,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Avery Printable Shipping Labels with Sure Feed, 3-1/3" x 4", White, 600 Blank Mailing Labels (5164)',
+        imageUrl: 'https://m.media-amazon.com/images/I/71KASIQm2sL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00004Z5SB',
       },
       {
         key: 'printer-paper',
@@ -38,6 +42,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '20 Lb. Copy Paper, 8.5 x 11 - 8 Ream (4,000 Sheets), 92 Bright, Made in the USA',
+        imageUrl: 'https://m.media-amazon.com/images/I/71M2jqoK7XL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B072FVQNWM',
       },
       {
         key: 'postit-pads',
@@ -46,6 +52,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Lined Sticky Notes 3 x 3, 20 Pack Box, 2,000 Sheets (100/Pad), Bright Assorted Colors',
+        imageUrl: 'https://m.media-amazon.com/images/I/61mSKgrzeQL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0D5M28Y2K',
       },
       {
         key: 'staples',
@@ -54,6 +62,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 4,
         description: 'Full strip staples - each strip contains 210 staples, 1/4" leg length, 5,000 staples per box',
+        imageUrl: 'https://m.media-amazon.com/images/I/81y7tcIZVrL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00006IFMQ',
       },
       {
         key: 'pen-blue',
@@ -62,6 +72,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'BIC Round Stic Xtra Life Blue Ballpoint Pens, Medium Point (1.0mm), 60-Count Pack',
+        imageUrl: 'https://m.media-amazon.com/images/I/71psiDnN8jL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00OPF9HQO',
       },
       {
         key: 'pen-black',
@@ -70,6 +82,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'BIC Round Stic Xtra Life Black Ballpoint Pens, Medium Point (1.0mm), 60-Count Pack',
+        imageUrl: 'https://m.media-amazon.com/images/I/71psiDnN8jL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00OPF9HQO',
       },
       {
         key: 'sharpie',
@@ -78,6 +92,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Extra Wide Chisel Tip, Multi-Surface Markers, Pack of 12, Permanent Black Ink',
+        imageUrl: 'https://m.media-amazon.com/images/I/81QCHBtYLJL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B000F8R95G',
       },
       {
         key: 'legal-pad',
@@ -86,6 +102,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Legal Pad Writing Pads, Recycled Paper, 8.5"x11.75" Wide Ruled, 50 sheets, White Pack of 12',
+        imageUrl: 'https://m.media-amazon.com/images/I/613F62y+e5L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B089R2GQ87',
       },
       {
         key: 'binder',
@@ -94,6 +112,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '3-Ring Binder, 1-Inch, White, 4-Pack',
+        imageUrl: 'https://m.media-amazon.com/images/I/51bg5Zwyo5L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B01BRGTWOA',
       },
       {
         key: 'hanging-folders',
@@ -102,6 +122,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Hanging File Folders, Letter Size, Standard Green, 1/5-Cut Tabs, 75 per box',
+        imageUrl: 'https://m.media-amazon.com/images/I/81Yc24w0wJL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00V5DG6IQ',
       },
       {
         key: 'file-folders',
@@ -110,6 +132,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '1/3-Cut Tab, Assorted Positions File Folders, Letter Size, Manila - Pack of 100',
+        imageUrl: 'https://m.media-amazon.com/images/I/41NvO1ftPyL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0722L14L3',
       },
       {
         key: 'toner-ez',
@@ -118,6 +142,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: '4 x TN660 Black (Total 4 Pack), 2,600 Pages Per Cartridge, Brother HL-L2300D / MFC-L2700DW / DCP-L2540DW',
+        imageUrl: 'https://m.media-amazon.com/images/I/816-OQB4wcL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0DYDD3NG4',
       },
       {
         key: 'toner-canon',
@@ -126,6 +152,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 3,
         description: '1 pack Cartridge 057H (with chip), 10,000 pages at 5% coverage, Canon ImageCLASS MF445dw / MF455dw / LBP226dw',
+        imageUrl: 'https://m.media-amazon.com/images/I/71Se3ZruoIL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B08XQKYRYJ',
       },
       {
         key: 'ink-epson',
@@ -134,6 +162,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 3,
         description: 'Fooylen 802XL combo pack (1 Black, 1 Cyan, 1 Magenta, 1 Yellow), Epson Workforce Pro WF-4720 / WF-4740 / EC-4020',
+        imageUrl: 'https://m.media-amazon.com/images/I/71MUnW2D7QL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0FQC8CL9C',
       },
       {
         key: 'aa-batteries',
@@ -142,6 +172,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'AA Batteries, Double A Long-Lasting Alkaline Power Batteries, 32 Count (Pack of 1)',
+        imageUrl: 'https://m.media-amazon.com/images/I/71E-3tmsR6L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0B1DF9NVJ',
       },
       {
         key: 'aaa-batteries',
@@ -150,6 +182,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'AAA Batteries, Triple A Long-Lasting Alkaline Power Batteries, 32 Count (Pack of 1)',
+        imageUrl: 'https://m.media-amazon.com/images/I/71-uVVU8W5L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0B2KWHKYT',
       },
       {
         key: 'dry-erase',
@@ -158,6 +192,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Includes Red, Blue, Green and Black markers, a 2 oz Expo white board cleaning spray, and an Expo eraser',
+        imageUrl: 'https://m.media-amazon.com/images/I/81fB+5fYZqL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00006IFIM',
       },
       {
         key: 'desk-calendar',
@@ -166,6 +202,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 4,
         description: '19-month timeline, larger 1.8" x 1.5" blocks for planning and organizing',
+        imageUrl: 'https://m.media-amazon.com/images/I/71-SqVSxJfL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0D6G9J3NF',
       },
       {
         key: 'tape-refills',
@@ -174,6 +212,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: '12 Rolls Transparent Tape Refills, Clear Invisible, 3/4 x 1000 Inches, 1 Inch Core',
+        imageUrl: 'https://m.media-amazon.com/images/I/71e4vf7uuwL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0HFNN1YGR',
       },
     ],
   },
@@ -391,6 +431,8 @@ export type OfficeSupplyLineItem = {
   price: number
   quantity: number
   section: string
+  imageUrl?: string
+  productUrl?: string
 }
 
 export const OFFICE_SUPPLY_ITEM_INDEX: Record<string, OfficeSupplyItem> = Object.fromEntries(
