@@ -391,21 +391,21 @@ export default function EmployeeApparelPage() {
                         <section key={product.key} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           {/* Image + swatches */}
                           <div>
-                            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white aspect-square flex items-center justify-center">
+                            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[320px] aspect-square flex items-center justify-center">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={colorObj?.image || product.image}
                                 alt={`${product.name} — ${colorName}`}
-                                className="h-full w-full object-contain p-6"
+                                className="h-full w-full object-contain p-5"
                               />
                               <span className="absolute top-3 left-3 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
                                 {product.sku}
                               </span>
                             </div>
                             {/* Color swatches */}
-                            <div className="mt-4">
-                              <p className="text-xs font-semibold text-slate-500 mb-2">Color: <span className="text-slate-800">{colorName}</span></p>
-                              <div className="flex flex-wrap gap-2.5">
+                            <div className="mt-6">
+                              <p className="text-xs font-semibold text-slate-500 mb-3">Color: <span className="text-slate-800">{colorName}</span></p>
+                              <div className="flex flex-wrap gap-3.5">
                                 {product.colors.map((c) => (
                                   <button
                                     key={c.name}
