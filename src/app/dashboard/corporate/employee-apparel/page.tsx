@@ -397,14 +397,14 @@ export default function EmployeeApparelPage() {
                             <button
                               type="button"
                               onClick={() => setEnlargedImage({ src: colorObj?.image || product.image, alt: `${product.name} — ${colorName}` })}
-                              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[320px] aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
+                              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[380px] aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
                               aria-label={`Enlarge ${product.name} — ${colorName}`}
                             >
                               <Image
                                 src={colorObj?.image || product.image}
                                 alt={`${product.name} — ${colorName}`}
                                 fill
-                                sizes="(max-width: 1023px) 100vw, 320px"
+                                sizes="(max-width: 1023px) 100vw, 380px"
                                 quality={90}
                                 className="object-contain p-6 transition-transform duration-200 group-hover:scale-[1.03]"
                               />
@@ -425,12 +425,12 @@ export default function EmployeeApparelPage() {
                                     type="button"
                                     title={c.name}
                                     onClick={() => setSelectedColor((prev) => ({ ...prev, [product.key]: c.name }))}
-                                    className={`h-12 w-12 rounded-xl overflow-hidden ring-2 transition-all ${
-                                      colorName === c.name ? 'ring-brand-green ring-offset-2' : 'ring-slate-200 hover:ring-slate-300'
+                                    className={`h-12 w-12 rounded-xl overflow-hidden ring-1 bg-white p-1 shadow-sm transition-all ${
+                                      colorName === c.name ? 'ring-brand-green ring-2 ring-offset-2' : 'ring-slate-200 hover:ring-slate-300'
                                     }`}
                                   >
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={c.swatch} alt={c.name} className="h-full w-full object-cover" />
+                                    <img src={c.swatch} alt={c.name} className="h-full w-full object-cover rounded-md" />
                                   </button>
                                 ))}
                               </div>
