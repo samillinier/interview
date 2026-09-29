@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Loader2,
@@ -169,7 +170,7 @@ export default function EmployeeApparelPage() {
       size,
       quantity: quantities[p.key] || 0,
       price: p.price,
-      imageUrl: colorObj?.image || p.image,
+      imageUrl: colorObj?.swatch || p.image,
     } as ApparelLineItem
   })
 
@@ -391,14 +392,16 @@ export default function EmployeeApparelPage() {
                         <section key={product.key} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           {/* Image + swatches */}
                           <div>
-                            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[320px] aspect-square flex items-center justify-center">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
+                            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[320px] aspect-square">
+                              <Image
                                 src={colorObj?.image || product.image}
                                 alt={`${product.name} — ${colorName}`}
-                                className="h-full w-full object-contain p-5"
+                                fill
+                                sizes="(max-width: 1023px) 100vw, 320px"
+                                quality={90}
+                                className="object-contain p-6"
                               />
-                              <span className="absolute top-3 left-3 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
+                              <span className="absolute top-3 left-3 z-10 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
                                 {product.sku}
                               </span>
                             </div>

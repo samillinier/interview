@@ -42,6 +42,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'assetly.ordermygear.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'graph.microsoft.com',
       },
     ],

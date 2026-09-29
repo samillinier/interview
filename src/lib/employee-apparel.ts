@@ -15,7 +15,8 @@ export type ApparelProduct = {
   sizes: string[]
 }
 
-const IMG_BASE = 'https://assetly.ordermygear.com/images/h_478,w_467,c_limit,s_1'
+// High-resolution source used with next/image optimization for crisp rendering.
+const IMG_BASE = 'https://assetly.ordermygear.com/images/w_1200,c_limit'
 const SWATCH_BASE = 'https://assetly.ordermygear.com/images/h_103,w_93,c_limit'
 
 /**
