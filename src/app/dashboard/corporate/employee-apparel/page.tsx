@@ -102,7 +102,7 @@ export default function EmployeeApparelPage() {
   const [selectedColor, setSelectedColor] = useState<Record<string, string>>({})
   const [selectedSize, setSelectedSize] = useState<Record<string, string>>({})
   const [quantities, setQuantities] = useState<Record<string, number>>({})
-  const [activeProductKey, setActiveProductKey] = useState<string>(EMPLOYEE_APPAREL_PRODUCTS[0]?.key || '')
+  const [detailProductKey, setDetailProductKey] = useState<string | null>(null)
 
   const [orders, setOrders] = useState<ApparelOrder[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -387,18 +387,18 @@ export default function EmployeeApparelPage() {
                   <div className="p-6 space-y-8">
                     {/* Product selector — store-style thumbnail grid */}
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-3">Choose a product</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-1">Choose a product</p>
+                      <p className="text-xs text-slate-400 mb-3">Tap a product to open its details, then choose color, size, and quantity.</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         {EMPLOYEE_APPAREL_PRODUCTS.map((product) => {
-                          const isActive = activeProductKey === product.key
                           const qty = quantities[product.key] || 0
                           return (
                             <button
                               key={product.key}
                               type="button"
-                              onClick={() => setActiveProductKey(product.key)}
+                              onClick={() => setDetailProductKey(product.key)}
                               className={`group relative overflow-hidden rounded-2xl border-2 bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-lg ${
-                                isActive ? 'border-brand-green ring-2 ring-brand-green/30 shadow-lg shadow-brand-green/10' : 'border-slate-200 hover:border-slate-300'
+                                qty > 0 ? 'border-brand-green ring-2 ring-brand-green/30 shadow-lg shadow-brand-green/10' : 'border-slate-200 hover:border-slate-300'
                               }`}
                             >
                               <div className="relative aspect-square bg-white">
@@ -427,124 +427,48 @@ export default function EmployeeApparelPage() {
                       </div>
                     </div>
 
-                    {/* Selected product detail */}
-                    {(() => {
-                      const product = EMPLOYEE_APPAREL_PRODUCTS.find((p) => p.key === activeProductKey) || EMPLOYEE_APPAREL_PRODUCTS[0]
-                      if (!product) return null
-                      const colorName = selectedColor[product.key] || product.colors[0]?.name || ''
-                      const colorObj = product.colors.find((c) => c.name === colorName) || product.colors[0]
-                      const size = selectedSize[product.key] || product.sizes[0] || ''
-                      const qty = quantities[product.key] || 0
-                      return (
-                        <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_1fr] gap-8 pt-8 border-t border-slate-100">
-                          {/* Image + swatches */}
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => setEnlargedImage({ src: colorObj?.image || product.image, alt: `${product.name} — ${colorName}` })}
-                              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white w-full max-w-[480px] aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
-                              aria-label={`Enlarge ${product.name} — ${colorName}`}
-                            >
-                              <Image
-                                src={colorObj?.image || product.image}
-                                alt={`${product.name} — ${colorName}`}
-                                fill
-                                sizes="(max-width: 1023px) 100vw, 480px"
-                                quality={90}
-                                className="object-contain p-6 transition-transform duration-200 group-hover:scale-[1.03]"
-                              />
-                              <span className="absolute top-3 left-3 z-10 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
-                                {product.sku}
-                              </span>
-                              <span className="absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100">
-                                <ZoomIn className="h-4 w-4" />
-                              </span>
-                            </button>
-                            {/* Color swatches */}
-                            <div className="mt-6">
-                              <p className="text-xs font-semibold text-slate-500 mb-3">Color: <span className="text-slate-800">{colorName}</span></p>
-                              <div className="flex flex-wrap gap-3.5 max-w-[360px]">
-                                {product.colors.map((c) => (
-                                  <button
-                                    key={c.name}
-                                    type="button"
-                                    title={c.name}
-                                    onClick={() => setSelectedColor((prev) => ({ ...prev, [product.key]: c.name }))}
-                                    className={`h-12 w-12 rounded-xl overflow-hidden ring-1 bg-white p-1 shadow-sm transition-all ${
-                                      colorName === c.name ? 'ring-brand-green ring-2 ring-offset-2' : 'ring-slate-200 hover:ring-slate-300'
-                                    }`}
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={c.swatch} alt={c.name} className="h-full w-full object-cover rounded-md" />
-                                  </button>
-                                ))}
+                    {/* Your order summary */}
+                    <div className="pt-6 border-t border-slate-100">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-green text-white shadow-lg shadow-brand-green/20">
+                          <ShoppingBag className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-brand-green">Your Order</p>
+                          <h3 className="text-lg font-bold text-slate-900">{selectedCount} item{selectedCount !== 1 ? 's' : ''} selected</h3>
+                        </div>
+                      </div>
+                      {selectedLineItems.length === 0 ? (
+                        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                          <p className="text-sm text-slate-500">No items added yet.</p>
+                          <p className="mt-1 text-xs text-slate-400">Click a product above to open its details and choose a color, size, and quantity.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {selectedLineItems.map((item) => (
+                            <div key={item.key} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                              <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200 flex-shrink-0">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
                               </div>
-                            </div>
-                          </div>
-
-                          {/* Details */}
-                          <div className="flex flex-col justify-center pb-32">
-                            <h3 className="text-2xl font-black text-slate-900">{product.name}</h3>
-                            <p className="mt-2 text-3xl font-black text-brand-green">
-                              {formatCurrency(product.price)}
-                              <span className="text-sm font-semibold text-slate-400 ml-2">each</span>
-                            </p>
-                            <ul className="mt-4 space-y-1.5">
-                              {product.description.map((line, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-slate-600 leading-relaxed">
-                                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-green" />
-                                  <span>{line}</span>
-                                </li>
-                              ))}
-                            </ul>
-
-                            {/* Size selector */}
-                            <div className="mt-4">
-                              <p className="text-xs font-semibold text-slate-500 mb-2">Size</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {product.sizes.map((s) => (
-                                  <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => setSelectedSize((prev) => ({ ...prev, [product.key]: s }))}
-                                    className={`min-w-[2.5rem] px-2.5 py-1.5 rounded-lg border-2 text-sm font-semibold transition-colors ${
-                                      size === s
-                                        ? 'border-brand-green bg-brand-green text-white'
-                                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                                    }`}
-                                  >
-                                    {s}
-                                  </button>
-                                ))}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-slate-800">{item.name}</p>
+                                <p className="text-xs text-slate-500">{item.color} / {item.size} × {item.quantity}</p>
                               </div>
+                              <span className="text-sm font-bold text-slate-800 flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                              <button
+                                type="button"
+                                onClick={() => setQuantity(item.key, 0)}
+                                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
+                                aria-label={`Remove ${item.name}`}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
                             </div>
-
-                            {/* Quantity */}
-                            <div className="mt-4">
-                              <p className="text-xs font-semibold text-slate-500 mb-2">Quantity</p>
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => setQuantity(product.key, qty - 1)}
-                                  className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed" disabled={qty === 0}>
-                                  <Minus className="w-4 h-4 mx-auto" />
-                                </button>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={25}
-                                  value={qty}
-                                  onChange={(e) => setQuantity(product.key, parseInt(e.target.value || '0', 10))}
-                                  className="w-20 h-9 text-center border-2 border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-                                />
-                                <button onClick={() => setQuantity(product.key, qty + 1)}
-                                  className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed" disabled={qty >= 25}>
-                                  <Plus className="w-4 h-4 mx-auto" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </section>
-                      )
-                    })()}
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Order details */}
                     <section className="pt-6 border-t border-slate-100">
@@ -605,6 +529,166 @@ export default function EmployeeApparelPage() {
                   </div>
                 </motion.div>
               )}
+            </AnimatePresence>
+
+            {/* Product detail modal */}
+            <AnimatePresence>
+              {detailProductKey && (() => {
+                const product = EMPLOYEE_APPAREL_PRODUCTS.find((p) => p.key === detailProductKey) || EMPLOYEE_APPAREL_PRODUCTS[0]
+                if (!product) return null
+                const colorName = selectedColor[product.key] || product.colors[0]?.name || ''
+                const colorObj = product.colors.find((c) => c.name === colorName) || product.colors[0]
+                const size = selectedSize[product.key] || product.sizes[0] || ''
+                const qty = quantities[product.key] || 0
+                return (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[65] flex items-center justify-center p-4"
+                    onClick={() => setDetailProductKey(null)}
+                  >
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                    <motion.div
+                      initial={{ scale: 0.95, y: 12, opacity: 0 }}
+                      animate={{ scale: 1, y: 0, opacity: 1 }}
+                      exit={{ scale: 0.95, y: 12, opacity: 0 }}
+                      transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                      className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setDetailProductKey(null)}
+                        className="absolute top-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                        aria-label="Close"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,440px)_1fr] gap-6 p-6 sm:p-8">
+                        {/* Image + swatches */}
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => setEnlargedImage({ src: colorObj?.image || product.image, alt: `${product.name} — ${colorName}` })}
+                            className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white w-full aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
+                            aria-label={`Enlarge ${product.name} — ${colorName}`}
+                          >
+                            <Image
+                              src={colorObj?.image || product.image}
+                              alt={`${product.name} — ${colorName}`}
+                              fill
+                              sizes="(max-width: 1023px) 100vw, 440px"
+                              quality={90}
+                              className="object-contain p-5 transition-transform duration-200 group-hover:scale-[1.03]"
+                            />
+                            <span className="absolute top-3 left-3 z-10 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
+                              {product.sku}
+                            </span>
+                            <span className="absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100">
+                              <ZoomIn className="h-4 w-4" />
+                            </span>
+                          </button>
+                          {/* Color swatches */}
+                          <div className="mt-5">
+                            <p className="text-xs font-semibold text-slate-500 mb-3">Color: <span className="text-slate-800">{colorName}</span></p>
+                            <div className="flex flex-wrap gap-3">
+                              {product.colors.map((c) => (
+                                <button
+                                  key={c.name}
+                                  type="button"
+                                  title={c.name}
+                                  onClick={() => setSelectedColor((prev) => ({ ...prev, [product.key]: c.name }))}
+                                  className={`h-12 w-12 rounded-xl overflow-hidden ring-1 bg-white p-1 shadow-sm transition-all ${
+                                    colorName === c.name ? 'ring-brand-green ring-2 ring-offset-2' : 'ring-slate-200 hover:ring-slate-300'
+                                  }`}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={c.swatch} alt={c.name} className="h-full w-full object-cover rounded-md" />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex flex-col">
+                          <h3 className="pr-10 text-2xl font-black text-slate-900">{product.name}</h3>
+                          <p className="mt-2 text-3xl font-black text-brand-green">
+                            {formatCurrency(product.price)}
+                            <span className="text-sm font-semibold text-slate-400 ml-2">each</span>
+                          </p>
+                          <ul className="mt-4 space-y-1.5">
+                            {product.description.map((line, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm text-slate-600 leading-relaxed">
+                                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-green" />
+                                <span>{line}</span>
+                              </li>
+                            ))}
+                          </ul>
+
+                          {/* Size selector */}
+                          <div className="mt-5">
+                            <p className="text-xs font-semibold text-slate-500 mb-2">Size</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {product.sizes.map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => setSelectedSize((prev) => ({ ...prev, [product.key]: s }))}
+                                  className={`min-w-[2.5rem] px-2.5 py-1.5 rounded-lg border-2 text-sm font-semibold transition-colors ${
+                                    size === s
+                                      ? 'border-brand-green bg-brand-green text-white'
+                                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                  }`}
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Quantity */}
+                          <div className="mt-5">
+                            <p className="text-xs font-semibold text-slate-500 mb-2">Quantity</p>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => setQuantity(product.key, qty - 1)}
+                                className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed" disabled={qty === 0}>
+                                <Minus className="w-4 h-4 mx-auto" />
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                max={25}
+                                value={qty}
+                                onChange={(e) => setQuantity(product.key, parseInt(e.target.value || '0', 10))}
+                                className="w-20 h-9 text-center border-2 border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                              />
+                              <button onClick={() => setQuantity(product.key, qty + 1)}
+                                className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed" disabled={qty >= 25}>
+                                <Plus className="w-4 h-4 mx-auto" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Add to order */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if ((quantities[product.key] || 0) === 0) setQuantity(product.key, 1)
+                              setDetailProductKey(null)
+                            }}
+                            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all hover:bg-brand-green-dark"
+                          >
+                            <Plus className="h-4 w-4" />{qty > 0 ? `Update Order (${qty})` : 'Add to Order'}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )
+              })()}
             </AnimatePresence>
 
             {/* Records */}
