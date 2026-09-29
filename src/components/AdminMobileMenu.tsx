@@ -6,15 +6,21 @@ import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
+  ArrowLeftRight,
   BarChart3,
   Bell,
   Building2,
+  ChevronDown,
   LayoutDashboard,
   Menu,
   MessageSquare,
+  Package,
+  Plane,
   Settings,
   ShieldAlert,
+  ShoppingCart,
   StickyNote,
+  Truck,
   Users,
   X,
   LogOut,
@@ -28,6 +34,8 @@ import {
   Radar,
   Receipt,
 } from 'lucide-react'
+import { canAccessInvoices } from '@/lib/invoiceAccess'
+import { CORPORATE_DOCUMENT_SECTIONS } from '@/lib/corporate-document-sections'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
@@ -36,9 +44,19 @@ type Props = {
   pathname: string
 }
 
+type MobileNavItem = {
+  href: string
+  label: string
+  icon: typeof FileText
+  badge?: number
+  match?: (p: string) => boolean
+  children?: MobileNavItem[]
+}
+
 export function AdminMobileMenu({ pathname }: Props) {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
+  const [corporateOpen, setCorporateOpen] = useState(true)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0)
   const [signatureNotSignedCount, setSignatureNotSignedCount] = useState<number>(0)
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
@@ -234,7 +252,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       | 'ACCOUNTING'
       | ''
 
-    const base = [
+    const base: MobileNavItem[] = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/dashboard', label: 'Installers', icon: Users, match: (p: string) => p.startsWith('/dashboard/installers') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },
@@ -254,17 +272,6 @@ export function AdminMobileMenu({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(role === 'ACCOUNTING'
-        ? [
-            {
-              href: '/dashboard/corporate/invoice',
-              label: 'Invoice',
-              icon: Receipt,
-              badge: invoiceCount,
-              match: (p: string) => p.startsWith('/dashboard/corporate/invoice'),
-            },
-          ]
-        : []),
       ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (p: string) => p.startsWith('/dashboard/marketing') }]
         : []),
@@ -272,18 +279,43 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
       { href: '/dashboard/updates', label: 'Updates', icon: Megaphone, badge: updatesCount },
     ]
+    const corporateItem: MobileNavItem = {
+      href: '/dashboard/corporate',
+      label: 'Corporate',
+      icon: FileText,
+      badge: invoiceCount > 0 ? invoiceCount : undefined,
+      match: (p: string) => p.startsWith('/dashboard/corporate'),
+      children: [],
+    }
+    if (role === 'MANAGER' || role === 'ACCOUNTING') {
+      corporateItem.children = [
+        { href: '/dashboard/corporate/claims', label: 'Claims', icon: FileText, match: (p: string) => p.startsWith('/dashboard/corporate/claims') },
+        { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') },
+        { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') },
+        { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') },
+        { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') },
+        { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (p: string) => p.startsWith('/dashboard/corporate/office-supplies') },
+        ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
+          href: `/dashboard/corporate/${section.slug}`,
+          label: section.title,
+          icon: FileText,
+          match: (p: string) => p.startsWith(`/dashboard/corporate/${section.slug}`),
+        })),
+      ]
+      if (canAccessInvoices(role)) {
+        corporateItem.children.push({
+          href: '/dashboard/corporate/invoice',
+          label: 'Invoice',
+          icon: Receipt,
+          badge: invoiceCount,
+          match: (p: string) => p.startsWith('/dashboard/corporate/invoice'),
+        })
+      }
+    }
+
     const withCorporate =
       role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
-        ? [
-            ...base,
-            {
-              href: '/dashboard/corporate',
-              label: 'Corporate',
-              icon: FileText,
-              badge: invoiceCount > 0 ? invoiceCount : undefined,
-              match: (p: string) => p.startsWith('/dashboard/corporate'),
-            },
-          ]
+        ? [...base, corporateItem]
         : base
 
     if (role === 'MANAGER' || role === 'ACCOUNTING') {
@@ -370,6 +402,54 @@ export function AdminMobileMenu({ pathname }: Props) {
             {items.map((it) => {
               const active = isActive(it.href, it.match)
               const Icon = it.icon
+              if (it.children && it.children.length > 0) {
+                return (
+                  <div key={it.label}>
+                    <button
+                      type="button"
+                      onClick={() => setCorporateOpen((v) => !v)}
+                      className={`flex w-full items-center gap-3 px-4 py-3 rounded-xl transition-colors min-h-[44px] ${
+                        active ? 'bg-brand-green/10 text-brand-green font-medium' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="flex-1 text-left">{it.label}</span>
+                      {it.badge !== undefined && (it.badge || 0) > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-brand-green text-white text-xs font-bold">
+                          {it.badge}
+                        </span>
+                      )}
+                      <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${corporateOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {corporateOpen && (
+                      <div className="mt-1 ml-4 pl-4 border-l border-slate-200 space-y-1">
+                        {it.children.map((child) => {
+                          const childActive = isActive(child.href, child.match)
+                          const ChildIcon = child.icon
+                          return (
+                            <Link
+                              key={child.label}
+                              href={child.href}
+                              onClick={() => setOpen(false)}
+                              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors min-h-[40px] ${
+                                childActive ? 'bg-brand-green/10 text-brand-green font-medium' : 'text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              <ChildIcon className="w-4 h-4 flex-shrink-0" />
+                              <span className="flex-1 text-sm">{child.label}</span>
+                              {child.badge !== undefined && (child.badge || 0) > 0 && (
+                                <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-2 rounded-full bg-brand-green text-white text-[11px] font-bold">
+                                  {child.badge}
+                                </span>
+                              )}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
               return (
                 <Link
                   key={it.label}

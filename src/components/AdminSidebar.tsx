@@ -6,10 +6,12 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
+  ArrowLeftRight,
   BarChart3,
   Bell,
   Briefcase,
   Building2,
+  ChevronDown,
   ClipboardList,
   Contact,
   FileCheck,
@@ -19,16 +21,22 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
+  Package,
   PhoneCall,
   PanelLeftClose,
   PanelLeftOpen,
+  Plane,
   Radar,
   Receipt,
   Settings,
   ShieldAlert,
+  ShoppingCart,
   StickyNote,
+  Truck,
   Users,
 } from 'lucide-react'
+import { canAccessInvoices } from '@/lib/invoiceAccess'
+import { CORPORATE_DOCUMENT_SECTIONS } from '@/lib/corporate-document-sections'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
 
@@ -42,6 +50,7 @@ type NavItem = {
   icon: typeof LayoutDashboard
   badge?: number
   match?: (path: string) => boolean
+  children?: NavItem[]
 }
 
 export function AdminSidebar({ pathname }: Props) {
@@ -57,6 +66,7 @@ export function AdminSidebar({ pathname }: Props) {
 
   // Self-managed sidebar state — synced to localStorage, no external prop needed
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [corporateOpen, setCorporateOpen] = useState(true)
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -262,17 +272,6 @@ export function AdminSidebar({ pathname }: Props) {
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
-      ...(normalizedRole === 'ACCOUNTING'
-        ? [
-            {
-              href: '/dashboard/corporate/invoice',
-              label: 'Invoice',
-              icon: Receipt,
-              badge: invoiceCount,
-              match: (path: string) => path.startsWith('/dashboard/corporate/invoice'),
-            },
-          ]
-        : []),
       ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]
         : []),
@@ -310,13 +309,39 @@ export function AdminSidebar({ pathname }: Props) {
     if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
       const corporatePendingTotal =
         pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + invoiceCount
-      portalNav.push({
+      const corporateItem: NavItem = {
         href: '/dashboard/corporate',
         label: 'Corporate',
         icon: FileText,
         badge: corporatePendingTotal,
         match: (path) => path.startsWith('/dashboard/corporate'),
-      })
+      }
+      if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
+        corporateItem.children = [
+          { href: '/dashboard/corporate/claims', label: 'Claims', icon: FileText, match: (path: string) => path.startsWith('/dashboard/corporate/claims') },
+          { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, badge: pendingBolCount, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
+          { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, badge: pendingPadTransferCount, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
+          { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
+          { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
+          { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
+          ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
+            href: `/dashboard/corporate/${section.slug}`,
+            label: section.title,
+            icon: FileText,
+            match: (path: string) => path.startsWith(`/dashboard/corporate/${section.slug}`),
+          })),
+        ]
+        if (canAccessInvoices(normalizedRole)) {
+          corporateItem.children.push({
+            href: '/dashboard/corporate/invoice',
+            label: 'Invoice',
+            icon: Receipt,
+            badge: invoiceCount,
+            match: (path: string) => path.startsWith('/dashboard/corporate/invoice'),
+          })
+        }
+      }
+      portalNav.push(corporateItem)
     }
 
     if (portalNav.length === 0) return filtered
@@ -326,7 +351,7 @@ export function AdminSidebar({ pathname }: Props) {
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 
-  const renderNavLink = (item: NavItem) => {
+  const renderNavLink = (item: NavItem, indented = false) => {
     const Icon = item.icon
     const active = isActive(item)
     return (
@@ -334,9 +359,9 @@ export function AdminSidebar({ pathname }: Props) {
         href={item.href}
         className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors relative ${
           active ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
-        } ${!sidebarOpen ? 'justify-center' : ''}`}
+        } ${!sidebarOpen ? 'justify-center' : ''} ${indented ? 'py-1.5 text-sm text-white/80 hover:text-white' : ''}`}
       >
-        <Icon className="w-5 h-5 flex-shrink-0" />
+        <Icon className={`${indented ? 'w-4 h-4' : 'w-5 h-5'} flex-shrink-0`} />
         {sidebarOpen ? (
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate">{item.label}</span>
@@ -380,6 +405,42 @@ export function AdminSidebar({ pathname }: Props) {
       <nav className="flex-1 min-h-0 p-2 pb-2 space-y-0">
         {items.map((item) => {
           const isSeparated = item.href === '/property/dashboard'
+          const hasChildren = item.children && item.children.length > 0
+          if (hasChildren) {
+            const Icon = item.icon
+            const active = isActive(item)
+            return (
+              <div key={`${item.href}-${item.label}`} className="pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setCorporateOpen((v) => !v)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors w-full text-left relative ${
+                    active ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+                  } ${!sidebarOpen ? 'justify-center' : ''}`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {sidebarOpen ? (
+                    <>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate">{item.label}</span>
+                        {item.badge && item.badge > 0 ? (
+                          <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-brand-green">
+                            {item.badge}
+                          </span>
+                        ) : null}
+                      </div>
+                      <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${corporateOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  ) : null}
+                </button>
+                {sidebarOpen && corporateOpen ? (
+                  <div className="mt-0.5 ml-4 pl-3 space-y-0.5 border-l border-white/10">
+                    {item.children!.map((child) => renderNavLink(child, true))}
+                  </div>
+                ) : null}
+              </div>
+            )
+          }
           return (
             <div
               key={`${item.href}-${item.label}`}
