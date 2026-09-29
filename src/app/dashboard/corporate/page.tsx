@@ -171,9 +171,25 @@ export default function CorporatePage() {
 
   if (!canAccess) return null
 
+  // Core corporate tools that Manager and Accounting are allowed to see.
+  const coreToolHrefs = [
+    '/dashboard/corporate/bol',
+    '/dashboard/corporate/pad-transfer',
+    '/dashboard/corporate/inventory-cycle',
+    '/dashboard/corporate/travel-request',
+    '/dashboard/corporate/office-supplies',
+    '/dashboard/corporate/invoice',
+  ]
+
   const visibleGroups = corporateGroups.map((group) => ({
     ...group,
     cards: group.cards.filter((card) => {
+      if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
+        if (card.href === '/dashboard/corporate/invoice') {
+          return canAccessInvoices(normalizedRole)
+        }
+        return coreToolHrefs.includes(card.href)
+      }
       if (card.href === '/dashboard/corporate/invoice') {
         return canAccessInvoices(normalizedRole)
       }

@@ -139,7 +139,7 @@ export default function LicencesPage() {
   const pathname = usePathname()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | ''
   const isSuperAdmin = normalizedRole === 'SUPER_ADMIN'
-  const canAccess = normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'MODERATOR' || isSuperAdmin
+  const canAccess = normalizedRole === 'ADMIN' || normalizedRole === 'MODERATOR' || isSuperAdmin
 
   const { sidebarOpen } = useSidebarOpen()
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
