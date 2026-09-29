@@ -418,7 +418,7 @@ export default function EmployeeApparelPage() {
                             {/* Color swatches */}
                             <div className="mt-6">
                               <p className="text-xs font-semibold text-slate-500 mb-3">Color: <span className="text-slate-800">{colorName}</span></p>
-                              <div className="flex flex-wrap gap-3.5">
+                              <div className="grid grid-cols-6 gap-3.5">
                                 {product.colors.map((c) => (
                                   <button
                                     key={c.name}
