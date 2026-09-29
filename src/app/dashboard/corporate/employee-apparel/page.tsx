@@ -15,8 +15,6 @@ import {
   X,
   Trash2,
   Download,
-  ChevronDown,
-  ChevronUp,
   Clock,
   ArrowLeft,
   Shirt,
@@ -106,7 +104,7 @@ export default function EmployeeApparelPage() {
 
   const [orders, setOrders] = useState<ApparelOrder[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterWorkroom, setFilterWorkroom] = useState('')
   const [search, setSearch] = useState('')
@@ -115,7 +113,7 @@ export default function EmployeeApparelPage() {
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id')
-    if (id) setExpandedId(id)
+    if (id) setDetailOrderId(id)
   }, [])
 
   useEffect(() => {
@@ -554,7 +552,7 @@ export default function EmployeeApparelPage() {
                       animate={{ scale: 1, y: 0, opacity: 1 }}
                       exit={{ scale: 0.95, y: 12, opacity: 0 }}
                       transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                      className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
+                      className="relative z-10 w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -566,7 +564,7 @@ export default function EmployeeApparelPage() {
                         <X className="h-5 w-5" />
                       </button>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,440px)_1fr] gap-6 p-6 sm:p-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,520px)_1fr] gap-8 p-6 sm:p-10">
                         {/* Image + swatches */}
                         <div>
                           <button
@@ -754,13 +752,12 @@ export default function EmployeeApparelPage() {
                       {orders.map((o) => {
                         const meta = statusMeta[o.status] || statusMeta.pending
                         const StatusIcon = meta.icon
-                        const expanded = expandedId === o.id
                         const orderTotal = o.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
                         const orderQty = o.items.reduce((sum, i) => sum + i.quantity, 0)
                         return (
                           <React.Fragment key={o.id}>
-                            <tr className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer ${expanded ? 'bg-amber-50/70' : ''}`}
-                              onClick={() => setExpandedId(expanded ? null : o.id)}>
+                            <tr className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                              onClick={() => setDetailOrderId(o.id)}>
                               <td className="py-3.5 px-5">
                                 <div className="flex items-center gap-2">
                                   <div className="w-8 h-8 rounded-full bg-brand-green/10 flex items-center justify-center flex-shrink-0">
@@ -807,80 +804,11 @@ export default function EmployeeApparelPage() {
                                 </td>
                               )}
                               <td className="py-3.5 px-2 w-8">
-                                {expanded ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300" />}
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500 group-hover:bg-white group-hover:text-brand-green transition-colors">
+                                  <FileText className="w-3 h-3" />View
+                                </span>
                               </td>
                             </tr>
-
-                            {expanded && (
-                              <tr>
-                                <td colSpan={canReview ? 7 : 6} className="px-5 py-4 bg-slate-50/40">
-                                  <div className="space-y-4">
-                                    <div className="bg-white rounded-xl p-4 border border-slate-100">
-                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-brand-green" />Order Details</p>
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                        <Card label="Order Date" value={fmtDate(o.orderDate)} />
-                                        <Card label="Workroom" value={o.workroom} />
-                                        <Card label="Employee" value={o.employeeName || '-'} />
-                                        <Card label="Created By" value={o.createdByName || o.createdByEmail || '-'} />
-                                      </div>
-                                      {o.notes && <Card label="Notes" value={o.notes} />}
-                                    </div>
-
-                                    <div className="bg-white rounded-xl p-4 border border-slate-100">
-                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><ShoppingBag className="w-3.5 h-3.5 text-brand-green" />Items</p>
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                          <thead>
-                                            <tr className="text-xs text-slate-400 uppercase">
-                                              <th className="text-left py-2 font-semibold">Item</th>
-                                              <th className="text-left py-2 font-semibold">Color</th>
-                                              <th className="text-left py-2 font-semibold">Size</th>
-                                              <th className="text-right py-2 font-semibold">Qty</th>
-                                              <th className="text-right py-2 font-semibold">Price</th>
-                                              <th className="text-right py-2 font-semibold">Subtotal</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {o.items.map((i, idx) => (
-                                              <tr key={`${i.key}-${idx}`} className="border-t border-slate-50">
-                                                <td className="py-2">
-                                                  <div className="flex items-center gap-2.5">
-                                                    <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-100 ring-1 ring-slate-200 flex-shrink-0">
-                                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                      <img src={i.imageUrl} alt={i.name} className="h-full w-full object-cover" />
-                                                    </div>
-                                                    <span className="text-slate-700">{i.name}</span>
-                                                  </div>
-                                                </td>
-                                                <td className="py-2 text-slate-600">{i.color}</td>
-                                                <td className="py-2 text-slate-600">{i.size}</td>
-                                                <td className="py-2 text-right text-slate-600">{i.quantity}</td>
-                                                <td className="py-2 text-right text-slate-600">{formatCurrency(i.price)}</td>
-                                                <td className="py-2 text-right font-semibold text-slate-800">{formatCurrency(i.price * i.quantity)}</td>
-                                              </tr>
-                                            ))}
-                                            <tr className="border-t border-slate-100">
-                                              <td colSpan={5} className="py-2 text-right font-bold text-slate-500">Total</td>
-                                              <td className="py-2 text-right font-bold text-slate-900">{formatCurrency(orderTotal)}</td>
-                                            </tr>
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-
-                                    {(o.reviewedBy || o.reviewNote) && (
-                                      <div className="mt-3 bg-white rounded-xl p-4 border border-slate-100">
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Review</p>
-                                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-                                          {o.reviewedBy && <span className="text-slate-600"><span className="text-slate-400 font-semibold">Reviewed by:</span> {o.reviewedBy}</span>}
-                                          {o.reviewNote && <span className="text-slate-600"><span className="text-slate-400 font-semibold">Note:</span> {o.reviewNote}</span>}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
                           </React.Fragment>
                         )
                       })}
@@ -892,6 +820,126 @@ export default function EmployeeApparelPage() {
 
           </div>
         </div>
+
+        {/* Order detail modal */}
+        <AnimatePresence>
+          {detailOrderId && (() => {
+            const o = orders.find((x) => x.id === detailOrderId)
+            if (!o) return null
+            const meta = statusMeta[o.status] || statusMeta.pending
+            const StatusIcon = meta.icon
+            const orderTotal = o.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+            const orderQty = o.items.reduce((sum, i) => sum + i.quantity, 0)
+            return (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[65] flex items-center justify-center p-4"
+                onClick={() => setDetailOrderId(null)}
+              >
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                <motion.div
+                  initial={{ scale: 0.95, y: 12, opacity: 0 }}
+                  animate={{ scale: 1, y: 0, opacity: 1 }}
+                  exit={{ scale: 0.95, y: 12, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                  className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-100 bg-white/90 backdrop-blur px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-green text-white shadow-lg shadow-brand-green/20">
+                        <Shirt className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Order Detail</h3>
+                        <p className="text-xs text-slate-500">{fmtDate(o.orderDate)} · {o.workroom} · {orderQty} item{orderQty !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDetailOrderId(null)}
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                      aria-label="Close"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 p-6">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-semibold ${meta.className}`}>
+                        <StatusIcon className="w-3 h-3 flex-shrink-0" />{meta.label}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-brand-green" />Order Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Card label="Order Date" value={fmtDate(o.orderDate)} />
+                        <Card label="Workroom" value={o.workroom} />
+                        <Card label="Employee" value={o.employeeName || '-'} />
+                        <Card label="Created By" value={o.createdByName || o.createdByEmail || '-'} />
+                      </div>
+                      {o.notes && <div className="mt-3"><Card label="Notes" value={o.notes} /></div>}
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 border border-slate-100">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-1.5"><ShoppingBag className="w-3.5 h-3.5 text-brand-green" />Items</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-xs text-slate-400 uppercase">
+                              <th className="text-left py-2 font-semibold">Item</th>
+                              <th className="text-left py-2 font-semibold">Color</th>
+                              <th className="text-left py-2 font-semibold">Size</th>
+                              <th className="text-right py-2 font-semibold">Qty</th>
+                              <th className="text-right py-2 font-semibold">Subtotal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {o.items.map((i, idx) => (
+                              <tr key={`${i.key}-${idx}`} className="border-t border-slate-50">
+                                <td className="py-2">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-10 w-10 rounded-lg overflow-hidden bg-slate-100 ring-1 ring-slate-200 flex-shrink-0">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={i.imageUrl} alt={i.name} className="h-full w-full object-cover" />
+                                    </div>
+                                    <span className="text-slate-700">{i.name}</span>
+                                  </div>
+                                </td>
+                                <td className="py-2 text-slate-600">{i.color}</td>
+                                <td className="py-2 text-slate-600">{i.size}</td>
+                                <td className="py-2 text-right text-slate-600">{i.quantity}</td>
+                                <td className="py-2 text-right font-semibold text-slate-800">{formatCurrency(i.price * i.quantity)}</td>
+                              </tr>
+                            ))}
+                            <tr className="border-t border-slate-100">
+                              <td colSpan={4} className="py-2 text-right font-bold text-slate-500">Total</td>
+                              <td className="py-2 text-right font-bold text-slate-900">{formatCurrency(orderTotal)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {(o.reviewedBy || o.reviewNote) && (
+                      <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Review</p>
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                          {o.reviewedBy && <span className="text-slate-600"><span className="text-slate-400 font-semibold">Reviewed by:</span> {o.reviewedBy}</span>}
+                          {o.reviewNote && <span className="text-slate-600"><span className="text-slate-400 font-semibold">Note:</span> {o.reviewNote}</span>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )
+          })()}
+        </AnimatePresence>
 
         {/* Image lightbox */}
         <AnimatePresence>
