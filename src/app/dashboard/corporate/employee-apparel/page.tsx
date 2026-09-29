@@ -462,7 +462,7 @@ export default function EmployeeApparelPage() {
                                     key={s}
                                     type="button"
                                     onClick={() => setSelectedSize((prev) => ({ ...prev, [product.key]: s }))}
-                                    className={`min-w-[3rem] px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
+                                    className={`min-w-[3.75rem] px-4 py-3 rounded-xl border-2 text-base font-semibold transition-colors ${
                                       size === s
                                         ? 'border-brand-green bg-brand-green text-white'
                                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
