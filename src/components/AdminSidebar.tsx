@@ -263,6 +263,10 @@ export function AdminSidebar({ pathname }: Props) {
         ? [
             { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },
             { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (path: string) => path === '/property/ring-central' },
+          ]
+        : []),
+      ...(normalizedRole === 'ACCOUNTING'
+        ? [
             { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
             { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
             { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
@@ -317,7 +321,7 @@ export function AdminSidebar({ pathname }: Props) {
         match: (path) => path.startsWith('/property'),
       })
     }
-    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
+    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER') {
       const corporatePendingTotal =
         pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + invoiceCount
       portalNav.push({
