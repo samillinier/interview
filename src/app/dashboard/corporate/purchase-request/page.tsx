@@ -42,6 +42,7 @@ interface PurchaseRequest {
   itemDescription: string | null
   reason: string | null
   priceRange: string | null
+  productUrl: string | null
   neededByDate: string | null
   purchaseMethod: string
   purchaseMethodNote: string | null
@@ -112,6 +113,7 @@ export default function PurchaseRequestPage() {
   const [itemDescription, setItemDescription] = useState('')
   const [reason, setReason] = useState('')
   const [priceRange, setPriceRange] = useState('')
+  const [productUrl, setProductUrl] = useState('')
   const [neededByDate, setNeededByDate] = useState('')
   const [purchaseMethod, setPurchaseMethod] = useState<string>('corporate')
   const [purchaseMethodNote, setPurchaseMethodNote] = useState('')
@@ -163,6 +165,7 @@ export default function PurchaseRequestPage() {
     setItemDescription('')
     setReason('')
     setPriceRange('')
+    setProductUrl('')
     setNeededByDate('')
     setPurchaseMethod('corporate')
     setPurchaseMethodNote('')
@@ -189,6 +192,7 @@ export default function PurchaseRequestPage() {
           itemDescription: itemDescription.trim() || null,
           reason: reason.trim() || null,
           priceRange: priceRange.trim() || null,
+          productUrl: productUrl.trim() || null,
           neededByDate: neededByDate || null,
           purchaseMethod,
           purchaseMethodNote: purchaseMethod === 'other' ? purchaseMethodNote.trim() || null : null,
@@ -247,6 +251,7 @@ export default function PurchaseRequestPage() {
       'Description': r.itemDescription || '-',
       'Reason': r.reason || '-',
       'Price Range': r.priceRange || '-',
+      'Product Link': r.productUrl || '-',
       'Needed By': fmtDate(r.neededByDate),
       'Purchase Method': purchaseMethodLabel(r.purchaseMethod, r.purchaseMethodNote),
       'Status': statusMeta[r.status]?.label || r.status,
@@ -417,6 +422,16 @@ export default function PurchaseRequestPage() {
                       />
                     </Field>
 
+                    <Field label="Product link" hint="Optional — paste a link to the item you'd like to purchase.">
+                      <input
+                        type="url"
+                        value={productUrl}
+                        onChange={(e) => setProductUrl(e.target.value)}
+                        placeholder="https://…"
+                        className={inputClass}
+                      />
+                    </Field>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <Field label="6. When is item needed?" hint="Expected time or deadline.">
                         <input type="date" value={neededByDate} onChange={(e) => setNeededByDate(e.target.value)} className={inputClass} />
@@ -439,7 +454,7 @@ export default function PurchaseRequestPage() {
                               value={m.value}
                               checked={purchaseMethod === m.value}
                               onChange={() => setPurchaseMethod(m.value)}
-                              className="mt-1 h-4 w-4 accent-brand-green"
+                              className="mt-1 h-4 w-4 accent-black"
                             />
                             <span className="text-sm font-medium text-slate-700">{m.label}</span>
                           </label>
@@ -606,6 +621,19 @@ export default function PurchaseRequestPage() {
                                         <Card label="Purchase Method" value={purchaseMethodLabel(r.purchaseMethod, r.purchaseMethodNote)} />
                                         <Card label="Created By" value={r.createdByName || r.createdByEmail || '-'} />
                                       </div>
+                                      {r.productUrl && (
+                                        <div className="mt-3">
+                                          <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Product Link</p>
+                                          <a
+                                            href={r.productUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green underline-offset-2 hover:underline break-all"
+                                          >
+                                            {r.productUrl}
+                                          </a>
+                                        </div>
+                                      )}
                                       {r.itemDescription && (
                                         <div className="mt-3">
                                           <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Description</p>

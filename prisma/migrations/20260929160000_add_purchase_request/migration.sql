@@ -9,6 +9,7 @@ CREATE TABLE "PurchaseRequest" (
     "itemDescription" TEXT,
     "reason" TEXT,
     "priceRange" TEXT,
+    "productUrl" TEXT,
     "neededByDate" TIMESTAMP(3),
     "purchaseMethod" TEXT NOT NULL DEFAULT 'corporate',
     "purchaseMethodNote" TEXT,

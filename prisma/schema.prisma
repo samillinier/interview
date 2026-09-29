@@ -1140,6 +1140,7 @@ model PurchaseRequest {
   itemDescription    String?
   reason             String?
   priceRange         String?
+  productUrl         String?
   neededByDate       DateTime?
   purchaseMethod     String    @default("corporate")
   purchaseMethodNote String?
