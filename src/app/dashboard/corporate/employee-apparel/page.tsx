@@ -391,20 +391,20 @@ export default function EmployeeApparelPage() {
                       const size = selectedSize[product.key] || product.sizes[0] || ''
                       const qty = quantities[product.key] || 0
                       return (
-                        <section key={product.key} className="grid grid-cols-1 lg:grid-cols-[minmax(0,460px)_1fr] gap-8">
+                        <section key={product.key} className="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_1fr] gap-8">
                           {/* Image + swatches */}
                           <div>
                             <button
                               type="button"
                               onClick={() => setEnlargedImage({ src: colorObj?.image || product.image, alt: `${product.name} — ${colorName}` })}
-                              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white w-full max-w-[440px] aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
+                              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white w-full max-w-[480px] aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
                               aria-label={`Enlarge ${product.name} — ${colorName}`}
                             >
                               <Image
                                 src={colorObj?.image || product.image}
                                 alt={`${product.name} — ${colorName}`}
                                 fill
-                                sizes="(max-width: 1023px) 100vw, 440px"
+                                sizes="(max-width: 1023px) 100vw, 480px"
                                 quality={90}
                                 className="object-contain p-6 transition-transform duration-200 group-hover:scale-[1.03]"
                               />
@@ -462,7 +462,7 @@ export default function EmployeeApparelPage() {
                                     key={s}
                                     type="button"
                                     onClick={() => setSelectedSize((prev) => ({ ...prev, [product.key]: s }))}
-                                    className={`min-w-[3.75rem] px-4 py-3 rounded-xl border-2 text-base font-semibold transition-colors ${
+                                    className={`min-w-[3rem] px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
                                       size === s
                                         ? 'border-brand-green bg-brand-green text-white'
                                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
