@@ -483,7 +483,7 @@ export default function EmployeeApparelPage() {
                           </div>
 
                           {/* Details */}
-                          <div className="flex flex-col">
+                          <div className="flex flex-col justify-center">
                             <h3 className="text-2xl font-black text-slate-900">{product.name}</h3>
                             <p className="mt-2 text-3xl font-black text-brand-green">
                               {formatCurrency(product.price)}
