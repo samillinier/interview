@@ -32,8 +32,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Avery Printable Shipping Labels with Sure Feed, 3-1/3" x 4", White, 600 Blank Mailing Labels (5164)',
-        imageUrl: 'https://m.media-amazon.com/images/I/71KASIQm2sL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B00004Z5SB',
+        imageUrl: 'https://m.media-amazon.com/images/I/81-6bogxksL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00006HX4B',
       },
       {
         key: 'printer-paper',
@@ -52,8 +52,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Lined Sticky Notes 3 x 3, 20 Pack Box, 2,000 Sheets (100/Pad), Bright Assorted Colors',
-        imageUrl: 'https://m.media-amazon.com/images/I/61mSKgrzeQL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0D5M28Y2K',
+        imageUrl: 'https://m.media-amazon.com/images/I/81WwFnxXKlL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B095B7RBQN',
       },
       {
         key: 'staples',
@@ -62,8 +62,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 4,
         description: 'Full strip staples - each strip contains 210 staples, 1/4" leg length, 5,000 staples per box',
-        imageUrl: 'https://m.media-amazon.com/images/I/81y7tcIZVrL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B00006IFMQ',
+        imageUrl: 'https://m.media-amazon.com/images/I/81UBYFDWtpL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00J8PJJF0',
       },
       {
         key: 'pen-blue',
@@ -72,8 +72,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'BIC Round Stic Xtra Life Blue Ballpoint Pens, Medium Point (1.0mm), 60-Count Pack',
-        imageUrl: 'https://m.media-amazon.com/images/I/71psiDnN8jL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B00OPF9HQO',
+        imageUrl: 'https://m.media-amazon.com/images/I/71ZuQnEGl1L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B001Q4HUNO',
       },
       {
         key: 'pen-black',
@@ -82,8 +82,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'BIC Round Stic Xtra Life Black Ballpoint Pens, Medium Point (1.0mm), 60-Count Pack',
-        imageUrl: 'https://m.media-amazon.com/images/I/71psiDnN8jL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B00OPF9HQO',
+        imageUrl: 'https://m.media-amazon.com/images/I/61Mi2KElT8L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0CHKJ4JDT',
       },
       {
         key: 'sharpie',
@@ -92,8 +92,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Extra Wide Chisel Tip, Multi-Surface Markers, Pack of 12, Permanent Black Ink',
-        imageUrl: 'https://m.media-amazon.com/images/I/81QCHBtYLJL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B000F8R95G',
+        imageUrl: 'https://m.media-amazon.com/images/I/81lcj92-FfL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00006IFGP',
       },
       {
         key: 'legal-pad',
@@ -102,8 +102,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Legal Pad Writing Pads, Recycled Paper, 8.5"x11.75" Wide Ruled, 50 sheets, White Pack of 12',
-        imageUrl: 'https://m.media-amazon.com/images/I/613F62y+e5L._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B089R2GQ87',
+        imageUrl: 'https://m.media-amazon.com/images/I/71gzS3ioyPL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B000087LH6',
       },
       {
         key: 'binder',
@@ -122,8 +122,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Hanging File Folders, Letter Size, Standard Green, 1/5-Cut Tabs, 75 per box',
-        imageUrl: 'https://m.media-amazon.com/images/I/81Yc24w0wJL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B00V5DG6IQ',
+        imageUrl: 'https://m.media-amazon.com/images/I/91UfBxRFekL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B086QGWD2Y',
       },
       {
         key: 'file-folders',
@@ -132,8 +132,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '1/3-Cut Tab, Assorted Positions File Folders, Letter Size, Manila - Pack of 100',
-        imageUrl: 'https://m.media-amazon.com/images/I/41NvO1ftPyL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0722L14L3',
+        imageUrl: 'https://m.media-amazon.com/images/I/61fuHeaBSaL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B01LYHE49W',
       },
       {
         key: 'toner-ez',
@@ -142,8 +142,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: '4 x TN660 Black (Total 4 Pack), 2,600 Pages Per Cartridge, Brother HL-L2300D / MFC-L2700DW / DCP-L2540DW',
-        imageUrl: 'https://m.media-amazon.com/images/I/816-OQB4wcL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0DYDD3NG4',
+        imageUrl: 'https://m.media-amazon.com/images/I/81TffePc6VL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0DXV45677',
       },
       {
         key: 'toner-canon',
@@ -162,8 +162,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 3,
         description: 'Fooylen 802XL combo pack (1 Black, 1 Cyan, 1 Magenta, 1 Yellow), Epson Workforce Pro WF-4720 / WF-4740 / EC-4020',
-        imageUrl: 'https://m.media-amazon.com/images/I/71MUnW2D7QL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0FQC8CL9C',
+        imageUrl: 'https://m.media-amazon.com/images/I/71xDP169a0L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0828BYPWV',
       },
       {
         key: 'aa-batteries',
@@ -172,8 +172,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'AA Batteries, Double A Long-Lasting Alkaline Power Batteries, 32 Count (Pack of 1)',
-        imageUrl: 'https://m.media-amazon.com/images/I/71E-3tmsR6L._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0B1DF9NVJ',
+        imageUrl: 'https://m.media-amazon.com/images/I/81AX1sbArxL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B09RTVD1GF',
       },
       {
         key: 'aaa-batteries',
@@ -182,8 +182,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'AAA Batteries, Triple A Long-Lasting Alkaline Power Batteries, 32 Count (Pack of 1)',
-        imageUrl: 'https://m.media-amazon.com/images/I/71-uVVU8W5L._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0B2KWHKYT',
+        imageUrl: 'https://m.media-amazon.com/images/I/81WjCmxPuUL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B09RTVN5GN',
       },
       {
         key: 'dry-erase',
@@ -192,8 +192,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Includes Red, Blue, Green and Black markers, a 2 oz Expo white board cleaning spray, and an Expo eraser',
-        imageUrl: 'https://m.media-amazon.com/images/I/81fB+5fYZqL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B00006IFIM',
+        imageUrl: 'https://m.media-amazon.com/images/I/8185KJTQRsL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B000MK2PZ6',
       },
       {
         key: 'desk-calendar',
@@ -202,8 +202,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 4,
         description: '19-month timeline, larger 1.8" x 1.5" blocks for planning and organizing',
-        imageUrl: 'https://m.media-amazon.com/images/I/71-SqVSxJfL._AC_SL500_.jpg',
-        productUrl: 'https://www.amazon.com/dp/B0D6G9J3NF',
+        imageUrl: 'https://m.media-amazon.com/images/I/61arLvvhCLL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0GX5BVYLT',
       },
       {
         key: 'tape-refills',
@@ -228,6 +228,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Hot/Cold Paper Cups, White, 12-Ounce, 270 Count (Pack of 1)',
+        imageUrl: 'https://m.media-amazon.com/images/I/617IVFAI5XL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B09MLSTCRY',
       },
       {
         key: 'k-cup',
@@ -236,6 +238,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'McCafe Premium Roast K-Cup Coffee Pods (94 Count)',
+        imageUrl: 'https://m.media-amazon.com/images/I/71sDWoLhhaL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B08DBYJKVW',
       },
       {
         key: 'sugar',
@@ -244,6 +248,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '20 Ounce Sugar Canister, Pack of 6, 100% Pure Granulated Sugar, Easy Pour Lid',
+        imageUrl: 'https://m.media-amazon.com/images/I/81CKsvZT2tL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0017TMTFM',
       },
       {
         key: 'creamer',
@@ -252,6 +258,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Non-Dairy Coffee Creamer, 12 Ounce Canister, Pack of 6, Easy Pour Lid',
+        imageUrl: 'https://m.media-amazon.com/images/I/81JpbVPaijL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B008O7LUQY',
       },
       {
         key: 'stirrers',
@@ -260,6 +268,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Each pack includes 1000 disposable plastic sip stir sticks, 5 inches in length',
+        imageUrl: 'https://m.media-amazon.com/images/I/716q-5ID2uL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B084GYFFT9',
       },
       {
         key: 'paper-plates',
@@ -268,6 +278,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 3,
         description: '8 1/2 inch, Lunch or Light Dinner Size Printed Disposable Plate, 90 Count (Pack of 1)',
+        imageUrl: 'https://m.media-amazon.com/images/I/718Tr1uB1OL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0748J34WZ',
       },
       {
         key: 'forks',
@@ -276,6 +288,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Heavy Weight Plastic Forks, Clear Disposable, 100 Count',
+        imageUrl: 'https://m.media-amazon.com/images/I/71Hd8JPbUPL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0DDH434BH',
       },
       {
         key: 'spoons',
@@ -284,6 +298,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Heavyweight Plastic Spoons, Clear Disposable, 100 Count',
+        imageUrl: 'https://m.media-amazon.com/images/I/61xBEwzspaL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0DDG3LMWR',
       },
       {
         key: 'knives',
@@ -292,6 +308,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Heavyweight Plastic Knives, Clear Disposable, 100 Count',
+        imageUrl: 'https://m.media-amazon.com/images/I/71ZN1nPbJmL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0848G9M8F',
       },
       {
         key: 'paper-towel',
@@ -300,6 +318,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Premium Paper Towels, XL Rolls, Super Absorbent & Strong, Full Sheet 24 Rolls',
+        imageUrl: 'https://m.media-amazon.com/images/I/71NSCGqzIkL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B075XP6PGK',
       },
       {
         key: 'trash-bag',
@@ -308,6 +328,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Tall Drawstring Trash Bags, 13 Gallon White, Unscented Leak Protection, 120 Count',
+        imageUrl: 'https://m.media-amazon.com/images/I/81+Rz6Ilt-L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0FVMS3QQK',
       },
       {
         key: 'sponges',
@@ -316,6 +338,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Scotch-Brite Heavy Duty Scrub Sponges; one pack contains six sponges',
+        imageUrl: 'https://m.media-amazon.com/images/I/91PkpwL474L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B004IR3044',
       },
       {
         key: 'dish-soap',
@@ -324,6 +348,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Set of four 30 fl oz bottles, long-lasting bulk supply for dishwashing needs',
+        imageUrl: 'https://m.media-amazon.com/images/I/71RnROGs-hL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B09B1T3ZF7',
       },
       {
         key: 'swiffer-starter',
@@ -332,6 +358,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Includes 1 Power Mop, 10 Pads, Cleaning Solution, Batteries',
+        imageUrl: 'https://m.media-amazon.com/images/I/817arIc2UOL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B07YQDD94M',
       },
       {
         key: 'swiffer-pads',
@@ -340,6 +368,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '24 multi-surface mopping pad refills',
+        imageUrl: 'https://m.media-amazon.com/images/I/81-pQ6gjPrL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B001F0RBT2',
       },
       {
         key: 'swiffer-solution',
@@ -348,6 +378,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Cleaner Solution Refill with Gain Scent, 42.2 fl oz each (Pack of 2)',
+        imageUrl: 'https://m.media-amazon.com/images/I/71tEUsX-wkL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00BFC5IO0',
       },
     ],
   },
@@ -362,6 +394,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Commercial 2-Ply White XL Multifold Paper Towels, 115 Sheets per Pack (16 Packs)',
+        imageUrl: 'https://m.media-amazon.com/images/I/619vxQsQwwL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B004YK2KSM',
       },
       {
         key: 'toilet-paper',
@@ -370,6 +404,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '48 Mega Rolls, each equal to 4 Regular Rolls, 320 2-ply sheets per roll',
+        imageUrl: 'https://m.media-amazon.com/images/I/81M+a-AX7eL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B09R4T7L6B',
       },
       {
         key: 'hand-soap',
@@ -378,6 +414,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Antibacterial Liquid Hand Soap, 11.25 Ounce, 6 units per case',
+        imageUrl: 'https://m.media-amazon.com/images/I/815u-fMw1RL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B01LTI987W',
       },
       {
         key: 'wipes',
@@ -386,6 +424,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Lemon & Fresh Scent, 4 canisters each with 85 count white wipes',
+        imageUrl: 'https://m.media-amazon.com/images/I/71-a47bhETL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B08R17N9VV',
       },
       {
         key: 'toilet-cleaner',
@@ -394,6 +434,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Clinging Bleach Gel, Ocean Mist - 24 Ounces, Pack of 2',
+        imageUrl: 'https://m.media-amazon.com/images/I/81Y1z35NXZL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B00W5D1MDE',
       },
       {
         key: 'air-freshener',
@@ -402,6 +444,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 1,
         description: 'Aerosol Can, Linen & Sky Scent, 8.8oz - 6 Count',
+        imageUrl: 'https://m.media-amazon.com/images/I/71jQDqglceL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B075SM669W',
       },
       {
         key: 'tissues',
@@ -410,6 +454,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: 'Ultra-Soft 3-Ply Premium Facial Tissues, 66 Tissues per Box, 18 units per case',
+        imageUrl: 'https://m.media-amazon.com/images/I/6143are0p4L._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B07Y48YCJX',
       },
       {
         key: 'liners',
@@ -418,6 +464,8 @@ export const OFFICE_SUPPLY_SECTIONS: OfficeSupplySection[] = [
         min: 1,
         max: 2,
         description: '6-10 Gallon Trash Bags (300 Count), Clear Garbage Bags',
+        imageUrl: 'https://m.media-amazon.com/images/I/713jkN1fLOL._AC_SL500_.jpg',
+        productUrl: 'https://www.amazon.com/dp/B0FZWZGQXS',
       },
     ],
   },
