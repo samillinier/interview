@@ -24,6 +24,7 @@ import {
   Building2,
   FileText,
   Minus,
+  ZoomIn,
 } from 'lucide-react'
 import { downloadExcel } from '@/lib/export-utils'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -109,6 +110,7 @@ export default function EmployeeApparelPage() {
   const [filterWorkroom, setFilterWorkroom] = useState('')
   const [search, setSearch] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [enlargedImage, setEnlargedImage] = useState<{ src: string; alt: string } | null>(null)
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id')
@@ -392,19 +394,27 @@ export default function EmployeeApparelPage() {
                         <section key={product.key} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                           {/* Image + swatches */}
                           <div>
-                            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[320px] aspect-square">
+                            <button
+                              type="button"
+                              onClick={() => setEnlargedImage({ src: colorObj?.image || product.image, alt: `${product.name} — ${colorName}` })}
+                              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white mx-auto w-full max-w-[320px] aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
+                              aria-label={`Enlarge ${product.name} — ${colorName}`}
+                            >
                               <Image
                                 src={colorObj?.image || product.image}
                                 alt={`${product.name} — ${colorName}`}
                                 fill
                                 sizes="(max-width: 1023px) 100vw, 320px"
                                 quality={90}
-                                className="object-contain p-6"
+                                className="object-contain p-6 transition-transform duration-200 group-hover:scale-[1.03]"
                               />
                               <span className="absolute top-3 left-3 z-10 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
                                 {product.sku}
                               </span>
-                            </div>
+                              <span className="absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100">
+                                <ZoomIn className="h-4 w-4" />
+                              </span>
+                            </button>
                             {/* Color swatches */}
                             <div className="mt-6">
                               <p className="text-xs font-semibold text-slate-500 mb-3">Color: <span className="text-slate-800">{colorName}</span></p>
@@ -753,6 +763,47 @@ export default function EmployeeApparelPage() {
 
           </div>
         </div>
+
+        {/* Image lightbox */}
+        <AnimatePresence>
+          {enlargedImage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] flex items-center justify-center"
+              onClick={() => setEnlargedImage(null)}
+            >
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+              <motion.div
+                initial={{ scale: 0.92, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+                className="relative max-w-[90vw] max-h-[90vh]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="relative h-[70vh] w-[70vw] min-w-[280px] min-h-[280px] max-w-[900px] max-h-[900px] overflow-hidden rounded-2xl bg-white">
+                  <Image
+                    src={enlargedImage.src}
+                    alt={enlargedImage.alt}
+                    fill
+                    sizes="90vw"
+                    quality={95}
+                    className="object-contain p-4"
+                  />
+                </div>
+                <button
+                  onClick={() => setEnlargedImage(null)}
+                  className="absolute -top-3 -right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg hover:bg-slate-100 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Delete confirmation */}
         {confirmDeleteId && (
