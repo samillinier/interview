@@ -62,7 +62,7 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       'This comfortable wash-and-wear shirt is indispensable for the workday. Wrinkle resistance makes this shirt a cut above the competition so you and your staff can be, too.',
       '4.5-ounce, 55/45 cotton/poly',
       'Button-down collar · Dyed-to-match buttons · Left chest pocket · Back box pleat',
-      'Contrast neckbands — Light Stone: White, Athletic Gold, Texas Orange, Red, Burgundy, Coffee Bean, Light Blue, Navy, Classic Navy, Steel Grey, Purple and Black. Classic Navy: Light Stone and Royal. Navy: Dark Green.',
+      'Contrast neckbands in Light Stone, Classic Navy, or Navy depending on color',
     ],
     image: `${IMG_BASE}/ac4e27e0d72feaf78b158c243d9fc2f62acf5c49`,
     colors: [

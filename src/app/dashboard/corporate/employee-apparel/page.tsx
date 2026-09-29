@@ -499,15 +499,15 @@ export default function EmployeeApparelPage() {
                             </ul>
 
                             {/* Size selector */}
-                            <div className="mt-6">
+                            <div className="mt-4">
                               <p className="text-xs font-semibold text-slate-500 mb-2">Size</p>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-wrap gap-1.5">
                                 {product.sizes.map((s) => (
                                   <button
                                     key={s}
                                     type="button"
                                     onClick={() => setSelectedSize((prev) => ({ ...prev, [product.key]: s }))}
-                                    className={`min-w-[3rem] px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
+                                    className={`min-w-[2.5rem] px-2.5 py-1.5 rounded-lg border-2 text-sm font-semibold transition-colors ${
                                       size === s
                                         ? 'border-brand-green bg-brand-green text-white'
                                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
@@ -520,7 +520,7 @@ export default function EmployeeApparelPage() {
                             </div>
 
                             {/* Quantity */}
-                            <div className="mt-6">
+                            <div className="mt-4">
                               <p className="text-xs font-semibold text-slate-500 mb-2">Quantity</p>
                               <div className="flex items-center gap-2">
                                 <button onClick={() => setQuantity(product.key, qty - 1)}
