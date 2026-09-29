@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { Prisma } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,6 +112,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const licence = await prisma.licence.create({
       data: buildLicenceData(body, access.email, true),
+    })
+
+    const category = String(body?.category || '').trim().toLowerCase()
+    const kind =
+      category === 'btr'
+        ? 'btr'
+        : category === 'firm-lead'
+          ? 'firm-lead'
+          : category === 'lrrp'
+            ? 'lrrp'
+            : category === 'liability'
+              ? 'liability'
+              : 'licences'
+
+    await notifyCorporateAuthorizer({
+      kind,
+      recordId: licence.id,
+      submittedByEmail: access.email,
+      submittedByName: (access.admin as any)?.name || access.email,
+      details: [licence.city, licence.county].filter(Boolean).join(', ') || 'Licence record',
     })
 
     return NextResponse.json({ licence: serializeLicence(licence) }, { status: 201 })

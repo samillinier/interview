@@ -117,6 +117,91 @@ export default function SettingsPage() {
   })
   const [credentialSaving, setCredentialSaving] = useState(false)
 
+  // Communication recipients (who receives corporate request emails)
+  const [commRecipients, setCommRecipients] = useState<any[]>([])
+  const [commLoading, setCommLoading] = useState(true)
+  const [commSaving, setCommSaving] = useState(false)
+  const [commError, setCommError] = useState('')
+  const [commSuccess, setCommSuccess] = useState('')
+  const [commForm, setCommForm] = useState<{ kind: string; email: string; name: string }>({
+    kind: 'bol',
+    email: '',
+    name: '',
+  })
+  const [commDeleting, setCommDeleting] = useState<{ [key: string]: boolean }>({})
+
+  const communicationKinds = [
+    { slug: 'bol', label: 'BOL' },
+    { slug: 'pad-transfer', label: 'Pad Transfer' },
+    { slug: 'inventory-cycle', label: 'Inventory Cycle' },
+    { slug: 'travel-request', label: 'Travel Request' },
+    { slug: 'office-supplies', label: 'Office Supplies' },
+    { slug: 'btr', label: 'BTR' },
+    { slug: 'firm-lead', label: 'Firm Lead' },
+    { slug: 'lrrp', label: 'LRRP' },
+    { slug: 'liability', label: 'Liability' },
+    { slug: 'licences', label: 'Licences' },
+    { slug: 'claims', label: 'Claims' },
+  ]
+
+  const loadCommunicationRecipients = async () => {
+    setCommLoading(true)
+    try {
+      const res = await fetch('/api/admin/communication-recipients', { cache: 'no-store' })
+      if (!res.ok) throw new Error('Failed to load recipients')
+      const data = await res.json()
+      setCommRecipients(data.recipients || [])
+    } catch (e: any) {
+      setCommError(e?.message || 'Failed to load recipients')
+    } finally {
+      setCommLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCommunicationRecipients()
+  }, [])
+
+  const handleAddCommunicationRecipient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCommError('')
+    setCommSuccess('')
+    if (!commForm.email || !commForm.kind) return
+    setCommSaving(true)
+    try {
+      const res = await fetch('/api/admin/communication-recipients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(commForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add recipient')
+      setCommForm({ ...commForm, email: '', name: '' })
+      setCommSuccess('Recipient added')
+      await loadCommunicationRecipients()
+    } catch (e: any) {
+      setCommError(e?.message || 'Failed to add recipient')
+    } finally {
+      setCommSaving(false)
+    }
+  }
+
+  const handleRemoveCommunicationRecipient = async (id: string) => {
+    setCommError('')
+    setCommSuccess('')
+    setCommDeleting((prev) => ({ ...prev, [id]: true }))
+    try {
+      const res = await fetch(`/api/admin/communication-recipients?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to remove recipient')
+      setCommSuccess('Recipient removed')
+      await loadCommunicationRecipients()
+    } catch (e: any) {
+      setCommError(e?.message || 'Failed to remove recipient')
+    } finally {
+      setCommDeleting((prev) => ({ ...prev, [id]: false }))
+    }
+  }
+
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/login' })
   }
@@ -827,6 +912,135 @@ export default function SettingsPage() {
                   </button>
                 </motion.div>
               ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Communication Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8 mb-6"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+              <Mail className="w-6 h-6 text-brand-green" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Communication</h2>
+              <p className="text-sm text-slate-500">Choose who receives an email when a request is submitted on the corporate page</p>
+            </div>
+          </div>
+
+          {commError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{commError}</span>
+            </div>
+          )}
+          {commSuccess && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{commSuccess}</span>
+            </div>
+          )}
+
+          {/* Add recipient */}
+          <form onSubmit={handleAddCommunicationRecipient} className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Add email recipient</h3>
+            <p className="text-sm text-slate-500 mb-4">Assign an email to a request type. They will be notified every time that request is created.</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Request type</label>
+                <select
+                  value={commForm.kind}
+                  onChange={(e) => setCommForm((c) => ({ ...c, kind: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                >
+                  {communicationKinds.map((k) => (
+                    <option key={k.slug} value={k.slug}>{k.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
+                <input
+                  type="email"
+                  value={commForm.email}
+                  onChange={(e) => setCommForm((c) => ({ ...c, email: e.target.value }))}
+                  placeholder="name@fiscorponline.com"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Name (optional)</label>
+                <input
+                  type="text"
+                  value={commForm.name}
+                  onChange={(e) => setCommForm((c) => ({ ...c, name: e.target.value }))}
+                  placeholder="e.g. Tim Taylor"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="submit"
+                disabled={commSaving || !commForm.email}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-green px-5 py-3 font-semibold text-white shadow-lg shadow-brand-green/20 transition-colors hover:bg-brand-green-dark disabled:opacity-50"
+              >
+                {commSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Assign email
+              </button>
+            </div>
+          </form>
+
+          {/* Recipients list grouped by kind */}
+          {commLoading ? (
+            <div className="flex items-center justify-center py-8 text-slate-500">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading recipients…
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {communicationKinds.map((kind) => {
+                const recipients = commRecipients.filter((r) => r.kind === kind.slug)
+                return (
+                  <div key={kind.slug} className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-900">{kind.label}</span>
+                        <span className="rounded-full bg-brand-green/10 px-2 py-0.5 text-xs font-bold text-brand-green">
+                          {recipients.length} {recipients.length === 1 ? 'recipient' : 'recipients'}
+                        </span>
+                      </div>
+                    </div>
+                    {recipients.length === 0 ? (
+                      <p className="text-sm text-slate-400">No recipients — emails go to the default authorizer.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {recipients.map((r) => (
+                          <div key={r.id} className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1.5">
+                            <Mail className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="text-sm font-medium text-slate-700">
+                              {r.name ? `${r.name} · ` : ''}{r.email}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCommunicationRecipient(r.id)}
+                              disabled={commDeleting[r.id]}
+                              className="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
+                              aria-label={`Remove ${r.email}`}
+                            >
+                              {commDeleting[r.id] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </motion.div>

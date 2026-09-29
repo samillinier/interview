@@ -1,9 +1,16 @@
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
 import { emailLogoImg } from '@/lib/email-brand'
+import prisma from '@/lib/db'
+import {
+  getCorporateCommunicationKind,
+  type CorporateCommunicationKind,
+} from '@/lib/corporate-communication'
 
 export const CORPORATE_AUTHORIZER_EMAIL = 'TTaylor@fiscorponline.com'
 export const CORPORATE_AUTHORIZER_NAME = 'Tim'
+
+export type CorporateAuthKind = CorporateCommunicationKind
 
 function authorizerEmail() {
   const override = String(process.env.CORPORATE_AUTHORIZER_EMAIL || '').trim()
@@ -12,17 +19,18 @@ function authorizerEmail() {
   return CORPORATE_AUTHORIZER_EMAIL
 }
 
-function authorizerName(email: string) {
+function greetingName(email: string, name?: string | null) {
+  const trimmedName = String(name || '').trim()
+  if (trimmedName) return trimmedName
   if (email.toLowerCase() === CORPORATE_AUTHORIZER_EMAIL.toLowerCase()) return CORPORATE_AUTHORIZER_NAME
+  const local = String(email.split('@')[0] || '').trim()
+  if (local) return local.charAt(0).toUpperCase() + local.slice(1)
   return 'there'
 }
 
-export type CorporateAuthKind = 'bol' | 'pad-transfer' | 'inventory-cycle' | 'travel-request' | 'office-supplies'
+type KindMeta = { label: string; path: string; subject: string }
 
-const KIND_META: Record<
-  CorporateAuthKind,
-  { label: string; path: string; subject: string }
-> = {
+const KIND_META: Record<CorporateCommunicationKind, KindMeta> = {
   bol: {
     label: 'BOL',
     path: '/dashboard/corporate/bol',
@@ -47,6 +55,36 @@ const KIND_META: Record<
     label: 'Office Supplies Order',
     path: '/dashboard/corporate/office-supplies',
     subject: 'An Office Supplies Order needs your authorization',
+  },
+  btr: {
+    label: 'BTR',
+    path: '/dashboard/corporate/btr',
+    subject: 'A BTR record needs your attention',
+  },
+  'firm-lead': {
+    label: 'Firm Lead',
+    path: '/dashboard/corporate/firm-lead',
+    subject: 'A Firm Lead record needs your attention',
+  },
+  lrrp: {
+    label: 'LRRP',
+    path: '/dashboard/corporate/lrrp',
+    subject: 'An LRRP record needs your attention',
+  },
+  liability: {
+    label: 'Liability',
+    path: '/dashboard/corporate/liability',
+    subject: 'A Liability record needs your attention',
+  },
+  licences: {
+    label: 'Licence',
+    path: '/dashboard/corporate/licences',
+    subject: 'A Licence record needs your attention',
+  },
+  claims: {
+    label: 'Claim',
+    path: '/dashboard/corporate/claims',
+    subject: 'A Claim record needs your attention',
   },
 }
 
@@ -100,7 +138,7 @@ function buildAuthEmailHtml(args: {
             ${submittedBy ? `<p style="margin:0 0 8px;">Submitted by: ${submittedBy}</p>` : ''}
             ${details ? `<p style="margin:0 0 18px;">${details}</p>` : ''}
             <p style="margin:0 0 22px;">Use the link below to review it and authorize.</p>
-            <a href="${url}" style="display:inline-block;background:#8bbf3d;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:12px;">Authorize ${kind}</a>
+            <a href="${url}" style="display:inline-block;background:#8bbf3d;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:12px;">Review ${kind}</a>
             <p style="margin:22px 0 0;font-size:12px;color:#8a9585;word-break:break-all;">${url}</p>
           </div>
         </div>
@@ -118,40 +156,82 @@ export async function notifyCorporateAuthorizer(args: {
   to?: string
   sample?: boolean
 }) {
-  const to = String(args.to || authorizerEmail()).trim()
-  const creator = String(args.submittedByEmail || '').trim().toLowerCase()
-  if (!args.to && creator && creator === to.toLowerCase()) return
-
   const resendApiKey = process.env.RESEND_API_KEY
   if (!resendApiKey) {
     console.warn('RESEND_API_KEY not configured - corporate authorization email not sent')
     return
   }
 
-  const meta = KIND_META[args.kind]
+  const meta = KIND_META[args.kind] || {
+    label: getCorporateCommunicationKind(args.kind)?.label || args.kind,
+    path: getCorporateCommunicationKind(args.kind)?.path || '/dashboard/corporate',
+    subject: `A ${getCorporateCommunicationKind(args.kind)?.label || args.kind} needs your attention`,
+  }
+
+  const creator = String(args.submittedByEmail || '').trim().toLowerCase()
+
+  // Resolve recipients: explicit override -> configured recipients -> default authorizer
+  let recipients: { email: string; name?: string }[] = []
+  if (args.to) {
+    recipients = [{ email: String(args.to).trim() }]
+  } else {
+    try {
+      const rows = await prisma.corporateNotificationRecipient.findMany({
+        where: { kind: args.kind, isActive: true },
+        orderBy: { createdAt: 'asc' },
+      })
+      recipients = rows
+        .map((r) => ({ email: r.email, name: r.name || undefined }))
+        .filter((r) => r.email)
+    } catch (error) {
+      console.error('Failed to load corporate notification recipients:', error)
+    }
+    if (recipients.length === 0) {
+      recipients = [{ email: authorizerEmail() }]
+    }
+  }
+
+  // De-dupe and skip the submitter (unless explicitly targeting them)
+  const seen = new Set<string>()
+  const targets: { email: string; name?: string }[] = []
+  for (const r of recipients) {
+    const email = r.email.trim().toLowerCase()
+    if (!email || seen.has(email)) continue
+    if (!args.to && email === creator) continue
+    seen.add(email)
+    targets.push({ email, name: r.name })
+  }
+  if (targets.length === 0) return
+
   const authorizeUrl = `${authorizeBaseUrl()}${meta.path}?id=${encodeURIComponent(args.recordId)}`
   const submittedBy = [args.submittedByName, args.submittedByEmail].filter(Boolean).join(' · ') || null
 
   try {
     const resend = new Resend(resendApiKey)
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-    const result = await resend.emails.send({
-      from: `${companyDisplayName()} <${fromEmail}>`,
-      to,
-      subject: args.sample ? `[SAMPLE] ${meta.subject}` : meta.subject,
-      html: buildAuthEmailHtml({
-        kindLabel: meta.label,
-        authorizeUrl,
-        submittedBy,
-        details: args.details || null,
-        greetingName: authorizerName(to),
-      }),
-    })
-    if (result.error) {
-      console.error('Corporate authorization email failed:', result.error)
-      return { ok: false as const, error: result.error.message }
+    const results = await Promise.all(
+      targets.map((target) =>
+        resend.emails.send({
+          from: `${companyDisplayName()} <${fromEmail}>`,
+          to: target.email,
+          subject: args.sample ? `[SAMPLE] ${meta.subject}` : meta.subject,
+          html: buildAuthEmailHtml({
+            kindLabel: meta.label,
+            authorizeUrl,
+            submittedBy,
+            details: args.details || null,
+            greetingName: greetingName(target.email, target.name),
+          }),
+        }),
+      ),
+    )
+
+    const firstError = results.find((r) => r.error)
+    if (firstError?.error) {
+      console.error('Corporate authorization email failed:', firstError.error)
+      return { ok: false as const, error: firstError.error.message }
     }
-    return { ok: true as const, id: result.data?.id || null }
+    return { ok: true as const, ids: results.map((r) => r.data?.id || null).filter(Boolean) }
   } catch (error) {
     console.error('Corporate authorization email failed:', error)
     return { ok: false as const, error: error instanceof Error ? error.message : String(error) }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { Prisma } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,6 +116,14 @@ export async function POST(request: NextRequest) {
     const claim = await prisma.claim.create({
       data: buildClaimData(body, access.email, true),
       include: { Installer: { select: { companyName: true } } },
+    })
+
+    await notifyCorporateAuthorizer({
+      kind: 'claims',
+      recordId: claim.id,
+      submittedByEmail: access.email,
+      submittedByName: (access.admin as any)?.name || access.email,
+      details: [claim.claimNumber, claim.customer].filter(Boolean).join(' · ') || 'Claim record',
     })
 
     return NextResponse.json({ claim: serializeClaim(claim) }, { status: 201 })
