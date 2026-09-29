@@ -35,7 +35,6 @@ import {
   Receipt,
 } from 'lucide-react'
 import { canAccessInvoices } from '@/lib/invoiceAccess'
-import { CORPORATE_DOCUMENT_SECTIONS } from '@/lib/corporate-document-sections'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
@@ -289,18 +288,11 @@ export function AdminMobileMenu({ pathname }: Props) {
     }
     if (role === 'MANAGER' || role === 'ACCOUNTING') {
       corporateItem.children = [
-        { href: '/dashboard/corporate/claims', label: 'Claims', icon: FileText, match: (p: string) => p.startsWith('/dashboard/corporate/claims') },
         { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') },
         { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') },
         { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') },
         { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') },
         { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (p: string) => p.startsWith('/dashboard/corporate/office-supplies') },
-        ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
-          href: `/dashboard/corporate/${section.slug}`,
-          label: section.title,
-          icon: FileText,
-          match: (p: string) => p.startsWith(`/dashboard/corporate/${section.slug}`),
-        })),
       ]
       if (canAccessInvoices(role)) {
         corporateItem.children.push({

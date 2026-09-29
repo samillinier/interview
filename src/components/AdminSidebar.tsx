@@ -36,7 +36,6 @@ import {
   Users,
 } from 'lucide-react'
 import { canAccessInvoices } from '@/lib/invoiceAccess'
-import { CORPORATE_DOCUMENT_SECTIONS } from '@/lib/corporate-document-sections'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
 
@@ -318,18 +317,11 @@ export function AdminSidebar({ pathname }: Props) {
       }
       if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
         corporateItem.children = [
-          { href: '/dashboard/corporate/claims', label: 'Claims', icon: FileText, match: (path: string) => path.startsWith('/dashboard/corporate/claims') },
           { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, badge: pendingBolCount, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
           { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, badge: pendingPadTransferCount, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
           { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
           { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
           { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
-          ...CORPORATE_DOCUMENT_SECTIONS.map((section) => ({
-            href: `/dashboard/corporate/${section.slug}`,
-            label: section.title,
-            icon: FileText,
-            match: (path: string) => path.startsWith(`/dashboard/corporate/${section.slug}`),
-          })),
         ]
         if (canAccessInvoices(normalizedRole)) {
           corporateItem.children.push({
