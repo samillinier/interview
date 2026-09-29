@@ -780,15 +780,15 @@ export default function EmployeeApparelPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.92, opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-                className="relative max-w-[90vw] max-h-[90vh]"
+                className="relative flex h-[92vh] w-[92vw] items-center justify-center"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="relative h-[70vh] w-[70vw] min-w-[280px] min-h-[280px] max-w-[900px] max-h-[900px] overflow-hidden rounded-2xl bg-white">
+                <div className="relative h-[92vh] w-[92vw] overflow-hidden rounded-2xl bg-white">
                   <Image
                     src={enlargedImage.src}
                     alt={enlargedImage.alt}
                     fill
-                    sizes="90vw"
+                    sizes="92vw"
                     quality={95}
                     className="object-contain p-4"
                   />
