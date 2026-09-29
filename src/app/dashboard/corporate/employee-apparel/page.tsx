@@ -102,6 +102,7 @@ export default function EmployeeApparelPage() {
   const [selectedColor, setSelectedColor] = useState<Record<string, string>>({})
   const [selectedSize, setSelectedSize] = useState<Record<string, string>>({})
   const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [activeProductKey, setActiveProductKey] = useState<string>(EMPLOYEE_APPAREL_PRODUCTS[0]?.key || '')
 
   const [orders, setOrders] = useState<ApparelOrder[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -384,14 +385,58 @@ export default function EmployeeApparelPage() {
                   </div>
 
                   <div className="p-6 space-y-8">
-                    {/* Catalog — store-style product cards */}
-                    {EMPLOYEE_APPAREL_PRODUCTS.map((product) => {
+                    {/* Product selector — store-style thumbnail grid */}
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-3">Choose a product</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {EMPLOYEE_APPAREL_PRODUCTS.map((product) => {
+                          const isActive = activeProductKey === product.key
+                          const qty = quantities[product.key] || 0
+                          return (
+                            <button
+                              key={product.key}
+                              type="button"
+                              onClick={() => setActiveProductKey(product.key)}
+                              className={`group relative overflow-hidden rounded-2xl border-2 bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+                                isActive ? 'border-brand-green ring-2 ring-brand-green/30 shadow-lg shadow-brand-green/10' : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <div className="relative aspect-square bg-white">
+                                <Image
+                                  src={product.image}
+                                  alt={product.name}
+                                  fill
+                                  sizes="(max-width: 1023px) 50vw, 260px"
+                                  quality={85}
+                                  className="object-contain p-3"
+                                />
+                                {qty > 0 && (
+                                  <span className="absolute top-2 right-2 z-10 inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-brand-green px-2 text-xs font-bold text-white shadow">
+                                    {qty}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="p-3">
+                                <p className="text-xs font-bold text-slate-700 leading-snug line-clamp-2">{product.name}</p>
+                                <p className="mt-1 text-sm font-black text-brand-green">{formatCurrency(product.price)}</p>
+                                <p className="mt-0.5 text-[11px] text-slate-400">{product.colors.length} colors</p>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Selected product detail */}
+                    {(() => {
+                      const product = EMPLOYEE_APPAREL_PRODUCTS.find((p) => p.key === activeProductKey) || EMPLOYEE_APPAREL_PRODUCTS[0]
+                      if (!product) return null
                       const colorName = selectedColor[product.key] || product.colors[0]?.name || ''
                       const colorObj = product.colors.find((c) => c.name === colorName) || product.colors[0]
                       const size = selectedSize[product.key] || product.sizes[0] || ''
                       const qty = quantities[product.key] || 0
                       return (
-                        <section key={product.key} className="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_1fr] gap-8 pt-8 first:pt-0 border-t border-slate-100 first:border-t-0">
+                        <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,500px)_1fr] gap-8 pt-8 border-t border-slate-100">
                           {/* Image + swatches */}
                           <div>
                             <button
@@ -499,7 +544,7 @@ export default function EmployeeApparelPage() {
                           </div>
                         </section>
                       )
-                    })}
+                    })()}
 
                     {/* Order details */}
                     <section className="pt-6 border-t border-slate-100">
