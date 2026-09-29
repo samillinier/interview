@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
-  ArrowLeftRight,
   BarChart3,
   Bell,
   Briefcase,
@@ -21,17 +20,13 @@ import {
   Megaphone,
   MessageSquare,
   PhoneCall,
-  Package,
   PanelLeftClose,
   PanelLeftOpen,
-  Plane,
   Radar,
   Receipt,
   Settings,
   ShieldAlert,
-  ShoppingCart,
   StickyNote,
-  Truck,
   Users,
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -265,15 +260,6 @@ export function AdminSidebar({ pathname }: Props) {
             { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (path: string) => path === '/property/ring-central' },
           ]
         : []),
-      ...(normalizedRole === 'ACCOUNTING'
-        ? [
-            { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
-            { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
-            { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
-            { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
-            { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
-          ]
-        : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
       ...(normalizedRole === 'ACCOUNTING'
@@ -321,7 +307,7 @@ export function AdminSidebar({ pathname }: Props) {
         match: (path) => path.startsWith('/property'),
       })
     }
-    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER') {
+    if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
       const corporatePendingTotal =
         pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + invoiceCount
       portalNav.push({

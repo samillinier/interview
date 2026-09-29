@@ -6,20 +6,15 @@ import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
-  ArrowLeftRight,
   BarChart3,
   Bell,
   Building2,
   LayoutDashboard,
   Menu,
   MessageSquare,
-  Package,
-  Plane,
   Settings,
   ShieldAlert,
-  ShoppingCart,
   StickyNote,
-  Truck,
   Users,
   X,
   LogOut,
@@ -257,9 +252,6 @@ export function AdminMobileMenu({ pathname }: Props) {
       ...(role === 'MANAGER' || role === 'ACCOUNTING'
         ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }]
         : []),
-      ...(role === 'ACCOUNTING'
-        ? [{ href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }, { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (p: string) => p.startsWith('/dashboard/corporate/office-supplies') }]
-        : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
       ...(role === 'ACCOUNTING'
@@ -281,7 +273,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/updates', label: 'Updates', icon: Megaphone, badge: updatesCount },
     ]
     const withCorporate =
-      role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER'
+      role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
         ? [
             ...base,
             {
