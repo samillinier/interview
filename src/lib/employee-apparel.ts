@@ -32,9 +32,9 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
     sku: 'K540',
     price: 30.68,
     description: [
-      'We took our legendary Silk Touch Polo and made it work even harder. The durable, easy care Silk Touch Performance Polo wicks moisture, resists snags and thanks to PosiCharge technology, holds onto its color for a professional look that lasts.',
-      '4-ounce, 100% polyester double knit with PosiCharge technology; White is 4.3-ounce for increased coverage',
-      'Self-fabric collar · Tag-free label · 3-button placket with dyed-to-match buttons · Open hem sleeves',
+      'Moisture-wicking, snag-resistant performance polo with PosiCharge color protection.',
+      '4-ounce, 100% polyester double knit',
+      'Self-fabric collar · Tag-free label · 3-button placket · Open hem sleeves',
     ],
     image: `${IMG_BASE}/ce19147146c3e033e95976c0fc1333fb8e96b2a9`,
     colors: [
@@ -59,10 +59,9 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
     sku: 'S508',
     price: 41.09,
     description: [
-      'This comfortable wash-and-wear shirt is indispensable for the workday. Wrinkle resistance makes this shirt a cut above the competition so you and your staff can be, too.',
+      'Wash-and-wear wrinkle-resistant shirt built for the workday.',
       '4.5-ounce, 55/45 cotton/poly',
       'Button-down collar · Dyed-to-match buttons · Left chest pocket · Back box pleat',
-      'Contrast neckbands in Light Stone, Classic Navy, or Navy depending on color',
     ],
     image: `${IMG_BASE}/ac4e27e0d72feaf78b158c243d9fc2f62acf5c49`,
     colors: [
