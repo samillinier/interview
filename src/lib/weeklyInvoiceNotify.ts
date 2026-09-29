@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { companyDisplayName, publicAppUrl } from '@/lib/publicAppUrl'
 import { emailLogoUrl } from '@/lib/email-brand'
 import type { WeeklyReportLine } from '@/lib/weeklyReport'
+import prisma from '@/lib/db'
 
 export const WEEKLY_INVOICE_NOTIFY_EMAIL = 'accountant@fiscorponline.com'
 
@@ -150,15 +151,32 @@ ${profileUrl}
 </html>
 `
 
+  // Resolve recipients: configured recipients for "invoice" -> default accountant
+  let recipients: string[] = []
+  try {
+    const rows = await prisma.corporateNotificationRecipient.findMany({
+      where: { kind: 'invoice', isActive: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    recipients = rows.map((r) => r.email).filter(Boolean)
+  } catch (err) {
+    console.error('Failed to load invoice notification recipients:', err)
+  }
+  if (recipients.length === 0) recipients = [WEEKLY_INVOICE_NOTIFY_EMAIL]
+
   try {
     const resend = new Resend(resendApiKey)
-    await resend.emails.send({
-      from: `${fromName} <${fromEmail}>`,
-      to: WEEKLY_INVOICE_NOTIFY_EMAIL,
-      subject,
-      html,
-      text,
-    })
+    await Promise.all(
+      recipients.map((to) =>
+        resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
+          to,
+          subject,
+          html,
+          text,
+        }),
+      ),
+    )
     return true
   } catch (err) {
     console.error('Failed to send weekly invoice email to accounting:', err)
