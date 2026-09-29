@@ -29,6 +29,7 @@ import {
   Receipt,
   Settings,
   ShieldAlert,
+  ShoppingCart,
   StickyNote,
   Truck,
   Users,
@@ -90,6 +91,7 @@ export function AdminSidebar({ pathname }: Props) {
   const [pendingPadTransferCount, setPendingPadTransferCount] = useState(0)
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
+  const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState(0)
   const [invoiceCount, setInvoiceCount] = useState(0)
 
   useEffect(() => {
@@ -165,7 +167,7 @@ export function AdminSidebar({ pathname }: Props) {
     let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes, officeSuppliesRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
@@ -173,6 +175,7 @@ export function AdminSidebar({ pathname }: Props) {
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
           fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
+          fetch('/api/office-supplies?action=count', { cache: 'no-store' }),
         ])
 
         if (cancelled) return
@@ -218,6 +221,12 @@ export function AdminSidebar({ pathname }: Props) {
           const count = Number(data?.count ?? 0)
           if (Number.isFinite(count)) setPendingTravelRequestCount(count)
         }
+
+        if (officeSuppliesRes.ok) {
+          const data = await officeSuppliesRes.json().catch(() => null)
+          const count = Number(data?.count ?? 0)
+          if (Number.isFinite(count)) setPendingOfficeSuppliesCount(count)
+        }
       } catch {
         // Badges are helpful, but navigation should still render if a count fails.
       }
@@ -258,6 +267,7 @@ export function AdminSidebar({ pathname }: Props) {
             { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
             { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
             { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
+            { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
@@ -309,7 +319,7 @@ export function AdminSidebar({ pathname }: Props) {
     }
     if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN') {
       const corporatePendingTotal =
-        pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + invoiceCount
+        pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + invoiceCount
       portalNav.push({
         href: '/dashboard/corporate',
         label: 'Corporate',
@@ -322,7 +332,7 @@ export function AdminSidebar({ pathname }: Props) {
     if (portalNav.length === 0) return filtered
 
     return [...filtered, ...portalNav]
-  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, invoiceCount])
+  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, pendingOfficeSuppliesCount, invoiceCount])
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 

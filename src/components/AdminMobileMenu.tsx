@@ -17,6 +17,7 @@ import {
   Plane,
   Settings,
   ShieldAlert,
+  ShoppingCart,
   StickyNote,
   Truck,
   Users,
@@ -48,6 +49,7 @@ export function AdminMobileMenu({ pathname }: Props) {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
   const [updatesCount, setUpdatesCount] = useState<number>(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState<number>(0)
+  const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState<number>(0)
   const [invoiceCount, setInvoiceCount] = useState<number>(0)
 
   const isDetailPage =
@@ -182,6 +184,27 @@ export function AdminMobileMenu({ pathname }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    const loadOfficeSuppliesCount = async () => {
+      try {
+        const res = await fetch('/api/office-supplies?action=count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        const count = Number(data?.count ?? 0)
+        if (!cancelled && Number.isFinite(count)) setPendingOfficeSuppliesCount(count)
+      } catch {
+        // ignore
+      }
+    }
+    loadOfficeSuppliesCount()
+    const interval = setInterval(loadOfficeSuppliesCount, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
     const loadUpdatesCount = async () => {
       try {
         const res = await fetch('/api/admin/updates/count', { cache: 'no-store' })
@@ -232,7 +255,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
       { href: '/dashboard/contact', label: 'Contact', icon: Contact, match: (p: string) => p === '/dashboard/contact' },
       ...(role === 'MANAGER' || role === 'ACCOUNTING'
-        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }]
+        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }, { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') }, { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') }, { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') }, { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') }, { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (p: string) => p.startsWith('/dashboard/corporate/office-supplies') }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
@@ -298,7 +321,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       },
     ] as typeof base
     return withPropertyPortal
-  }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingTravelRequestCount, invoiceCount, session?.user])
+  }, [pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingTravelRequestCount, pendingOfficeSuppliesCount, invoiceCount, session?.user])
 
   const isActive = (href: string, match?: (p: string) => boolean) => {
     if (match) return match(pathname)

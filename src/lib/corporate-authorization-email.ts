@@ -17,7 +17,7 @@ function authorizerName(email: string) {
   return 'there'
 }
 
-export type CorporateAuthKind = 'bol' | 'pad-transfer' | 'inventory-cycle' | 'travel-request'
+export type CorporateAuthKind = 'bol' | 'pad-transfer' | 'inventory-cycle' | 'travel-request' | 'office-supplies'
 
 const KIND_META: Record<
   CorporateAuthKind,
@@ -42,6 +42,11 @@ const KIND_META: Record<
     label: 'Travel Request',
     path: '/dashboard/corporate/travel-request',
     subject: 'A Travel Request needs your authorization',
+  },
+  'office-supplies': {
+    label: 'Office Supplies Order',
+    path: '/dashboard/corporate/office-supplies',
+    subject: 'An Office Supplies Order needs your authorization',
   },
 }
 
