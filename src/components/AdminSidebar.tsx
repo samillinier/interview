@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
-  ArrowLeftRight,
   BarChart3,
   Bell,
   Briefcase,
@@ -21,23 +20,15 @@ import {
   LogOut,
   Megaphone,
   MessageSquare,
-  Package,
   PhoneCall,
   PanelLeftClose,
   PanelLeftOpen,
-  Plane,
   Radar,
-  Receipt,
   Settings,
   ShieldAlert,
-  Shirt,
-  ShoppingBag,
-  ShoppingCart,
   StickyNote,
-  Truck,
   Users,
 } from 'lucide-react'
-import { canAccessInvoices } from '@/lib/invoiceAccess'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
 
@@ -316,26 +307,6 @@ export function AdminSidebar({ pathname }: Props) {
         icon: FileText,
         badge: corporatePendingTotal,
         match: (path) => path.startsWith('/dashboard/corporate'),
-      }
-      if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
-        corporateItem.children = [
-          { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, badge: pendingBolCount, match: (path: string) => path.startsWith('/dashboard/corporate/bol') },
-          { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, badge: pendingPadTransferCount, match: (path: string) => path.startsWith('/dashboard/corporate/pad-transfer') },
-          { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
-          { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
-          { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
-          { href: '/dashboard/corporate/purchase-request', label: 'Purchase Request', icon: ShoppingBag, match: (path: string) => path.startsWith('/dashboard/corporate/purchase-request') },
-          { href: '/dashboard/corporate/employee-apparel', label: 'Employee Apparel', icon: Shirt, match: (path: string) => path.startsWith('/dashboard/corporate/employee-apparel') },
-        ]
-        if (canAccessInvoices(normalizedRole)) {
-          corporateItem.children.push({
-            href: '/dashboard/corporate/invoice',
-            label: 'Invoice',
-            icon: Receipt,
-            badge: invoiceCount,
-            match: (path: string) => path.startsWith('/dashboard/corporate/invoice'),
-          })
-        }
       }
       portalNav.push(corporateItem)
     }

@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
-  ArrowLeftRight,
   BarChart3,
   Bell,
   Building2,
@@ -14,15 +13,9 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
-  Package,
-  Plane,
   Settings,
   ShieldAlert,
-  Shirt,
-  ShoppingBag,
-  ShoppingCart,
   StickyNote,
-  Truck,
   Users,
   X,
   LogOut,
@@ -34,9 +27,7 @@ import {
   PhoneCall,
   Megaphone,
   Radar,
-  Receipt,
 } from 'lucide-react'
-import { canAccessInvoices } from '@/lib/invoiceAccess'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { SessionUserAvatar } from '@/components/SessionUserAvatar'
@@ -288,27 +279,6 @@ export function AdminMobileMenu({ pathname }: Props) {
       match: (p: string) => p.startsWith('/dashboard/corporate'),
       children: [],
     }
-    if (role === 'MANAGER' || role === 'ACCOUNTING') {
-      corporateItem.children = [
-        { href: '/dashboard/corporate/bol', label: 'BOL', icon: Truck, match: (p: string) => p.startsWith('/dashboard/corporate/bol') },
-        { href: '/dashboard/corporate/pad-transfer', label: 'Pad Transfer', icon: ArrowLeftRight, match: (p: string) => p.startsWith('/dashboard/corporate/pad-transfer') },
-        { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') },
-        { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') },
-        { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (p: string) => p.startsWith('/dashboard/corporate/office-supplies') },
-        { href: '/dashboard/corporate/purchase-request', label: 'Purchase Request', icon: ShoppingBag, match: (p: string) => p.startsWith('/dashboard/corporate/purchase-request') },
-        { href: '/dashboard/corporate/employee-apparel', label: 'Employee Apparel', icon: Shirt, match: (p: string) => p.startsWith('/dashboard/corporate/employee-apparel') },
-      ]
-      if (canAccessInvoices(role)) {
-        corporateItem.children.push({
-          href: '/dashboard/corporate/invoice',
-          label: 'Invoice',
-          icon: Receipt,
-          badge: invoiceCount,
-          match: (p: string) => p.startsWith('/dashboard/corporate/invoice'),
-        })
-      }
-    }
-
     const withCorporate =
       role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
         ? [...base, corporateItem]
