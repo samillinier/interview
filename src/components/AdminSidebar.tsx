@@ -30,6 +30,7 @@ import {
   Receipt,
   Settings,
   ShieldAlert,
+  ShoppingBag,
   ShoppingCart,
   StickyNote,
   Truck,
@@ -322,6 +323,7 @@ export function AdminSidebar({ pathname }: Props) {
           { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, badge: pendingInventoryCycleCount, match: (path: string) => path.startsWith('/dashboard/corporate/inventory-cycle') },
           { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
           { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
+          { href: '/dashboard/corporate/purchase-request', label: 'Purchase Request', icon: ShoppingBag, match: (path: string) => path.startsWith('/dashboard/corporate/purchase-request') },
         ]
         if (canAccessInvoices(normalizedRole)) {
           corporateItem.children.push({

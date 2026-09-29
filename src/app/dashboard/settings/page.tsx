@@ -136,6 +136,7 @@ export default function SettingsPage() {
     { slug: 'inventory-cycle', label: 'Inventory Cycle' },
     { slug: 'travel-request', label: 'Travel Request' },
     { slug: 'office-supplies', label: 'Office Supplies' },
+    { slug: 'purchase-request', label: 'Purchase Request' },
     { slug: 'invoice', label: 'Invoice' },
     { slug: 'btr', label: 'BTR' },
     { slug: 'firm-lead', label: 'Firm Lead' },

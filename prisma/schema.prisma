@@ -1129,6 +1129,34 @@ model OfficeSupplyOrder {
   @@index([createdByEmail])
 }
 
+model PurchaseRequest {
+  id                 String    @id @default(cuid())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  dateRequested      DateTime
+  priority           String?
+  itemName           String
+  itemDescription    String?
+  reason             String?
+  priceRange         String?
+  neededByDate       DateTime?
+  purchaseMethod     String    @default("corporate")
+  purchaseMethodNote String?
+
+  status             String    @default("pending")
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  createdByEmail     String?
+  createdByName      String?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([dateRequested])
+  @@index([createdByEmail])
+}
+
 model Vehicle {
   id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())

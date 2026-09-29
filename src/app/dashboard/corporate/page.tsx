@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart, ShoppingBag } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -69,6 +69,14 @@ const corporateGroups = [
         icon: ShoppingCart,
         cta: 'Office Supplies',
         highlights: ['Office', 'Break room', 'Bath'],
+      },
+      {
+        title: 'Purchase Request',
+        description: 'Request the purchase of an item or equipment — specify the item, reason, price range, and who will buy it.',
+        href: '/dashboard/corporate/purchase-request',
+        icon: ShoppingBag,
+        cta: 'Purchase Request',
+        highlights: ['Item details', 'Priority & deadline', 'Purchase method'],
       },
       {
         title: 'Invoice',
@@ -178,6 +186,7 @@ export default function CorporatePage() {
     '/dashboard/corporate/inventory-cycle',
     '/dashboard/corporate/travel-request',
     '/dashboard/corporate/office-supplies',
+    '/dashboard/corporate/purchase-request',
     '/dashboard/corporate/invoice',
   ]
 

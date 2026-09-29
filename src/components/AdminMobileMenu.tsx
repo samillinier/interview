@@ -18,6 +18,7 @@ import {
   Plane,
   Settings,
   ShieldAlert,
+  ShoppingBag,
   ShoppingCart,
   StickyNote,
   Truck,
@@ -293,6 +294,7 @@ export function AdminMobileMenu({ pathname }: Props) {
         { href: '/dashboard/corporate/inventory-cycle', label: 'Inventory Cycle', icon: Package, match: (p: string) => p.startsWith('/dashboard/corporate/inventory-cycle') },
         { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (p: string) => p.startsWith('/dashboard/corporate/travel-request') },
         { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (p: string) => p.startsWith('/dashboard/corporate/office-supplies') },
+        { href: '/dashboard/corporate/purchase-request', label: 'Purchase Request', icon: ShoppingBag, match: (p: string) => p.startsWith('/dashboard/corporate/purchase-request') },
       ]
       if (canAccessInvoices(role)) {
         corporateItem.children.push({

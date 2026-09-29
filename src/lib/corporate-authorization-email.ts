@@ -56,6 +56,11 @@ const KIND_META: Record<CorporateCommunicationKind, KindMeta> = {
     path: '/dashboard/corporate/office-supplies',
     subject: 'An Office Supplies Order needs your authorization',
   },
+  'purchase-request': {
+    label: 'Purchase Request',
+    path: '/dashboard/corporate/purchase-request',
+    subject: 'A Purchase Request needs your attention',
+  },
   invoice: {
     label: 'Invoice',
     path: '/dashboard/corporate/invoice',
