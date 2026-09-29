@@ -137,6 +137,7 @@ export default function SettingsPage() {
     { slug: 'travel-request', label: 'Travel Request' },
     { slug: 'office-supplies', label: 'Office Supplies' },
     { slug: 'purchase-request', label: 'Purchase Request' },
+    { slug: 'employee-apparel', label: 'Employee Apparel' },
     { slug: 'invoice', label: 'Invoice' },
     { slug: 'btr', label: 'BTR' },
     { slug: 'firm-lead', label: 'Firm Lead' },

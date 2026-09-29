@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart, ShoppingBag } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -77,6 +77,14 @@ const corporateGroups = [
         icon: ShoppingBag,
         cta: 'Purchase Request',
         highlights: ['Item details', 'Priority & deadline', 'Purchase method'],
+      },
+      {
+        title: 'Employee Apparel',
+        description: 'Order company-branded apparel — choose your color, size, and quantity from the employee apparel catalog.',
+        href: '/dashboard/corporate/employee-apparel',
+        icon: Shirt,
+        cta: 'Employee Apparel',
+        highlights: ['Branded polos', 'Color & size', 'Price incl. decoration'],
       },
       {
         title: 'Invoice',
@@ -187,6 +195,7 @@ export default function CorporatePage() {
     '/dashboard/corporate/travel-request',
     '/dashboard/corporate/office-supplies',
     '/dashboard/corporate/purchase-request',
+    '/dashboard/corporate/employee-apparel',
     '/dashboard/corporate/invoice',
   ]
 

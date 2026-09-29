@@ -1158,6 +1158,30 @@ model PurchaseRequest {
   @@index([createdByEmail])
 }
 
+model ApparelOrder {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  orderDate      DateTime
+  workroom       String
+  employeeName   String?
+  items          Json
+  notes          String?
+
+  status         String    @default("pending")
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdByEmail String?
+  createdByName  String?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([workroom])
+  @@index([createdByEmail])
+}
+
 model Vehicle {
   id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())

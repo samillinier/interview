@@ -30,6 +30,7 @@ import {
   Receipt,
   Settings,
   ShieldAlert,
+  Shirt,
   ShoppingBag,
   ShoppingCart,
   StickyNote,
@@ -324,6 +325,7 @@ export function AdminSidebar({ pathname }: Props) {
           { href: '/dashboard/corporate/travel-request', label: 'Travel Request', icon: Plane, badge: pendingTravelRequestCount, match: (path: string) => path.startsWith('/dashboard/corporate/travel-request') },
           { href: '/dashboard/corporate/office-supplies', label: 'Office Supplies', icon: ShoppingCart, badge: pendingOfficeSuppliesCount, match: (path: string) => path.startsWith('/dashboard/corporate/office-supplies') },
           { href: '/dashboard/corporate/purchase-request', label: 'Purchase Request', icon: ShoppingBag, match: (path: string) => path.startsWith('/dashboard/corporate/purchase-request') },
+          { href: '/dashboard/corporate/employee-apparel', label: 'Employee Apparel', icon: Shirt, match: (path: string) => path.startsWith('/dashboard/corporate/employee-apparel') },
         ]
         if (canAccessInvoices(normalizedRole)) {
           corporateItem.children.push({

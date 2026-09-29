@@ -9,6 +9,7 @@ export type CorporateCommunicationKind =
   | 'travel-request'
   | 'office-supplies'
   | 'purchase-request'
+  | 'employee-apparel'
   | 'invoice'
   | 'btr'
   | 'firm-lead'
@@ -31,6 +32,7 @@ export const CORPORATE_COMMUNICATION_KINDS: CorporateCommunicationKindDef[] = [
   { slug: 'travel-request', label: 'Travel Request', description: 'Employee business travel requests', path: '/dashboard/corporate/travel-request' },
   { slug: 'office-supplies', label: 'Office Supplies', description: 'Office, break room, and bath supply orders', path: '/dashboard/corporate/office-supplies' },
   { slug: 'purchase-request', label: 'Purchase Request', description: 'Requests to purchase items or equipment', path: '/dashboard/corporate/purchase-request' },
+  { slug: 'employee-apparel', label: 'Employee Apparel', description: 'Company-branded apparel orders', path: '/dashboard/corporate/employee-apparel' },
   { slug: 'invoice', label: 'Invoice', description: 'Weekly invoices submitted by estimators', path: '/dashboard/corporate/invoice' },
   { slug: 'btr', label: 'BTR', description: 'Business Tax Receipt records', path: '/dashboard/corporate/btr' },
   { slug: 'firm-lead', label: 'Firm Lead', description: 'Firm lead records', path: '/dashboard/corporate/firm-lead' },
