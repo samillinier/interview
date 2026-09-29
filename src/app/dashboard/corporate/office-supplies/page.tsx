@@ -460,7 +460,7 @@ export default function OfficeSuppliesPage() {
                                 <div key={item.key} className={`rounded-xl border p-4 transition-colors ${qty > 0 ? 'border-brand-green/40 bg-brand-green/5' : 'border-slate-200 bg-slate-50/40'}`}>
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="flex min-w-0 gap-3">
-                                      <ItemThumb src={item.imageUrl} icon={SECTION_ICONS[section.key] || Package} alt={item.name} href={item.productUrl} />
+                                      <ItemThumb src={item.imageUrl} icon={SECTION_ICONS[section.key] || Package} alt={item.name} />
                                       <div className="min-w-0">
                                         <p className="text-sm font-semibold text-slate-800 leading-snug">{item.name}</p>
                                         <p className="mt-1 text-sm font-bold text-brand-green">{formatCurrency(item.price)} <span className="text-slate-400 font-normal">each</span></p>
@@ -688,7 +688,7 @@ export default function OfficeSuppliesPage() {
                                               <tr key={i.key} className="border-t border-slate-50">
                                                 <td className="py-2">
                                                   <div className="flex items-center gap-2.5">
-                                                    <ItemThumb src={i.imageUrl} icon={Package} alt={i.name} size="sm" href={i.productUrl} />
+                                                    <ItemThumb src={i.imageUrl} icon={Package} alt={i.name} size="sm" />
                                                     <span className="text-slate-700">{i.name}</span>
                                                   </div>
                                                 </td>
