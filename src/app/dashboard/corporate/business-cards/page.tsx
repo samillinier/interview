@@ -223,7 +223,6 @@ export default function BusinessCardsPage() {
       'Business Phone': o.businessPhone || '-',
       'Job Title': o.jobTitle || '-',
       'Email': o.emailAddress || '-',
-      'Quantity': o.quantity,
       'Email Receipt': o.sendEmailReceipt ? 'Yes' : 'No',
       'Status': statusMeta[o.status]?.label || o.status,
       'Created By': o.createdByName || o.createdByEmail || '-',
@@ -285,9 +284,6 @@ export default function BusinessCardsPage() {
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
                       <Clock className="w-3.5 h-3.5" />{analytics.pending} pending
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-                      <CreditCard className="w-3.5 h-3.5" />500 per order
-                    </span>
                   </div>
                 </div>
                 <button onClick={() => setShowForm(true)}
@@ -347,7 +343,7 @@ export default function BusinessCardsPage() {
                   <div className="p-6 space-y-6">
                     <div className="rounded-2xl border border-brand-green/20 bg-brand-green/5 p-4">
                       <p className="text-sm font-semibold text-brand-green">Card Information</p>
-                      <p className="text-xs text-slate-500 mt-1">Fill out the information below ensuring its accuracy. Information will be copied and pasted directly to the vendor order form. Business Cards are ordered in quantities of 500.</p>
+                      <p className="text-xs text-slate-500 mt-1">Fill out the information below ensuring its accuracy. Information will be copied and pasted directly to the vendor order form.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -660,15 +656,6 @@ export default function BusinessCardsPage() {
                         <div>
                           <p className="text-xs font-semibold text-slate-400 uppercase">Location</p>
                           <p className="text-sm font-semibold text-slate-800">{o.workroom}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 flex-shrink-0">
-                          <CreditCard className="h-4 w-4 text-brand-green" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400 uppercase">Quantity</p>
-                          <p className="text-sm font-semibold text-slate-800">{o.quantity}</p>
                         </div>
                       </div>
                     </div>
