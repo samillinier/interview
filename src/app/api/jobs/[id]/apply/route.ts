@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { notifyJobApplication } from '@/lib/jobApplicationNotify'
 
 // Apply to a job (installer)
 export async function POST(
@@ -96,6 +97,24 @@ export async function POST(
             email: true,
           },
         },
+      },
+    })
+
+    // Notify the configured recipients (with the installer's floor type)
+    await notifyJobApplication({
+      job: {
+        id: jobId,
+        title: job.title,
+        location: job.location,
+        jobType: job.jobType || null,
+      },
+      installer: {
+        firstName: installer.firstName,
+        lastName: installer.lastName,
+        email: installer.email,
+        phone: installer.phone,
+        primaryFlooringSurface: (installer as any).primaryFlooringSurface || null,
+        flooringSkills: (installer as any).flooringSkills || null,
       },
     })
 
