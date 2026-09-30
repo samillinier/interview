@@ -552,7 +552,7 @@ export default function EmployeeApparelPage() {
                       animate={{ scale: 1, y: 0, opacity: 1 }}
                       exit={{ scale: 0.95, y: 12, opacity: 0 }}
                       transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                      className="relative z-10 w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
+                      className="relative z-10 w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -564,7 +564,7 @@ export default function EmployeeApparelPage() {
                         <X className="h-5 w-5" />
                       </button>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,580px)_1fr] items-center gap-8 p-6 sm:p-10">
+                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,640px)_1fr] items-center gap-10 p-6 sm:p-12">
                         {/* Image + swatches */}
                         <div>
                           <button
@@ -577,7 +577,7 @@ export default function EmployeeApparelPage() {
                               src={colorObj?.image || product.image}
                               alt={`${product.name} — ${colorName}`}
                               fill
-                              sizes="(max-width: 1023px) 100vw, 580px"
+                              sizes="(max-width: 1023px) 100vw, 640px"
                               quality={90}
                               className="object-contain p-5 transition-transform duration-200 group-hover:scale-[1.03]"
                             />
