@@ -299,8 +299,10 @@ export function AdminSidebar({ pathname }: Props) {
       })
     }
     if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
-      const corporatePendingTotal =
-        pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + invoiceCount
+      const isManagerOrAccounting = normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
+      const corporatePendingTotal = isManagerOrAccounting
+        ? 0
+        : pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + invoiceCount
       const corporateItem: NavItem = {
         href: '/dashboard/corporate',
         label: 'Corporate',
