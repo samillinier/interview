@@ -45,6 +45,7 @@ import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { FLOORING_SURFACE_OPTIONS } from '@/lib/questions'
 
 interface Admin {
   id: string
@@ -123,10 +124,11 @@ export default function SettingsPage() {
   const [commSaving, setCommSaving] = useState(false)
   const [commError, setCommError] = useState('')
   const [commSuccess, setCommSuccess] = useState('')
-  const [commForm, setCommForm] = useState<{ kind: string; email: string; name: string }>({
+  const [commForm, setCommForm] = useState<{ kind: string; email: string; name: string; floorType: string }>({
     kind: 'bol',
     email: '',
     name: '',
+    floorType: '',
   })
   const [commDeleting, setCommDeleting] = useState<{ [key: string]: boolean }>({})
 
@@ -180,7 +182,7 @@ export default function SettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to add recipient')
-      setCommForm({ ...commForm, email: '', name: '' })
+      setCommForm({ ...commForm, email: '', name: '', floorType: '' })
       setCommSuccess('Recipient added')
       await loadCommunicationRecipients()
     } catch (e: any) {
@@ -958,7 +960,7 @@ export default function SettingsPage() {
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Request type</label>
                 <select
                   value={commForm.kind}
-                  onChange={(e) => setCommForm((c) => ({ ...c, kind: e.target.value }))}
+                  onChange={(e) => setCommForm((c) => ({ ...c, kind: e.target.value, floorType: '' }))}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 >
                   {communicationKinds.map((k) => (
@@ -988,6 +990,26 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
+            {commForm.kind === 'job-application' && (
+              <div className="mt-4">
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Floor type
+                </label>
+                <select
+                  value={commForm.floorType}
+                  onChange={(e) => setCommForm((c) => ({ ...c, floorType: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                >
+                  <option value="">All floor types</option>
+                  {FLOORING_SURFACE_OPTIONS.map((surface) => (
+                    <option key={surface} value={surface}>{surface}</option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Only receive job applications for this floor type. Leave as "All floor types" to receive every application.
+                </p>
+              </div>
+            )}
             <div className="mt-5 flex justify-end">
               <button
                 type="submit"
@@ -1029,6 +1051,11 @@ export default function SettingsPage() {
                             <span className="text-sm font-medium text-slate-700">
                               {r.name ? `${r.name} · ` : ''}{r.email}
                             </span>
+                            {r.floorType && (
+                              <span className="rounded-full bg-brand-green/10 px-2 py-0.5 text-xs font-bold text-brand-green">
+                                {r.floorType}
+                              </span>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleRemoveCommunicationRecipient(r.id)}

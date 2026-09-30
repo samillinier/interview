@@ -37,6 +37,7 @@ model CorporateNotificationRecipient {
   kind      String
   email     String
   name      String?
+  floorType String?
   isActive  Boolean  @default(true)
 
   @@unique([kind, email])

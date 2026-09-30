@@ -77,13 +77,15 @@ export async function notifyJobApplication(args: JobApplicationArgs): Promise<bo
   const skills = parseSkills(args.installer.flooringSkills)
 
   // Resolve recipients: configured -> default authorizer
-  let recipients: { email: string; name?: string }[] = []
+  let recipients: { email: string; name?: string; floorType?: string | null }[] = []
   try {
     const rows = await prisma.corporateNotificationRecipient.findMany({
       where: { kind: 'job-application', isActive: true },
       orderBy: { createdAt: 'asc' },
     })
-    recipients = rows.map((r) => ({ email: r.email, name: r.name || undefined })).filter((r) => r.email)
+    recipients = rows
+      .map((r) => ({ email: r.email, name: r.name || undefined, floorType: r.floorType }))
+      .filter((r) => r.email)
   } catch (error) {
     console.error('Failed to load job application recipients:', error)
   }
@@ -91,12 +93,14 @@ export async function notifyJobApplication(args: JobApplicationArgs): Promise<bo
     recipients = [{ email: DEFAULT_RECIPIENT.email, name: DEFAULT_RECIPIENT.name }]
   }
 
-  // De-dupe
+  // De-dupe and filter by floor type (only when a specific type is configured)
   const seen = new Set<string>()
   const targets: { email: string; name?: string }[] = []
   for (const r of recipients) {
     const email = r.email.trim().toLowerCase()
     if (!email || seen.has(email)) continue
+    const recipientFloor = String(r.floorType || '').trim()
+    if (recipientFloor && floorType && recipientFloor !== floorType) continue
     seen.add(email)
     targets.push({ email, name: r.name })
   }

@@ -27,6 +27,7 @@ function serialize(row: any) {
     kind: row.kind,
     email: row.email,
     name: row.name || '',
+    floorType: row.floorType || '',
     isActive: Boolean(row.isActive),
     createdAt: row.createdAt,
   }
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
     const kind = typeof body.kind === 'string' ? body.kind.trim() : ''
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const floorType = typeof body.floorType === 'string' ? body.floorType.trim() : ''
 
     if (!kind || !email) {
       return NextResponse.json({ error: 'Kind and email are required' }, { status: 400 })
@@ -69,8 +71,8 @@ export async function POST(request: NextRequest) {
 
     const recipient = await prisma.corporateNotificationRecipient.upsert({
       where: { kind_email: { kind, email } },
-      update: { name: name || null, isActive: true },
-      create: { kind, email, name: name || null },
+      update: { name: name || null, floorType: floorType || null, isActive: true },
+      create: { kind, email, name: name || null, floorType: floorType || null },
     })
 
     return NextResponse.json({ success: true, recipient: serialize(recipient) }, { status: 201 })
