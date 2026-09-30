@@ -124,11 +124,11 @@ export default function SettingsPage() {
   const [commSaving, setCommSaving] = useState(false)
   const [commError, setCommError] = useState('')
   const [commSuccess, setCommSuccess] = useState('')
-  const [commForm, setCommForm] = useState<{ kind: string; email: string; name: string; floorType: string }>({
+  const [commForm, setCommForm] = useState<{ kind: string; email: string; name: string; floorTypes: string[] }>({
     kind: 'bol',
     email: '',
     name: '',
-    floorType: '',
+    floorTypes: [],
   })
   const [commDeleting, setCommDeleting] = useState<{ [key: string]: boolean }>({})
 
@@ -182,7 +182,7 @@ export default function SettingsPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to add recipient')
-      setCommForm({ ...commForm, email: '', name: '', floorType: '' })
+      setCommForm({ ...commForm, email: '', name: '', floorTypes: [] })
       setCommSuccess('Recipient added')
       await loadCommunicationRecipients()
     } catch (e: any) {
@@ -960,7 +960,7 @@ export default function SettingsPage() {
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Request type</label>
                 <select
                   value={commForm.kind}
-                  onChange={(e) => setCommForm((c) => ({ ...c, kind: e.target.value, floorType: '' }))}
+                  onChange={(e) => setCommForm((c) => ({ ...c, kind: e.target.value, floorTypes: [] }))}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 >
                   {communicationKinds.map((k) => (
@@ -993,20 +993,53 @@ export default function SettingsPage() {
             {commForm.kind === 'job-application' && (
               <div className="mt-4">
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Floor type
+                  Floor types
                 </label>
-                <select
-                  value={commForm.floorType}
-                  onChange={(e) => setCommForm((c) => ({ ...c, floorType: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-                >
-                  <option value="">All floor types</option>
-                  {FLOORING_SURFACE_OPTIONS.map((surface) => (
-                    <option key={surface} value={surface}>{surface}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  <label
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                      commForm.floorTypes.length === 0
+                        ? 'border-brand-green bg-brand-green/5'
+                        : 'border-slate-300 hover:border-slate-400'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={commForm.floorTypes.length === 0}
+                      onChange={() => setCommForm((c) => ({ ...c, floorTypes: [] }))}
+                      className="h-4 w-4 accent-brand-green"
+                    />
+                    <span className="text-sm font-medium text-slate-700">All floor types</span>
+                  </label>
+                  {FLOORING_SURFACE_OPTIONS.map((surface) => {
+                    const checked = commForm.floorTypes.includes(surface)
+                    return (
+                      <label
+                        key={surface}
+                        className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                          checked ? 'border-brand-green bg-brand-green/5' : 'border-slate-300 hover:border-slate-400'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setCommForm((c) => ({
+                              ...c,
+                              floorTypes: checked
+                                ? c.floorTypes.filter((s) => s !== surface)
+                                : [...c.floorTypes, surface],
+                            }))
+                          }
+                          className="h-4 w-4 accent-brand-green"
+                        />
+                        <span className="text-sm font-medium text-slate-700">{surface}</span>
+                      </label>
+                    )
+                  })}
+                </div>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Only receive job applications for this floor type. Leave as "All floor types" to receive every application.
+                  Select one or more floor types. Keep "All floor types" selected to receive every application.
                 </p>
               </div>
             )}
@@ -1051,11 +1084,11 @@ export default function SettingsPage() {
                             <span className="text-sm font-medium text-slate-700">
                               {r.name ? `${r.name} · ` : ''}{r.email}
                             </span>
-                            {r.floorType && (
-                              <span className="rounded-full bg-brand-green/10 px-2 py-0.5 text-xs font-bold text-brand-green">
-                                {r.floorType}
+                            {(r.floorTypes || []).map((ft: string) => (
+                              <span key={ft} className="rounded-full bg-brand-green/10 px-2 py-0.5 text-xs font-bold text-brand-green">
+                                {ft}
                               </span>
-                            )}
+                            ))}
                             <button
                               type="button"
                               onClick={() => handleRemoveCommunicationRecipient(r.id)}
