@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -87,6 +87,14 @@ const corporateGroups = [
         highlights: ['Branded polos', 'Color & size', 'Price incl. decoration'],
       },
       {
+        title: 'Business Cards',
+        description: 'Order company business cards — your information is copied directly to the vendor order form.',
+        href: '/dashboard/corporate/business-cards',
+        icon: CreditCard,
+        cta: 'Business Cards',
+        highlights: ['Name & title', 'Phone & email', '500 per order'],
+      },
+      {
         title: 'Invoice',
         description: 'Review weekly invoices submitted by estimators — open by estimator and export to Excel.',
         href: '/dashboard/corporate/invoice',
@@ -125,17 +133,19 @@ export default function CorporatePage() {
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
   const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState(0)
+  const [pendingBusinessCardsCount, setPendingBusinessCardsCount] = useState(0)
   const [invoiceCount, setInvoiceCount] = useState(0)
 
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [bolRes, ptRes, icRes, travelRes, osRes, invoiceRes] = await Promise.all([
+        const [bolRes, ptRes, icRes, travelRes, osRes, bcRes, invoiceRes] = await Promise.all([
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
           fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
           fetch('/api/office-supplies?action=count', { cache: 'no-store' }),
+          fetch('/api/business-cards?action=count', { cache: 'no-store' }),
           canAccessInvoices(normalizedRole)
             ? fetch('/api/admin/invoices/count', { cache: 'no-store' })
             : Promise.resolve(null),
@@ -145,6 +155,7 @@ export default function CorporatePage() {
         if (icRes.ok) { const d = await icRes.json(); setPendingInventoryCycleCount(Number(d?.count ?? 0)) }
         if (travelRes.ok) { const d = await travelRes.json(); setPendingTravelRequestCount(Number(d?.count ?? 0)) }
         if (osRes.ok) { const d = await osRes.json(); setPendingOfficeSuppliesCount(Number(d?.count ?? 0)) }
+        if (bcRes.ok) { const d = await bcRes.json(); setPendingBusinessCardsCount(Number(d?.count ?? 0)) }
         if (invoiceRes && invoiceRes.ok) {
           const d = await invoiceRes.json()
           setInvoiceCount(Number(d?.count ?? 0))
@@ -196,6 +207,7 @@ export default function CorporatePage() {
     '/dashboard/corporate/office-supplies',
     '/dashboard/corporate/purchase-request',
     '/dashboard/corporate/employee-apparel',
+    '/dashboard/corporate/business-cards',
     '/dashboard/corporate/invoice',
   ]
 
@@ -297,6 +309,7 @@ export default function CorporatePage() {
                             (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) ||
                             (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ||
                             (card.title === 'Office Supplies' && pendingOfficeSuppliesCount > 0) ||
+                            (card.title === 'Business Cards' && pendingBusinessCardsCount > 0) ||
                             (card.title === 'Invoice' && invoiceCount > 0) ? (
                               <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
                                 {card.title === 'BOL'
@@ -309,7 +322,9 @@ export default function CorporatePage() {
                                         ? pendingTravelRequestCount
                                         : card.title === 'Office Supplies'
                                           ? pendingOfficeSuppliesCount
-                                          : invoiceCount}
+                                          : card.title === 'Business Cards'
+                                            ? pendingBusinessCardsCount
+                                            : invoiceCount}
                               </span>
                             ) : null}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

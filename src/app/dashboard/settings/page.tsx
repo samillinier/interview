@@ -140,6 +140,7 @@ export default function SettingsPage() {
     { slug: 'office-supplies', label: 'Office Supplies' },
     { slug: 'purchase-request', label: 'Purchase Request' },
     { slug: 'employee-apparel', label: 'Employee Apparel' },
+    { slug: 'business-cards', label: 'Business Cards' },
     { slug: 'job-application', label: 'Job Application' },
     { slug: 'installer-application', label: 'Installer Application' },
     { slug: 'invoice', label: 'Invoice' },

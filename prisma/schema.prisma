@@ -1183,6 +1183,34 @@ model ApparelOrder {
   @@index([createdByEmail])
 }
 
+model BusinessCardOrder {
+  id               String    @id @default(cuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  orderDate        DateTime
+  workroom         String
+  firstName        String
+  lastName         String
+  businessPhone    String?
+  jobTitle         String?
+  emailAddress     String?
+  quantity         Int       @default(500)
+  sendEmailReceipt Boolean   @default(false)
+
+  status           String    @default("pending")
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  reviewNote       String?
+  createdByEmail   String?
+  createdByName    String?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([workroom])
+  @@index([createdByEmail])
+}
+
 model Vehicle {
   id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())

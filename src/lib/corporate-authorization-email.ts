@@ -66,6 +66,11 @@ const KIND_META: Record<CorporateCommunicationKind, KindMeta> = {
     path: '/dashboard/corporate/employee-apparel',
     subject: 'An Employee Apparel Order needs your attention',
   },
+  'business-cards': {
+    label: 'Business Cards Order',
+    path: '/dashboard/corporate/business-cards',
+    subject: 'A Business Cards Order needs your attention',
+  },
   invoice: {
     label: 'Invoice',
     path: '/dashboard/corporate/invoice',
