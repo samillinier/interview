@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
+import { notifyCorporateAuthorizer, notifyRequesterDecision } from '@/lib/corporate-authorization-email'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
 
@@ -143,6 +143,21 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: updateData,
     })
+
+    if (status === 'approved' || status === 'denied') {
+      const itemCount = Array.isArray(order.items) ? order.items.length : 0
+      if (order.createdByEmail) {
+        await notifyRequesterDecision({
+          kind: 'office-supplies',
+          recordId: order.id,
+          to: order.createdByEmail,
+          name: order.createdByName,
+          status,
+          reviewNote,
+          details: `${order.workroom} · ${itemCount} line item${itemCount !== 1 ? 's' : ''}`,
+        })
+      }
+    }
 
     return NextResponse.json({ success: true, order })
   } catch (error: any) {

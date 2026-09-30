@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
+import { notifyCorporateAuthorizer, notifyRequesterDecision } from '@/lib/corporate-authorization-email'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
 
@@ -167,6 +167,20 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: updateData,
     })
+
+    if (status === 'approved' || status === 'denied') {
+      if (travelRequest.createdByEmail) {
+        await notifyRequesterDecision({
+          kind: 'travel-request',
+          recordId: travelRequest.id,
+          to: travelRequest.createdByEmail,
+          name: travelRequest.createdByName,
+          status,
+          reviewNote,
+          details: `${travelRequest.travelerName} · ${travelRequest.chargeWorkroom}`,
+        })
+      }
+    }
 
     return NextResponse.json({ success: true, travelRequest })
   } catch (error: any) {

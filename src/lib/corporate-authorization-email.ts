@@ -258,3 +258,104 @@ export async function notifyCorporateAuthorizer(args: {
     return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
   }
 }
+
+function buildDecisionEmailHtml(args: {
+  kindLabel: string
+  approved: boolean
+  reviewNote: string | null
+  details: string | null
+  recordUrl: string
+  greetingName: string
+}) {
+  const logoImg = emailLogoImg(56)
+  const kind = escapeHtml(args.kindLabel)
+  const url = escapeHtml(args.recordUrl)
+  const details = args.details ? escapeHtml(args.details) : ''
+  const reviewNote = args.reviewNote ? escapeHtml(args.reviewNote) : ''
+  const greetingName = escapeHtml(args.greetingName)
+  const statusColor = args.approved ? '#16a34a' : '#dc2626'
+  const statusLabel = args.approved ? 'Approved' : 'Denied'
+
+  return `
+    <div style="margin:0;padding:0;background:#f6f8f5;font-family:Arial,sans-serif;color:#162015;">
+      <div style="max-width:640px;margin:0 auto;padding:28px 18px;">
+        <div style="background:#ffffff;border:1px solid #e5eadf;border-radius:18px;overflow:hidden;">
+          <div style="padding:20px 28px;border-bottom:1px solid #edf2e8;background:#ffffff;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;padding:0;">${logoImg}</td>
+                <td style="vertical-align:middle;padding:0 0 0 12px;font-size:16px;font-weight:700;color:#162015;">Floor Interior Services</td>
+              </tr>
+            </table>
+          </div>
+          <div style="padding:28px;font-size:15px;line-height:1.7;color:#24301f;">
+            <p style="margin:0 0 16px;">Hello ${greetingName},</p>
+            <p style="margin:0 0 16px;">Your <strong>${kind}</strong> request has been reviewed.</p>
+            <div style="display:inline-block;background:${statusColor};color:#ffffff;font-weight:700;padding:8px 18px;border-radius:999px;font-size:16px;margin:0 0 18px;">${statusLabel}</div>
+            ${details ? `<p style="margin:0 0 8px;">${details}</p>` : ''}
+            ${reviewNote ? `<p style="margin:0 0 18px;"><strong>Reviewer note:</strong> ${reviewNote}</p>` : ''}
+            <p style="margin:0 0 22px;">Use the link below to view your request.</p>
+            <a href="${url}" style="display:inline-block;background:#8bbf3d;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:12px;">View ${kind}</a>
+            <p style="margin:22px 0 0;font-size:12px;color:#8a9585;word-break:break-all;">${url}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+/** Notify the submitter that their corporate request was approved or denied. */
+export async function notifyRequesterDecision(args: {
+  kind: CorporateAuthKind
+  recordId: string
+  to: string
+  name?: string | null
+  status: 'approved' | 'denied'
+  reviewNote?: string | null
+  details?: string | null
+}) {
+  const resendApiKey = process.env.RESEND_API_KEY
+  if (!resendApiKey) {
+    console.warn('RESEND_API_KEY not configured - requester decision email not sent')
+    return { ok: false as const, error: 'RESEND_API_KEY not configured' }
+  }
+
+  const email = String(args.to || '').trim().toLowerCase()
+  if (!email) return { ok: false as const, error: 'No recipient email' }
+
+  const meta = KIND_META[args.kind] || {
+    label: getCorporateCommunicationKind(args.kind)?.label || args.kind,
+    path: getCorporateCommunicationKind(args.kind)?.path || '/dashboard/corporate',
+    subject: `${getCorporateCommunicationKind(args.kind)?.label || args.kind}`,
+  }
+
+  const approved = args.status === 'approved'
+  const subject = `Your ${meta.label} was ${approved ? 'Approved' : 'Denied'}`
+  const recordUrl = `${authorizeBaseUrl()}${meta.path}?id=${encodeURIComponent(args.recordId)}`
+
+  try {
+    const resend = new Resend(resendApiKey)
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+    const result = await resend.emails.send({
+      from: `${companyDisplayName()} <${fromEmail}>`,
+      to: email,
+      subject,
+      html: buildDecisionEmailHtml({
+        kindLabel: meta.label,
+        approved,
+        reviewNote: args.reviewNote || null,
+        details: args.details || null,
+        recordUrl,
+        greetingName: greetingName(email, args.name),
+      }),
+    })
+    if (result.error) {
+      console.error('Requester decision email failed:', result.error)
+      return { ok: false as const, error: result.error.message }
+    }
+    return { ok: true as const, id: result.data?.id || null }
+  } catch (error) {
+    console.error('Requester decision email failed:', error)
+    return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+  }
+}

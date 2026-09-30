@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
 import { emailLogoUrl } from '@/lib/email-brand'
-import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
+import { notifyCorporateAuthorizer, notifyRequesterDecision } from '@/lib/corporate-authorization-email'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
 
@@ -268,6 +268,21 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: updateData,
     })
+
+    if (status === 'approved' || status === 'denied') {
+      const recipient = order.createdByEmail || order.emailAddress
+      if (recipient) {
+        await notifyRequesterDecision({
+          kind: 'business-cards',
+          recordId: order.id,
+          to: recipient,
+          name: order.createdByName,
+          status,
+          reviewNote,
+          details: `${order.firstName} ${order.lastName} · ${order.workroom}`,
+        })
+      }
+    }
 
     return NextResponse.json({ success: true, order })
   } catch (error: any) {
