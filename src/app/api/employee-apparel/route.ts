@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       submittedByEmail: user.email,
       submittedByName: user.name,
       details: `${String(workroom).trim()} · ${items.length} item${items.length !== 1 ? 's' : ''}`,
+      includeSubmitter: true,
     })
 
     return NextResponse.json({ success: true, order })

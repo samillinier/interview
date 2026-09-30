@@ -170,6 +170,7 @@ export async function notifyCorporateAuthorizer(args: {
   details?: string | null
   to?: string
   sample?: boolean
+  includeSubmitter?: boolean
 }) {
   const resendApiKey = process.env.RESEND_API_KEY
   if (!resendApiKey) {
@@ -212,7 +213,7 @@ export async function notifyCorporateAuthorizer(args: {
   for (const r of recipients) {
     const email = r.email.trim().toLowerCase()
     if (!email || seen.has(email)) continue
-    if (!args.to && email === creator) continue
+    if (!args.to && !args.includeSubmitter && email === creator) continue
     seen.add(email)
     targets.push({ email, name: r.name })
   }
