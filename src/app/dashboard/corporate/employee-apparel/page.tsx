@@ -564,7 +564,7 @@ export default function EmployeeApparelPage() {
                         <X className="h-5 w-5" />
                       </button>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,520px)_1fr] gap-8 p-6 sm:p-10">
+                      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,580px)_1fr] items-center gap-8 p-6 sm:p-10">
                         {/* Image + swatches */}
                         <div>
                           <button
@@ -577,7 +577,7 @@ export default function EmployeeApparelPage() {
                               src={colorObj?.image || product.image}
                               alt={`${product.name} — ${colorName}`}
                               fill
-                              sizes="(max-width: 1023px) 100vw, 440px"
+                              sizes="(max-width: 1023px) 100vw, 580px"
                               quality={90}
                               className="object-contain p-5 transition-transform duration-200 group-hover:scale-[1.03]"
                             />
@@ -611,7 +611,7 @@ export default function EmployeeApparelPage() {
                         </div>
 
                         {/* Details */}
-                        <div className="flex flex-col">
+                        <div className="flex flex-col justify-center">
                           <h3 className="pr-10 text-2xl font-black text-slate-900">{product.name}</h3>
                           <p className="mt-2 text-3xl font-black text-brand-green">
                             {formatCurrency(product.price)}
