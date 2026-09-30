@@ -121,6 +121,7 @@ export default function CorporatePage() {
   const { sidebarOpen } = useSidebarOpen()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase() as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | ''
   const isSuperAdmin = normalizedRole === 'SUPER_ADMIN'
+  const showPendingBadges = !['MANAGER', 'ACCOUNTING'].includes(normalizedRole)
   const canAccess =
     normalizedRole === 'ADMIN' ||
     normalizedRole === 'MANAGER' ||
@@ -304,13 +305,13 @@ export default function CorporatePage() {
 
                           <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
                             {card.cta}
-                            {(card.title === 'BOL' && pendingBolCount > 0) ||
+                            {showPendingBadges && ((card.title === 'BOL' && pendingBolCount > 0) ||
                             (card.title === 'Pad Transfer' && pendingPadTransferCount > 0) ||
                             (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) ||
                             (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ||
                             (card.title === 'Office Supplies' && pendingOfficeSuppliesCount > 0) ||
                             (card.title === 'Business Cards' && pendingBusinessCardsCount > 0) ||
-                            (card.title === 'Invoice' && invoiceCount > 0) ? (
+                            (card.title === 'Invoice' && invoiceCount > 0)) ? (
                               <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
                                 {card.title === 'BOL'
                                   ? pendingBolCount
