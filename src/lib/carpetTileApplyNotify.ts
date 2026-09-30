@@ -3,9 +3,19 @@ import prisma from '@/lib/db'
 import { companyDisplayName } from '@/lib/publicAppUrl'
 import { emailLogoUrl } from '@/lib/email-brand'
 
-/** Angela Medellin — notify when carpet / tile installers apply. */
+/** Default recipient when no "installer-application" recipients are configured. */
 export const CARPET_TILE_NOTIFY_EMAIL = 'amunoz@fiscorponline.com'
 export const CARPET_TILE_NOTIFY_NAME = 'Angela Medellin'
+
+const INSTALLER_APPLICATION_KIND = 'installer-application'
+
+function greetingName(email: string, name?: string | null) {
+  const trimmedName = String(name || '').trim()
+  if (trimmedName) return trimmedName.split(' ')[0]
+  const local = String(email.split('@')[0] || '').trim()
+  if (local) return local.charAt(0).toUpperCase() + local.slice(1)
+  return 'there'
+}
 
 const CARPET_PATTERNS = [/carpet/i]
 const TILE_PATTERNS = [
@@ -113,7 +123,7 @@ export async function notifyAngelaOfCarpetTileApplicant(installer: NotifyInstall
   const resend = new Resend(resendApiKey)
 
   const subject = `New ${category} installer applied: ${name}`
-  const text = `${CARPET_TILE_NOTIFY_NAME},
+  const textFor = (greeting: string) => `${greeting},
 
 A new ${category.toLowerCase()} installer just applied.
 
@@ -129,7 +139,7 @@ ${profileUrl}
 — Floor Interior Services
 `
 
-  const html = `
+  const htmlFor = (greeting: string) => `
 <!doctype html>
 <html>
   <body style="font-family: Arial, sans-serif; line-height: 1.55; color: #0f172a; max-width: 640px; margin: 0 auto; padding: 24px; background: #ffffff;">
@@ -137,7 +147,7 @@ ${profileUrl}
       <img src="${logoUrl}" alt="Floor Interior Services" style="max-width:180px;height:auto;" />
     </div>
     <h1 style="font-size:20px;margin:0 0 12px 0;">New ${category} installer applied</h1>
-    <p style="margin:0 0 16px 0;">Hi ${CARPET_TILE_NOTIFY_NAME.split(' ')[0]},</p>
+    <p style="margin:0 0 16px 0;">Hi ${escapeHtml(greeting)},</p>
     <p style="margin:0 0 16px 0;">An installer who selected <strong>${category.toLowerCase()}</strong> skills just completed their AI interview application.</p>
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;margin:0 0 20px 0;">
       <p style="margin:0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(name)}</p>
@@ -156,14 +166,39 @@ ${profileUrl}
 </html>
 `
 
+  // Resolve recipients: configured "installer-application" recipients -> default
+  let recipients: { email: string; name?: string }[] = []
   try {
-    await resend.emails.send({
-      from: `${fromName} <${fromEmail}>`,
-      to: CARPET_TILE_NOTIFY_EMAIL,
-      subject,
-      html,
-      text,
+    const rows = await prisma.corporateNotificationRecipient.findMany({
+      where: { kind: INSTALLER_APPLICATION_KIND, isActive: true },
+      orderBy: { createdAt: 'asc' },
     })
+    recipients = rows.map((r) => ({ email: r.email, name: r.name || undefined })).filter((r) => r.email)
+  } catch (error) {
+    console.error('Failed to load installer application recipients:', error)
+  }
+  if (recipients.length === 0) {
+    recipients = [{ email: CARPET_TILE_NOTIFY_EMAIL, name: CARPET_TILE_NOTIFY_NAME }]
+  }
+
+  try {
+    const results = await Promise.all(
+      recipients.map((recipient) =>
+        resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
+          to: recipient.email,
+          subject,
+          html: htmlFor(greetingName(recipient.email, recipient.name)),
+          text: textFor(greetingName(recipient.email, recipient.name)),
+        }),
+      ),
+    )
+
+    const firstError = results.find((r) => r.error)
+    if (firstError?.error) {
+      console.error('Failed to send carpet/tile applicant email:', firstError.error)
+      return false
+    }
 
     await prisma.installer.updateMany({
       where: {
@@ -177,7 +212,7 @@ ${profileUrl}
 
     return true
   } catch (err) {
-    console.error('Failed to send carpet/tile applicant email to Angela:', err)
+    console.error('Failed to send carpet/tile applicant email:', err)
     return false
   }
 }

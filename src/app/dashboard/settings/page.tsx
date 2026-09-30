@@ -141,6 +141,7 @@ export default function SettingsPage() {
     { slug: 'purchase-request', label: 'Purchase Request' },
     { slug: 'employee-apparel', label: 'Employee Apparel' },
     { slug: 'job-application', label: 'Job Application' },
+    { slug: 'installer-application', label: 'Installer Application' },
     { slug: 'invoice', label: 'Invoice' },
     { slug: 'btr', label: 'BTR' },
     { slug: 'firm-lead', label: 'Firm Lead' },
