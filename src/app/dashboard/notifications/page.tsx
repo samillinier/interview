@@ -176,13 +176,26 @@ export default function NotificationsPage() {
 
   const fetchInstallers = async () => {
     try {
-      const params = new URLSearchParams()
-      if (searchQuery) params.append('search', searchQuery)
-      if (filterStatus !== 'all') params.append('status', filterStatus)
+      // Load ALL matching installers (paginated), not just the API's default
+      // page of 20, so the list is complete and scrollable for multi-select.
+      const all: Installer[] = []
+      let page = 1
+      let totalPages = 1
+      while (page <= totalPages) {
+        const params = new URLSearchParams()
+        if (searchQuery) params.append('search', searchQuery)
+        if (filterStatus !== 'all') params.append('status', filterStatus)
+        params.append('limit', '1000')
+        params.set('page', String(page))
 
-      const response = await fetch(`/api/installers?${params.toString()}`)
-      const data = await response.json()
-      setInstallers(data.installers || [])
+        const response = await fetch(`/api/installers?${params.toString()}`)
+        const data = await response.json()
+        const batch = (data.installers || []) as Installer[]
+        all.push(...batch)
+        totalPages = data?.pagination?.totalPages || 1
+        page += 1
+      }
+      setInstallers(all)
     } catch (error) {
       console.error('Error fetching installers:', error)
     }
@@ -190,9 +203,9 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      // Selection should match the currently filtered installer set.
-      setSelectedInstallers([])
-      setAllInstallersSelected(false)
+      // Refetch when the search/filter changes, but DO NOT clear the current
+      // selection — selections must persist across searches so users can
+      // build up a multi-select list.
       fetchInstallers()
     }
   }, [searchQuery, filterStatus])
@@ -581,7 +594,7 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-slate-200 max-h-[60vh] overflow-y-auto overscroll-contain">
               {installers.length === 0 ? (
                 <div className="p-12 text-center">
                   <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
