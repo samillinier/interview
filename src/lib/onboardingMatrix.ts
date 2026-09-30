@@ -160,19 +160,6 @@ function normalizeDocStatus(raw: string | null | undefined): 'active' | 'inactiv
   return ''
 }
 
-function parseMultiDateJson(raw: string | null | undefined): Date[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .map((value) => parseInstallerCalendarDate(String(value || '').trim()))
-      .filter((date): date is Date => date !== null)
-  } catch {
-    return []
-  }
-}
-
 function summarizeItemStates(states: MatrixCellState[]): MatrixCellState {
   if (states.length === 0) return 'missing'
   if (states.every((s) => s === 'na')) return 'na'
@@ -213,6 +200,8 @@ export function computeOnboardingMatrix(input: {
   llrpExpiry: Date | null
   /** Workers' comp insurance expiry (stored as employersLiabilityExpiry on Installer). */
   employersLiabilityExpiry?: Date | null
+  /** Workers' comp insurance policy number (used to distinguish Missing vs N/A). */
+  employerLiabilityPolicyNumber?: string | null
   serviceAgreementSignedAt: Date | null
   icsSignedAt: Date | null
   Document: BareDoc[]
@@ -235,25 +224,6 @@ export function computeOnboardingMatrix(input: {
         return tb - ta
       })
     return relevant[0] || null
-  }
-
-  const hasDoc = (...keys: string[]) => {
-    const d = latestDocFor(keys)
-    if (!d) return false
-    const manual = normalizeDocStatus(d.verificationLinkStatus)
-    // NULL / N/A = not required — do not count as an uploaded file for matrix fallbacks.
-    if (manual === 'na') return false
-    // If an admin explicitly marks the latest doc Missing/Inactive, do not treat the doc as present.
-    if (manual === 'missing' || manual === 'inactive') return false
-    return true
-  }
-
-  const docExpiryMeta = (normalizedKeys: string[]): { expired: boolean; minDays: number | null } => {
-    const d = latestDocFor(normalizedKeys)
-    if (!d?.expiryDate) return { expired: false, minDays: null }
-    const days = daysFromToday(d.expiryDate)
-    if (days === null) return { expired: false, minDays: null }
-    return { expired: days < 0, minDays: days }
   }
 
   const docStateList = (normalizedKeys: string[]): MatrixCellState[] => {
@@ -299,219 +269,41 @@ export function computeOnboardingMatrix(input: {
     } else cells.sunbiz = { state: 'missing' } // inactive, missing, or blank
   }
 
+  // Cert/licence columns mirror the installer profile: driven by the installer's
+  // expiry-date field (valid → ok, expiring within 0–3 months → warn, past → expired).
+  // Document status/expiry no longer overrides these cells — it caused the tracking
+  // table to disagree with the installer profile.
+  const fieldExpiryCell = (expiry: Date | null | undefined): MatrixCell => {
+    if (expiry == null) return { state: 'missing' }
+    const days = daysFromToday(expiry)
+    if (days !== null && days < 0) return { state: 'missing', detail: 'exp' }
+    if (isExpiringSoonByMonths(expiry)) return { state: 'warn' }
+    return { state: 'ok' }
+  }
+
   // BTR
-  const btrFieldDays = daysFromToday(input.btrExpiry)
-  const btrStates = docStateList(['business_registration'])
-  const btrDoc = docExpiryMeta(['business_registration'])
-  const btrExpiredField = input.btrExpiry != null && btrFieldDays !== null && btrFieldDays < 0
-  let btrSatisfied =
-    input.hasBusinessLicense ||
-    hasDoc('business_registration') ||
-    (input.btrExpiry != null && btrFieldDays !== null && btrFieldDays >= 0)
-  if (btrExpiredField) btrSatisfied = false
-  if (btrDoc.expired && !input.hasBusinessLicense && !hasDoc('business_registration')) btrSatisfied = false
-  if (btrStates.length > 0) {
-    // If the field date is explicitly expired, show that — don't let docs override
-    if (btrExpiredField) {
-      cells.btr = { state: 'missing', detail: 'exp' }
-    } else {
-      cells.btr = withNullDetail(cellFromStates(btrStates), ['business_registration'], latestDocFor)
-    }
-  } else if (btrSatisfied) {
-    const warn =
-      (btrFieldDays !== null && btrFieldDays >= 0 && isExpiringSoonByMonths(input.btrExpiry)) ||
-      (btrDoc.minDays !== null && btrDoc.minDays >= 0 && btrDoc.minDays <= 90)
-    const d = btrFieldDays !== null && btrFieldDays >= 0 && isExpiringSoonByMonths(input.btrExpiry) ? btrFieldDays : btrDoc.minDays
-    cells.btr = warn && d !== null ? { state: 'warn', detail: `${d}d` } : { state: 'ok' }
-  } else {
-    cells.btr = { state: 'missing', detail: btrDoc.expired || btrExpiredField ? 'exp' : undefined }
-  }
+  cells.btr = fieldExpiryCell(input.btrExpiry)
 
-  // BTR: override ok→warn if expiring soon by months (matches WC/WCE behavior)
-  if (cells.btr.state === 'ok') {
-    const btrLatestDoc = latestDocFor(['business_registration'])
-    const btrExpiryDates = [
-      input.btrExpiry,
-      btrLatestDoc?.expiryDate ?? null,
-    ].filter((d): d is Date => d != null && !isNaN(new Date(d).getTime()))
-    if (btrExpiryDates.some(isExpiringSoonByMonths)) {
-      cells.btr = { ...cells.btr, state: 'warn' }
-    }
-  }
-
-  // WC / WCE (either comp insurance or exemption)
-  // Check actual uploaded documents first, then fall back to interview flags
-  
   // WCE: Workers Comp Exemption
-  const wceStates = docStateList(['workers_comp_exemption'])
-  const wceDoc = docExpiryMeta(['workers_comp_exemption'])
-  const parsedExemDates = parseMultiDateJson(input.workersCompExemExpiryDates)
-  const wceDatesRaw = parsedExemDates.length > 0
-    ? parsedExemDates
-    : (input.workersCompExemExpiry ? [input.workersCompExemExpiry] : [])
-  const wceDates = wceDatesRaw.filter(
-    (date, index, arr) =>
-      arr.findIndex((other) => startOfDay(other).getTime() === startOfDay(date).getTime()) === index
-  )
+  cells.wce =
+    input.hasWorkersComp || !input.hasWorkersCompExemption
+      ? { state: 'na' }
+      : fieldExpiryCell(input.workersCompExemExpiry)
 
-  if (wceDates.length > 0) {
-    const states: MatrixCellState[] = wceDates.map((date) => {
-      const days = daysFromToday(date)
-      if (days === null) return 'ok'
-      if (days < 0) return 'missing'
-      if (isExpiringSoonByMonths(date)) return 'warn'
-      return 'ok'
-    })
-    cells.wce = cellFromStates(states)
-  } else if (wceStates.length > 0) {
-    cells.wce = withNullDetail(cellFromStates(wceStates), ['workers_comp_exemption'], latestDocFor)
-  } else if (hasDoc('workers_comp_exemption') && !wceDoc.expired) {
-    const wceLatestDoc = latestDocFor(['workers_comp_exemption'])
-    const warnDoc =
-      wceLatestDoc?.expiryDate != null && isExpiringSoonByMonths(wceLatestDoc.expiryDate)
-    cells.wce = warnDoc ? { state: 'warn' } : { state: 'ok' }
-  } else if (hasDoc('workers_comp_exemption') && wceDoc.expired) {
-    cells.wce = { state: 'missing', detail: 'exp' }
-  } else if (input.hasWorkersComp) {
-    cells.wce = { state: 'na' }
-  } else if (input.hasWorkersCompExemption) {
-    cells.wce = { state: 'ok' }
-  } else {
-    cells.wce = { state: 'missing' }
-  }
-
-  // WC: Workers Comp Insurance
-  const wcFieldDays = daysFromToday(input.employersLiabilityExpiry)
-  const wcStates = docStateList(['workers_comp', 'workers_comp_certificate'])
-  const wcDoc = docExpiryMeta(['workers_comp', 'workers_comp_certificate'])
-  const wcLatestDoc = latestDocFor(['workers_comp', 'workers_comp_certificate'])
-  const wcFieldExpired =
-    input.employersLiabilityExpiry != null && wcFieldDays !== null && wcFieldDays < 0
-  let wcSatisfied =
-    hasDoc('workers_comp', 'workers_comp_certificate') ||
-    (input.hasWorkersComp &&
-      (input.employersLiabilityExpiry == null || (wcFieldDays !== null && wcFieldDays >= 0)))
-  if (wcFieldExpired) wcSatisfied = false
-  if (wcDoc.expired && !hasDoc('workers_comp', 'workers_comp_certificate') && !input.hasWorkersComp) {
-    wcSatisfied = false
-  }
-
-  if (wcStates.length > 0) {
-    // If the field date is explicitly expired, show that — don't let docs override
-    if (wcFieldExpired) {
-      cells.wc = { state: 'missing', detail: 'exp' }
-    } else {
-      cells.wc = withNullDetail(
-        cellFromStates(wcStates),
-        ['workers_comp', 'workers_comp_certificate'],
-        latestDocFor
-      )
-    }
-  } else if (input.hasWorkersCompExemption) {
-    cells.wc = { state: 'na' }
-  } else if (hasDoc('workers_comp', 'workers_comp_certificate') && !wcDoc.expired) {
-    const warnDoc =
-      wcLatestDoc?.expiryDate != null && isExpiringSoonByMonths(wcLatestDoc.expiryDate)
-    cells.wc = warnDoc ? { state: 'warn' } : { state: 'ok' }
-  } else if (hasDoc('workers_comp', 'workers_comp_certificate') && wcDoc.expired) {
-    cells.wc = { state: 'missing', detail: 'exp' }
-  } else if (wcSatisfied) {
-    const warnField =
-      input.employersLiabilityExpiry != null && isExpiringSoonByMonths(input.employersLiabilityExpiry)
-    cells.wc = warnField ? { state: 'warn' } : { state: 'ok' }
-  } else {
-    cells.wc = { state: 'missing', detail: wcFieldExpired || wcDoc.expired ? 'exp' : undefined }
-  }
-
-  if (cells.wc.state === 'ok') {
-    const wcExpiryDates = [
-      input.employersLiabilityExpiry,
-      wcLatestDoc?.expiryDate ?? null,
-    ].filter((d): d is Date => d != null && !isNaN(new Date(d).getTime()))
-    if (wcExpiryDates.some(isExpiringSoonByMonths)) {
-      cells.wc = { ...cells.wc, state: 'warn' }
-    }
-  }
-
-  if (cells.wce.state === 'ok') {
-    const wceLatestDoc = latestDocFor(['workers_comp_exemption'])
-    const wceExpiryDates = [
-      ...wceDates,
-      wceLatestDoc?.expiryDate ?? null,
-    ].filter((d): d is Date => d != null && !isNaN(new Date(d).getTime()))
-    if (wceExpiryDates.some(isExpiringSoonByMonths)) {
-      cells.wce = { ...cells.wce, state: 'warn' }
-    }
-  }
+  // WC: Workers Comp Insurance (employers liability)
+  cells.wc = input.employersLiabilityExpiry
+    ? fieldExpiryCell(input.employersLiabilityExpiry)
+    : input.employerLiabilityPolicyNumber
+      ? { state: 'missing' }
+      : { state: 'na' }
 
   // COI
-  const glDays = daysFromToday(input.generalLiabilityExpiry)
-  const coiStates = docStateList(['liability_insurance'])
-  const liDoc = docExpiryMeta(['liability_insurance'])
-  const glExpired = input.generalLiabilityExpiry != null && glDays !== null && glDays < 0
-  let coiOk =
-    (input.hasGeneralLiability && (input.generalLiabilityExpiry == null || (glDays !== null && glDays >= 0))) ||
-    (hasDoc('liability_insurance') && !liDoc.expired)
-  if (glExpired) coiOk = false
-  if (liDoc.expired && !input.hasGeneralLiability) coiOk = false
-  if (coiStates.length > 0) {
-    cells.coi = withNullDetail(cellFromStates(coiStates), ['liability_insurance'], latestDocFor)
-  } else if (coiOk) {
-    const warn =
-      (glDays !== null && glDays >= 0 && isExpiringSoonByMonths(input.generalLiabilityExpiry)) ||
-      (liDoc.minDays !== null && liDoc.minDays >= 0 && liDoc.minDays <= 90)
-    const d = glDays !== null && glDays >= 0 && isExpiringSoonByMonths(input.generalLiabilityExpiry) ? glDays : liDoc.minDays
-    cells.coi = warn && d !== null ? { state: 'warn', detail: `${d}d` } : { state: 'ok' }
-  } else {
-    cells.coi = { state: 'missing', detail: liDoc.expired || glExpired ? 'exp' : undefined }
-  }
-
-  // COI: override ok→warn if expiring soon by months (matches BTR/WC/WCE behavior)
-  if (cells.coi.state === 'ok') {
-    const coiLatestDoc = latestDocFor(['liability_insurance'])
-    const coiExpiryDates = [
-      input.generalLiabilityExpiry,
-      coiLatestDoc?.expiryDate ?? null,
-    ].filter((d): d is Date => d != null && !isNaN(new Date(d).getTime()))
-    if (coiExpiryDates.some(isExpiringSoonByMonths)) {
-      cells.coi = { ...cells.coi, state: 'warn' }
-    }
-  }
+  cells.coi = fieldExpiryCell(input.generalLiabilityExpiry)
 
   // AL (auto)
-  const alDays = daysFromToday(input.automobileLiabilityExpiry)
-  const alStates = docStateList(['auto_insurance'])
-  const alDoc = docExpiryMeta(['auto_insurance'])
-  const alExpired = input.automobileLiabilityExpiry != null && alDays !== null && alDays < 0
-  let alOk =
-    (input.hasCommercialAutoLiability &&
-      (input.automobileLiabilityExpiry == null || (alDays !== null && alDays >= 0))) ||
-    (hasDoc('auto_insurance') && !alDoc.expired)
-  if (alExpired) alOk = false
-  if (alDoc.expired && !input.hasCommercialAutoLiability) alOk = false
-  if (alStates.length > 0) {
-    cells.al = withNullDetail(cellFromStates(alStates), ['auto_insurance'], latestDocFor)
-  } else if (alOk) {
-    const warn =
-      (alDays !== null && alDays >= 0 && isExpiringSoonByMonths(input.automobileLiabilityExpiry)) ||
-      (alDoc.minDays !== null && alDoc.minDays >= 0 && alDoc.minDays <= 90)
-    const d = alDays !== null && alDays >= 0 && isExpiringSoonByMonths(input.automobileLiabilityExpiry) ? alDays : alDoc.minDays
-    cells.al = warn && d !== null ? { state: 'warn', detail: `${d}d` } : { state: 'ok' }
-  } else {
-    cells.al = { state: 'missing', detail: alDoc.expired || alExpired ? 'exp' : undefined }
-  }
-
-  // AL: override ok→warn if expiring soon by months (matches BTR/WC/WCE behavior)
-  if (cells.al.state === 'ok') {
-    const alLatestDoc = latestDocFor(['auto_insurance'])
-    const alExpiryDates = [
-      input.automobileLiabilityExpiry,
-      alLatestDoc?.expiryDate ?? null,
-    ].filter((d): d is Date => d != null && !isNaN(new Date(d).getTime()))
-    if (alExpiryDates.some(isExpiringSoonByMonths)) {
-      cells.al = { ...cells.al, state: 'warn' }
-    }
-  }
+  cells.al = input.hasCommercialAutoLiability === false
+    ? { state: 'na' }
+    : fieldExpiryCell(input.automobileLiabilityExpiry)
 
   const w9States = docStateList(['w9'])
   cells.w9 =
@@ -536,38 +328,8 @@ export function computeOnboardingMatrix(input: {
   const leadStates = docStateList(['lead_firm_certificate'])
   cells.lead = withNullDetail(cellFromStates(leadStates), ['lead_firm_certificate'], latestDocFor)
 
-  const llrpFieldDays = daysFromToday(input.llrpExpiry)
-  const llrpStates = docStateList(['lrrp'])
-  const llrpDoc = docExpiryMeta(['lrrp'])
-  const llrpFieldExpired = input.llrpExpiry != null && llrpFieldDays !== null && llrpFieldDays < 0
-  const llrpSatisfied =
-    hasDoc('lrrp') || (input.llrpExpiry != null && llrpFieldDays !== null && llrpFieldDays >= 0)
-  if (llrpStates.length > 0) {
-    cells.llrp = withNullDetail(cellFromStates(llrpStates), ['lrrp'], latestDocFor)
-  } else if (llrpFieldExpired) {
-    cells.llrp = { state: 'missing', detail: 'exp' }
-  } else if (llrpSatisfied) {
-    const warn =
-      (llrpFieldDays !== null && llrpFieldDays >= 0 && isExpiringSoonByMonths(input.llrpExpiry)) ||
-      (llrpDoc.minDays !== null && llrpDoc.minDays >= 0 && llrpDoc.minDays <= 90)
-    const d =
-      llrpFieldDays !== null && llrpFieldDays >= 0 && isExpiringSoonByMonths(input.llrpExpiry) ? llrpFieldDays : llrpDoc.minDays
-    cells.llrp = warn && d !== null ? { state: 'warn', detail: `${d}d` } : { state: 'ok' }
-  } else {
-    cells.llrp = { state: 'missing' }
-  }
-
-  // LLRP: override ok→warn if expiring soon by months (matches other columns)
-  if (cells.llrp.state === 'ok') {
-    const llrpLatestDoc = latestDocFor(['lrrp'])
-    const llrpExpiryDates = [
-      input.llrpExpiry,
-      llrpLatestDoc?.expiryDate ?? null,
-    ].filter((d): d is Date => d != null && !isNaN(new Date(d).getTime()))
-    if (llrpExpiryDates.some(isExpiringSoonByMonths)) {
-      cells.llrp = { ...cells.llrp, state: 'warn' }
-    }
-  }
+  // LLRP
+  cells.llrp = fieldExpiryCell(input.llrpExpiry)
 
   cells.ics = input.icsSignedAt ? { state: 'ok' } : { state: 'missing' }
 
