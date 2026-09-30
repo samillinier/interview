@@ -573,14 +573,18 @@ export default function EmployeeApparelPage() {
                             className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white w-full aspect-square cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green"
                             aria-label={`Enlarge ${product.name} — ${colorName}`}
                           >
-                            <Image
-                              src={colorObj?.image || product.image}
-                              alt={`${product.name} — ${colorName}`}
-                              fill
-                              sizes="(max-width: 1023px) 100vw, 640px"
-                              quality={90}
-                              className="object-contain p-5 transition-transform duration-200 group-hover:scale-[1.03]"
-                            />
+                            {product.colors.map((c) => (
+                              <Image
+                                key={c.name}
+                                src={c.image || product.image}
+                                alt={`${product.name} — ${c.name}`}
+                                fill
+                                sizes="(max-width: 1023px) 100vw, 640px"
+                                quality={90}
+                                priority={colorName === c.name}
+                                className={`object-contain p-5 transition-all duration-150 group-hover:scale-[1.03] ${colorName === c.name ? 'opacity-100' : 'opacity-0'}`}
+                              />
+                            ))}
                             <span className="absolute top-3 left-3 z-10 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
                               {product.sku}
                             </span>
