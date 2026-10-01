@@ -36,6 +36,10 @@ const AG_S639_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/
 const AG_L575_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/l/5'
 const AG_L575_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/l/5'
 
+// Apparel Giant product imagery for the L528 Women's Jacquard Polo.
+const AG_L528_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/l/5'
+const AG_L528_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/l/5'
+
 /**
  * Employee Apparel order catalog.
  * Product data (name, price, description, colors, and imagery) mirrors the
@@ -218,6 +222,34 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "Jewel Green", image: `${AG_L575_IMG_BASE}/l575_jewelgreen_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_jewelgreen_model_front_012016.jpg` },
       { name: "Regatta Blue", image: `${AG_L575_IMG_BASE}/l575_regattablue_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_regattablue_model_front_012016.jpg` },
       { name: "White", image: `${AG_L575_IMG_BASE}/l575_white_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_white_model_front_012016.jpg` },
+    ],
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+  },
+  {
+    key: 'l528-polo',
+    name: "Port Authority Women's Jacquard Polo Shirt. L528",
+    sku: 'L528',
+    price: 34.25,
+    description: [
+      "Lightweight and breathable, this moisture-wicking shirt has a pleasing drape, subtle jacquard texture and an open placket for feminine style.",
+      "4.1-ounce, 100% polyester",
+      "Self-fabric collar",
+      "Open hem sleeves",
+      "Sizes XS–XL: $34.25 · 2XL–4XL: $38.25",
+    ],
+    image: `${AG_L528_IMG_BASE}/l528_oceanblue_model_front_102016.jpg`,
+    colors: [
+      { name: "Autumn Orange", image: `${AG_L528_IMG_BASE}/l528_autumnorange_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_autumnorange_model_front_102016.jpg` },
+      { name: "Black", image: `${AG_L528_IMG_BASE}/l528_black_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_black_model_front_102016.jpg` },
+      { name: "Green Glen", image: `${AG_L528_IMG_BASE}/l528_greenglen_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_greenglen_model_front_102016.jpg` },
+      { name: "Grey Smoke", image: `${AG_L528_IMG_BASE}/l528_greysmoke_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_greysmoke_model_front_102016.jpg` },
+      { name: "Hyper Blue", image: `${AG_L528_IMG_BASE}/l528_hyperblue_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_hyperblue_model_front_102016.jpg` },
+      { name: "Ocean Blue", image: `${AG_L528_IMG_BASE}/l528_oceanblue_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_oceanblue_model_front_102016.jpg` },
+      { name: "Rich Red", image: `${AG_L528_IMG_BASE}/l528_richred_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_richred_model_front_102016.jpg` },
+      { name: "True Navy", image: `${AG_L528_IMG_BASE}/l528_truenavy_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_truenavy_model_front_102016.jpg` },
+      { name: "Vine Green", image: `${AG_L528_IMG_BASE}/l528_vinegreen_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_vinegreen_model_front_102016.jpg` },
+      { name: "Violet Purple", image: `${AG_L528_IMG_BASE}/l528_violetpurple_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_violetpurple_model_front_102016.jpg` },
+      { name: "White", image: `${AG_L528_IMG_BASE}/l528_white_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_white_model_front_102016.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   },
