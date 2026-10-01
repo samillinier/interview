@@ -9,15 +9,13 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
+  Trash2,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useSession, signOut } from 'next-auth/react'
-import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
-import { PropertySidebar } from '@/components/PropertySidebar'
+import { useSession } from 'next-auth/react'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
-import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 const WORKROOM_OPTIONS = [
@@ -293,30 +291,23 @@ export default function SafetyWalkPage() {
   const [adminWorkroomCounts, setAdminWorkroomCounts] = useState<{ workroom: string; count: number }[]>([])
   const [adminWorkroomFilter, setAdminWorkroomFilter] = useState('')
   const [form, setForm] = useState(createEmptySafetyWalkForm)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const userType = (session?.user as any)?.userType
   const role = String((session?.user as any)?.role || '').toUpperCase()
-  const isPropertyPortal = pathname.startsWith('/property')
   const isFullAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const isManagerOrAccounting = role === 'MANAGER' || role === 'ACCOUNTING'
-  // Note: userType can be 'property' for admins/managers that also have a Property
-  // record (the safety-walks API upserts one), so derive "property" from role too.
-  const isProperty = userType === 'property' && !isFullAdmin && !isManagerOrAccounting
-  const showAdminNav = isFullAdmin || isManagerOrAccounting
-  const canAccess = isProperty || isFullAdmin || isManagerOrAccounting
-
-  const propertyEmail = session?.user?.email || ''
-  const propertyName = String(session?.user?.name || '').trim()
+  const canAccess = isFullAdmin || isManagerOrAccounting
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push(isPropertyPortal ? '/property/login' : '/login')
+      router.push('/login')
       return
     }
 
     if (status === 'authenticated') {
       if (!canAccess) {
-        router.push(isProperty ? '/property/dashboard' : '/dashboard')
+        router.push('/dashboard')
         return
       }
 
@@ -324,8 +315,7 @@ export default function SafetyWalkPage() {
         setIsLoading(true)
         setError('')
         try {
-          const queryParts: string[] = []
-          if (!isProperty) queryParts.push(`take=${encodeURIComponent(String(200))}`)
+          const queryParts: string[] = [`take=${encodeURIComponent(String(200))}`]
           if (isFullAdmin && adminWorkroomFilter) queryParts.push(`workroom=${encodeURIComponent(adminWorkroomFilter)}`)
           const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : ''
           const savedWalkResponse = await fetch(`/api/properties/safety-walks${query}`, {
@@ -369,11 +359,7 @@ export default function SafetyWalkPage() {
 
       load()
     }
-  }, [status, router, canAccess, session, adminWorkroomFilter, isProperty, isPropertyPortal, isFullAdmin])
-
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: isProperty ? '/property/login' : '/login' })
-  }
+  }, [status, router, canAccess, session, adminWorkroomFilter, isFullAdmin])
 
   const canSubmit = useMemo(() => {
     return (
@@ -566,6 +552,71 @@ export default function SafetyWalkPage() {
     }
   }
 
+  const handleDelete = async () => {
+    const id = pendingDeleteId
+    if (!id) return
+
+    setIsDeleting(true)
+    setError('')
+    setSuccess('')
+    try {
+      const response = await fetch(`/api/properties/safety-walks?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to delete safety walk.')
+      }
+
+      setAdminSafetyWalks((prev) => prev.filter((w) => w.id !== id))
+      setAdminWorkroomCounts((prev) => {
+        // Recompute counts isn't strictly necessary; refetch handles it.
+        return prev
+      })
+      setPendingDeleteId(null)
+      setSuccess('Safety walk removed.')
+      setTimeout(() => setSuccess(''), 3000)
+
+      // Refetch to refresh analytics, counts, and last-submitted fallback.
+      const queryParts = [`take=${encodeURIComponent(String(200))}`]
+      if (isFullAdmin && adminWorkroomFilter) queryParts.push(`workroom=${encodeURIComponent(adminWorkroomFilter)}`)
+      const query = `?${queryParts.join('&')}`
+      const refresh = await fetch(`/api/properties/safety-walks${query}`, { cache: 'no-store' })
+      if (refresh.ok) {
+        const d = await refresh.json()
+        if (d?.safetyWalk?.analytics && typeof d.safetyWalk.analytics === 'object') {
+          setLastSubmittedAnalytics(d.safetyWalk.analytics as SafetyAnalyticsSummary)
+        } else {
+          setLastSubmittedAnalytics(null)
+        }
+        const counts = Array.isArray(d?.workroomCounts) ? d.workroomCounts : []
+        setAdminWorkroomCounts(
+          counts
+            .filter((row: any) => row && typeof row.workroom === 'string' && typeof row.count === 'number')
+            .map((row: any) => ({ workroom: row.workroom, count: row.count }))
+        )
+        const walks = Array.isArray(d?.safetyWalks) ? d.safetyWalks : []
+        setAdminSafetyWalks(
+          walks
+            .filter((w: any) => w && typeof w.id === 'string')
+            .map((w: any) => ({
+              id: String(w.id),
+              inspectionDate: String(w.inspectionDate || ''),
+              inspectorName: String(w.inspectorName || ''),
+              workroom: String(w.workroom || ''),
+              analytics: w.analytics ?? null,
+            }))
+        )
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete safety walk.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 grid-pattern flex items-center justify-center">
@@ -578,27 +629,12 @@ export default function SafetyWalkPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {showAdminNav ? (
-        <AdminSidebar pathname={pathname} />
-      ) : (
-        <PropertySidebar
-          pathname={pathname}
-          subtitle="Safety Walk"
-          userName={propertyName || propertyEmail.split('@')[0] || 'Property User'}
-          userEmail={propertyEmail}
-          onLogout={handleLogout}
-        />
-      )}
+      <AdminSidebar pathname={pathname} />
+      <AdminMobileMenu pathname={pathname} />
 
-      {showAdminNav ? (
-        <AdminMobileMenu pathname={pathname} />
-      ) : (
-        <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
-      )}
-
-      <div className={`flex-1 transition-all duration-300 ${isPropertyPortal ? 'lg:ml-64' : sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+      <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className={`px-4 lg:px-6 pt-16 lg:pt-6 pb-6 ${isPropertyPortal ? propertyMobileSafeLeftPad : ''}`}>
+          <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
                 <ClipboardCheck className="w-6 h-6 text-brand-green" />
@@ -626,7 +662,7 @@ export default function SafetyWalkPage() {
           </div>
         </header>
 
-        <main className={`p-4 sm:p-6 lg:p-8 w-full ${isPropertyPortal ? propertyMobileSafeLeftPad : ''}`}>
+        <main className="p-4 sm:p-6 lg:p-8 w-full">
           <div className="w-full">
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -910,11 +946,12 @@ export default function SafetyWalkPage() {
 
                   {adminSafetyWalks.length > 0 && (
                     <div className="mt-5 overflow-hidden rounded-xl border border-slate-200">
-                      <div className="grid grid-cols-[1.1fr_1fr_0.9fr_0.9fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      <div className="grid grid-cols-[1.1fr_1fr_0.9fr_0.9fr_2.5rem] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                         <div>Inspector</div>
                         <div>Workroom</div>
                         <div>Completion</div>
                         <div>Checked</div>
+                        <div></div>
                       </div>
                       <div className="divide-y divide-slate-200">
                         {adminSafetyWalks.map((w) => {
@@ -923,7 +960,7 @@ export default function SafetyWalkPage() {
                           const total = typeof a?.totalItems === 'number' ? a.totalItems : null
                           const pct = typeof a?.completionPercent === 'number' ? a.completionPercent : null
                           return (
-                            <div key={w.id} className="grid grid-cols-[1.1fr_1fr_0.9fr_0.9fr] gap-3 px-4 py-3 text-sm">
+                            <div key={w.id} className="grid grid-cols-[1.1fr_1fr_0.9fr_0.9fr_2.5rem] gap-3 px-4 py-3 text-sm items-center">
                               <div className="min-w-0">
                                 <div className="truncate font-semibold text-slate-900">{w.inspectorName || '--'}</div>
                                 <div className="mt-0.5 text-xs text-slate-500">
@@ -933,6 +970,17 @@ export default function SafetyWalkPage() {
                               <div className="font-semibold text-slate-900">{w.workroom || '--'}</div>
                               <div className="font-semibold text-slate-900">{pct === null ? '--' : `${pct}%`}</div>
                               <div className="text-slate-700">{checked === null || total === null ? '--' : `${checked}/${total}`}</div>
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingDeleteId(w.id)}
+                                  disabled={isDeleting}
+                                  title="Remove entry"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-white text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                             </div>
                           )
                         })}
@@ -1411,6 +1459,57 @@ export default function SafetyWalkPage() {
           </div>
         </main>
       </div>
+
+      {pendingDeleteId && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/50"
+            aria-label="Close"
+            onClick={() => {
+              if (isDeleting) return
+              setPendingDeleteId(null)
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-2xl">
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-11 h-11 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                    <Trash2 className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-extrabold text-slate-900">Remove safety walk?</h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      This will permanently delete this entry. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => {
+                      setPendingDeleteId(null)
+                    }}
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={handleDelete}
+                    className="inline-flex items-center justify-center rounded-2xl bg-red-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-red-700 disabled:opacity-60"
+                  >
+                    {isDeleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

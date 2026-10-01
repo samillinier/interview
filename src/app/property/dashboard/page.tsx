@@ -15,7 +15,6 @@ import {
   Layers,
   BarChart3,
   Shield,
-  ClipboardCheck,
   Car,
   Armchair,
 } from 'lucide-react'
@@ -530,18 +529,6 @@ export default function PropertyDashboardPage() {
               <div>
                 <h3 className="font-bold text-primary-900 text-lg">Office equipment</h3>
                 <p className="text-sm text-primary-500">Furniture, IT, supplies, and asset tags.</p>
-              </div>
-            </Link>
-            <Link
-              href="/property/safety-walk"
-              className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-green/20"
-            >
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <ClipboardCheck className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-primary-900 text-lg">Safety Walk</h3>
-                <p className="text-sm text-primary-500">Complete a safety walk inspection form.</p>
               </div>
             </Link>
           </motion.div>

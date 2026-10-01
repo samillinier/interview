@@ -164,3 +164,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to save safety walk' }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await getSafetyWalkActor()
+    if (auth.error) return auth.error
+
+    const url = new URL(request.url)
+    const id = (url.searchParams.get('id') || '').trim()
+    if (!id) {
+      return NextResponse.json({ error: 'Missing safety walk id' }, { status: 400 })
+    }
+
+    if (auth.actorType === 'property') {
+      return NextResponse.json({ error: 'Not authorized to delete safety walks' }, { status: 403 })
+    }
+
+    const isFullAdmin = auth.role === 'ADMIN' || auth.role === 'SUPER_ADMIN'
+    const where = isFullAdmin
+      ? { id }
+      : { id, propertyId: auth.property.id }
+
+    const existing = await prisma.propertySafetyWalk.findFirst({ where })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Safety walk not found or you do not have permission to delete it' },
+        { status: 404 }
+      )
+    }
+
+    await prisma.propertySafetyWalk.delete({ where: { id } })
+
+    return NextResponse.json({ success: true }, { headers: noStoreHeaders })
+  } catch (error) {
+    console.error('Error deleting safety walk:', error)
+    return NextResponse.json({ error: 'Failed to delete safety walk' }, { status: 500 })
+  }
+}
