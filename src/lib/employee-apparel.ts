@@ -27,6 +27,10 @@ const AG_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache
 const AG_S658_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
 const AG_S658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/s/6'
 
+// Apparel Giant product imagery for the S639 Plaid Pattern Easy Care Shirt (undecorated).
+const AG_S639_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
+const AG_S639_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/s/6'
+
 /**
  * Employee Apparel order catalog.
  * Product data (name, price, description, colors, and imagery) mirrors the
@@ -159,6 +163,32 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "Oxford Blue", image: `${AG_S658_IMG_BASE}/s658_oxfordblue_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_oxfordblue_model_front_122014.jpg` },
       { name: "Soft Purple", image: `${AG_S658_IMG_BASE}/s658_softpurple_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_softpurple_model_front_122014.jpg` },
       { name: "White", image: `${AG_S658_IMG_BASE}/s658_white_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_white_model_front_122014.jpg` },
+    ],
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+  },
+  {
+    key: 's639-shirt-undecorated',
+    name: "Port Authority Men's Plaid Patterned Button Up Shirt. S639",
+    sku: 'S639',
+    price: 35.0,
+    description: [
+      "A not-too-bold plaid pattern offers a welcome break from a solid color. Designed for comfort and wrinkle-resistant convenience, this yarn-dyed poplin shirt is ideal for both dress and casual wear.",
+      "3.2-ounce, 55/45 cotton/poly",
+      "Button-down collar",
+      "Pearlized buttons",
+      "Left chest pocket",
+      "Back box pleat",
+      "Rounded adjustable cuffs",
+      "Sizes XS–XL: $35.00 · 2XL–4XL: $39.00",
+    ],
+    image: `${AG_S639_IMG_BASE}/s639_charcoal_model_front_111511.jpg`,
+    colors: [
+      { name: "Charcoal", image: `${AG_S639_IMG_BASE}/s639_charcoal_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_charcoal_model_front_111511.jpg` },
+      { name: "Green", image: `${AG_S639_IMG_BASE}/s639_green_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_green_model_front_111511.jpg` },
+      { name: "Navy", image: `${AG_S639_IMG_BASE}/s639_navy_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_navy_model_front_111511.jpg` },
+      { name: "Orange", image: `${AG_S639_IMG_BASE}/s639_orange_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_orange_model_front_111511.jpg` },
+      { name: "Purple", image: `${AG_S639_IMG_BASE}/s639_purple_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_purple_model_front_111511.jpg` },
+      { name: "White", image: `${AG_S639_IMG_BASE}/s639_white_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_white_model_front_111511.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   },
