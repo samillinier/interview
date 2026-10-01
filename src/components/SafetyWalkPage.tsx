@@ -668,34 +668,14 @@ export default function SafetyWalkPage() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
           <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <ClipboardCheck className="w-6 h-6 text-brand-green" />
-                </div>
-                <div className="min-w-0">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">Safety Walk</h1>
-                  <p className="text-sm text-slate-500">Record safety inspections by workroom.</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <ClipboardCheck className="w-6 h-6 text-brand-green" />
               </div>
-
-              {isFullAdmin && !showSafetyQuestions && (
-                <div className="w-full lg:w-80 flex-shrink-0">
-                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workroom</label>
-                  <select
-                    value={adminWorkroomFilter}
-                    onChange={(e) => setAdminWorkroomFilter(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-                  >
-                    <option value="">All workrooms</option>
-                    {adminWorkroomCounts.map((row) => (
-                      <option key={row.workroom} value={row.workroom}>
-                        {row.workroom} ({row.count})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">Safety Walk</h1>
+                <p className="text-sm text-slate-500">Record safety inspections by workroom.</p>
+              </div>
             </div>
 
             {(error || success) && (
@@ -905,7 +885,22 @@ export default function SafetyWalkPage() {
                           </div>
                           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
                             <span className="text-slate-500">Workroom</span>
-                            <span className="font-semibold text-slate-900">{displayedAnalytics.workroom || '--'}</span>
+                            {isFullAdmin ? (
+                              <select
+                                value={adminWorkroomFilter}
+                                onChange={(e) => setAdminWorkroomFilter(e.target.value)}
+                                className="max-w-[10rem] rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-semibold text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                              >
+                                <option value="">All workrooms</option>
+                                {adminWorkroomCounts.map((row) => (
+                                  <option key={row.workroom} value={row.workroom}>
+                                    {row.workroom} ({row.count})
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="font-semibold text-slate-900">{displayedAnalytics.workroom || '--'}</span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
                             <span className="text-slate-500">Inspection Date</span>
