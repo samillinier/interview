@@ -13,6 +13,7 @@ export type ApparelProduct = {
   image: string
   colors: ApparelColor[]
   sizes: string[]
+  badge?: string
 }
 
 // High-resolution source used with next/image optimization for crisp rendering.
@@ -146,6 +147,7 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "White", image: `${AG_IMG_BASE}/k528_white_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_white_model_front_072014.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+    badge: '3 Order Free',
   },
   {
     key: 's658-shirt',
@@ -174,6 +176,7 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "White", image: `${AG_S658_IMG_BASE}/s658_white_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_white_model_front_122014.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+    badge: '3 Order Free',
   },
   {
     key: 's639-shirt-undecorated',
@@ -200,6 +203,7 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "White", image: `${AG_S639_IMG_BASE}/s639_white_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_white_model_front_111511.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+    badge: '3 Order Free',
   },
   {
     key: 'l575-polo',
@@ -224,6 +228,7 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "White", image: `${AG_L575_IMG_BASE}/l575_white_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_white_model_front_012016.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+    badge: '3 Order Free',
   },
   {
     key: 'l528-polo',
@@ -252,6 +257,7 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "White", image: `${AG_L528_IMG_BASE}/l528_white_model_front_102016.jpg`, swatch: `${AG_L528_SWATCH_BASE}/l528_white_model_front_102016.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+    badge: '3 Order Free',
   },
   {
     key: 'l540-polo',
