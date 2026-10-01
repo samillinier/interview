@@ -760,7 +760,7 @@ export default function SafetyWalkPage() {
                 </div>
 
                 <div className="p-6">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Overall Completion</div>
                       <div className="mt-2 text-4xl font-black tracking-tight text-slate-900">{displayedAnalytics.completionPercent}%</div>
@@ -784,20 +784,6 @@ export default function SafetyWalkPage() {
                       <div className="mt-1 text-sm text-slate-500">
                         {displayedAnalytics.sectionsCompleted} of {displayedAnalytics.sections.length} sections fully complete
                       </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Action Items Logged</div>
-                      <div className="mt-2 text-4xl font-black tracking-tight text-slate-900">{displayedAnalytics.actionItemCount}</div>
-                      <div className="mt-1 text-sm text-slate-500">
-                        {displayedAnalytics.hasActionPlan ? 'Final action plan entered' : 'Final action plan still blank'}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Avg Section Score</div>
-                      <div className="mt-2 text-4xl font-black tracking-tight text-slate-900">{displayedAnalytics.averageSectionCompletion}%</div>
-                      <div className="mt-1 text-sm text-slate-500">Average completion across all safety sections</div>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
