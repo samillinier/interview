@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const completionTime = String(form.completionTime || '').trim()
     const workroom = String(form.workroom || '').trim()
 
-    if (!inspectorName || !inspectionDateRaw || !startTime || !completionTime || !workroom) {
+    if (!inspectorName || !inspectionDateRaw || !workroom) {
       return NextResponse.json({ error: 'Missing required safety walk fields' }, { status: 400 })
     }
 

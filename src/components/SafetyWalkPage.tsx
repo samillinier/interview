@@ -363,15 +363,15 @@ export default function SafetyWalkPage() {
     }
   }, [status, router, canAccess, session, adminWorkroomFilter, isFullAdmin])
 
-  const canSubmit = useMemo(() => {
-    return (
-      form.name.trim() &&
-      form.inspectionDate &&
-      form.startTime &&
-      form.completionTime &&
-      form.workroom
-    )
+  const missingRequiredFields = useMemo(() => {
+    const missing: string[] = []
+    if (!form.name.trim()) missing.push('Name')
+    if (!form.inspectionDate) missing.push('Inspection Date')
+    if (!form.workroom) missing.push('Workroom')
+    return missing
   }, [form])
+
+  const canSubmit = missingRequiredFields.length === 0
 
   const safetyAnalytics = useMemo<SafetyAnalyticsSummary>(() => {
     const parseTimeToMinutes = (value: string) => {
@@ -573,8 +573,13 @@ export default function SafetyWalkPage() {
     setError('')
     setSuccess('')
 
-    if (!canSubmit) {
-      setError('Please complete all required fields.')
+    if (missingRequiredFields.length > 0) {
+      const list = missingRequiredFields.join(', ')
+      setError(
+        missingRequiredFields.length === 1
+          ? `Please complete the missing field: ${list}.`
+          : `Please complete the missing fields: ${list}.`
+      )
       return
     }
 
@@ -917,15 +922,9 @@ export default function SafetyWalkPage() {
                               <span className="font-semibold text-slate-900">{displayedAnalytics.workroom || '--'}</span>
                             )}
                           </div>
-                          <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                          <div className="flex items-center justify-between gap-3">
                             <span className="text-slate-500">Inspection Date</span>
                             <span className="font-semibold text-slate-900">{displayedAnalytics.inspectionDate || '--'}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-slate-500">Duration</span>
-                            <span className="font-semibold text-slate-900">
-                              {displayedAnalytics.durationMinutes === null ? '--' : `${displayedAnalytics.durationMinutes} minutes`}
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -1173,7 +1172,9 @@ export default function SafetyWalkPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Start Time</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Start Time <span className="font-normal text-slate-400">(optional)</span>
+                      </label>
                       <div className="relative">
                         <Clock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
@@ -1186,7 +1187,9 @@ export default function SafetyWalkPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Completion Time</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Completion Time <span className="font-normal text-slate-400">(optional)</span>
+                      </label>
                       <div className="relative">
                         <Clock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
