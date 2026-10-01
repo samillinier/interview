@@ -258,7 +258,6 @@ export function AdminSidebar({ pathname }: Props) {
       { href: '/dashboard/contact', label: 'Contact', icon: Contact, match: (path) => path === '/dashboard/contact' },
       ...(normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
         ? [
-            { href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardList, match: (path: string) => path === '/property/safety-walk' },
             { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (path: string) => path === '/property/ring-central' },
           ]
         : []),

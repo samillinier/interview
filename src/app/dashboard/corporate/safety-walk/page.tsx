@@ -2,6 +2,6 @@
 
 import SafetyWalkPage from '@/components/SafetyWalkPage'
 
-export default function PropertySafetyWalkPage() {
+export default function CorporateSafetyWalkPage() {
   return <SafetyWalkPage />
 }

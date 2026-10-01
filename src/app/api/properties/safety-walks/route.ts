@@ -16,7 +16,7 @@ async function getSafetyWalkActor() {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
-  if (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER') {
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING') {
     const admin = await prisma.admin.findUnique({
       where: { email },
     })
@@ -44,7 +44,7 @@ async function getSafetyWalkActor() {
       },
     })
 
-    return { actorType: 'admin' as const, property }
+    return { actorType: 'admin' as const, property, role }
   }
 
   const property = await prisma.property.findUnique({
@@ -55,7 +55,7 @@ async function getSafetyWalkActor() {
     return { error: NextResponse.json({ error: 'Property access not found' }, { status: 403 }) }
   }
 
-  return { actorType: 'property' as const, property }
+  return { actorType: 'property' as const, property, role }
 }
 
 export async function GET(request: NextRequest) {
@@ -68,10 +68,13 @@ export async function GET(request: NextRequest) {
     const take = Math.min(Math.max(Number(url.searchParams.get('take') || 50) || 50, 1), 200)
 
     if (auth.actorType === 'admin') {
-      const where = workroom ? { workroom } : undefined
+      const isFullAdmin = auth.role === 'ADMIN' || auth.role === 'SUPER_ADMIN'
+      const scopedWhere: Record<string, unknown> = {}
+      if (!isFullAdmin) scopedWhere.propertyId = auth.property.id
+      if (workroom) scopedWhere.workroom = workroom
 
       const safetyWalks = await prisma.propertySafetyWalk.findMany({
-        where,
+        where: scopedWhere,
         orderBy: [{ inspectionDate: 'desc' }, { createdAt: 'desc' }],
         take,
         select: {
@@ -87,6 +90,7 @@ export async function GET(request: NextRequest) {
 
       const workroomCounts = await prisma.propertySafetyWalk.groupBy({
         by: ['workroom'],
+        where: isFullAdmin ? undefined : { propertyId: auth.property.id },
         _count: { id: true },
       })
 

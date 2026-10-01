@@ -21,7 +21,6 @@ import {
   LogOut,
   FileCheck,
   ClipboardList,
-  ClipboardCheck,
   Contact,
   FileText,
   PhoneCall,
@@ -260,7 +259,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
       { href: '/dashboard/contact', label: 'Contact', icon: Contact, match: (p: string) => p === '/dashboard/contact' },
       ...(role === 'MANAGER' || role === 'ACCOUNTING'
-        ? [{ href: '/property/safety-walk', label: 'Safety Walk', icon: ClipboardCheck, match: (p: string) => p === '/property/safety-walk' }, { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }]
+        ? [{ href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -53,6 +53,14 @@ const corporateGroups = [
         icon: ClipboardList,
         cta: 'Inventory Cycle',
         highlights: [] as string[],
+      },
+      {
+        title: 'Safety Walk',
+        description: 'Complete workplace safety inspections by workroom — checklist, action items, and analytics.',
+        href: '/dashboard/corporate/safety-walk',
+        icon: ClipboardCheck,
+        cta: 'Safety Walk',
+        highlights: ['Safety checklist', 'Action items', 'Analytics'],
       },
       {
         title: 'Travel Request',
@@ -204,6 +212,7 @@ export default function CorporatePage() {
     '/dashboard/corporate/bol',
     '/dashboard/corporate/pad-transfer',
     '/dashboard/corporate/inventory-cycle',
+    '/dashboard/corporate/safety-walk',
     '/dashboard/corporate/travel-request',
     '/dashboard/corporate/office-supplies',
     '/dashboard/corporate/purchase-request',
@@ -215,6 +224,9 @@ export default function CorporatePage() {
   const visibleGroups = corporateGroups.map((group) => ({
     ...group,
     cards: group.cards.filter((card) => {
+      if (normalizedRole === 'MODERATOR') {
+        return card.href !== '/dashboard/corporate/safety-walk'
+      }
       if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
         if (card.href === '/dashboard/corporate/invoice') {
           return canAccessInvoices(normalizedRole)
