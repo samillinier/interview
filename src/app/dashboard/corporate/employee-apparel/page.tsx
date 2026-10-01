@@ -409,7 +409,7 @@ export default function EmployeeApparelPage() {
                                   className="object-contain p-3"
                                 />
                                 {product.badge && (
-                                  <span className="absolute top-2 left-2 z-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-green text-[11px] font-extrabold uppercase leading-tight text-white shadow">
+                                  <span className="absolute top-2 left-2 z-10 inline-flex items-center justify-center rounded-full bg-brand-green px-3 py-1.5 text-[11px] font-bold leading-tight text-white shadow">
                                     {product.badge}
                                   </span>
                                 )}
@@ -623,7 +623,7 @@ export default function EmployeeApparelPage() {
                         <div className="flex flex-col justify-center">
                           <h3 className="pr-10 text-2xl font-black text-slate-900">{product.name}</h3>
                           {product.badge && (
-                            <span className="mt-2 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-green text-xs font-extrabold uppercase leading-tight text-white shadow">
+                            <span className="mt-2 inline-flex items-center justify-center rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold leading-tight text-white shadow">
                               {product.badge}
                             </span>
                           )}
