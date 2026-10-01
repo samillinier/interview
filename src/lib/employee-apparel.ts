@@ -32,6 +32,10 @@ const AG_S658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/
 const AG_S639_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/s/6'
 const AG_S639_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
 
+// Apparel Giant product imagery for the L575 Women's Crossover Raglan Polo.
+const AG_L575_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/l/5'
+const AG_L575_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/l/5'
+
 /**
  * Employee Apparel order catalog.
  * Product data (name, price, description, colors, and imagery) mirrors the
@@ -190,6 +194,30 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "Navy", image: `${AG_S639_IMG_BASE}/s639_navy_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_navy_model_front_111511.jpg` },
       { name: "Purple", image: `${AG_S639_IMG_BASE}/s639_purple_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_purple_model_front_111511.jpg` },
       { name: "White", image: `${AG_S639_IMG_BASE}/s639_white_model_front_111511.jpg`, swatch: `${AG_S639_SWATCH_BASE}/s639_white_model_front_111511.jpg` },
+    ],
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+  },
+  {
+    key: 'l575-polo',
+    name: "Port Authority Women's Crossover Raglan Polo. L575",
+    sku: 'L575',
+    price: 34.25,
+    description: [
+      "Cross over from your standard polo to this moisture-wicking performance style with its subtle horizontal rib texture and exceptional drape. Sport-inspired raglan sleeves allow easy movement.",
+      "5-ounce, 100% polyester",
+      "Self-fabric modified Johnny collar",
+      "Wrap around back panel detail",
+      "Sizes XS–XL: $34.25 · 2XL–4XL: $38.25",
+    ],
+    image: `${AG_L575_IMG_BASE}/l575_black_model_front_012016.jpg`,
+    colors: [
+      { name: "Azure Blue", image: `${AG_L575_IMG_BASE}/l575_azureblue_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_azureblue_model_front_012016.jpg` },
+      { name: "Battleship Grey", image: `${AG_L575_IMG_BASE}/l575_battleshipgrey_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_battleshipgrey_model_front_012016.jpg` },
+      { name: "Black", image: `${AG_L575_IMG_BASE}/l575_black_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_black_model_front_012016.jpg` },
+      { name: "Hibiscus Pink", image: `${AG_L575_IMG_BASE}/l575_hibiscuspink_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_hibiscuspink_model_front_012016.jpg` },
+      { name: "Jewel Green", image: `${AG_L575_IMG_BASE}/l575_jewelgreen_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_jewelgreen_model_front_012016.jpg` },
+      { name: "Regatta Blue", image: `${AG_L575_IMG_BASE}/l575_regattablue_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_regattablue_model_front_012016.jpg` },
+      { name: "White", image: `${AG_L575_IMG_BASE}/l575_white_model_front_012016.jpg`, swatch: `${AG_L575_SWATCH_BASE}/l575_white_model_front_012016.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   },
