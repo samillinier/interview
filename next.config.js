@@ -46,6 +46,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'www.apparelgiant.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'graph.microsoft.com',
       },
     ],

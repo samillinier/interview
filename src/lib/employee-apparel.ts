@@ -19,6 +19,10 @@ export type ApparelProduct = {
 const IMG_BASE = 'https://assetly.ordermygear.com/images/w_1200,c_limit'
 const SWATCH_BASE = 'https://assetly.ordermygear.com/images/h_103,w_93,c_limit'
 
+// Apparel Giant (Sport Shirt Outlet) product imagery for the K528 Fine Jacquard Polo.
+const AG_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/k/5'
+const AG_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/k/5'
+
 /**
  * Employee Apparel order catalog.
  * Product data (name, price, description, colors, and imagery) mirrors the
@@ -96,6 +100,35 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "White", image: `${IMG_BASE}/412e876bd449477c2ab8ee78a3a718121d88378f`, swatch: `${SWATCH_BASE}/412e876bd449477c2ab8ee78a3a718121d88378f` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"],
+  },
+  {
+    key: 'k528-polo',
+    name: "Port Authority Men's Performance Fine Jacquard Polo. K528",
+    sku: 'K528',
+    price: 34.25,
+    description: [
+      "Lightweight and breathable, this shirt features a subtle jacquard texture. Designed with moisture-wicking performance, this shirt will help keep you cool and dry.",
+      "4.1-ounce, 100% polyester",
+      "Flat knit collar",
+      "3-button placket with pearlized smoke tone buttons; white buttons on White",
+      "Open hem sleeves",
+      "Sizes XS–XL: $34.25 · 2XL–4XL: $36.25",
+    ],
+    image: `${AG_IMG_BASE}/k528_oceanblue_model_front_072014.jpg`,
+    colors: [
+      { name: "Autumn Orange", image: `${AG_IMG_BASE}/k528_autumnorange_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_autumnorange_model_front_072014.jpg` },
+      { name: "Black", image: `${AG_IMG_BASE}/k528_black_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_black_model_front_072014.jpg` },
+      { name: "Green Glen", image: `${AG_IMG_BASE}/k528_greenglen_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_greenglen_model_front_072014.jpg` },
+      { name: "Grey Smoke", image: `${AG_IMG_BASE}/k528_greysmoke_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_greysmoke_model_front_072014.jpg` },
+      { name: "Hyper Blue", image: `${AG_IMG_BASE}/k528_hyperblue_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_hyperblue_model_front_072014.jpg` },
+      { name: "Ocean Blue", image: `${AG_IMG_BASE}/k528_oceanblue_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_oceanblue_model_front_072014.jpg` },
+      { name: "Rich Red", image: `${AG_IMG_BASE}/k528_richred_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_richred_model_front_072014.jpg` },
+      { name: "True Navy", image: `${AG_IMG_BASE}/k528_truenavy_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_truenavy_model_front_072014.jpg` },
+      { name: "Vine Green", image: `${AG_IMG_BASE}/k528_vinegreen_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_vinegreen_model_front_072014.jpg` },
+      { name: "Violet Purple", image: `${AG_IMG_BASE}/k528_violetpurple_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_violetpurple_model_front_072014.jpg` },
+      { name: "White", image: `${AG_IMG_BASE}/k528_white_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_white_model_front_072014.jpg` },
+    ],
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   },
   {
     key: 'l540-polo',
