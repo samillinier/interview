@@ -496,8 +496,14 @@ export default function SafetyWalkPage() {
 
   const adminAggregate = useMemo(() => {
     if (!isFullAdmin) return null
-    return summarizeAggregateAnalytics(adminSafetyWalks)
-  }, [isFullAdmin, adminSafetyWalks])
+    const agg = summarizeAggregateAnalytics(adminSafetyWalks)
+    if (!agg) return null
+    // Reflect the selected workroom / inspector in the snapshot instead of hardcoded labels.
+    if (adminWorkroomFilter) agg.workroom = adminWorkroomFilter
+    const inspectors = Array.from(new Set(adminSafetyWalks.map((w) => w.inspectorName).filter(Boolean)))
+    agg.inspectorName = inspectors.length === 1 ? inspectors[0] : 'All Submissions'
+    return agg
+  }, [isFullAdmin, adminSafetyWalks, adminWorkroomFilter])
 
   const displayedAnalytics = adminAggregate ?? lastSubmittedAnalytics ?? safetyAnalytics
   const hasAnyData = !!adminAggregate || !!lastSubmittedAnalytics
@@ -506,6 +512,33 @@ export default function SafetyWalkPage() {
     const fromCounts = adminWorkroomCounts.reduce((sum, row) => sum + (Number.isFinite(row.count) ? row.count : 0), 0)
     return fromCounts > 0 ? fromCounts : adminSafetyWalks.length
   }, [adminSafetyWalks, adminWorkroomCounts])
+
+  const workroomBreakdown = useMemo(() => {
+    if (!isFullAdmin) return []
+    const map = new Map<string, { count: number; totalItems: number; checkedItems: number; uncheckedItems: number }>()
+    for (const w of adminSafetyWalks) {
+      const a = w.analytics as Partial<SafetyAnalyticsSummary> | null
+      const wr = String(w.workroom || '').trim() || 'Unassigned'
+      const checked = typeof a?.checkedItems === 'number' ? a.checkedItems : 0
+      const total = typeof a?.totalItems === 'number' ? a.totalItems : 0
+      const prev = map.get(wr) || { count: 0, totalItems: 0, checkedItems: 0, uncheckedItems: 0 }
+      prev.count += 1
+      prev.totalItems += total
+      prev.checkedItems += checked
+      prev.uncheckedItems += Math.max(total - checked, 0)
+      map.set(wr, prev)
+    }
+    return Array.from(map.entries())
+      .map(([workroom, v]) => ({
+        workroom,
+        count: v.count,
+        completion: v.totalItems > 0 ? Math.round((v.checkedItems / v.totalItems) * 100) : 0,
+        checked: v.checkedItems,
+        total: v.totalItems,
+        unchecked: v.uncheckedItems,
+      }))
+      .sort((a, b) => a.workroom.localeCompare(b.workroom))
+  }, [isFullAdmin, adminSafetyWalks])
 
   const handleSubmit = async () => {
     setError('')
@@ -635,14 +668,34 @@ export default function SafetyWalkPage() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
           <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <ClipboardCheck className="w-6 h-6 text-brand-green" />
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <ClipboardCheck className="w-6 h-6 text-brand-green" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">Safety Walk</h1>
+                  <p className="text-sm text-slate-500">Record safety inspections by workroom.</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">Safety Walk</h1>
-                <p className="text-sm text-slate-500">Record safety inspections by workroom.</p>
-              </div>
+
+              {isFullAdmin && !showSafetyQuestions && (
+                <div className="w-full lg:w-80 flex-shrink-0">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workroom</label>
+                  <select
+                    value={adminWorkroomFilter}
+                    onChange={(e) => setAdminWorkroomFilter(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
+                  >
+                    <option value="">All workrooms</option>
+                    {adminWorkroomCounts.map((row) => (
+                      <option key={row.workroom} value={row.workroom}>
+                        {row.workroom} ({row.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {(error || success) && (
@@ -702,12 +755,18 @@ export default function SafetyWalkPage() {
                     <div>
                       <div className="inline-flex items-center gap-2 rounded-full border border-brand-green/20 bg-brand-green/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-green">
                         <BarChart3 className="h-3.5 w-3.5" />
-                        {isFullAdmin ? 'Company Analytics' : 'Your Analytics'}
+                        {isFullAdmin
+                          ? adminWorkroomFilter
+                            ? 'Workroom Analytics'
+                            : 'Company Analytics'
+                          : 'Your Analytics'}
                       </div>
                       <h2 className="mt-3 text-2xl font-bold text-slate-900">Safety Walk Insights</h2>
                       <p className="mt-1 max-w-2xl text-sm text-slate-500">
                         {isFullAdmin
-                          ? 'Analytics across all submitted safety walks.'
+                          ? adminWorkroomFilter
+                            ? `Analytics for the ${adminWorkroomFilter} workroom.`
+                            : 'Analytics across all submitted safety walks.'
                           : 'Analytics from your submitted safety walks.'}
                       </p>
                     </div>
@@ -913,6 +972,52 @@ export default function SafetyWalkPage() {
               </div>
               )}
 
+              {!showSafetyQuestions && isFullAdmin && !adminWorkroomFilter && workroomBreakdown.length > 0 && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Workroom Analytics</div>
+                      <div className="mt-1 text-lg font-bold text-slate-900">Analytics by Workroom</div>
+                      <div className="mt-1 text-sm text-slate-500">
+                        Completion and attention summary for each workroom.
+                      </div>
+                    </div>
+                    <BarChart3 className="h-6 w-6 text-brand-green/60" />
+                  </div>
+
+                  <div className="mt-5 overflow-hidden rounded-xl border border-slate-200">
+                    <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      <div>Workroom</div>
+                      <div>Submissions</div>
+                      <div>Completion</div>
+                      <div>Needs Attention</div>
+                    </div>
+                    <div className="divide-y divide-slate-200">
+                      {workroomBreakdown.map((row) => (
+                        <div key={row.workroom} className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr] gap-3 px-4 py-3 text-sm items-center">
+                          <div className="font-semibold text-slate-900 truncate">{row.workroom}</div>
+                          <div className="text-slate-700">{row.count}</div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900">{row.completion}%</span>
+                              <div className="h-1.5 flex-1 rounded-full bg-slate-200">
+                                <div
+                                  className={`h-1.5 rounded-full ${
+                                    row.completion >= 90 ? 'bg-emerald-500' : row.completion >= 75 ? 'bg-amber-500' : 'bg-rose-500'
+                                  }`}
+                                  style={{ width: `${row.completion}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-slate-700">{row.unchecked}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {!showSafetyQuestions && (isFullAdmin || isManagerOrAccounting) && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -924,24 +1029,6 @@ export default function SafetyWalkPage() {
                         <span className="font-semibold text-slate-900">{adminTotalSafetyWalks}</span>
                       </div>
                     </div>
-
-                    {isFullAdmin && (
-                      <div className="w-full lg:w-80">
-                        <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Filter Workroom</label>
-                        <select
-                          value={adminWorkroomFilter}
-                          onChange={(e) => setAdminWorkroomFilter(e.target.value)}
-                          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
-                        >
-                          <option value="">All workrooms</option>
-                          {adminWorkroomCounts.map((row) => (
-                            <option key={row.workroom} value={row.workroom}>
-                              {row.workroom} ({row.count})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
 
                   {adminSafetyWalks.length > 0 && (
