@@ -549,6 +549,22 @@ export default function SafetyWalkPage() {
     return adminSafetyWalks.slice(start, start + TABLE_PAGE_SIZE)
   }, [adminSafetyWalks, safeTablePage])
 
+  const pageNumbers = useMemo<(number | 'ellipsis')[]>(() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    const pages = new Set<number>([1, totalPages, safeTablePage - 1, safeTablePage, safeTablePage + 1])
+    const sorted = Array.from(pages)
+      .filter((p) => p >= 1 && p <= totalPages)
+      .sort((a, b) => a - b)
+    const result: (number | 'ellipsis')[] = []
+    let prev = 0
+    for (const p of sorted) {
+      if (prev && p - prev > 1) result.push('ellipsis')
+      result.push(p)
+      prev = p
+    }
+    return result
+  }, [totalPages, safeTablePage])
+
   useEffect(() => {
     setTablePage(1)
   }, [adminWorkroomFilter])
@@ -1067,31 +1083,48 @@ export default function SafetyWalkPage() {
                         })}
                       </div>
 
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3">
-                          <div className="text-xs font-semibold text-slate-500">
-                            Page {safeTablePage} of {totalPages} • {adminSafetyWalks.length} entries
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setTablePage((p) => Math.max(p - 1, 1))}
-                              disabled={safeTablePage <= 1}
-                              className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Prev
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setTablePage((p) => Math.min(p + 1, totalPages))}
-                              disabled={safeTablePage >= totalPages}
-                              className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Next
-                            </button>
-                          </div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="text-xs font-semibold text-slate-500">
+                          Showing {(safeTablePage - 1) * TABLE_PAGE_SIZE + 1}–
+                          {Math.min(safeTablePage * TABLE_PAGE_SIZE, adminSafetyWalks.length)} of {adminSafetyWalks.length} entries
                         </div>
-                      )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setTablePage((p) => Math.max(p - 1, 1))}
+                            disabled={safeTablePage <= 1}
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Prev
+                          </button>
+                          {pageNumbers.map((p, i) =>
+                            p === 'ellipsis' ? (
+                              <span key={`e-${i}`} className="px-1.5 text-sm text-slate-400">…</span>
+                            ) : (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => setTablePage(p)}
+                                className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-semibold transition-colors ${
+                                  p === safeTablePage
+                                    ? 'bg-brand-green text-white'
+                                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            )
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setTablePage((p) => Math.min(p + 1, totalPages))}
+                            disabled={safeTablePage >= totalPages}
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
