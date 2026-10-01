@@ -297,9 +297,12 @@ export default function SafetyWalkPage() {
   const userType = (session?.user as any)?.userType
   const role = String((session?.user as any)?.role || '').toUpperCase()
   const isPropertyPortal = pathname.startsWith('/property')
-  const isProperty = userType === 'property'
   const isFullAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const isManagerOrAccounting = role === 'MANAGER' || role === 'ACCOUNTING'
+  // Note: userType can be 'property' for admins/managers that also have a Property
+  // record (the safety-walks API upserts one), so derive "property" from role too.
+  const isProperty = userType === 'property' && !isFullAdmin && !isManagerOrAccounting
+  const showAdminNav = isFullAdmin || isManagerOrAccounting
   const canAccess = isProperty || isFullAdmin || isManagerOrAccounting
 
   const propertyEmail = session?.user?.email || ''
@@ -575,7 +578,9 @@ export default function SafetyWalkPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {isPropertyPortal ? (
+      {showAdminNav ? (
+        <AdminSidebar pathname={pathname} />
+      ) : (
         <PropertySidebar
           pathname={pathname}
           subtitle="Safety Walk"
@@ -583,14 +588,12 @@ export default function SafetyWalkPage() {
           userEmail={propertyEmail}
           onLogout={handleLogout}
         />
-      ) : (
-        <AdminSidebar pathname={pathname} />
       )}
 
-      {isPropertyPortal ? (
-        <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
-      ) : (
+      {showAdminNav ? (
         <AdminMobileMenu pathname={pathname} />
+      ) : (
+        <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
       )}
 
       <div className={`flex-1 transition-all duration-300 ${isPropertyPortal ? 'lg:ml-64' : sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
@@ -874,11 +877,11 @@ export default function SafetyWalkPage() {
               </div>
               )}
 
-              {!showSafetyQuestions && !isProperty && (
+              {!showSafetyQuestions && (isFullAdmin || isManagerOrAccounting) && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{isFullAdmin ? 'Safety Walk Records' : 'Your Safety Walks'}</div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{isFullAdmin ? 'Admin View' : 'Your Safety Walks'}</div>
                       <div className="mt-1 text-lg font-bold text-slate-900">{isFullAdmin ? 'Safety Walks by Workroom' : 'My Submitted Safety Walks'}</div>
                       <div className="mt-1 text-sm text-slate-500">
                         {isFullAdmin ? 'Total submissions: ' : 'My submissions: '}
