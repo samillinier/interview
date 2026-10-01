@@ -293,6 +293,8 @@ export default function SafetyWalkPage() {
   const [form, setForm] = useState(createEmptySafetyWalkForm)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tablePage, setTablePage] = useState(1)
+  const TABLE_PAGE_SIZE = 10
 
   const role = String((session?.user as any)?.role || '').toUpperCase()
   const isFullAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
@@ -539,6 +541,17 @@ export default function SafetyWalkPage() {
       }))
       .sort((a, b) => a.workroom.localeCompare(b.workroom))
   }, [isFullAdmin, adminSafetyWalks])
+
+  const totalPages = Math.max(Math.ceil(adminSafetyWalks.length / TABLE_PAGE_SIZE), 1)
+  const safeTablePage = Math.min(tablePage, totalPages)
+  const paginatedWalks = useMemo(() => {
+    const start = (safeTablePage - 1) * TABLE_PAGE_SIZE
+    return adminSafetyWalks.slice(start, start + TABLE_PAGE_SIZE)
+  }, [adminSafetyWalks, safeTablePage])
+
+  useEffect(() => {
+    setTablePage(1)
+  }, [adminWorkroomFilter])
 
   const handleSubmit = async () => {
     setError('')
@@ -1022,7 +1035,7 @@ export default function SafetyWalkPage() {
                         <div></div>
                       </div>
                       <div className="divide-y divide-slate-200">
-                        {adminSafetyWalks.map((w) => {
+                        {paginatedWalks.map((w) => {
                           const a = w.analytics as Partial<SafetyAnalyticsSummary> | null
                           const checked = typeof a?.checkedItems === 'number' ? a.checkedItems : null
                           const total = typeof a?.totalItems === 'number' ? a.totalItems : null
@@ -1053,6 +1066,32 @@ export default function SafetyWalkPage() {
                           )
                         })}
                       </div>
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3">
+                          <div className="text-xs font-semibold text-slate-500">
+                            Page {safeTablePage} of {totalPages} • {adminSafetyWalks.length} entries
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setTablePage((p) => Math.max(p - 1, 1))}
+                              disabled={safeTablePage <= 1}
+                              className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Prev
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTablePage((p) => Math.min(p + 1, totalPages))}
+                              disabled={safeTablePage >= totalPages}
+                              className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
