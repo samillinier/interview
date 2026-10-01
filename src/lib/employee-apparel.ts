@@ -23,6 +23,10 @@ const SWATCH_BASE = 'https://assetly.ordermygear.com/images/h_103,w_93,c_limit'
 const AG_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/k/5'
 const AG_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/k/5'
 
+// Apparel Giant product imagery for the S658 SuperPro Oxford Shirt.
+const AG_S658_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
+const AG_S658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/s/6'
+
 /**
  * Employee Apparel order catalog.
  * Product data (name, price, description, colors, and imagery) mirrors the
@@ -127,6 +131,34 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "Vine Green", image: `${AG_IMG_BASE}/k528_vinegreen_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_vinegreen_model_front_072014.jpg` },
       { name: "Violet Purple", image: `${AG_IMG_BASE}/k528_violetpurple_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_violetpurple_model_front_072014.jpg` },
       { name: "White", image: `${AG_IMG_BASE}/k528_white_model_front_072014.jpg`, swatch: `${AG_SWATCH_BASE}/k528_white_model_front_072014.jpg` },
+    ],
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+  },
+  {
+    key: 's658-shirt',
+    name: "Port Authority Men's Oxford Solid Color LS Button Up Shirt. S658",
+    sku: 'S658',
+    price: 34.25,
+    description: [
+      "This oxford shirt has a wrinkle-free finish that looks great no matter how long you're on the clock. Look like you mean business with this versatile option, which resists stains and keeps you looking neat and professional all day long.",
+      "4.6-ounce, 60/40 cotton/poly",
+      "Back shoulder pleats",
+      "Pearlized buttons",
+      "Button-down collar",
+      "Left chest pocket",
+      "Rounded adjustable cuffs",
+      "Rental-friendly",
+      "Sizes XS–XL: $34.25 · 2XL–4XL: $36.25",
+    ],
+    image: `${AG_S658_IMG_BASE}/s658_gustygrey_model_front.jpg`,
+    colors: [
+      { name: "Black", image: `${AG_S658_IMG_BASE}/s658_black_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_black_model_front_122014.jpg` },
+      { name: "Green", image: `${AG_S658_IMG_BASE}/s658_green_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_green_model_front_122014.jpg` },
+      { name: "Gusty Grey", image: `${AG_S658_IMG_BASE}/s658_gustygrey_model_front.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_gustygrey_model_front.jpg` },
+      { name: "Navy", image: `${AG_S658_IMG_BASE}/s658_navy_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_navy_model_front_122014.jpg` },
+      { name: "Oxford Blue", image: `${AG_S658_IMG_BASE}/s658_oxfordblue_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_oxfordblue_model_front_122014.jpg` },
+      { name: "Soft Purple", image: `${AG_S658_IMG_BASE}/s658_softpurple_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_softpurple_model_front_122014.jpg` },
+      { name: "White", image: `${AG_S658_IMG_BASE}/s658_white_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_white_model_front_122014.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   },
