@@ -506,8 +506,9 @@ export default function SafetyWalkPage() {
   }, [form])
 
   const adminAggregate = useMemo(() => {
+    if (!isFullAdmin) return null
     return summarizeAggregateAnalytics(adminSafetyWalks)
-  }, [adminSafetyWalks])
+  }, [isFullAdmin, adminSafetyWalks])
 
   const displayedAnalytics = adminAggregate ?? lastSubmittedAnalytics ?? safetyAnalytics
   const hasAnyData = !!adminAggregate || !!lastSubmittedAnalytics
