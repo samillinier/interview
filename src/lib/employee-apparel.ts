@@ -20,16 +20,17 @@ const IMG_BASE = 'https://assetly.ordermygear.com/images/w_1200,c_limit'
 const SWATCH_BASE = 'https://assetly.ordermygear.com/images/h_103,w_93,c_limit'
 
 // Apparel Giant (Sport Shirt Outlet) product imagery for the K528 Fine Jacquard Polo.
-const AG_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/k/5'
-const AG_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/k/5'
+// Full-resolution cache (1200x1800) for the main/detail image; medium (700x700) for crisp color swatches.
+const AG_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/k/5'
+const AG_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/k/5'
 
 // Apparel Giant product imagery for the S658 SuperPro Oxford Shirt.
-const AG_S658_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
-const AG_S658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/s/6'
+const AG_S658_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/s/6'
+const AG_S658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
 
 // Apparel Giant product imagery for the S639 Plaid Pattern Easy Care Shirt (undecorated).
-const AG_S639_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
-const AG_S639_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/3380650127d143eec657262365bd2ea0/s/6'
+const AG_S639_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/s/6'
+const AG_S639_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
 
 /**
  * Employee Apparel order catalog.
