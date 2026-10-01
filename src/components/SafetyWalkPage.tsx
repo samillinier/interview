@@ -542,12 +542,21 @@ export default function SafetyWalkPage() {
       .sort((a, b) => a.workroom.localeCompare(b.workroom))
   }, [isFullAdmin, adminSafetyWalks])
 
-  const totalPages = Math.max(Math.ceil(adminSafetyWalks.length / TABLE_PAGE_SIZE), 1)
+  const sortedWalks = useMemo(() => {
+    return [...adminSafetyWalks].sort((a, b) => {
+      const dateA = a.inspectionDate ? new Date(a.inspectionDate).getTime() : 0
+      const dateB = b.inspectionDate ? new Date(b.inspectionDate).getTime() : 0
+      if (dateB !== dateA) return dateB - dateA
+      return a.inspectorName.localeCompare(b.inspectorName)
+    })
+  }, [adminSafetyWalks])
+
+  const totalPages = Math.max(Math.ceil(sortedWalks.length / TABLE_PAGE_SIZE), 1)
   const safeTablePage = Math.min(tablePage, totalPages)
   const paginatedWalks = useMemo(() => {
     const start = (safeTablePage - 1) * TABLE_PAGE_SIZE
-    return adminSafetyWalks.slice(start, start + TABLE_PAGE_SIZE)
-  }, [adminSafetyWalks, safeTablePage])
+    return sortedWalks.slice(start, start + TABLE_PAGE_SIZE)
+  }, [sortedWalks, safeTablePage])
 
   const pageNumbers = useMemo<(number | 'ellipsis')[]>(() => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -1042,7 +1051,8 @@ export default function SafetyWalkPage() {
 
                   {adminSafetyWalks.length > 0 && (
                     <div className="mt-5 overflow-hidden rounded-xl border border-slate-200">
-                      <div className="grid grid-cols-[1.1fr_1fr_0.9fr_0.9fr_2.5rem] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      <div className="grid grid-cols-[0.95fr_1.1fr_1fr_0.9fr_0.9fr_2.5rem] gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                        <div>Date</div>
                         <div>Inspector</div>
                         <div>Workroom</div>
                         <div>Completion</div>
@@ -1055,13 +1065,15 @@ export default function SafetyWalkPage() {
                           const checked = typeof a?.checkedItems === 'number' ? a.checkedItems : null
                           const total = typeof a?.totalItems === 'number' ? a.totalItems : null
                           const pct = typeof a?.completionPercent === 'number' ? a.completionPercent : null
+                          const d = w.inspectionDate ? new Date(w.inspectionDate) : null
+                          const isValidDate = d && !Number.isNaN(d.getTime())
                           return (
-                            <div key={w.id} className="grid grid-cols-[1.1fr_1fr_0.9fr_0.9fr_2.5rem] gap-3 px-4 py-3 text-sm items-center">
+                            <div key={w.id} className="grid grid-cols-[0.95fr_1.1fr_1fr_0.9fr_0.9fr_2.5rem] gap-3 px-4 py-3 text-sm items-center">
+                              <div className="font-semibold text-slate-900 whitespace-nowrap">
+                                {isValidDate ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}
+                              </div>
                               <div className="min-w-0">
                                 <div className="truncate font-semibold text-slate-900">{w.inspectorName || '--'}</div>
-                                <div className="mt-0.5 text-xs text-slate-500">
-                                  {w.inspectionDate ? new Date(w.inspectionDate).toLocaleDateString() : '--'}
-                                </div>
                               </div>
                               <div className="font-semibold text-slate-900">{w.workroom || '--'}</div>
                               <div className="font-semibold text-slate-900">{pct === null ? '--' : `${pct}%`}</div>
