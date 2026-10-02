@@ -1211,6 +1211,53 @@ model BusinessCardOrder {
   @@index([createdByEmail])
 }
 
+model VehicleInspection {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Vehicle information
+  inspectionDate        DateTime
+  assignedLocation      String
+  makeModel             String
+  tagNumber             String
+
+  // Safety features
+  headlightsTailLights  String?
+  brakeLights           String?
+  signalHazardLights    String?
+  autoGlassMirrors      String?
+  wipers                String?
+  brakes                String?
+  horn                  String?
+  seatBelts             String?
+  tires                 String?
+  firstAidKit           String?
+  fireExtinguisher      String?
+
+  // Operating requirements
+  insuranceRegistration String?
+  licensePlateSticker   String?
+
+  // Maintenance items
+  cleanedRegularly      String?
+  currentMileage        Float?
+  nextOilChangeDate     DateTime?
+  nextOilChangeMileage  Float?
+  comments              String?
+
+  // Inspection statement
+  inspectionStatement   String
+
+  createdByEmail        String?
+  createdByName         String?
+
+  @@index([createdAt])
+  @@index([inspectionDate])
+  @@index([assignedLocation])
+  @@index([createdByEmail])
+}
+
 model Vehicle {
   id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())

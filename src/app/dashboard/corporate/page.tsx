@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard, Car } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -61,6 +61,14 @@ const corporateGroups = [
         icon: ClipboardCheck,
         cta: 'Safety Walk',
         highlights: ['Safety checklist', 'Action items', 'Analytics'],
+      },
+      {
+        title: 'Monthly Vehicle Inspection',
+        description: 'Complete the monthly vehicle safety, operating, and maintenance inspection checklist for fleet vehicles.',
+        href: '/dashboard/corporate/vehicle-inspection',
+        icon: Car,
+        cta: 'Vehicle Inspection',
+        highlights: ['Safety checklist', 'Fleet vehicles', 'Monthly record'],
       },
       {
         title: 'Travel Request',
@@ -213,6 +221,7 @@ export default function CorporatePage() {
     '/dashboard/corporate/pad-transfer',
     '/dashboard/corporate/inventory-cycle',
     '/dashboard/corporate/safety-walk',
+    '/dashboard/corporate/vehicle-inspection',
     '/dashboard/corporate/travel-request',
     '/dashboard/corporate/office-supplies',
     '/dashboard/corporate/purchase-request',
