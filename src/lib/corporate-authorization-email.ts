@@ -71,6 +71,16 @@ const KIND_META: Record<CorporateCommunicationKind, KindMeta> = {
     path: '/dashboard/corporate/business-cards',
     subject: 'A Business Cards Order needs your attention',
   },
+  'vehicle-inspection': {
+    label: 'Monthly Vehicle Inspection',
+    path: '/dashboard/corporate/vehicle-inspection',
+    subject: 'A Monthly Vehicle Inspection was submitted',
+  },
+  'fleet-service-request': {
+    label: 'Fleet Service Request',
+    path: '/dashboard/corporate/fleet-service-request',
+    subject: 'A Fleet Service Request was submitted',
+  },
   invoice: {
     label: 'Invoice',
     path: '/dashboard/corporate/invoice',

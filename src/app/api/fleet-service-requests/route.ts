@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 const CORPORATE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR', 'ACCOUNTING'])
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
@@ -86,6 +87,14 @@ export async function POST(request: NextRequest) {
     }
 
     const record = await prisma.fleetServiceRequest.create({ data })
+
+    await notifyCorporateAuthorizer({
+      kind: 'fleet-service-request',
+      recordId: record.id,
+      submittedByEmail: user.email,
+      submittedByName: user.name,
+      details: `${record.serviceType} · ${record.location}`,
+    })
 
     return NextResponse.json({ success: true, request: record })
   } catch (error: any) {

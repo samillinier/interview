@@ -11,6 +11,8 @@ export type CorporateCommunicationKind =
   | 'purchase-request'
   | 'employee-apparel'
   | 'business-cards'
+  | 'vehicle-inspection'
+  | 'fleet-service-request'
   | 'invoice'
   | 'btr'
   | 'firm-lead'
@@ -35,6 +37,8 @@ export const CORPORATE_COMMUNICATION_KINDS: CorporateCommunicationKindDef[] = [
   { slug: 'purchase-request', label: 'Purchase Request', description: 'Requests to purchase items or equipment', path: '/dashboard/corporate/purchase-request' },
   { slug: 'employee-apparel', label: 'Employee Apparel', description: 'Company-branded apparel orders', path: '/dashboard/corporate/employee-apparel' },
   { slug: 'business-cards', label: 'Business Cards', description: 'Employee business card orders', path: '/dashboard/corporate/business-cards' },
+  { slug: 'vehicle-inspection', label: 'Monthly Vehicle Inspection', description: 'Monthly fleet vehicle safety inspections', path: '/dashboard/corporate/vehicle-inspection' },
+  { slug: 'fleet-service-request', label: 'Fleet Service Request', description: 'Fleet vehicle or equipment service requests', path: '/dashboard/corporate/fleet-service-request' },
   { slug: 'invoice', label: 'Invoice', description: 'Weekly invoices submitted by estimators', path: '/dashboard/corporate/invoice' },
   { slug: 'btr', label: 'BTR', description: 'Business Tax Receipt records', path: '/dashboard/corporate/btr' },
   { slug: 'firm-lead', label: 'Firm Lead', description: 'Firm lead records', path: '/dashboard/corporate/firm-lead' },
