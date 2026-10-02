@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard, Car } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard, Car, Wrench } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -69,6 +69,14 @@ const corporateGroups = [
         icon: Car,
         cta: 'Vehicle Inspection',
         highlights: ['Safety checklist', 'Fleet vehicles', 'Monthly record'],
+      },
+      {
+        title: 'Fleet Service Request',
+        description: 'Submit a repair or service request for a fleet vehicle or piece of equipment, with photos and attachments.',
+        href: '/dashboard/corporate/fleet-service-request',
+        icon: Wrench,
+        cta: 'Fleet Service Request',
+        highlights: ['Repair requests', 'Photo uploads', 'Open / completed'],
       },
       {
         title: 'Travel Request',
@@ -222,6 +230,7 @@ export default function CorporatePage() {
     '/dashboard/corporate/inventory-cycle',
     '/dashboard/corporate/safety-walk',
     '/dashboard/corporate/vehicle-inspection',
+    '/dashboard/corporate/fleet-service-request',
     '/dashboard/corporate/travel-request',
     '/dashboard/corporate/office-supplies',
     '/dashboard/corporate/purchase-request',

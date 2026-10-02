@@ -1211,6 +1211,25 @@ model BusinessCardOrder {
   @@index([createdByEmail])
 }
 
+model FleetServiceRequest {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  requestDate    DateTime
+  location       String
+  serviceType    String
+  details        String
+  attachmentUrls Json?
+  status         String   @default("open")
+  createdByEmail String?
+  createdByName  String?
+
+  @@index([createdAt])
+  @@index([requestDate])
+  @@index([location])
+  @@index([status])
+}
+
 model VehicleInspection {
   id                    String    @id @default(cuid())
   createdAt             DateTime  @default(now())
