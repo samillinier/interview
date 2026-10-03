@@ -155,7 +155,7 @@ export default function RemarksPage() {
     if (status === 'authenticated') {
       fetchUpdatesCount()
       if (role === 'MANAGER' || role === 'ACCOUNTING') {
-        const interval = setInterval(fetchUpdatesCount, 30000)
+        const interval = setInterval(fetchUpdatesCount, 60000)
         return () => clearInterval(interval)
       }
       fetchPendingApprovalsCount()
@@ -166,7 +166,7 @@ export default function RemarksPage() {
         fetchSignatureNotSignedCount()
         fetchUnreadMessagesCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status, role])

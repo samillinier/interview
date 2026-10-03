@@ -108,13 +108,13 @@ export default function NotificationsPage() {
       fetchPendingApprovalsCount()
       fetchSignatureNotSignedCount()
       fetchUpdatesCount()
-      // Refresh count every 30 seconds
+      // Refresh count every 60 seconds
       const interval = setInterval(() => {
         fetchNotificationCount()
         fetchPendingApprovalsCount()
         fetchSignatureNotSignedCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status, router, role])

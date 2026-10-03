@@ -277,7 +277,7 @@ export function LandingChatWidget({
       }).catch(() => {})
     }
     ping()
-    const timer = window.setInterval(ping, 4000)
+    const timer = window.setInterval(ping, 60000)
     // Re-ping immediately when the tab becomes visible/focused so presence stays
     // fresh (avoids the online dot flickering in the admin messages list).
     const onVisible = () => {

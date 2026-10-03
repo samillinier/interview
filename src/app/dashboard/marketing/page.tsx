@@ -224,7 +224,7 @@ export default function MarketingPage() {
     }
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', onVisible)
-    const timer = window.setInterval(refresh, 12000)
+    const timer = window.setInterval(refresh, 30000)
     return () => {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', onVisible)

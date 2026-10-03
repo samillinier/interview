@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         const lastId = chat?.messages?.at(-1)?.id || ''
         if (chat && lastId !== sinceId) break
         if (waitMs <= 0 || Date.now() >= deadline) break
-        await sleep(400)
+        await sleep(2000)
         chat = await loadVisitorMessages(token)
       }
       return NextResponse.json(

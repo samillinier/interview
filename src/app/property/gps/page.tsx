@@ -63,7 +63,7 @@ interface PropertyProfile {
   email: string
 }
 
-const POLL_INTERVAL_MS = 10000 // 10 seconds between GPS position polls
+const POLL_INTERVAL_MS = 30000 // 30 seconds between GPS position polls
 
 export default function GPSPage() {
   const { data: session, status } = useSession()
@@ -328,7 +328,10 @@ export default function GPSPage() {
   useEffect(() => {
     if (!isLive) return
     fetchDevices()
-    const interval = setInterval(fetchDevices, POLL_INTERVAL_MS)
+    const interval = setInterval(() => {
+      // Skip polling when the tab is hidden so an open map doesn't keep the DB warm.
+      if (document.visibilityState === 'visible') fetchDevices()
+    }, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [isLive, fetchDevices])
 

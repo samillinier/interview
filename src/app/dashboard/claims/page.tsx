@@ -253,7 +253,7 @@ export default function ClaimsPage() {
       fetchPendingApprovalsCount()
       fetchSignatureNotSignedCount()
       fetchUnreadMessagesCount()
-    }, 30000)
+    }, 60000)
 
     return () => clearInterval(interval)
   }, [status, isSuperAdmin])

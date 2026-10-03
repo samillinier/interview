@@ -105,7 +105,7 @@ export default function InstallerLayoutClient({ children }: { children: React.Re
     }
 
     void refresh()
-    const interval = window.setInterval(refresh, 20000)
+    const interval = window.setInterval(refresh, 60000)
     document.addEventListener('visibilitychange', refresh)
     return () => {
       window.clearInterval(interval)

@@ -319,7 +319,7 @@ export default function AnalyticsPage() {
         fetchPendingApprovalsCount()
         fetchSignatureNotSignedCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status, router, role])

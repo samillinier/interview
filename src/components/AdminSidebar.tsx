@@ -110,7 +110,7 @@ export function AdminSidebar({ pathname }: Props) {
     }
 
     loadMessageBadge()
-    const interval = window.setInterval(loadMessageBadge, 3000)
+    const interval = window.setInterval(loadMessageBadge, 30000)
     window.addEventListener('dashboard-messages-changed', refresh)
     window.addEventListener('focus', refresh)
     return () => {
@@ -149,7 +149,7 @@ export function AdminSidebar({ pathname }: Props) {
     }
 
     loadInvoiceBadge()
-    const interval = window.setInterval(loadInvoiceBadge, 3000)
+    const interval = window.setInterval(loadInvoiceBadge, 30000)
     window.addEventListener('dashboard-invoices-changed', refresh)
     window.addEventListener('focus', refresh)
     return () => {
@@ -234,7 +234,7 @@ export function AdminSidebar({ pathname }: Props) {
     }
 
     loadCounts()
-    const interval = window.setInterval(loadCounts, 30000)
+    const interval = window.setInterval(loadCounts, 60000)
     window.addEventListener('dashboard-updates-changed', refresh)
     return () => {
       cancelled = true

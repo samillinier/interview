@@ -1585,7 +1585,7 @@ export default function ApprovalsPage() {
       const interval = setInterval(() => {
         fetchPendingCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status, canViewApprovals])

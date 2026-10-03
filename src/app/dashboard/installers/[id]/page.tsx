@@ -767,7 +767,7 @@ export default function InstallerProfileViewPage() {
         fetchPendingApprovalsCount()
         fetchSignatureNotSignedCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [sessionStatus, installerId, router])

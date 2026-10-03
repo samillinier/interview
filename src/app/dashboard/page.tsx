@@ -532,7 +532,7 @@ function DashboardPageContent() {
         fetchPendingApprovalsCount()
         fetchUnreadMessagesCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status])
@@ -1585,7 +1585,7 @@ function DashboardPageContent() {
       void fetchInstallers(currentPage, { silent: true })
     }
 
-    const interval = window.setInterval(refreshPresence, 5000)
+    const interval = window.setInterval(refreshPresence, 30000)
     window.addEventListener('focus', refreshPresence)
     return () => {
       window.clearInterval(interval)

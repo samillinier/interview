@@ -249,7 +249,7 @@ export default function MessagesPage() {
         fetchPendingApprovalsCount()
         fetchSignatureNotSignedCount()
         fetchUpdatesCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status, router])
@@ -314,7 +314,7 @@ export default function MessagesPage() {
       fetchAllMessages()
       const interval = window.setInterval(() => {
         void fetchAllMessages()
-      }, 3000)
+      }, 30000)
       return () => window.clearInterval(interval)
     }
   }, [status])
@@ -372,7 +372,7 @@ export default function MessagesPage() {
     void loadWebsitePresence()
     const interval = window.setInterval(() => {
       void loadWebsitePresence()
-    }, 3000)
+    }, 30000)
     return () => {
       cancelled = true
       window.clearInterval(interval)
@@ -405,7 +405,7 @@ export default function MessagesPage() {
     const installerId = selectedInstaller.id
     const interval = window.setInterval(() => {
       void fetchMessagesForInstaller(installerId)
-    }, 8000)
+    }, 30000)
     return () => window.clearInterval(interval)
   }, [selectedInstaller?.id])
 

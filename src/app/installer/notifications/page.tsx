@@ -203,7 +203,7 @@ export default function NotificationsPage() {
       void loadNotifications({ quiet: true })
     }
 
-    const interval = window.setInterval(refresh, 10000)
+    const interval = window.setInterval(refresh, 30000)
     const onVisible = () => {
       if (document.visibilityState === 'visible') refresh()
     }

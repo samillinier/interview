@@ -105,7 +105,7 @@ export default function JobApplicationsPage() {
         fetchNotificationCount()
         fetchPendingApprovalsCount()
         fetchSignatureNotSignedCount()
-      }, 30000)
+      }, 60000)
       return () => clearInterval(interval)
     }
   }, [status, router])

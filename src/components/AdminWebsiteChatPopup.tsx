@@ -138,7 +138,7 @@ export function AdminWebsiteChatPopup() {
       }
     }
     void load()
-    const timer = window.setInterval(load, 3000)
+    const timer = window.setInterval(load, 30000)
     return () => {
       cancelled = true
       window.clearInterval(timer)
@@ -165,7 +165,7 @@ export function AdminWebsiteChatPopup() {
       }
     }
     void loadMessages()
-    const timer = window.setInterval(loadMessages, 4000)
+    const timer = window.setInterval(loadMessages, 15000)
     return () => {
       cancelled = true
       window.clearInterval(timer)

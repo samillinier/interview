@@ -100,7 +100,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       void loadMessages()
     }
     loadMessages()
-    const interval = setInterval(loadMessages, 3000)
+    const interval = setInterval(loadMessages, 30000)
     window.addEventListener('dashboard-messages-changed', refresh)
     window.addEventListener('focus', refresh)
     return () => {
@@ -135,7 +135,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       void loadInvoices()
     }
     loadInvoices()
-    const interval = setInterval(loadInvoices, 3000)
+    const interval = setInterval(loadInvoices, 30000)
     window.addEventListener('dashboard-invoices-changed', refresh)
     window.addEventListener('focus', refresh)
     return () => {
@@ -179,7 +179,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       }
     }
     loadTravelRequestCount()
-    const interval = setInterval(loadTravelRequestCount, 30000)
+    const interval = setInterval(loadTravelRequestCount, 60000)
     return () => {
       cancelled = true
       clearInterval(interval)
@@ -200,7 +200,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       }
     }
     loadOfficeSuppliesCount()
-    const interval = setInterval(loadOfficeSuppliesCount, 30000)
+    const interval = setInterval(loadOfficeSuppliesCount, 60000)
     return () => {
       cancelled = true
       clearInterval(interval)
@@ -225,7 +225,7 @@ export function AdminMobileMenu({ pathname }: Props) {
     }
 
     loadUpdatesCount()
-    const interval = setInterval(loadUpdatesCount, 30000)
+    const interval = setInterval(loadUpdatesCount, 60000)
     window.addEventListener('dashboard-updates-changed', refresh)
     return () => {
       cancelled = true

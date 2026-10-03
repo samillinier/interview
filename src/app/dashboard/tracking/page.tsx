@@ -585,7 +585,7 @@ export default function TrackingPage() {
           fetchSignatureNotSignedCount()
           fetchUnreadMessagesCount()
           fetchUpdatesCount()
-        }, 30000)
+        }, 60000)
         return () => clearInterval(interval)
       }
     }
