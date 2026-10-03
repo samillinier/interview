@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, BarChart3, Briefcase, Building2, ClipboardList, DollarSign, Hammer, Shield } from 'lucide-react'
+import { AlertCircle, ArrowRight, Shield } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -15,40 +15,8 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 const jobGroups = [
   {
     title: 'Job Management',
-    description: 'Open dedicated workspaces for browsing Realtime jobs and saved reports.',
+    description: 'Security and admin activity monitoring.',
     cards: [
-      {
-        title: 'Analytics',
-        description: 'Visualize job data with charts and metrics, trends, distributions, PO amounts, and more.',
-        href: '/dashboard/jobs/analytics',
-        icon: BarChart3,
-        cta: 'Open Analytics',
-        highlights: [] as string[],
-      },
-      {
-        title: 'Cilio Jobs',
-        description: 'View saved job reports with quick access links to Cilio, store details, and cross-reference with the jobs page.',
-        href: '/dashboard/jobs/reports',
-        icon: ClipboardList,
-        cta: 'Open Cilio Jobs',
-        highlights: [] as string[],
-      },
-      {
-        title: 'Realtime',
-        description: 'Browse, search, filter, and manage Realtime jobs — Scheduled, Dispatched, Completed, and more. Sync jobs to reports from here.',
-        href: '/dashboard/jobs/cilio',
-        icon: Briefcase,
-        cta: 'Open Realtime',
-        highlights: [] as string[],
-      },
-      {
-        title: 'Enterprise',
-        description: 'Track crew pay data, labor costs vs PO revenue, profit margins, and crew pay trends across workrooms and installers.',
-        href: '/dashboard/jobs/enterprise',
-        icon: DollarSign,
-        cta: 'Open Enterprise',
-        highlights: [] as string[],
-      },
       {
         title: 'Audit',
         description: 'Monitor security measures, track admin activity, and review suspicious events across the platform.',
@@ -114,7 +82,7 @@ export default function JobsHubPage() {
             <div className="max-w-[1400px] mx-auto">
               <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">Jobs</p>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Job Hub</h1>
-              <p className="text-sm text-slate-500">Fast access to Realtime jobs, saved reports, and postings.</p>
+              <p className="text-sm text-slate-500">Security and admin activity monitoring.</p>
             </div>
                   </div>
         </header>

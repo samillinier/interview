@@ -98,13 +98,6 @@ export async function GET() {
         description: '.env.local.bak, .env.local.bak2, .env.local 2.bak, .env.bak — all removed from the filesystem.',
       },
       {
-        id: 'cilio-headers-centralized',
-        category: 'Secrets',
-        label: 'Cilio API credentials accessed only from lib/cilio.ts',
-        status: 'secured',
-        description: 'No route directly reads CILIO_SUBSCRIPTION_KEY — all go through getCilioAuthHeader().',
-      },
-      {
         id: 'reset-token-expiry',
         category: 'Pending',
         label: 'Password reset tokens have no expiration check',

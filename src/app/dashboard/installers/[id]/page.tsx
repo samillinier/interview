@@ -1175,16 +1175,7 @@ export default function InstallerProfileViewPage() {
 
   // Fetch chargeback data when enterprise group number changes
   useEffect(() => {
-    if (!cilioEnterpriseGroupNumber) {
-      setChargebackData(null)
-      return
-    }
-    setIsLoadingChargeback(true)
-    fetch(`/api/cilio/enterprise/${cilioEnterpriseGroupNumber}`)
-      .then(r => r.json())
-      .then(data => setChargebackData(data.group || null))
-      .catch(() => setChargebackData(null))
-      .finally(() => setIsLoadingChargeback(false))
+    setChargebackData(null)
   }, [cilioEnterpriseGroupNumber])
 
   const getCreditColor = (creditHold: boolean | null, pastDueInvoices: boolean | null, pastDueBalance: number | null) => {
@@ -1237,15 +1228,11 @@ export default function InstallerProfileViewPage() {
         console.error('Failed to load historical data:', historyResponse.status, historyResponse.statusText)
       }
 
-      // Load assigned jobs from Cilio sync
+      // Load assigned jobs
       try {
         setJobsLoading(true)
-        const jobsResponse = await fetch(`/api/admin/installers/${installerId}/jobs`)
-        if (jobsResponse.ok) {
-          const jobsData = await jobsResponse.json()
-          setScheduledJobs(jobsData.scheduledJobs || [])
-          setChargebackJobs(jobsData.chargebackJobs || [])
-        }
+        setScheduledJobs([])
+        setChargebackJobs([])
       } catch (jobsError) {
         console.error('Error loading installer jobs:', jobsError)
       } finally {
