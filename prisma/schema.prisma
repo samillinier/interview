@@ -85,35 +85,6 @@ model AdminAuditLog {
   @@index([targetType, targetId])
 }
 
-model CilioGeoMetric {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  action    String
-  country   String   @default("UNKNOWN")
-  region    String   @default("")
-  city      String   @default("Unknown")
-  latitude  String   @default("")
-  longitude String   @default("")
-  count     Int      @default(0)
-  lastSeen  DateTime @default(now())
-
-  @@unique([action, country, region, city, latitude, longitude])
-  @@index([action])
-  @@index([country])
-  @@index([lastSeen])
-}
-
-model CilioSyncState {
-  key             String    @id
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  lastStartedAt   DateTime?
-  lastCompletedAt DateTime?
-  status          String?
-  message         String?
-}
-
 model RuhavikAuthState {
   key                String    @id
   accessToken        String?
@@ -121,33 +92,6 @@ model RuhavikAuthState {
   lastLoginAttemptAt DateTime?
   loginBlockedUntil  DateTime?
   updatedAt          DateTime  @updatedAt
-}
-
-model CilioJobRecord {
-  id                       String     @id @default(cuid())
-  createdAt                DateTime   @default(now())
-  updatedAt                DateTime @updatedAt
-  orderNumber              Int        @unique
-  orderStatusDescription   String?
-  jobType                  String     @default("scheduled")
-  statusChangedAt          DateTime?
-  storeNumber              String?
-  storeName                String?
-  laborCategoryDescription String?
-  workroom                 String?
-  scheduledInstallDate     DateTime?
-  measureDate              DateTime?
-  bookingDate              DateTime?
-  installerId              String?
-  installerName            String?
-  crewPayTotal             Decimal?   @db.Decimal(12, 2)
-  cilioPayload             Json
-  Installer                Installer? @relation(fields: [installerId], references: [id], onDelete: Cascade)
-
-  @@index([createdAt])
-  @@index([installerId])
-  @@index([jobType])
-  @@index([orderNumber])
 }
 
 model Claim {
@@ -389,9 +333,7 @@ model Installer {
   carpetTileNotifyEmailSentAt          DateTime?
   managerRemarks                       String?
   aiChatEnabled                        Boolean                  @default(true)
-  cilioEnterpriseGroupNumber           Int?
   dateNullFields                       String?
-  CilioJobRecord                       CilioJobRecord[]
   Claim                                Claim[]
   Communication                        Communication[]
   DeviceToken                          DeviceToken[]

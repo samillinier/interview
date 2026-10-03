@@ -48,11 +48,6 @@ function getSectionsFromFields(fields: string[]): string[] {
     'employersLiabilityExpiry'
   ])
   
-  // Enterprise / Chargeback fields
-  const enterpriseFields = new Set([
-    'cilioEnterpriseGroupNumber'
-  ])
-  
   // License & Background Check fields
   const licenseFields = new Set([
     'hasLicense', 'licenseNumber', 'licenseExpiry', 'canPassBackgroundCheck', 'backgroundCheckDetails'
@@ -67,8 +62,6 @@ function getSectionsFromFields(fields: string[]): string[] {
       sections.add('Insurance & Certificate Expiry Dates')
     } else if (licenseFields.has(field)) {
       sections.add('License & Background Check')
-    } else if (enterpriseFields.has(field)) {
-      sections.add('Enterprise Account / Chargeback')
     }
   }
   
@@ -122,7 +115,6 @@ const INSTALLER_ALLOWED_UPDATE_FIELDS = new Set<string>([
   'automobileLiabilityExpiry',
   'employersLiabilityExpiry',
   'dateNullFields',
-  'cilioEnterpriseGroupNumber',
   'canPassBackgroundCheck',
   'backgroundCheckDetails',
   'insuranceType',
