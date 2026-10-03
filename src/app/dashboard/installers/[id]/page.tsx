@@ -267,7 +267,6 @@ interface InstallerProfile {
   automobileLiabilityExpiryDates?: string
   employersLiabilityExpiry?: string
   dateNullFields?: string
-  cilioEnterpriseGroupNumber?: number | null
   canPassBackgroundCheck?: boolean
   backgroundCheckDetails?: string
   insuranceType?: string
@@ -552,9 +551,6 @@ export default function InstallerProfileViewPage() {
   const [automobileLiabilityExpiryDates, setAutomobileLiabilityExpiryDates] = useState<string[]>([])
   const [employersLiabilityExpiry, setEmployersLiabilityExpiry] = useState('')
   const [nullDateFields, setNullDateFields] = useState<Set<string>>(new Set())
-  const [cilioEnterpriseGroupNumber, setCilioEnterpriseGroupNumber] = useState<number | null>(null)
-  const [chargebackData, setChargebackData] = useState<any>(null)
-  const [isLoadingChargeback, setIsLoadingChargeback] = useState(false)
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [willingToTravel, setWillingToTravel] = useState<boolean | undefined>(undefined)
   const [maxTravelDistance, setMaxTravelDistance] = useState<number | undefined>(undefined)
@@ -1076,7 +1072,6 @@ export default function InstallerProfileViewPage() {
       )
       // dateNullFields loaded via dedicated effect below
 
-      setCilioEnterpriseGroupNumber(installer.cilioEnterpriseGroupNumber ?? null)
       setWillingToTravel(installer.willingToTravel)
       setMaxTravelDistance(installer.maxTravelDistance)
       setCanStartImmediately(installer.canStartImmediately)
@@ -1172,17 +1167,6 @@ export default function InstallerProfileViewPage() {
       setNullDateFields(new Set())
     }
   }, [installer?.dateNullFields])
-
-  // Fetch chargeback data when enterprise group number changes
-  useEffect(() => {
-    setChargebackData(null)
-  }, [cilioEnterpriseGroupNumber])
-
-  const getCreditColor = (creditHold: boolean | null, pastDueInvoices: boolean | null, pastDueBalance: number | null) => {
-    if (creditHold) return { border: 'border-red-300', bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-100 text-red-700' }
-    if (pastDueInvoices || (pastDueBalance && pastDueBalance > 0)) return { border: 'border-amber-300', bg: 'bg-amber-50', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700' }
-    return { border: 'border-emerald-300', bg: 'bg-emerald-50', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700' }
-  }
 
   const fetchInstallerProfile = async () => {
     try {
@@ -2274,7 +2258,6 @@ export default function InstallerProfileViewPage() {
               : null,
         employersLiabilityExpiry: employersLiabilityExpiry ? new Date(employersLiabilityExpiry).toISOString() : null,
         dateNullFields: JSON.stringify(Array.from(nullDateFields)),
-        cilioEnterpriseGroupNumber,
         willingToTravel,
         maxTravelDistance,
         canStartImmediately,
@@ -2607,7 +2590,6 @@ export default function InstallerProfileViewPage() {
         setNullDateFields(new Set())
       }
 
-      setCilioEnterpriseGroupNumber(installer.cilioEnterpriseGroupNumber ?? null)
       setWillingToTravel(installer.willingToTravel)
       setMaxTravelDistance(installer.maxTravelDistance)
       setCanStartImmediately(installer.canStartImmediately)
@@ -6182,174 +6164,6 @@ export default function InstallerProfileViewPage() {
               </div>
             </div>
           </motion.div>
-
-          {/* Enterprise Account / Chargeback Status - temporarily hidden */}
-          {false && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.28 }}
-            className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-8 mb-6 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-1">Enterprise Account / Chargeback</h2>
-                <p className="text-sm text-slate-500">Credit status and enterprise group information from Cilio</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-
-            {/* Enterprise Group Number Input */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Cilio Enterprise Group Number
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  value={cilioEnterpriseGroupNumber ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? parseInt(e.target.value, 10) : null
-                    setCilioEnterpriseGroupNumber(isNaN(val as number) ? null : val)
-                  }}
-                  placeholder="e.g. 12345"
-                  className="w-48 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                />
-                {cilioEnterpriseGroupNumber && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCilioEnterpriseGroupNumber(null)
-                      setChargebackData(null)
-                    }}
-                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
-                    title="Clear group number"
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Chargeback Data Display */}
-            {cilioEnterpriseGroupNumber ? (
-              isLoadingChargeback ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
-                  <span className="ml-2 text-sm text-slate-500">Loading enterprise data...</span>
-                </div>
-              ) : chargebackData ? (
-                (() => {
-                  const colors = getCreditColor(chargebackData.creditHold, chargebackData.pastDueInvoices, chargebackData.pastDueBalance)
-                  return (
-                    <div className={`rounded-xl border ${colors.border} ${colors.bg} p-6`}>
-                      {chargebackData.company && (
-                        <div className="mb-4">
-                          <h3 className="text-lg font-bold text-slate-900">{chargebackData.company}</h3>
-                          {chargebackData.groupAddress?.fullAddress && (
-                            <p className="text-sm text-slate-500 mt-1">{chargebackData.groupAddress.fullAddress}</p>
-                          )}
-                          <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-600">
-                            {chargebackData.phone && <span>📞 {chargebackData.phone}</span>}
-                            {chargebackData.email && <span>✉️ {chargebackData.email}</span>}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Open Balance</p>
-                          <p className="text-xl font-bold text-slate-900">
-                            {chargebackData.openBalance != null
-                              ? `$${Number(chargebackData.openBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : '—'}
-                          </p>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Past Due Balance</p>
-                          <p className={`text-xl font-bold ${chargebackData.pastDueBalance && chargebackData.pastDueBalance > 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                            {chargebackData.pastDueBalance != null
-                              ? `$${Number(chargebackData.pastDueBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                              : '—'}
-                          </p>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Credit Hold</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {chargebackData.creditHold ? (
-                              <>
-                                <AlertCircle className="w-5 h-5 text-red-500" />
-                                <span className="text-sm font-bold text-red-600">Yes</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                <span className="text-sm font-bold text-emerald-600">No</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Past Due Invoices</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {chargebackData.pastDueInvoices ? (
-                              <>
-                                <AlertCircle className="w-5 h-5 text-red-500" />
-                                <span className="text-sm font-bold text-red-600">Yes</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                <span className="text-sm font-bold text-emerald-600">No</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {(chargebackData.creditLimit != null || chargebackData.paymentTerm || chargebackData.currencyCode) && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                          {chargebackData.creditLimit != null && (
-                            <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Credit Limit</p>
-                              <p className="text-lg font-bold text-slate-900">
-                                ${Number(chargebackData.creditLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          )}
-                          {chargebackData.paymentTerm && (
-                            <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Payment Terms</p>
-                              <p className="text-lg font-bold text-slate-900">{chargebackData.paymentTerm}</p>
-                            </div>
-                          )}
-                          {chargebackData.currencyCode && (
-                            <div className="bg-white/60 rounded-lg p-4 border border-slate-200/60">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Currency</p>
-                              <p className="text-lg font-bold text-slate-900">{chargebackData.currencyCode}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()
-              ) : (
-                <div className="flex items-center justify-center py-8 text-slate-400">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  <span>No enterprise group found with this number.</span>
-                </div>
-              )
-            ) : (
-              <div className="flex items-center justify-center py-8 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                <Building2 className="w-5 h-5 mr-2" />
-                <span>Enter an Enterprise Group Number to view chargeback status.</span>
-              </div>
-            )}
-          </motion.div>
-          )}
 
           {/* License & Background Check Section */}
           <motion.div

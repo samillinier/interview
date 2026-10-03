@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"
 
 /**
  * GET /api/admin/installers/names
- * Returns all active installer id, firstName, lastName for name-matching with Cilio.
+ * Returns all active installer id, firstName, lastName for name-matching.
  */
 export async function GET() {
   try {

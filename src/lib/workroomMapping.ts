@@ -1,6 +1,6 @@
 /**
  * Mapping of store numbers to workroom names.
- * The store number comes from Cilio's storeNumber field or is parsed from storeName.
+ * The store number comes from the storeNumber field or is parsed from storeName.
  */
 const STORE_TO_WORKROOM: Record<number, string> = {
   // Lakeland
@@ -33,7 +33,7 @@ const STORE_TO_WORKROOM: Record<number, string> = {
   716: 'Tallahassee', 417: 'Tallahassee',
 }
 
-/** Extract the store number from a Cilio storeName like "0448-LOWES OF PANAMA CITY, FL". */
+/** Extract the store number from a storeName like "0448-LOWES OF PANAMA CITY, FL". */
 export function getStoreNumber(storeName?: string): number | null {
   if (!storeName) return null
   const m = storeName.match(/^(\d+)-/)
@@ -48,7 +48,7 @@ export function getWorkroomByStoreNumber(storeNumber?: string | number | null): 
   return STORE_TO_WORKROOM[num] ?? null
 }
 
-/** Get the workroom name from a Cilio storeName (parses the number prefix). */
+/** Get the workroom name from a storeName (parses the number prefix). */
 export function getWorkroom(storeName?: string): string | null {
   const storeNum = getStoreNumber(storeName)
   if (storeNum === null) return null
