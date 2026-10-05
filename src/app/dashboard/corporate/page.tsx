@@ -160,11 +160,13 @@ export default function CorporatePage() {
   const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState(0)
   const [pendingBusinessCardsCount, setPendingBusinessCardsCount] = useState(0)
   const [invoiceCount, setInvoiceCount] = useState(0)
+  const [pendingFleetServiceCount, setPendingFleetServiceCount] = useState(0)
+  const [monthlyInspectionCount, setMonthlyInspectionCount] = useState(0)
 
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [bolRes, ptRes, icRes, travelRes, osRes, bcRes, invoiceRes] = await Promise.all([
+        const [bolRes, ptRes, icRes, travelRes, osRes, bcRes, invoiceRes, fleetRes, inspectionRes] = await Promise.all([
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
@@ -174,6 +176,8 @@ export default function CorporatePage() {
           canAccessInvoices(normalizedRole)
             ? fetch('/api/admin/invoices/count', { cache: 'no-store' })
             : Promise.resolve(null),
+          fetch('/api/fleet-service-requests?action=count', { cache: 'no-store' }),
+          fetch('/api/vehicle-inspections?action=count', { cache: 'no-store' }),
         ])
         if (bolRes.ok) { const d = await bolRes.json(); setPendingBolCount(Number(d?.count ?? 0)) }
         if (ptRes.ok) { const d = await ptRes.json(); setPendingPadTransferCount(Number(d?.count ?? 0)) }
@@ -185,6 +189,8 @@ export default function CorporatePage() {
           const d = await invoiceRes.json()
           setInvoiceCount(Number(d?.count ?? 0))
         }
+        if (fleetRes.ok) { const d = await fleetRes.json(); setPendingFleetServiceCount(Number(d?.count ?? 0)) }
+        if (inspectionRes.ok) { const d = await inspectionRes.json(); setMonthlyInspectionCount(Number(d?.count ?? 0)) }
       } catch {}
     }
     if (status === 'authenticated') loadCounts()
@@ -341,6 +347,8 @@ export default function CorporatePage() {
                             (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ||
                             (card.title === 'Office Supplies' && pendingOfficeSuppliesCount > 0) ||
                             (card.title === 'Business Cards' && pendingBusinessCardsCount > 0) ||
+                            (card.title === 'Fleet Service Request' && pendingFleetServiceCount > 0) ||
+                            (card.title === 'Monthly Vehicle Inspection' && monthlyInspectionCount > 0) ||
                             (card.title === 'Invoice' && invoiceCount > 0)) ? (
                               <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
                                 {card.title === 'BOL'
@@ -355,7 +363,11 @@ export default function CorporatePage() {
                                           ? pendingOfficeSuppliesCount
                                           : card.title === 'Business Cards'
                                             ? pendingBusinessCardsCount
-                                            : invoiceCount}
+                                            : card.title === 'Fleet Service Request'
+                                              ? pendingFleetServiceCount
+                                              : card.title === 'Monthly Vehicle Inspection'
+                                                ? monthlyInspectionCount
+                                                : invoiceCount}
                               </span>
                             ) : null}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

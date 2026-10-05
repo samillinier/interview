@@ -26,6 +26,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+
+    // Badge count: open (not yet completed) service requests needing attention.
+    if (action === 'count') {
+      const count = await prisma.fleetServiceRequest.count({ where: { status: 'open' } })
+      return NextResponse.json({ success: true, count })
+    }
+
     const location = searchParams.get('location')
     const status = searchParams.get('status')
     const search = searchParams.get('search')

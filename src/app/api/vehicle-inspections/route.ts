@@ -28,6 +28,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
+    // Badge count: inspections recorded in the current calendar month.
+    if (action === 'count') {
+      const now = new Date()
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      const count = await prisma.vehicleInspection.count({
+        where: { inspectionDate: { gte: start, lt: end } },
+      })
+      return NextResponse.json({ success: true, count })
+    }
+
     // Return the list of fleet cars (category "car") for the vehicle dropdown.
     if (action === 'vehicles') {
       const vehicles = await prisma.vehicle.findMany({
