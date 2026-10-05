@@ -1219,6 +1219,48 @@ model VehicleInspection {
   @@index([createdByEmail])
 }
 
+model ForkliftInspection {
+  id                         String   @id @default(cuid())
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  // Forklift information
+  inspectionDate             DateTime
+  location                   String
+  forkliftId                 String
+
+  // Visual checks
+  leaks                      String?
+  tiresWheelsAxles           String?
+  forksPoleSafetyPin         String?
+  overheadGuard              String?
+  batteryCableConnector      String?
+  mechanicalSafetyDevices    String?
+  operatorControls           String?
+
+  // Operational checks
+  indicatorLightsAlarmsGauges String?
+  electricalSafetyDevices    String?
+  mastChainHydraulics        String?
+  steering                   String?
+  headBrakeLights            String?
+  brakes                     String?
+  engineOil                  String?
+  radiatorWater              String?
+
+  // Additional
+  comments                   String?
+  inspectionStatement        String
+
+  createdByEmail             String?
+  createdByName              String?
+
+  @@index([createdAt])
+  @@index([inspectionDate])
+  @@index([location])
+  @@index([createdByEmail])
+}
+
 model Vehicle {
   id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())

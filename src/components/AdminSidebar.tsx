@@ -91,6 +91,7 @@ export function AdminSidebar({ pathname }: Props) {
   const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState(0)
   const [pendingFleetServiceCount, setPendingFleetServiceCount] = useState(0)
   const [monthlyInspectionCount, setMonthlyInspectionCount] = useState(0)
+  const [forkliftInspectionCount, setForkliftInspectionCount] = useState(0)
   const [invoiceCount, setInvoiceCount] = useState(0)
 
   useEffect(() => {
@@ -166,7 +167,7 @@ export function AdminSidebar({ pathname }: Props) {
     let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes, officeSuppliesRes, fleetRes, inspectionRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes, officeSuppliesRes, fleetRes, inspectionRes, forkliftRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
@@ -177,6 +178,7 @@ export function AdminSidebar({ pathname }: Props) {
           fetch('/api/office-supplies?action=count', { cache: 'no-store' }),
           fetch('/api/fleet-service-requests?action=count', { cache: 'no-store' }),
           fetch('/api/vehicle-inspections?action=count', { cache: 'no-store' }),
+          fetch('/api/forklift-inspections?action=count', { cache: 'no-store' }),
         ])
 
         if (cancelled) return
@@ -239,6 +241,12 @@ export function AdminSidebar({ pathname }: Props) {
           const data = await inspectionRes.json().catch(() => null)
           const count = Number(data?.count ?? 0)
           if (Number.isFinite(count)) setMonthlyInspectionCount(count)
+        }
+
+        if (forkliftRes.ok) {
+          const data = await forkliftRes.json().catch(() => null)
+          const count = Number(data?.count ?? 0)
+          if (Number.isFinite(count)) setForkliftInspectionCount(count)
         }
       } catch {
         // Badges are helpful, but navigation should still render if a count fails.
@@ -317,7 +325,7 @@ export function AdminSidebar({ pathname }: Props) {
       const isManagerOrAccounting = normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
       const corporatePendingTotal = isManagerOrAccounting
         ? 0
-        : pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + pendingFleetServiceCount + monthlyInspectionCount + invoiceCount
+        : pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + pendingFleetServiceCount + monthlyInspectionCount + forkliftInspectionCount + invoiceCount
       const corporateItem: NavItem = {
         href: '/dashboard/corporate',
         label: 'Corporate',
@@ -331,7 +339,7 @@ export function AdminSidebar({ pathname }: Props) {
     if (portalNav.length === 0) return filtered
 
     return [...filtered, ...portalNav]
-  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, pendingOfficeSuppliesCount, pendingFleetServiceCount, monthlyInspectionCount, invoiceCount])
+  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, pendingOfficeSuppliesCount, pendingFleetServiceCount, monthlyInspectionCount, forkliftInspectionCount, invoiceCount])
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 
