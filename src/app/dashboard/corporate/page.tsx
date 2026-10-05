@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard, Car, Wrench, Forklift } from 'lucide-react'
+import { AlertCircle, ArrowRight, FileText, Truck, ArrowLeftRight, ClipboardList, ClipboardCheck, Plane, Receipt, ShoppingCart, ShoppingBag, Shirt, CreditCard, Car, Wrench, Forklift, Search, X } from 'lucide-react'
 
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
@@ -171,6 +171,7 @@ export default function CorporatePage() {
   const [pendingFleetServiceCount, setPendingFleetServiceCount] = useState(0)
   const [monthlyInspectionCount, setMonthlyInspectionCount] = useState(0)
   const [forkliftInspectionCount, setForkliftInspectionCount] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const loadCounts = async () => {
@@ -276,6 +277,27 @@ export default function CorporatePage() {
     }),
   }))
 
+  const query = searchQuery.trim().toLowerCase()
+  const filteredGroups = visibleGroups
+    .map((group) => ({
+      ...group,
+      cards: group.cards.filter((card) => {
+        if (!query) return true
+        const haystack = [
+          card.title,
+          card.description,
+          card.cta,
+          ...(card.highlights || []),
+        ]
+          .join(' ')
+          .toLowerCase()
+        return haystack.includes(query)
+      }),
+    }))
+    .filter((group) => group.cards.length > 0)
+
+  const totalVisibleCards = visibleGroups.reduce((sum, group) => sum + group.cards.length, 0)
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <AdminSidebar pathname={pathname} />
@@ -287,15 +309,63 @@ export default function CorporatePage() {
           <div className="px-4 lg:px-6 pt-16 lg:pt-6 pb-6">
             <div className="max-w-[1400px] mx-auto">
               <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">Corporate</p>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Corporate Hub</h1>
-              <p className="text-sm text-slate-500">Fast access to corporate claims and document workspaces.</p>
+              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Corporate Hub</h1>
+                  <p className="text-sm text-slate-500">Fast access to corporate claims and document workspaces.</p>
+                </div>
+                <div className="relative w-full lg:max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search corporate tools…"
+                    className="w-full pl-10 pr-10 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </header>
 
         <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
-          <div className="grid grid-cols-1 gap-6">
-            {visibleGroups.map((group, groupIndex) => (
+          {query && (
+            <p className="mb-4 text-sm font-medium text-slate-500">
+              Showing {filteredGroups.reduce((sum, group) => sum + group.cards.length, 0)} result{filteredGroups.reduce((sum, group) => sum + group.cards.length, 0) !== 1 ? 's' : ''} for <span className="font-bold text-slate-700">"{searchQuery}"</span>
+              {filteredGroups.reduce((sum, group) => sum + group.cards.length, 0) < totalVisibleCards && (
+                <span className="text-slate-400"> (out of {totalVisibleCards} tools)</span>
+              )}
+            </p>
+          )}
+
+          {query && filteredGroups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[2rem] border border-slate-200/80 bg-white py-20 text-center shadow-xl shadow-slate-200/60">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100">
+                <Search className="h-8 w-8 text-slate-400" />
+              </div>
+              <h3 className="mt-5 text-lg font-bold text-slate-800">No matching tools</h3>
+              <p className="mt-1 text-sm text-slate-500">No corporate workspaces match "{searchQuery}".</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-5 px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold text-sm hover:bg-brand-green-dark transition-colors"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredGroups.map((group, groupIndex) => (
               <motion.section
                 key={group.title}
                 initial={{ opacity: 0, y: 16 }}
@@ -393,8 +463,9 @@ export default function CorporatePage() {
                   })}
                 </div>
               </motion.section>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
