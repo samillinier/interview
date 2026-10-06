@@ -80,14 +80,14 @@ export default function EquipmentCategoryImage({ category, itemName, brand, alt 
     return <img src="/equipment/canon-mf455dw.jpg" alt={alt} loading="lazy" {...props} />
   }
 
-  // Specific model: Apple iPhone SE (3rd gen)
-  if (haystack.includes('iphone se') || /iphone se|se 3rd|se \(3rd/.test(name)) {
+  // Any Apple iPhone (SE, 16E, 15, etc.) — use the iPhone photo we have.
+  if (haystack.includes('iphone') || /iphone/.test(name)) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src="/equipment/iphone-se-3rd-gen.jpg" alt={alt} loading="lazy" {...props} />
   }
 
-  // Specific model: Polycom / Ring Central Polycom desk phone
-  if (haystack.includes('polycom') || /polycom/.test(name)) {
+  // Polycom / Ring Central Poly / Ring Central Polycom desk phones (any "Poly").
+  if (haystack.includes('poly') || /polycom/.test(name)) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src="/equipment/polycom-desk-phone.jpg" alt={alt} loading="lazy" {...props} />
   }
