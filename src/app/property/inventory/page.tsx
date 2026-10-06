@@ -50,6 +50,7 @@ import {
   getInventoryBarcodePayload,
   getInventoryLabelBarcodeValue,
 } from '@/components/InventoryBarcode'
+import EquipmentCategoryImage from '@/components/EquipmentCategoryImage'
 import { WORKROOM_OPTIONS } from '@/lib/questions'
 
 interface PropertyProfile {
@@ -1062,7 +1063,10 @@ export default function InventoryPage() {
                           </div>
                         ) : (
                           <div className={heroPlaceholderClass}>
-                            <Laptop className={`text-slate-300 ${singleMatch ? 'h-20 w-20' : 'h-16 w-16'}`} strokeWidth={1.25} />
+                            <EquipmentCategoryImage
+                              category={item.category}
+                              className={`${singleMatch ? 'h-28 w-28' : 'h-20 w-20'} drop-shadow-sm`}
+                            />
                           </div>
                         )}
                         <div className="p-4">
@@ -1165,7 +1169,7 @@ export default function InventoryPage() {
                                 </button>
                               ) : (
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 ring-1 ring-slate-200/80">
-                                  <Laptop className="h-5 w-5 text-slate-400" strokeWidth={1.5} />
+                                  <EquipmentCategoryImage category={item.category} className="h-8 w-8" />
                                 </div>
                               )}
                               <span className="min-w-0 flex-1 truncate text-left text-[15px] font-semibold leading-none text-slate-900">
