@@ -446,30 +446,30 @@ export default function CarpetPadPage() {
                             {ORDER_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </Field>
-                        <Field label="3. Do you need recycled pad bales picked up?" required>
-                          <YesNoSelect value={form.recycledBalesPickup} onChange={(v) => update('recycledBalesPickup', v)} />
-                        </Field>
-                        {form.recycledBalesPickup === 'Yes' && (
-                          <Field label="How many?" required hint="The value must be a number.">
-                            <input type="number" inputMode="numeric" value={form.recycledBalesCount} onChange={(e) => update('recycledBalesCount', e.target.value)} placeholder="0" className={inputClass} />
+                        <div className="space-y-4">
+                          <Field label="3. Do you need recycled pad bales picked up?" required>
+                            <YesNoSelect value={form.recycledBalesPickup} onChange={(v) => update('recycledBalesPickup', v)} />
                           </Field>
-                        )}
-                        <div className="md:col-span-2">
-                          <Field
-                            label="4. Prior to placing this order have you reviewed and/or taken into consideration any/all previous orders not yet received?"
-                            required
-                            hint={
-                              <span>
-                                Review past orders here:{' '}
-                                <a href={PREVIOUS_ORDERS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-green font-semibold hover:underline">
-                                  SharePoint spreadsheet <ExternalLink className="w-3 h-3" />
-                                </a>
-                              </span>
-                            }
-                          >
-                            <YesNoSelect value={form.reviewedPreviousOrders} onChange={(v) => update('reviewedPreviousOrders', v)} />
-                          </Field>
+                          {form.recycledBalesPickup === 'Yes' && (
+                            <Field label="How many?" required hint="The value must be a number.">
+                              <input type="number" inputMode="numeric" value={form.recycledBalesCount} onChange={(e) => update('recycledBalesCount', e.target.value)} placeholder="0" className={inputClass} />
+                            </Field>
+                          )}
                         </div>
+                        <Field
+                          label="4. Prior to placing this order have you reviewed and/or taken into consideration any/all previous orders not yet received?"
+                          required
+                          hint={
+                            <span>
+                              Review past orders here:{' '}
+                              <a href={PREVIOUS_ORDERS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-green font-semibold hover:underline">
+                                SharePoint spreadsheet <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </span>
+                          }
+                        >
+                          <YesNoSelect value={form.reviewedPreviousOrders} onChange={(v) => update('reviewedPreviousOrders', v)} />
+                        </Field>
                       </div>
                     </section>
 
