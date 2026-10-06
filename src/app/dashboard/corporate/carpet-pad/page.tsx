@@ -41,24 +41,28 @@ const PAD_TYPES = [
     name: 'STAINMASTER SELECT',
     price: 86.75,
     specs: ['7/16" thick, 8 lb. bonded foam pad', "6'x45' (30 SQ YDS)"],
+    imageUrl: 'https://hive.forms.usercontent.microsoft/images/ae3785db-0c05-48a6-a4b8-18e964211398/71b66c8e-6e2d-4e08-990a-2c78cfe13248/T6MU6LL4L4OWRLRZMO55TQA840/d6bc255c-86f0-44d6-8dda-f8d7af0baa9c',
   },
   {
     key: 'odorBanRolls',
     name: 'ODOR BAN',
     price: 76.85,
     specs: ['7/16" thick, 7 lb. bonded foam pad w/moisture barrier', "6'x45' (30 SQ YDS)"],
+    imageUrl: 'https://hive.forms.usercontent.microsoft/images/ae3785db-0c05-48a6-a4b8-18e964211398/71b66c8e-6e2d-4e08-990a-2c78cfe13248/T6MU6LL4L4OWRLRZMO55TQA840/d5b4fe35-d282-4f41-8a1c-d94726a9458b',
   },
   {
     key: 'stainmasterEliteRolls',
     name: 'STAINMASTER ELITE',
     price: 129.15,
     specs: ['1/2" thick bonded foam pad', "6'x45' (30 SQ YDS)"],
+    imageUrl: 'https://hive.forms.usercontent.microsoft/images/ae3785db-0c05-48a6-a4b8-18e964211398/71b66c8e-6e2d-4e08-990a-2c78cfe13248/T6MU6LL4L4OWRLRZMO55TQA840/5a91f2f9-fe6a-4364-8c52-0c7bba918f86',
   },
   {
     key: 'stainmasterMemoryFoamRolls',
     name: 'STAINMASTER MEMORY FOAM',
     price: 59.9,
     specs: ['7/16" thick, 7 lb. bonded foam pad'],
+    imageUrl: 'https://hive.forms.usercontent.microsoft/images/ae3785db-0c05-48a6-a4b8-18e964211398/71b66c8e-6e2d-4e08-990a-2c78cfe13248/T6MU6LL4L4OWRLRZMO55TQA840/0a3ffd1f-28d0-40e0-8540-703333520e1f',
   },
 ] as const
 
@@ -484,6 +488,11 @@ export default function CarpetPadPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
                         {PAD_TYPES.map((p, i) => (
                           <div key={p.key} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                            {'imageUrl' in p && p.imageUrl && (
+                              <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                <img src={p.imageUrl} alt={p.name} className="w-full h-36 object-contain p-2" />
+                              </div>
+                            )}
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <p className="text-sm font-bold text-slate-800">{i + 5}. {p.name}</p>
@@ -751,9 +760,14 @@ export default function CarpetPadPage() {
                           const qty = rollCount(detail, p.key)
                           return (
                             <div key={p.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                              <div>
-                                <span className="text-sm font-medium text-slate-700">{p.name}</span>
-                                <span className="ml-2 text-xs text-slate-400">${p.price.toFixed(2)}/roll</span>
+                              <div className="flex items-center gap-3 min-w-0">
+                                {'imageUrl' in p && p.imageUrl && (
+                                  <img src={p.imageUrl} alt={p.name} className="w-10 h-10 object-contain rounded-md border border-slate-200 bg-white shrink-0" />
+                                )}
+                                <div>
+                                  <span className="text-sm font-medium text-slate-700">{p.name}</span>
+                                  <span className="ml-2 text-xs text-slate-400">${p.price.toFixed(2)}/roll</span>
+                                </div>
                               </div>
                               <div className="flex items-center gap-3 shrink-0">
                                 <span className="text-sm text-slate-500">Rolls: <span className="font-semibold text-slate-800">{qty}</span></span>
