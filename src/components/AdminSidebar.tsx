@@ -321,14 +321,6 @@ export function AdminSidebar({ pathname }: Props) {
     })
 
     const portalNav: NavItem[] = []
-    if (normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR' && normalizedRole !== 'ACCOUNTING') {
-      portalNav.push({
-        href: '/property/dashboard',
-        label: 'Property Portal',
-        icon: Building2,
-        match: (path) => path.startsWith('/property'),
-      })
-    }
     if (normalizedRole === 'SUPER_ADMIN' || normalizedRole === 'ADMIN' || normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
       const isManagerOrAccounting = normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
       const corporatePendingTotal = isManagerOrAccounting
@@ -342,6 +334,14 @@ export function AdminSidebar({ pathname }: Props) {
         match: (path) => path.startsWith('/dashboard/corporate'),
       }
       portalNav.push(corporateItem)
+    }
+    if (normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR' && normalizedRole !== 'ACCOUNTING') {
+      portalNav.push({
+        href: '/property/dashboard',
+        label: 'Property Portal',
+        icon: Building2,
+        match: (path) => path.startsWith('/property'),
+      })
     }
 
     if (portalNav.length === 0) return filtered
@@ -404,7 +404,7 @@ export function AdminSidebar({ pathname }: Props) {
 
       <nav className="flex-1 min-h-0 p-2 pb-2 space-y-0">
         {items.map((item) => {
-          const isSeparated = item.href === '/property/dashboard'
+          const isSeparated = item.href === '/dashboard/corporate'
           const hasChildren = item.children && item.children.length > 0
           if (hasChildren) {
             const Icon = item.icon
@@ -447,7 +447,7 @@ export function AdminSidebar({ pathname }: Props) {
               className={
                 isSeparated
                   ? 'border-t border-white/10 mt-1.5 pt-1.5 pb-0.5'
-                  : item.href === '/dashboard/corporate'
+                  : item.href === '/property/dashboard'
                     ? 'pb-0.5'
                     : undefined
               }
