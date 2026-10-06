@@ -5,10 +5,14 @@ import type { ImgHTMLAttributes } from 'react'
  * Each maps to a local image in /public/equipment (downloaded, then sized for web).
  */
 
-type Props = ImgHTMLAttributes<HTMLImageElement> & { category?: string | null }
+type Props = ImgHTMLAttributes<HTMLImageElement> & {
+  category?: string | null
+  itemName?: string | null
+  brand?: string | null
+}
 
-function normalizeCategory(category?: string | null): string {
-  return String(category || '')
+function normalize(text?: string | null): string {
+  return String(text || '')
     .toLowerCase()
     .replace(/[^a-z0-9 ]/g, '')
     .replace(/\s+/g, ' ')
@@ -55,10 +59,39 @@ const CATEGORY_PHOTOS: Array<{ test: (c: string) => boolean; src: string }> = [
 ]
 
 /**
- * Pick the right real photo for an equipment category.
+ * Pick the right real photo for an equipment item.
+ * Specific model matches win over generic category matches.
  */
-export default function EquipmentCategoryImage({ category, alt = '', ...props }: Props) {
-  const c = normalizeCategory(category)
+export default function EquipmentCategoryImage({ category, itemName, brand, alt = '', ...props }: Props) {
+  const c = normalize(category)
+  const name = normalize(itemName)
+  const b = normalize(brand)
+  const haystack = `${name} ${b}`
+
+  // Specific model: Dell Latitude 5550
+  if (haystack.includes('dell') && /5550|latitude/.test(haystack)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/equipment/dell-latitude-5550.jpg" alt={alt} loading="lazy" {...props} />
+  }
+
+  // Specific model: Canon imageCLASS MF455dw
+  if (haystack.includes('canon') || /mf455dw|mf 455dw|imageclass|image class/.test(name)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/equipment/canon-mf455dw.jpg" alt={alt} loading="lazy" {...props} />
+  }
+
+  // Specific model: Apple iPhone SE (3rd gen)
+  if (haystack.includes('iphone se') || /iphone se|se 3rd|se \(3rd/.test(name)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/equipment/iphone-se-3rd-gen.jpg" alt={alt} loading="lazy" {...props} />
+  }
+
+  // Specific model: Polycom / Ring Central Polycom desk phone
+  if (haystack.includes('polycom') || /polycom/.test(name)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/equipment/polycom-desk-phone.jpg" alt={alt} loading="lazy" {...props} />
+  }
+
   const match = CATEGORY_PHOTOS.find((p) => p.test(c))
   // Fall back to a laptop photo for unknown categories.
   const src = match ? match.src : '/equipment/laptop.jpg'

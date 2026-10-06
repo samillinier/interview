@@ -1065,6 +1065,8 @@ export default function InventoryPage() {
                           <div className={heroPlaceholderClass}>
                             <EquipmentCategoryImage
                               category={item.category}
+                              itemName={item.itemName}
+                              brand={item.brand}
                               className={`${singleMatch ? 'h-36 w-36' : 'h-24 w-24'} object-contain drop-shadow-sm`}
                             />
                           </div>
@@ -1169,7 +1171,7 @@ export default function InventoryPage() {
                                 </button>
                               ) : (
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 ring-1 ring-slate-200/80">
-                                  <EquipmentCategoryImage category={item.category} className="h-9 w-9 object-contain" />
+                                  <EquipmentCategoryImage category={item.category} itemName={item.itemName} brand={item.brand} className="h-9 w-9 object-contain" />
                                 </div>
                               )}
                               <span className="min-w-0 flex-1 truncate text-left text-[15px] font-semibold leading-none text-slate-900">
