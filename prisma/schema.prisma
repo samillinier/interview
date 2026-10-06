@@ -1280,11 +1280,15 @@ model CarpetPadOrder {
 
   createdByEmail            String?
   createdByName             String?
+  authorizedBy              String?
+  authorized                Boolean  @default(false)
+  authorizationMethod       String?
 
   @@index([createdAt])
   @@index([location])
   @@index([orderClassification])
   @@index([createdByEmail])
+  @@index([authorized])
 }
 
 model Vehicle {

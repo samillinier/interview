@@ -87,6 +87,9 @@ interface CarpetPadOrder {
   stainmasterMemoryFoamRolls: number | null
   createdByEmail: string | null
   createdByName: string | null
+  authorizedBy: string | null
+  authorized: boolean
+  authorizationMethod: string | null
 }
 
 interface FormState {
@@ -184,7 +187,7 @@ export default function CarpetPadPage() {
   const { sidebarOpen } = useSidebarOpen()
   const normalizedRole = String((session?.user as any)?.role || '').toUpperCase()
   const canAccess = ['ADMIN', 'MANAGER', 'MODERATOR', 'SUPER_ADMIN', 'ACCOUNTING'].includes(normalizedRole)
-  const canDelete = normalizedRole === 'SUPER_ADMIN'
+  const canModify = ['ADMIN', 'MODERATOR', 'SUPER_ADMIN'].includes(normalizedRole)
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm())
@@ -294,6 +297,26 @@ export default function CarpetPadPage() {
     }
   }
 
+  const setAuthorization = async (orderId: string, authorized: boolean) => {
+    try {
+      const res = await fetch('/api/carpet-pad-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, authorized }),
+      })
+      const data = await res.json()
+      if (data.success && data.order) {
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)))
+      }
+    } catch (err) {
+      console.error('Failed to set authorization:', err)
+    }
+  }
+
+  const deleteOrder = (orderId: string) => {
+    setConfirmDeleteId(orderId)
+  }
+
   const exportToExcel = () => {
     const rows = orders.map((r) => {
       const row: Record<string, string | number> = {
@@ -309,6 +332,7 @@ export default function CarpetPadPage() {
       }
       row['Total Rolls'] = orderTotalRolls(r)
       row['Total Cost'] = orderTotalCost(r).toFixed(2)
+      row['Authorization'] = r.authorized ? (r.authorizedBy || r.authorizationMethod || 'Authorized') : 'Pending'
       row['Created By'] = r.createdByName || r.createdByEmail || '-'
       return row
     })
@@ -580,12 +604,10 @@ export default function CarpetPadPage() {
                       <option value="">All Classifications</option>
                       {ORDER_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    {canDelete && (
-                      <button onClick={exportToExcel} disabled={orders.length === 0}
-                        className="flex items-center gap-1.5 px-3 py-2 border-2 border-brand-green/20 rounded-xl bg-brand-green/5 hover:bg-brand-green/10 text-brand-green text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                        <Download className="w-3.5 h-3.5" />Export
-                      </button>
-                    )}
+                    <button onClick={exportToExcel} disabled={orders.length === 0}
+                      className="flex items-center gap-1.5 px-3 py-2 border-2 border-brand-green/20 rounded-xl bg-brand-green/5 hover:bg-brand-green/10 text-brand-green text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                      <Download className="w-3.5 h-3.5" />Export
+                    </button>
                   </div>
                 </div>
               </div>
@@ -611,7 +633,7 @@ export default function CarpetPadPage() {
                         <th className="text-left py-3 px-5 font-semibold">Classification</th>
                         <th className="text-left py-3 px-5 font-semibold">Rolls</th>
                         <th className="text-left py-3 px-5 font-semibold">Cost</th>
-                        {canDelete && <th className="text-left py-3 px-4 font-semibold">Actions</th>}
+                        <th className="text-left py-3 px-4 font-semibold">Authorization</th>
                         <th className="text-left py-3 px-2 w-8"></th>
                       </tr>
                     </thead>
@@ -653,14 +675,38 @@ export default function CarpetPadPage() {
                                 <DollarSign className="w-3.5 h-3.5 text-brand-green" />{orderTotalCost(r).toFixed(2)}
                               </span>
                             </td>
-                            {canDelete && (
-                              <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                                <button onClick={() => setConfirmDeleteId(r.id)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-colors">
-                                  <Trash2 className="w-3 h-3" />Delete
-                                </button>
-                              </td>
-                            )}
+                            <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-between gap-2">
+                                {r.authorized ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-semibold whitespace-nowrap">
+                                    <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+                                    {r.authorizedBy || r.authorizationMethod || 'Authorized'}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-semibold whitespace-nowrap">
+                                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                    Pending
+                                  </span>
+                                )}
+                                {canModify && (
+                                  <select
+                                    key={`${r.id}-${r.authorized}`}
+                                    defaultValue={r.authorized ? 'authorized' : 'denied'}
+                                    onChange={(e) => {
+                                      const val = e.target.value
+                                      if (val === 'authorized') setAuthorization(r.id, true)
+                                      else if (val === 'denied') setAuthorization(r.id, false)
+                                      else if (val === 'delete') deleteOrder(r.id)
+                                    }}
+                                    className="px-1.5 py-1 border border-slate-200 rounded-md bg-slate-50 text-xs font-medium text-slate-500 focus:ring-1 focus:ring-brand-green/20 focus:border-brand-green outline-none cursor-pointer"
+                                  >
+                                    <option value="authorized">Authorize</option>
+                                    <option value="denied">Deny</option>
+                                    <option value="delete">Delete</option>
+                                  </select>
+                                )}
+                              </div>
+                            </td>
                             <td className="py-3.5 px-2 w-8">
                               <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500 group-hover:bg-white group-hover:text-brand-green transition-colors">
                                 <Eye className="w-3 h-3" />View
@@ -727,6 +773,10 @@ export default function CarpetPadPage() {
                       </span>
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-semibold">
                         <Building2 className="w-3 h-3" />{detail.location}
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-semibold ${detail.authorized ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                        {detail.authorized ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                        {detail.authorized ? (detail.authorizedBy || detail.authorizationMethod || 'Authorized') : 'Pending'}
                       </span>
                     </div>
 

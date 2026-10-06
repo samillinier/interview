@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 
 const CORPORATE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR', 'ACCOUNTING'])
-const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
+const MODIFY_ROLES = new Set(['ADMIN', 'MODERATOR', 'SUPER_ADMIN'])
 
 function roleOf(session: any): string {
   return String(session?.user?.role || '').toUpperCase()
@@ -28,16 +28,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
-    // Badge count: orders submitted in the current calendar week (Monday start).
+    // Badge count: pending (not yet authorized) orders.
     if (action === 'count') {
-      const now = new Date()
-      const day = now.getDay()
-      const diffToMonday = (day + 6) % 7
-      const start = new Date(now)
-      start.setDate(now.getDate() - diffToMonday)
-      start.setHours(0, 0, 0, 0)
       const count = await prisma.carpetPadOrder.count({
-        where: { createdAt: { gte: start } },
+        where: { authorized: false },
       })
       return NextResponse.json({ success: true, count })
     }
@@ -149,13 +143,61 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const role = roleOf(session)
+  if (!MODIFY_ROLES.has(role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const user = session.user as any
+
+  try {
+    const body = await request.json()
+    const { id, authorized } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'Order id is required' }, { status: 400 })
+    }
+
+    const updateData: any = {}
+
+    if (typeof authorized === 'boolean') {
+      updateData.authorized = authorized
+      if (authorized) {
+        updateData.authorizationMethod = user.name || user.email || 'Unknown'
+        updateData.authorizedBy = user.name || user.email || null
+      } else {
+        updateData.authorizationMethod = null
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    const order = await prisma.carpetPadOrder.update({
+      where: { id },
+      data: updateData,
+    })
+
+    return NextResponse.json({ success: true, order })
+  } catch (error: any) {
+    console.error('Error updating carpet pad order:', error)
+    return NextResponse.json({ error: 'Failed to update carpet pad order', details: error.message }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const role = roleOf(session)
-  if (!REVIEWER_ROLES.has(role)) {
+  if (!MODIFY_ROLES.has(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
