@@ -18,7 +18,6 @@ import {
   Layers,
   Building2,
   Package,
-  ExternalLink,
   Eye,
   Calendar,
   DollarSign,
@@ -35,6 +34,7 @@ const PAD_TYPES = [
     name: 'SUPER 6 LB',
     price: 47.6,
     specs: ['7/16" thick, 6 lb. bonded foam', "6'x45' (30 SQ YDS)"],
+    imageUrl: 'https://hive.forms.usercontent.microsoft/images/ae3785db-0c05-48a6-a4b8-18e964211398/71b66c8e-6e2d-4e08-990a-2c78cfe13248/T6MU6LL4L4OWRLRZMO55TQA840/5f71e664-e262-43be-acd0-9f37d0e6b543',
   },
   {
     key: 'stainmasterSelectRolls',
@@ -69,9 +69,6 @@ const PAD_TYPES = [
 type PadTypeKey = (typeof PAD_TYPES)[number]['key']
 
 const ORDER_CLASSIFICATIONS = ['Regular Order', 'Emergency Order', 'Pad Recycle'] as const
-
-const PREVIOUS_ORDERS_URL =
-  'https://floorinteriorservices-my.sharepoint.com/:x:/g/personal/s_richards_fiscorponline_com/EXUo237Z7HhMuNRRHXP0JEcB2uuFb5UPD23_oer0JAfOgg?e=9gTAmA'
 
 const YES_NO_OPTIONS = ['Yes', 'No'] as const
 
@@ -201,6 +198,7 @@ export default function CarpetPadPage() {
   const [filterClassification, setFilterClassification] = useState('')
   const [search, setSearch] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null)
 
   useEffect(() => {
     if (sessionStatus === 'unauthenticated') router.push('/login')
@@ -463,14 +461,6 @@ export default function CarpetPadPage() {
                         <Field
                           label="4. Prior to placing this order have you reviewed and/or taken into consideration any/all previous orders not yet received?"
                           required
-                          hint={
-                            <span>
-                              Review past orders here:{' '}
-                              <a href={PREVIOUS_ORDERS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-brand-green font-semibold hover:underline">
-                                SharePoint spreadsheet <ExternalLink className="w-3 h-3" />
-                              </a>
-                            </span>
-                          }
                         >
                           <YesNoSelect value={form.reviewedPreviousOrders} onChange={(v) => update('reviewedPreviousOrders', v)} />
                         </Field>
@@ -490,9 +480,14 @@ export default function CarpetPadPage() {
                           <div key={p.key} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
                             <div className="flex items-center gap-4">
                               {'imageUrl' in p && p.imageUrl ? (
-                                <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-brand-green/20 bg-white shadow-sm">
+                                <button
+                                  type="button"
+                                  onClick={() => setLightbox({ url: p.imageUrl!, name: p.name })}
+                                  className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-brand-green/20 bg-white shadow-sm cursor-zoom-in transition-transform hover:scale-105"
+                                  aria-label={`Enlarge ${p.name}`}
+                                >
                                   <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
-                                </div>
+                                </button>
                               ) : (
                                 <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-slate-200 bg-white flex items-center justify-center">
                                   <Package className="h-7 w-7 text-slate-300" />
@@ -766,7 +761,14 @@ export default function CarpetPadPage() {
                             <div key={p.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
                               <div className="flex items-center gap-3 min-w-0">
                                 {'imageUrl' in p && p.imageUrl && (
-                                  <img src={p.imageUrl} alt={p.name} className="w-10 h-10 object-contain rounded-md border border-slate-200 bg-white shrink-0" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setLightbox({ url: p.imageUrl!, name: p.name })}
+                                    className="shrink-0 cursor-zoom-in"
+                                    aria-label={`Enlarge ${p.name}`}
+                                  >
+                                    <img src={p.imageUrl} alt={p.name} className="w-10 h-10 object-contain rounded-md border border-slate-200 bg-white" />
+                                  </button>
                                 )}
                                 <div>
                                   <span className="text-sm font-medium text-slate-700">{p.name}</span>
@@ -815,6 +817,46 @@ export default function CarpetPadPage() {
             </motion.div>
           </div>
         )}
+
+        {/* Image lightbox */}
+        <AnimatePresence>
+          {lightbox && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+              onClick={() => setLightbox(null)}
+            >
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                className="relative z-10 flex flex-col items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={lightbox.url}
+                  alt={lightbox.name}
+                  className="max-w-[90vw] max-h-[80vh] object-contain rounded-2xl bg-white p-4 shadow-2xl"
+                />
+                <div className="mt-3 flex items-center gap-3">
+                  <p className="text-sm font-semibold text-white">{lightbox.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => setLightbox(null)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
