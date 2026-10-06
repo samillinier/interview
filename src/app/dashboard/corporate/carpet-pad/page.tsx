@@ -488,21 +488,25 @@ export default function CarpetPadPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
                         {PAD_TYPES.map((p, i) => (
                           <div key={p.key} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                            {'imageUrl' in p && p.imageUrl && (
-                              <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                                <img src={p.imageUrl} alt={p.name} className="w-full h-36 object-contain p-2" />
-                              </div>
-                            )}
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
+                            <div className="flex items-center gap-4">
+                              {'imageUrl' in p && p.imageUrl ? (
+                                <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-brand-green/20 bg-white shadow-sm">
+                                  <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                                </div>
+                              ) : (
+                                <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-slate-200 bg-white flex items-center justify-center">
+                                  <Package className="h-7 w-7 text-slate-300" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
                                 <p className="text-sm font-bold text-slate-800">{i + 5}. {p.name}</p>
                                 <p className="text-xs font-semibold text-brand-green">Price: ${p.price.toFixed(2)} per roll</p>
+                                <div className="mt-1 space-y-0.5">
+                                  {p.specs.map((s) => (
+                                    <p key={s} className="text-[11px] text-slate-500">{s}</p>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                            <div className="mt-2 space-y-0.5">
-                              {p.specs.map((s) => (
-                                <p key={s} className="text-[11px] text-slate-500">{s}</p>
-                              ))}
                             </div>
                             <div className="mt-3">
                               <label className="block text-[11px] font-semibold text-slate-500 mb-1">Enter Roll Quantity</label>
