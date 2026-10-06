@@ -81,6 +81,11 @@ const KIND_META: Record<CorporateCommunicationKind, KindMeta> = {
     path: '/dashboard/corporate/forklift-inspection',
     subject: 'A Weekly Forklift Inspection was submitted',
   },
+  'carpet-pad': {
+    label: 'Carpet Pad Order',
+    path: '/dashboard/corporate/carpet-pad',
+    subject: 'A Carpet Pad Order was submitted',
+  },
   'fleet-service-request': {
     label: 'Fleet Service Request',
     path: '/dashboard/corporate/fleet-service-request',

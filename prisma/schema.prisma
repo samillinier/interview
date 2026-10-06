@@ -1261,6 +1261,32 @@ model ForkliftInspection {
   @@index([createdByEmail])
 }
 
+model CarpetPadOrder {
+  id                        String   @id @default(cuid())
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  location                  String
+  orderClassification       String
+  recycledBalesPickup       String
+  recycledBalesCount        Int?
+  reviewedPreviousOrders    String
+
+  superSixLbRolls           Int?
+  stainmasterSelectRolls    Int?
+  odorBanRolls              Int?
+  stainmasterEliteRolls     Int?
+  stainmasterMemoryFoamRolls Int?
+
+  createdByEmail            String?
+  createdByName             String?
+
+  @@index([createdAt])
+  @@index([location])
+  @@index([orderClassification])
+  @@index([createdByEmail])
+}
+
 model Vehicle {
   id                    String            @id @default(cuid())
   createdAt             DateTime          @default(now())

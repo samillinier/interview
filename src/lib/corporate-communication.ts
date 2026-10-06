@@ -13,6 +13,7 @@ export type CorporateCommunicationKind =
   | 'business-cards'
   | 'vehicle-inspection'
   | 'forklift-inspection'
+  | 'carpet-pad'
   | 'fleet-service-request'
   | 'invoice'
   | 'btr'
@@ -40,6 +41,7 @@ export const CORPORATE_COMMUNICATION_KINDS: CorporateCommunicationKindDef[] = [
   { slug: 'business-cards', label: 'Business Cards', description: 'Employee business card orders', path: '/dashboard/corporate/business-cards' },
   { slug: 'vehicle-inspection', label: 'Monthly Vehicle Inspection', description: 'Monthly fleet vehicle safety inspections', path: '/dashboard/corporate/vehicle-inspection' },
   { slug: 'forklift-inspection', label: 'Weekly Forklift Inspection', description: 'Weekly forklift safety inspections', path: '/dashboard/corporate/forklift-inspection' },
+  { slug: 'carpet-pad', label: 'Carpet Pad', description: 'Carpet pad roll orders', path: '/dashboard/corporate/carpet-pad' },
   { slug: 'fleet-service-request', label: 'Fleet Service Request', description: 'Fleet vehicle or equipment service requests', path: '/dashboard/corporate/fleet-service-request' },
   { slug: 'invoice', label: 'Invoice', description: 'Weekly invoices submitted by estimators', path: '/dashboard/corporate/invoice' },
   { slug: 'btr', label: 'BTR', description: 'Business Tax Receipt records', path: '/dashboard/corporate/btr' },

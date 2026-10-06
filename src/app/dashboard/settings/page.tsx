@@ -143,6 +143,7 @@ export default function SettingsPage() {
     { slug: 'business-cards', label: 'Business Cards' },
     { slug: 'vehicle-inspection', label: 'Monthly Vehicle Inspection' },
     { slug: 'forklift-inspection', label: 'Weekly Forklift Inspection' },
+    { slug: 'carpet-pad', label: 'Carpet Pad' },
     { slug: 'fleet-service-request', label: 'Fleet Service Request' },
     { slug: 'job-application', label: 'Job Application' },
     { slug: 'installer-application', label: 'Installer Application' },
