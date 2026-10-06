@@ -48,6 +48,12 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    // Managers only see their own requests; reviewers see everything.
+    const role = roleOf(session)
+    if (role === 'MANAGER') {
+      where.createdByEmail = session.user.email?.toLowerCase() || ''
+    }
+
     const requests = await prisma.fleetServiceRequest.findMany({
       where,
       orderBy: { requestDate: 'desc' },

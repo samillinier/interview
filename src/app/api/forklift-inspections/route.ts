@@ -85,6 +85,12 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    // Managers only see their own inspections; reviewers see everything.
+    const role = roleOf(session)
+    if (role === 'MANAGER') {
+      where.createdByEmail = session.user.email?.toLowerCase() || ''
+    }
+
     const inspections = await prisma.forkliftInspection.findMany({
       where,
       orderBy: { inspectionDate: 'desc' },

@@ -37,6 +37,12 @@ export async function GET(request: NextRequest) {
       if (endDate) where.dateRequested.lte = new Date(endDate)
     }
 
+    // Managers only see their own transfers; reviewers see everything.
+    const role = String((session.user as any)?.role || '').toUpperCase()
+    if (role === 'MANAGER') {
+      where.createdByEmail = session.user.email?.toLowerCase() || ''
+    }
+
     const [transfers, total] = await Promise.all([
       prisma.padTransfer.findMany({
         where,

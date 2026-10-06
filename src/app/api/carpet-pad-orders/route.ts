@@ -51,6 +51,12 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    // Managers only see their own orders; reviewers see everything.
+    const role = roleOf(session)
+    if (role === 'MANAGER') {
+      where.createdByEmail = session.user.email?.toLowerCase() || ''
+    }
+
     const orders = await prisma.carpetPadOrder.findMany({
       where,
       orderBy: { createdAt: 'desc' },
