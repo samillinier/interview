@@ -173,6 +173,37 @@ function normalizeDocStatus(raw: string | null | undefined): 'active' | 'inactiv
   return ''
 }
 
+/**
+ * Same mapping as installer profile getLatestDocStatusForType.
+ * Returns null when the dropdown is empty/unrecognized (e.g. pending).
+ */
+function profileDocStatusOverride(raw: string | null | undefined): 'active' | 'inactive' | 'missing' | 'expired' | 'na' | 'null' | null {
+  const s = String(raw || '').trim().toLowerCase()
+  if (!s) return null
+  if (s === 'active' || s === 'compliant') return 'active'
+  if (s === 'inactive' || s === 'not_compliant' || s === 'non_compliant' || s === 'not active') return 'inactive'
+  if (s === 'missing' || s === 'in_progress' || s === 'in progress') return 'missing'
+  if (s === 'expired') return 'expired'
+  if (s === 'na' || s === 'n/a') return 'na'
+  if (s === 'null') return 'null'
+  if (s === 'required' || s === 'document_required') return 'missing'
+  return null
+}
+
+/** Same as installer profile getStatus() for Insurance & Registration document rows. */
+function profileGetStatusCell(
+  override: ReturnType<typeof profileDocStatusOverride>,
+  hasFile: boolean
+): MatrixCell {
+  if (override === 'active') return { state: 'ok' }
+  if (override === 'inactive') return { state: 'missing', detail: 'Inactive' }
+  if (override === 'expired') return { state: 'missing', detail: 'exp' }
+  if (override === 'na') return { state: 'na' }
+  if (override === 'null') return { state: 'na', detail: 'NULL' }
+  // 'missing' / pending / empty: profile ignores these and uses whether a file is attached
+  return hasFile ? { state: 'ok' } : { state: 'missing' }
+}
+
 /** Same rules as installer profile Insurance & Registration document rows. */
 function profileDocCell(
   docs: BareDoc[],
@@ -182,16 +213,8 @@ function profileDocCell(
   const relevant = docs.filter((d) => docMatchesMatrixKeys(d.type, types))
   const hasFile = relevant.some((d) => !isStatusOnlyDocument(d))
   const latest = latestDocFor(types)
-  const raw = String(latest?.verificationLinkStatus || '').trim().toLowerCase()
-  if (raw === 'null') return { state: 'na', detail: 'NULL' }
-  const override = normalizeDocStatus(latest?.verificationLinkStatus)
-  if (override === 'active') return { state: 'ok' }
-  if (override === 'pending') return { state: 'warn' }
-  if (override === 'na') return withNullDetail({ state: 'na' }, types, latestDocFor)
-  if (override === 'inactive') return { state: 'missing', detail: 'Inactive' }
-  if (override === 'missing' && raw === 'expired') return { state: 'missing', detail: 'exp' }
-  if (override === 'missing') return { state: 'missing' }
-  return hasFile ? { state: 'ok' } : { state: 'missing' }
+  const cell = profileGetStatusCell(profileDocStatusOverride(latest?.verificationLinkStatus), hasFile)
+  return cell.state === 'na' ? withNullDetail(cell, types, latestDocFor) : cell
 }
 
 export function isInstallerIcsSigned(
@@ -375,14 +398,48 @@ export function computeOnboardingMatrix(input: {
     return out
   }
 
+  /** Profile AL: if dates JSON is an array, use only those dates (no single-field fallback). */
+  const parseAlDates = (raw: string | null | undefined, fallback?: Date | null): Date[] => {
+    if (raw) {
+      try {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr)) {
+          const out: Date[] = []
+          for (const item of arr) {
+            const d = parseInstallerCalendarDate(item)
+            if (d) out.push(d)
+          }
+          return out
+        }
+      } catch {
+        const d = parseInstallerCalendarDate(raw)
+        if (d) return [d]
+      }
+    }
+    if (fallback) {
+      const d = parseInstallerCalendarDate(fallback)
+      if (d) return [d]
+    }
+    return []
+  }
+
   // BTR
   cells.btr = fieldExpiryCells(parseDateList(null, input.btrExpiry))
 
   // WCE: N/A only when both flags are off; otherwise document status like the profile.
+  // Profile prefers workers_comp_certificate status, then workers_comp.
   if (!input.hasWorkersComp && !input.hasWorkersCompExemption) {
     cells.wce = { state: 'na' }
   } else {
-    cells.wce = profileDocCell(docs, ['workers_comp_certificate', 'workers_comp'], latestDocFor)
+    const wceTypes = ['workers_comp_certificate', 'workers_comp']
+    const wceHasFile = docs.some(
+      (d) => docMatchesMatrixKeys(d.type, wceTypes) && !isStatusOnlyDocument(d)
+    )
+    const wceOverride =
+      profileDocStatusOverride(latestDocFor(['workers_comp_certificate'])?.verificationLinkStatus) ||
+      profileDocStatusOverride(latestDocFor(['workers_comp'])?.verificationLinkStatus)
+    const wceCell = profileGetStatusCell(wceOverride, wceHasFile)
+    cells.wce = wceCell.state === 'na' ? withNullDetail(wceCell, wceTypes, latestDocFor) : wceCell
   }
 
   // WC: Workers Comp Insurance (employers liability)
@@ -395,10 +452,10 @@ export function computeOnboardingMatrix(input: {
   // COI
   cells.coi = fieldExpiryCells(parseDateList(null, input.generalLiabilityExpiry))
 
-  // AL (auto) — profile uses the dates array, not only the single expiry field
+  // AL (auto) — profile uses the dates JSON if present (even when []), else the single expiry.
   cells.al = input.hasCommercialAutoLiability === false
     ? { state: 'na' }
-    : fieldExpiryCells(parseDateList(input.automobileLiabilityExpiryDates, input.automobileLiabilityExpiry))
+    : fieldExpiryCells(parseAlDates(input.automobileLiabilityExpiryDates, input.automobileLiabilityExpiry))
 
   const w9States = docStateList(['w9'])
   cells.w9 =

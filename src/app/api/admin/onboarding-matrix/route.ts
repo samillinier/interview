@@ -94,7 +94,7 @@ const installerMatrixSelect = {
         ] as string[],
       },
     },
-    select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true, name: true },
+    select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true, name: true, url: true },
   },
   InstallerAgreement: {
     select: { type: true, signedAt: true, status: true, adminSignedDate: true },
@@ -352,7 +352,15 @@ export async function GET(_request: NextRequest) {
         wc: fmt(raw.employersLiabilityExpiry),
         wce: fmtDatesArray(raw.workersCompExemExpiryDates) ?? fmt(raw.workersCompExemExpiry),
         coi: fmt(raw.generalLiabilityExpiry),
-        al: fmtDatesArray(raw.automobileLiabilityExpiryDates) ?? fmt(raw.automobileLiabilityExpiry),
+        al: (() => {
+          if (raw.automobileLiabilityExpiryDates) {
+            try {
+              const arr = JSON.parse(raw.automobileLiabilityExpiryDates)
+              if (Array.isArray(arr)) return fmtDatesArray(raw.automobileLiabilityExpiryDates)
+            } catch { /* fall through to single expiry */ }
+          }
+          return fmt(raw.automobileLiabilityExpiry)
+        })(),
         w9: null,
         photo: null,
         bg: null,
@@ -373,11 +381,15 @@ export async function GET(_request: NextRequest) {
       llrp: 'llrpExpiry',
     }
 
+    // Profile Insurance & Registration does not treat a NULL'd date as N/A for these
+    // columns (WCE is document status; WC/COI use expiry → Missing / N/A from the field).
+    const DATE_NULL_DOES_NOT_OVERRIDE = new Set<MatrixRowId>(['wc', 'wce', 'coi', 'al'])
+
     const COLUMN_DOC_TYPES: Partial<Record<MatrixRowId, string[]>> = {
       sunbiz: ['sunbiz'],
       btr: ['business_registration'],
       wc: ['workers_comp', 'workers_comp_certificate'],
-      wce: ['workers_comp_exemption'],
+      wce: ['workers_comp_certificate', 'workers_comp'],
       coi: ['liability_insurance'],
       al: ['auto_insurance'],
       w9: ['w9'],
@@ -387,13 +399,15 @@ export async function GET(_request: NextRequest) {
       llrp: ['lrrp'],
     }
 
+    const EXPIRY_DRIVEN_COLUMNS = new Set<MatrixRowId>(['wc', 'coi', 'btr', 'llrp', 'al'])
+
     const pushCells = (m: ReturnType<typeof computeOnboardingMatrix>, dateHints?: Record<string, string | string[] | null>, dateNullFields?: string[], docs?: Array<{ type: string; verificationLinkStatus?: string | null }>) => {
       const nullSet = new Set(dateNullFields || [])
       const cells = {} as InstallerRow['cells']
       for (const def of MATRIX_ROW_DEFS) {
         const c = m[def.id]
         const dateField = COLUMN_ID_TO_FIELD[def.id]
-        if (dateField && nullSet.has(dateField)) {
+        if (dateField && nullSet.has(dateField) && !DATE_NULL_DOES_NOT_OVERRIDE.has(def.id)) {
           // Date field was explicitly NULL'd — show N/A with NULL detail
           cells[def.id] = {
             state: 'na',
@@ -402,7 +416,7 @@ export async function GET(_request: NextRequest) {
           continue
         }
         const detailFromInactive =
-          c.state === 'missing' && !c.detail && docs && COLUMN_DOC_TYPES[def.id]
+          c.state === 'missing' && !c.detail && docs && COLUMN_DOC_TYPES[def.id] && !EXPIRY_DRIVEN_COLUMNS.has(def.id)
             ? (docs.some((d) => COLUMN_DOC_TYPES[def.id]!.includes(d.type as any) && String(d.verificationLinkStatus || '').toLowerCase() === 'inactive') ? 'Inactive' : undefined)
             : undefined
         cells[def.id] = {
