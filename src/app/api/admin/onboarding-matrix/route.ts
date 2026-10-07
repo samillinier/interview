@@ -434,7 +434,7 @@ export async function GET(_request: NextRequest) {
           icsAgreements: inst.InstallerAgreement as any,
           complianceStatus: inst.complianceStatus,
           Document: inst.Document,
-          staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),
+          staffMemberPhotoUrls: activeStaffMembers.map((staff: { photoUrl?: string | null }) => staff.photoUrl),
         })
         // Linked installer rows always mirror the live profile. Manual cell
         // overrides previously made some rows drift from Insurance & Registration.
@@ -574,7 +574,7 @@ export async function GET(_request: NextRequest) {
             icsAgreements: inst.InstallerAgreement as any,
             complianceStatus: inst.complianceStatus,
             Document: inst.Document,
-            staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),
+            staffMemberPhotoUrls: activeStaffMembers.map((staff: { photoUrl?: string | null }) => staff.photoUrl),
           })
           const cellDates = getCellDates(inst)
           const nullFields = (() => {
