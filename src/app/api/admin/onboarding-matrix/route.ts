@@ -227,7 +227,7 @@ export async function GET(_request: NextRequest) {
             if (!row.title) continue
             titleByInstallerType.set(`${row.installerId}::${row.type}`, row.title)
           }
-          for (const inst of byId.values()) {
+          for (const inst of Array.from(byId.values())) {
             inst.InstallerAgreement = (inst.InstallerAgreement || []).map(
               (agreement: { type: string }) => {
                 const title = titleByInstallerType.get(`${inst.id}::${agreement.type}`)
