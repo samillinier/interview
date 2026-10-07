@@ -75,14 +75,29 @@ const installerMatrixSelect = {
   dateNullFields: true,
   serviceAgreementSignedAt: true,
   StaffMember: {
+    where: { status: { not: 'inactive' } },
     select: {
       photoUrl: true,
       status: true,
     },
   },
-  Document: { select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true, url: true, name: true } },
+  Document: {
+    where: {
+      type: {
+        in: [
+          'sunbiz',
+          'w9',
+          'lead_firm_certificate',
+          'workers_comp',
+          'workers_comp_certificate',
+          'workers_comp_exemption',
+        ],
+      },
+    },
+    select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true, name: true },
+  },
   InstallerAgreement: {
-    select: { type: true, signedAt: true, status: true, adminSignedDate: true, payload: true },
+    select: { type: true, signedAt: true, status: true, adminSignedDate: true },
   },
 } as const
 
@@ -92,7 +107,10 @@ export async function GET(_request: NextRequest) {
     const email = session?.user?.email?.toLowerCase()
     if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: noStoreHeaders })
 
-    const admin = await prisma.admin.findUnique({ where: { email } })
+    const admin = await prisma.admin.findUnique({
+      where: { email },
+      select: { id: true, isActive: true, role: true },
+    })
     const role = String((admin as any)?.role || '').toUpperCase()
     if (!admin?.isActive || (role !== 'ADMIN' && role !== 'MANAGER' && role !== 'MODERATOR' && role !== 'SUPER_ADMIN' && role !== 'ACCOUNTING')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403, headers: noStoreHeaders })
@@ -169,22 +187,43 @@ export async function GET(_request: NextRequest) {
       }
     }
 
-    const manualTrackers = (
-      await prisma.installerTracking.findMany({
-        where: { type: 'matrix_manual' },
-        orderBy: [{ matrixSortOrder: 'asc' }, { createdAt: 'asc' }],
-        include: {
-          Installer: { select: installerMatrixSelect },
-        },
-      })
-    ).filter((row) => !isAutoPromotedMatrixRow(row.metadata))
+    const trackingRows = await prisma.installerTracking.findMany({
+      where: { type: 'matrix_manual' },
+      orderBy: [{ matrixSortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        installerId: true,
+        metadata: true,
+        matrixCellOverrides: true,
+      },
+    })
+    const manualTrackers = trackingRows.filter((row) => !isAutoPromotedMatrixRow(row.metadata))
+
+    const loadInstallersByIds = async (ids: string[]) => {
+      const unique = Array.from(new Set(ids.filter(Boolean)))
+      const byId = new Map<string, any>()
+      for (let i = 0; i < unique.length; i += 40) {
+        const chunk = unique.slice(i, i + 40)
+        const rows = await prisma.installer.findMany({
+          where: { id: { in: chunk } },
+          select: installerMatrixSelect,
+        })
+        for (const row of rows) byId.set(row.id, row)
+      }
+      return byId
+    }
+
+    const trackedInstallerIds = manualTrackers.map((row) => row.installerId).filter((id): id is string => Boolean(id))
+    const trackedInstallersById = await loadInstallersByIds(trackedInstallerIds)
 
     /** Loaded outside the typed `select` so an outdated Prisma client (before this column) still loads the matrix. */
     const primarySurfaceByInstallerId = new Map<string, string | null>()
     const installerIdsForSurface = Array.from(
       new Set(
         manualTrackers
-          .filter((row) => row.installerId && row.Installer)
+          .filter((row) => row.installerId && trackedInstallersById.has(row.installerId))
           .map((row) => row.installerId as string)
       )
     )
@@ -355,7 +394,7 @@ export async function GET(_request: NextRequest) {
     }
 
     for (const t of manualTrackers) {
-      const inst = t.Installer
+      const inst = t.installerId ? trackedInstallersById.get(t.installerId) : null
       if (t.installerId && inst) {
         // In "active" mode, only include tracked installers that are actually active
         if (statusFilter === 'active' && inst.status !== 'active') continue
@@ -464,15 +503,19 @@ export async function GET(_request: NextRequest) {
     if (statusFilter === 'active') {
       const alreadyListedIds = new Set(result.map((row) => row.id).filter((id) => !id.startsWith('manual-')))
 
-      const autoInstallers = await prisma.installer.findMany({
-        where: {
-          status: 'active',
-          ...(alreadyListedIds.size > 0 ? { id: { notIn: Array.from(alreadyListedIds) } } : {}),
-        },
-        select: installerMatrixSelect,
-        orderBy: { firstName: 'asc' },
-        take: 500,
-      })
+      const autoInstallerIds = (
+        await prisma.installer.findMany({
+          where: {
+            status: 'active',
+            ...(alreadyListedIds.size > 0 ? { id: { notIn: Array.from(alreadyListedIds) } } : {}),
+          },
+          select: { id: true },
+          orderBy: { firstName: 'asc' },
+          take: 500,
+        })
+      ).map((row) => row.id)
+      const autoById = await loadInstallersByIds(autoInstallerIds)
+      const autoInstallers = autoInstallerIds.map((id) => autoById.get(id)).filter(Boolean)
 
       if (autoInstallers.length > 0) {
         const autoIds = autoInstallers.map((i) => i.id)

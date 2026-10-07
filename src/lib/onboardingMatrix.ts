@@ -208,7 +208,9 @@ export function isInstallerIcsSigned(
     const title = String(a?.payload?.title || '').trim().toLowerCase()
     return (
       type === 'independent-contractor-services-agreement' ||
-      (type.startsWith('admin-uploaded-agreement:') && title === 'independent contractor services agreement')
+      type.includes('independent-contractor-services-agreement') ||
+      (type.startsWith('admin-uploaded-agreement:') &&
+        (title === 'independent contractor services agreement' || type.includes('independent contractor')))
     )
   })
   if (!match) return false
