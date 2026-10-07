@@ -91,7 +91,7 @@ const installerMatrixSelect = {
           'workers_comp',
           'workers_comp_certificate',
           'workers_comp_exemption',
-        ],
+        ] as string[],
       },
     },
     select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true, name: true },
@@ -99,7 +99,7 @@ const installerMatrixSelect = {
   InstallerAgreement: {
     select: { type: true, signedAt: true, status: true, adminSignedDate: true },
   },
-} as const
+}
 
 export async function GET(_request: NextRequest) {
   try {
