@@ -426,20 +426,30 @@ export function computeOnboardingMatrix(input: {
   // BTR
   cells.btr = fieldExpiryCells(parseDateList(null, input.btrExpiry))
 
-  // WCE: N/A only when both flags are off; otherwise document status like the profile.
-  // Profile prefers workers_comp_certificate status, then workers_comp.
-  if (!input.hasWorkersComp && !input.hasWorkersCompExemption) {
+  // WCE: N/A only when both flags are off AND there is no exemption date or document.
+  // Default-false flags were hiding real exemption dates/docs behind N/A.
+  const wceTypes = ['workers_comp_certificate', 'workers_comp', 'workers_comp_exemption']
+  const wceHasFile = docs.some(
+    (d) => docMatchesMatrixKeys(d.type, wceTypes) && !isStatusOnlyDocument(d)
+  )
+  const wceDates = parseDateList(input.workersCompExemExpiryDates, input.workersCompExemExpiry)
+  const wceFlagsOff = !input.hasWorkersComp && !input.hasWorkersCompExemption
+  if (wceFlagsOff && !wceHasFile && wceDates.length === 0) {
     cells.wce = { state: 'na' }
-  } else {
-    const wceTypes = ['workers_comp_certificate', 'workers_comp']
-    const wceHasFile = docs.some(
-      (d) => docMatchesMatrixKeys(d.type, wceTypes) && !isStatusOnlyDocument(d)
-    )
+  } else if (wceHasFile || !wceFlagsOff) {
     const wceOverride =
       profileDocStatusOverride(latestDocFor(['workers_comp_certificate'])?.verificationLinkStatus) ||
-      profileDocStatusOverride(latestDocFor(['workers_comp'])?.verificationLinkStatus)
+      profileDocStatusOverride(latestDocFor(['workers_comp'])?.verificationLinkStatus) ||
+      profileDocStatusOverride(latestDocFor(['workers_comp_exemption'])?.verificationLinkStatus)
     const wceCell = profileGetStatusCell(wceOverride, wceHasFile)
-    cells.wce = wceCell.state === 'na' ? withNullDetail(wceCell, wceTypes, latestDocFor) : wceCell
+    cells.wce =
+      wceCell.state === 'na' && wceDates.length > 0
+        ? fieldExpiryCells(wceDates)
+        : wceCell.state === 'na'
+          ? withNullDetail(wceCell, wceTypes, latestDocFor)
+          : wceCell
+  } else {
+    cells.wce = fieldExpiryCells(wceDates)
   }
 
   // WC: Workers Comp Insurance (employers liability)
@@ -452,10 +462,12 @@ export function computeOnboardingMatrix(input: {
   // COI
   cells.coi = fieldExpiryCells(parseDateList(null, input.generalLiabilityExpiry))
 
-  // AL (auto) — profile uses the dates JSON if present (even when []), else the single expiry.
-  cells.al = input.hasCommercialAutoLiability === false
-    ? { state: 'na' }
-    : fieldExpiryCells(parseAlDates(input.automobileLiabilityExpiryDates, input.automobileLiabilityExpiry))
+  // AL (auto) — N/A only when commercial auto is off AND there is no expiry date.
+  const alDates = parseAlDates(input.automobileLiabilityExpiryDates, input.automobileLiabilityExpiry)
+  cells.al =
+    input.hasCommercialAutoLiability === false && alDates.length === 0
+      ? { state: 'na' }
+      : fieldExpiryCells(alDates)
 
   const w9States = docStateList(['w9'])
   cells.w9 =

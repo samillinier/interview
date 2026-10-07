@@ -1203,6 +1203,13 @@ export default function TrackingPage() {
       if (isProfileNullCell) {
         return showMatrixCellShade ? <NullAttachmentShade size="md" /> : renderMatrixNullLabel('md')
       }
+      if (dateHintsArr.length > 0) {
+        return (
+          <div className="flex flex-col items-center gap-0.5" title="Not applicable">
+            {renderItemStatusIcons(iconsEditable)}
+          </div>
+        )
+      }
       return (
         <span className="text-[10px] text-slate-400 font-medium" title="Not applicable">
           N/A
