@@ -401,7 +401,8 @@ export async function GET(_request: NextRequest) {
         const ics = inst.InstallerAgreement[0]
         const icsSignedAt = ics?.signedAt ?? null
         const activeStaffMembers = (inst.StaffMember || []).filter(
-          (staff) => String(staff.status || 'active').toLowerCase() === 'active'
+          (staff: { status?: string | null; photoUrl?: string | null }) =>
+            String(staff.status || 'active').toLowerCase() === 'active'
         )
         const m = computeOnboardingMatrix({
           primaryFlooringSurface: primarySurfaceByInstallerId.get(inst.id) ?? null,
@@ -515,7 +516,9 @@ export async function GET(_request: NextRequest) {
         })
       ).map((row) => row.id)
       const autoById = await loadInstallersByIds(autoInstallerIds)
-      const autoInstallers = autoInstallerIds.map((id) => autoById.get(id)).filter(Boolean)
+      const autoInstallers = autoInstallerIds
+        .map((id) => autoById.get(id))
+        .filter((row): row is NonNullable<typeof row> => Boolean(row))
 
       if (autoInstallers.length > 0) {
         const autoIds = autoInstallers.map((i) => i.id)
@@ -538,7 +541,8 @@ export async function GET(_request: NextRequest) {
           const ics = inst.InstallerAgreement[0]
           const icsSignedAt = ics?.signedAt ?? null
           const activeStaffMembers = (inst.StaffMember || []).filter(
-            (staff) => String(staff.status || 'active').toLowerCase() === 'active'
+            (staff: { status?: string | null; photoUrl?: string | null }) =>
+              String(staff.status || 'active').toLowerCase() === 'active'
           )
           const m = computeOnboardingMatrix({
             primaryFlooringSurface: autoSurfaceMap.get(inst.id) ?? primarySurfaceByInstallerId.get(inst.id) ?? null,
