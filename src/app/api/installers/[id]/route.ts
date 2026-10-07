@@ -303,7 +303,7 @@ export async function GET(
           if (!payload.installerId || payload.installerId !== installerId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
           }
-          if ((installer as any).accountDeletedAt || String(installer.status || '').toLowerCase() === 'deleted') {
+          if ((installer as any)?.accountDeletedAt || String(installer?.status || '').toLowerCase() === 'deleted') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
           }
         } catch {
