@@ -381,10 +381,6 @@ export async function GET(_request: NextRequest) {
       llrp: 'llrpExpiry',
     }
 
-    // Profile Insurance & Registration does not treat a NULL'd date as N/A for these
-    // columns (WCE is document status; WC/COI use expiry → Missing / N/A from the field).
-    const DATE_NULL_DOES_NOT_OVERRIDE = new Set<MatrixRowId>(['wc', 'wce', 'coi', 'al'])
-
     const COLUMN_DOC_TYPES: Partial<Record<MatrixRowId, string[]>> = {
       sunbiz: ['sunbiz'],
       btr: ['business_registration'],
@@ -407,8 +403,8 @@ export async function GET(_request: NextRequest) {
       for (const def of MATRIX_ROW_DEFS) {
         const c = m[def.id]
         const dateField = COLUMN_ID_TO_FIELD[def.id]
-        if (dateField && nullSet.has(dateField) && !DATE_NULL_DOES_NOT_OVERRIDE.has(def.id)) {
-          // Date field was explicitly NULL'd — show N/A with NULL detail
+        if (dateField && nullSet.has(dateField)) {
+          // Date picker was explicitly NULL'd — striped NULL, not the N/A label.
           cells[def.id] = {
             state: 'na',
             detail: 'NULL',
