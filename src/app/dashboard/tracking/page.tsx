@@ -790,11 +790,18 @@ export default function TrackingPage() {
   /** Active tab only — Admin Added rows use plain white cells (no status tint / NULL hatch fill). */
   const showMatrixCellShade = matrixStatusFilter !== 'tracked'
 
-  const matrixCellBgStyle = (cell?: { state: string; detail?: string } | null): React.CSSProperties => {
+  const matrixCellHasExpiring = (cell?: { state?: string; items?: MatrixCellState[] } | null) =>
+    Boolean(
+      cell &&
+        (cell.state === 'warn' ||
+          (Array.isArray(cell.items) && cell.items.some((item) => item === 'warn')))
+    )
+
+  const matrixCellBgStyle = (cell?: { state: string; detail?: string; items?: MatrixCellState[] } | null): React.CSSProperties => {
     if (!showMatrixCellShade || !cell) return {}
     if (cell.state === 'na' && isAttachmentNullMarked(cell.detail)) return NULL_MATRIX_CELL_SHADE_STYLE
+    if (matrixCellHasExpiring(cell)) return { backgroundColor: MATRIX_CELL_BG.warn }
     if (cell.state === 'ok') return { backgroundColor: MATRIX_CELL_BG.ok }
-    if (cell.state === 'warn') return { backgroundColor: MATRIX_CELL_BG.warn }
     if (cell.state === 'missing') return { backgroundColor: MATRIX_CELL_BG.missing }
     return {}
   }
