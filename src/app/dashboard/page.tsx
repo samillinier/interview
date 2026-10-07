@@ -2656,14 +2656,14 @@ function DashboardPageContent() {
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Delete Installer</h3>
-                <p className="text-sm text-slate-500">This action cannot be undone</p>
+                <h3 className="text-xl font-bold text-slate-900">Remove Installer</h3>
+                <p className="text-sm text-slate-500">They will be moved to Archive</p>
               </div>
             </div>
 
             <p className="text-slate-700 mb-6">
-              Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteConfirm.installerName}</span>? 
-              All associated data will be permanently removed.
+              Remove <span className="font-semibold text-slate-900">{deleteConfirm.installerName}</span> from
+              the dashboard? They will not be able to sign in. You can restore them from Archive.
             </p>
 
             <div className="flex items-center gap-3">

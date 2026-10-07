@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     // Cap at 5000 to prevent unbounded growth. Beyond that, analytics should
     // use server-side aggregation (COUNT, SUM, etc.) instead of in-memory loops.
     const installers = await prisma.installer.findMany({
+      where: { accountDeletedAt: null, status: { not: 'deleted' } },
       take: 5000,
       orderBy: { createdAt: 'desc' },
       include: {

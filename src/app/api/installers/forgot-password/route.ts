@@ -19,7 +19,11 @@ export async function POST(request: NextRequest) {
     // Find installer by email. Use a case-insensitive lookup so recovery works
     // even if the user types different casing than what is stored.
     const installer = await prisma.installer.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      where: {
+        email: { equals: normalizedEmail, mode: 'insensitive' },
+        accountDeletedAt: null,
+        status: { not: 'deleted' },
+      },
     })
 
     // Don't reveal if email exists or not (security best practice)

@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
       where: {
         email: { equals: normalizedEmail, mode: 'insensitive' },
         loginToken: token,
+        accountDeletedAt: null,
+        status: { not: 'deleted' },
       },
     })
 

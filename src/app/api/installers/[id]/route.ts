@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { extractLikelyPhone } from '@/lib/phone'
 import { writeAdminAuditLog } from '@/lib/audit'
+import { archiveInstallerAccount } from '@/lib/installerAccountArchive'
 import { companyDisplayName } from '@/lib/publicAppUrl'
 import { sendPushToInstaller } from '@/lib/pushNotifications'
 import { platformFromNativeDeviceToken } from '@/lib/installerAccess'
@@ -301,6 +302,9 @@ export async function GET(
           const payload = verifyInstallerToken(token)
           if (!payload.installerId || payload.installerId !== installerId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+          if ((installer as any).accountDeletedAt || String(installer.status || '').toLowerCase() === 'deleted') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
           }
         } catch {
           return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
@@ -1415,27 +1419,30 @@ export async function DELETE(
 
     const existing = await prismaAny.installer.findUnique({
       where: { id: installerId },
-      select: { id: true, email: true, firstName: true, lastName: true, status: true } as any,
+      select: { id: true, email: true, firstName: true, lastName: true, status: true, accountDeletedAt: true } as any,
     })
+    if (!existing) {
+      return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+    }
 
-    await prismaAny.installer.delete({ where: { id: installerId } })
+    await archiveInstallerAccount(installerId)
 
     try {
       const targetLabel = `${String(existing?.firstName || '')} ${String(existing?.lastName || '')}`.trim()
       await writeAdminAuditLog({
         adminEmail: email,
         adminId: admin.id,
-        action: 'installer.delete',
+        action: 'installer.archive',
         targetType: 'installer',
         targetId: installerId,
         targetLabel: targetLabel || existing?.email || null,
         before: existing
           ? { status: existing.status, email: existing.email, firstName: existing.firstName, lastName: existing.lastName }
           : null,
-        after: null,
+        after: { status: 'deleted' },
       })
     } catch (e) {
-      console.error('Failed to write audit log (installer.delete):', e)
+      console.error('Failed to write audit log (installer.archive):', e)
     }
 
     return NextResponse.json({ success: true })

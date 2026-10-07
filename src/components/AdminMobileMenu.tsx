@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
+  Archive,
   BarChart3,
   Bell,
   Building2,
@@ -262,6 +263,9 @@ export function AdminMobileMenu({ pathname }: Props) {
         ? [{ href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall, match: (p: string) => p === '/property/ring-central' }]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
+      ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
+        ? [{ href: '/dashboard/archive', label: 'Archive', icon: Archive, match: (p: string) => p.startsWith('/dashboard/archive') }]
+        : []),
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
       ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (p: string) => p.startsWith('/dashboard/marketing') }]

@@ -334,6 +334,8 @@ model Installer {
   managerRemarks                       String?
   aiChatEnabled                        Boolean                  @default(true)
   dateNullFields                       String?
+  accountDeletedAt                     DateTime?
+  accountDeletedPreviousStatus         String?
   Claim                                Claim[]
   Communication                        Communication[]
   DeviceToken                          DeviceToken[]
@@ -352,6 +354,7 @@ model Installer {
   EstimatorWeeklyReport                EstimatorWeeklyReport[]
 
   @@index([referredByInstallerId])
+  @@index([accountDeletedAt])
 }
 
 model EstimatorWeeklyReport {

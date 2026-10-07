@@ -3,6 +3,8 @@ import prisma from '@/lib/db'
 export type AdminAuditAction =
   | 'installer.status_change'
   | 'installer.delete'
+  | 'installer.archive'
+  | 'installer.restore'
   | 'installer.contract_generated'
   | 'installer.credentials_update'
   | 'admin.role_change'

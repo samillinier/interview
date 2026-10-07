@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
       where: {
         email: { equals: normalizedEmail, mode: 'insensitive' },
         passwordResetToken: token,
+        accountDeletedAt: null,
+        status: { not: 'deleted' },
       },
     })
 

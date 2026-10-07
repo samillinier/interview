@@ -43,6 +43,8 @@ export async function POST(request: NextRequest) {
     // Find installer by username or email (for backward compatibility)
     const installer = await prisma.installer.findFirst({
       where: {
+        accountDeletedAt: null,
+        status: { not: 'deleted' },
         OR: [
           { username: login },
           { email: { equals: normalizedEmail, mode: 'insensitive' } }, // Allow login with email too

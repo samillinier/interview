@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (!installer) {
+    if (!installer || installer.accountDeletedAt || String(installer.status || '').toLowerCase() === 'deleted') {
       return NextResponse.json(
         { error: 'Installer not found' },
         { status: 404 }

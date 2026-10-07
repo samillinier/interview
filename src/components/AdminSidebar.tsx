@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
 import {
   Activity,
+  Archive,
   BarChart3,
   Bell,
   Briefcase,
@@ -294,6 +295,9 @@ export function AdminSidebar({ pathname }: Props) {
           ]
         : []),
       { href: '/dashboard/remarks', label: 'Remarks', icon: StickyNote },
+      ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
+        ? [{ href: '/dashboard/archive', label: 'Archive', icon: Archive, match: (path: string) => path.startsWith('/dashboard/archive') }]
+        : []),
       { href: '/dashboard/correction', label: 'Correction', icon: FileText },
       ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]

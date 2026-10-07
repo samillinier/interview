@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     const installers = await prisma.installer.findMany({
-      where: { status: { not: 'rejected' } },
+      where: { status: { notIn: ['rejected', 'deleted'] }, accountDeletedAt: null },
       select: {
         id: true,
         firstName: true,

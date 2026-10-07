@@ -29,6 +29,13 @@ export async function requireInstallerOrAdmin(request: NextRequest, installerId:
       if (!payload.installerId || payload.installerId !== installerId) {
         return { ok: false as const, status: 403, error: "Forbidden" }
       }
+      const installer = await prisma.installer.findUnique({
+        where: { id: installerId },
+        select: { accountDeletedAt: true, status: true },
+      })
+      if (!installer || installer.accountDeletedAt || String(installer.status || '').toLowerCase() === 'deleted') {
+        return { ok: false as const, status: 401, error: "Unauthorized" }
+      }
       return { ok: true as const, actor: "installer" as const, installerId }
     } catch {
       return { ok: false as const, status: 401, error: "Unauthorized" }

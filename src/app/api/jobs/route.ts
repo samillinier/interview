@@ -111,13 +111,15 @@ export async function POST(request: NextRequest) {
     })
 
     // Send notifications to all eligible installers
-    const whereClause: any = {}
+    const whereClause: any = { accountDeletedAt: null }
     if (targetStatus && targetStatus !== 'all') {
       if (targetStatus === 'qualified') {
         whereClause.status = { in: ['passed', 'qualified'] }
       } else {
         whereClause.status = targetStatus
       }
+    } else {
+      whereClause.status = { not: 'deleted' }
     }
 
     const eligibleInstallers = await prisma.installer.findMany({

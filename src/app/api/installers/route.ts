@@ -113,8 +113,10 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
-    // Build where clause
-    const where: any = {}
+    // Build where clause — archived (self-deleted) accounts stay off the main list
+    const where: any = {
+      AND: [{ accountDeletedAt: null, status: { not: 'deleted' } }],
+    }
     let searchTokens: string[] = []
 
     // Moderators can ONLY see "Qualified" + "Pending" + "Not Qualified" installers
