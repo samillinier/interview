@@ -1,5 +1,15 @@
 export const MATRIX_ROW_NOTE_KEY = '__rowNote'
 
+/** Rows bulk-promoted from the old "show every active installer" list. Hidden from Tracking. */
+export function isAutoPromotedMatrixRow(metadata: unknown): boolean {
+  return Boolean(
+    metadata &&
+      typeof metadata === 'object' &&
+      !Array.isArray(metadata) &&
+      (metadata as Record<string, unknown>).autoPromoted === true
+  )
+}
+
 export function getMatrixRowNote(overridesRaw: unknown): string | null {
   if (!overridesRaw || typeof overridesRaw !== 'object' || Array.isArray(overridesRaw)) return null
   const rowNote = (overridesRaw as Record<string, unknown>)[MATRIX_ROW_NOTE_KEY]

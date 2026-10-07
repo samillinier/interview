@@ -11,6 +11,7 @@ import {
   listMatrixOverrideColumnIds,
   type MatrixRowId,
 } from '@/lib/onboardingMatrix'
+import { isAutoPromotedMatrixRow } from '@/lib/matrixTrackingOverrides'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -171,13 +172,15 @@ export async function GET(_request: NextRequest) {
       }
     }
 
-    const manualTrackers = await prisma.installerTracking.findMany({
-      where: { type: 'matrix_manual' },
-      orderBy: [{ matrixSortOrder: 'asc' }, { createdAt: 'asc' }],
-      include: {
-        Installer: { select: installerMatrixSelect },
-      },
-    })
+    const manualTrackers = (
+      await prisma.installerTracking.findMany({
+        where: { type: 'matrix_manual' },
+        orderBy: [{ matrixSortOrder: 'asc' }, { createdAt: 'asc' }],
+        include: {
+          Installer: { select: installerMatrixSelect },
+        },
+      })
+    ).filter((row) => !isAutoPromotedMatrixRow(row.metadata))
 
     /** Loaded outside the typed `select` so an outdated Prisma client (before this column) still loads the matrix. */
     const primarySurfaceByInstallerId = new Map<string, string | null>()

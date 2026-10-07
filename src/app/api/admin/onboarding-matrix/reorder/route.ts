@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { isAutoPromotedMatrixRow } from '@/lib/matrixTrackingOverrides'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,11 +26,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    const rows = await prisma.installerTracking.findMany({
-      where: { type: 'matrix_manual' },
-      orderBy: [{ matrixSortOrder: 'asc' }, { createdAt: 'asc' }],
-      select: { id: true, matrixSortOrder: true },
-    })
+    const rows = (
+      await prisma.installerTracking.findMany({
+        where: { type: 'matrix_manual' },
+        orderBy: [{ matrixSortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, matrixSortOrder: true, metadata: true },
+      })
+    ).filter((row) => !isAutoPromotedMatrixRow(row.metadata))
 
     if (Array.isArray(body.orderedTrackingIds)) {
       const ids = body.orderedTrackingIds.filter((x: unknown) => typeof x === 'string') as string[]

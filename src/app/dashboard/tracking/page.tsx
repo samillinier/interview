@@ -314,7 +314,7 @@ export default function TrackingPage() {
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<'active' | 'tracked'>(() => {
     try {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('tracking-matrix-status-filter') : null
-      if (stored === 'active' || stored === 'tracked') return stored
+      if (stored === 'tracked') return stored
     } catch { /* ignore */ }
     return 'tracked'
   })
@@ -856,26 +856,7 @@ export default function TrackingPage() {
     if (!canReadNote) return
     e.stopPropagation()
 
-    // For virtual rows (auto-populated active installers with no tracking entry yet),
-    // auto-create a tracking entry so the note can be saved
-    let resolvedTrackingId = trackingId
-    if (!resolvedTrackingId && installerId && canEditNote) {
-      setMatrixRowNoteSaving(true)
-      try {
-        const res = await fetch('/api/admin/onboarding-matrix/manual', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ installerId }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (res.ok && data.id) {
-          resolvedTrackingId = data.id
-          await loadOnboardingMatrix()
-        }
-      } catch { /* ignore — fall through to not opening */ }
-      finally { setMatrixRowNoteSaving(false) }
-    }
-
+    const resolvedTrackingId = trackingId
     if (!resolvedTrackingId) return
 
     const currentNote = typeof note === 'string' ? note : ''

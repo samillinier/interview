@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { isAutoPromotedMatrixRow } from '@/lib/matrixTrackingOverrides'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,9 +33,11 @@ export async function POST(request: NextRequest) {
       if (!inst) {
         return NextResponse.json({ error: 'Installer not found' }, { status: 404, headers: noStoreHeaders })
       }
-      const dup = await prisma.installerTracking.findFirst({
-        where: { type: 'matrix_manual', installerId },
-      })
+      const dup = (
+        await prisma.installerTracking.findMany({
+          where: { type: 'matrix_manual', installerId },
+        })
+      ).find((row) => !isAutoPromotedMatrixRow(row.metadata))
       if (dup) {
         return NextResponse.json(
           { error: 'This installer is already on the matrix. Remove the existing row first.' },
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
           priority: 'normal',
           category: 'onboarding_matrix',
           notes: null,
-          metadata: { matrixManual: true, fromInstaller: true },
+          metadata: { matrixManual: true, fromInstaller: true, pinnedByAdmin: true },
           matrixSortOrder: nextOrder,
         },
       })
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
         priority: 'normal',
         category: 'onboarding_matrix',
         notes: null,
-        metadata: { manualInstallerName: name, matrixManual: true },
+        metadata: { manualInstallerName: name, matrixManual: true, pinnedByAdmin: true },
         matrixSortOrder: nextOrder,
       },
     })
