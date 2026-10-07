@@ -314,9 +314,9 @@ export default function TrackingPage() {
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<'active' | 'tracked'>(() => {
     try {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('tracking-matrix-status-filter') : null
-      if (stored === 'tracked') return stored
+      if (stored === 'active' || stored === 'tracked') return stored
     } catch { /* ignore */ }
-    return 'tracked'
+    return 'active'
   })
   const matrixColumnFilters = useMemo(
     () => buildMatrixColumnFilters(onboardingMatrix?.rows).filter(
@@ -1990,7 +1990,7 @@ export default function TrackingPage() {
                   </p>
                   <p className="text-slate-400 text-xs leading-relaxed">
                     {matrixStatusFilter === 'active' ? (
-                      'This list only includes people an admin added whose installer status is Active. Switch to "Admin Added" to see the full pinned list.'
+                      'Installers with Active status appear here automatically. Switch to "Admin Added" to see only names an admin pinned.'
                     ) : (
                       <>
                         Use{' '}

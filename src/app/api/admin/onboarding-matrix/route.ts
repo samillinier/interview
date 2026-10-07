@@ -441,6 +441,7 @@ export async function GET(_request: NextRequest) {
         const meta = t.metadata as { manualInstallerName?: string } | null
         const displayName = (meta?.manualInstallerName || 'Manual entry').trim()
         const mergedManual = applyMatrixCellOverrides(emptyMatrix, t.matrixCellOverrides)
+        if (statusFilter === 'active') continue
         result.push({
           id: `manual-${t.id}`,
           firstName: '',
@@ -458,6 +459,115 @@ export async function GET(_request: NextRequest) {
           rowLabelColor: getRowLabelColor(t.matrixCellOverrides),
           rowNote: getRowNote(t.matrixCellOverrides),
         })
+      }
+    }
+
+    // Active tab: every installer with status=active. Admin Added stays pinned rows only.
+    if (statusFilter === 'active') {
+      const alreadyListedIds = new Set(result.map((row) => row.id).filter((id) => !id.startsWith('manual-')))
+
+      const autoInstallers = await prisma.installer.findMany({
+        where: {
+          status: 'active',
+          ...(alreadyListedIds.size > 0 ? { id: { notIn: Array.from(alreadyListedIds) } } : {}),
+        },
+        select: installerMatrixSelect,
+        orderBy: { firstName: 'asc' },
+        take: 500,
+      })
+
+      if (autoInstallers.length > 0) {
+        const autoIds = autoInstallers.map((i) => i.id)
+        const autoSurfaceMap = new Map<string, string | null>()
+        try {
+          const surfaceRows = await prisma.$queryRaw<{ id: string; primaryFlooringSurface: string | null }[]>(
+            Prisma.sql`
+              SELECT id, "primaryFlooringSurface" FROM "Installer"
+              WHERE id IN (${Prisma.join(autoIds.map((id) => Prisma.sql`${id}`))})
+            `
+          )
+          for (const row of surfaceRows) {
+            autoSurfaceMap.set(row.id, row.primaryFlooringSurface)
+          }
+        } catch {
+          // ignore
+        }
+
+        for (const inst of autoInstallers) {
+          const ics = inst.InstallerAgreement[0]
+          const icsSignedAt = ics?.signedAt ?? null
+          const activeStaffMembers = (inst.StaffMember || []).filter(
+            (staff) => String(staff.status || 'active').toLowerCase() === 'active'
+          )
+          const m = computeOnboardingMatrix({
+            primaryFlooringSurface: autoSurfaceMap.get(inst.id) ?? primarySurfaceByInstallerId.get(inst.id) ?? null,
+            isSunbizRegistered: inst.isSunbizRegistered,
+            isSunbizActive: inst.isSunbizActive,
+            hasBusinessLicense: inst.hasBusinessLicense,
+            btrExpiry: inst.btrExpiry,
+            hasWorkersComp: inst.hasWorkersComp,
+            hasWorkersCompExemption: inst.hasWorkersCompExemption,
+            hasGeneralLiability: inst.hasGeneralLiability,
+            generalLiabilityExpiry: inst.generalLiabilityExpiry,
+            hasCommercialAutoLiability: inst.hasCommercialAutoLiability,
+            automobileLiabilityExpiry: inst.automobileLiabilityExpiry,
+            automobileLiabilityExpiryDates: inst.automobileLiabilityExpiryDates,
+            canPassBackgroundCheck: inst.canPassBackgroundCheck,
+            photoUrl: inst.photoUrl,
+            paymentAccountNumber: inst.paymentAccountNumber,
+            paymentRoutingNumber: inst.paymentRoutingNumber,
+            llrpExpiry: inst.llrpExpiry,
+            llrpExpiryDates: inst.llrpExpiryDates,
+            employersLiabilityExpiry: inst.employersLiabilityExpiry,
+            employerLiabilityPolicyNumber: inst.employerLiabilityPolicyNumber,
+            workersCompExemExpiry: inst.workersCompExemExpiry,
+            workersCompExemExpiryDates: inst.workersCompExemExpiryDates,
+            serviceAgreementSignedAt: inst.serviceAgreementSignedAt,
+            icsSignedAt,
+            icsStatus: ics?.status ?? null,
+            icsAdminSignedDate: ics?.adminSignedDate ?? null,
+            complianceStatus: inst.complianceStatus,
+            Document: inst.Document,
+            staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),
+          })
+          const cellDates = getCellDates(inst)
+          const nullFields = (() => {
+            try {
+              const raw = (inst as any).dateNullFields
+              return raw ? JSON.parse(raw) : []
+            } catch { return [] }
+          })()
+          result.push({
+            id: inst.id,
+            firstName: inst.firstName,
+            lastName: inst.lastName,
+            companyName: inst.companyName,
+            createdAt: inst.createdAt.toISOString(),
+            updatedAt: inst.updatedAt.toISOString(),
+            workroom: inst.workroom,
+            cells: pushCells(m, cellDates, nullFields, inst.Document),
+            hasRequiredGap: m.hasRequiredGap,
+            missingRequiredCount: m.missingRequiredCount,
+            isManual: false,
+            trackingId: '',
+            photoUrl: inst.photoUrl,
+            status: inst.status,
+            matrixOverriddenColumnIds: [],
+            rowLabelColor: null,
+            rowNote: null,
+            isVirtual: true,
+            complianceSummary: {
+              workers_comp: getComplianceField(inst, 'workers_comp'),
+              general_liability: getComplianceField(inst, 'general_liability'),
+              auto_liability: getComplianceField(inst, 'auto_liability'),
+              llrp: getComplianceField(inst, 'llrp'),
+              btr: getComplianceField(inst, 'btr'),
+              lead_firm: getComplianceField(inst, 'lead_firm'),
+              sunbiz: getComplianceField(inst, 'sunbiz'),
+              employers_liability: getComplianceField(inst, 'employers_liability'),
+            },
+          })
+        }
       }
     }
 
