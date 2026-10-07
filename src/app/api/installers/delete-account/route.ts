@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
     }
 
-    await archiveInstallerAccount(installerId)
+    await archiveInstallerAccount(installerId, 'installer')
 
     return NextResponse.json({
       success: true,

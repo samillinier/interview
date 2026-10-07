@@ -20,7 +20,16 @@ type ArchivedAccount = {
   status: string
   accountDeletedAt: string | null
   accountDeletedPreviousStatus: string | null
+  accountDeletedBy: string | null
   createdAt: string
+}
+
+function removedByLabel(value: string | null) {
+  const raw = String(value || '').trim()
+  if (!raw || raw === 'installer') return 'Installer'
+  if (raw.startsWith('admin:')) return `Admin (${raw.slice(6)})`
+  if (raw.toLowerCase().startsWith('admin')) return 'Admin'
+  return raw
 }
 
 function formatWhen(value: string | null) {
@@ -93,7 +102,8 @@ export default function ArchivePage() {
         name.includes(q) ||
         row.email.toLowerCase().includes(q) ||
         String(row.companyName || '').toLowerCase().includes(q) ||
-        String(row.phone || '').toLowerCase().includes(q)
+        String(row.phone || '').toLowerCase().includes(q) ||
+        removedByLabel(row.accountDeletedBy).toLowerCase().includes(q)
       )
     })
   }, [accounts, searchQuery])
@@ -140,7 +150,7 @@ export default function ArchivePage() {
                 <h1 className="text-3xl font-bold text-slate-900">Archive</h1>
               </div>
               <p className="text-slate-600 ml-14">
-                Accounts removed by installers. They cannot sign in. Restore here if they change their mind.
+                Accounts removed by an installer or an admin. They cannot sign in. Restore here if you change your mind.
               </p>
             </div>
             <button
@@ -192,6 +202,7 @@ export default function ArchivePage() {
                     <th className="px-4 py-3">Installer</th>
                     <th className="px-4 py-3">Company</th>
                     <th className="px-4 py-3">Removed</th>
+                    <th className="px-4 py-3">Removed by</th>
                     <th className="px-4 py-3">Was</th>
                     <th className="px-4 py-3 text-right"> </th>
                   </tr>
@@ -208,6 +219,7 @@ export default function ArchivePage() {
                         </td>
                         <td className="px-4 py-3 text-slate-700">{row.companyName || '—'}</td>
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatWhen(row.accountDeletedAt)}</td>
+                        <td className="px-4 py-3 text-slate-600">{removedByLabel(row.accountDeletedBy)}</td>
                         <td className="px-4 py-3 text-slate-600 capitalize">
                           {row.accountDeletedPreviousStatus || '—'}
                         </td>

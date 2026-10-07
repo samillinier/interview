@@ -16,7 +16,10 @@ export const notArchivedInstallerWhere = {
   status: { not: ARCHIVED_INSTALLER_STATUS },
 } as const
 
-export async function archiveInstallerAccount(installerId: string) {
+export async function archiveInstallerAccount(
+  installerId: string,
+  deletedBy: 'installer' | string = 'installer'
+) {
   const installer = await prisma.installer.findUnique({
     where: { id: installerId },
     select: { id: true, status: true, accountDeletedAt: true },
@@ -25,6 +28,7 @@ export async function archiveInstallerAccount(installerId: string) {
   if (isInstallerArchived(installer)) return installer
 
   const previousStatus = String(installer.status || 'pending')
+  const by = String(deletedBy || 'installer').trim() || 'installer'
 
   await prisma.$transaction([
     prisma.deviceToken.deleteMany({ where: { installerId } }),
@@ -34,6 +38,7 @@ export async function archiveInstallerAccount(installerId: string) {
         status: ARCHIVED_INSTALLER_STATUS,
         accountDeletedAt: new Date(),
         accountDeletedPreviousStatus: previousStatus === ARCHIVED_INSTALLER_STATUS ? 'pending' : previousStatus,
+        accountDeletedBy: by,
         loginToken: null,
         loginTokenExpiresAt: null,
         passwordResetToken: null,
@@ -69,6 +74,7 @@ export async function restoreInstallerAccount(installerId: string) {
       status: restoredStatus,
       accountDeletedAt: null,
       accountDeletedPreviousStatus: null,
+      accountDeletedBy: null,
     },
   })
 

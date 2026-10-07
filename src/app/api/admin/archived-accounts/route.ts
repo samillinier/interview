@@ -46,6 +46,7 @@ export async function GET(_request: NextRequest) {
         status: true,
         accountDeletedAt: true,
         accountDeletedPreviousStatus: true,
+        accountDeletedBy: true,
         createdAt: true,
       },
     })

@@ -336,6 +336,7 @@ model Installer {
   dateNullFields                       String?
   accountDeletedAt                     DateTime?
   accountDeletedPreviousStatus         String?
+  accountDeletedBy                     String?
   Claim                                Claim[]
   Communication                        Communication[]
   DeviceToken                          DeviceToken[]

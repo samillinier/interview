@@ -1425,7 +1425,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
     }
 
-    await archiveInstallerAccount(installerId)
+    await archiveInstallerAccount(installerId, `admin:${email}`)
 
     try {
       const targetLabel = `${String(existing?.firstName || '')} ${String(existing?.lastName || '')}`.trim()
