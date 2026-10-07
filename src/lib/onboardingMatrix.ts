@@ -208,9 +208,7 @@ export function isInstallerIcsSigned(
     const title = String(a?.payload?.title || '').trim().toLowerCase()
     return (
       type === 'independent-contractor-services-agreement' ||
-      type.includes('independent-contractor-services-agreement') ||
-      (type.startsWith('admin-uploaded-agreement:') &&
-        (title === 'independent contractor services agreement' || type.includes('independent contractor')))
+      (type.startsWith('admin-uploaded-agreement:') && title === 'independent contractor services agreement')
     )
   })
   if (!match) return false
@@ -428,8 +426,8 @@ export function computeOnboardingMatrix(input: {
 
   cells.lead = profileDocCell(docs, ['lead_firm_certificate'], latestDocFor)
 
-  // LLRP — profile status uses the main expiry field; extra dates are chips only
-  cells.llrp = fieldExpiryCells(parseDateList(input.llrpExpiryDates, input.llrpExpiry))
+  // LLRP — profile Insurance & Registration uses llrpExpiry only
+  cells.llrp = fieldExpiryCells(parseDateList(null, input.llrpExpiry))
 
   const icsSigned = input.icsAgreements
     ? isInstallerIcsSigned(input.icsAgreements)

@@ -212,6 +212,33 @@ export async function GET(_request: NextRequest) {
         })
         for (const row of rows) byId.set(row.id, row)
       }
+      const loadedIds = Array.from(byId.keys())
+      if (loadedIds.length > 0) {
+        try {
+          const titles = await prisma.$queryRaw<{ installerId: string; type: string; title: string | null }[]>(
+            Prisma.sql`
+              SELECT "installerId", type, payload->>'title' AS title
+              FROM "InstallerAgreement"
+              WHERE "installerId" IN (${Prisma.join(loadedIds.map((id) => Prisma.sql`${id}`))})
+            `
+          )
+          const titleByInstallerType = new Map<string, string>()
+          for (const row of titles) {
+            if (!row.title) continue
+            titleByInstallerType.set(`${row.installerId}::${row.type}`, row.title)
+          }
+          for (const inst of byId.values()) {
+            inst.InstallerAgreement = (inst.InstallerAgreement || []).map(
+              (agreement: { type: string }) => {
+                const title = titleByInstallerType.get(`${inst.id}::${agreement.type}`)
+                return title ? { ...agreement, payload: { title } } : agreement
+              }
+            )
+          }
+        } catch (titleErr) {
+          console.warn('onboarding-matrix: could not load agreement titles', titleErr)
+        }
+      }
       return byId
     }
 
@@ -330,7 +357,7 @@ export async function GET(_request: NextRequest) {
         photo: null,
         bg: null,
         lead: getLatestDocExpiry(['lead_firm_certificate']),
-        llrp: fmtDatesArray(raw.llrpExpiryDates) ?? fmt(raw.llrpExpiry),
+        llrp: fmt(raw.llrpExpiry),
         ics: null,
       }
     }
