@@ -59,11 +59,9 @@ export async function restoreInstallerAccount(installerId: string) {
   if (!installer) return null
   if (!isInstallerArchived(installer)) return installer
 
+  const previous = String(installer.accountDeletedPreviousStatus || '').trim()
   const restoredStatus =
-    String(installer.accountDeletedPreviousStatus || '').trim() &&
-    String(installer.accountDeletedPreviousStatus).toLowerCase() !== ARCHIVED_INSTALLER_STATUS
-      ? installer.accountDeletedPreviousStatus
-      : 'pending'
+    previous && previous.toLowerCase() !== ARCHIVED_INSTALLER_STATUS ? previous : 'pending'
 
   await prisma.installer.update({
     where: { id: installerId },
