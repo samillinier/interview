@@ -204,6 +204,9 @@ export function computeOnboardingMatrix(input: {
   employerLiabilityPolicyNumber?: string | null
   serviceAgreementSignedAt: Date | null
   icsSignedAt: Date | null
+  /** Profile treats ICS as signed when status is approved or admin signed, not only signedAt. */
+  icsStatus?: string | null
+  icsAdminSignedDate?: string | null
   Document: BareDoc[]
   staffMemberPhotoUrls?: Array<string | null | undefined>
   workersCompExemExpiry?: Date | null
@@ -281,14 +284,57 @@ export function computeOnboardingMatrix(input: {
     return { state: 'ok' }
   }
 
+  /** Profile uses the earliest date for overall status; chips stay per date. */
+  const fieldExpiryCells = (dates: Date[]): MatrixCell => {
+    if (dates.length === 0) return { state: 'missing' }
+    const items: MatrixCellState[] = dates.map((d) => fieldExpiryCell(d).state)
+    const earliest = [...dates].sort((a, b) => a.getTime() - b.getTime())[0]
+    const overall = fieldExpiryCell(earliest)
+    return items.length > 1 ? { ...overall, items } : overall
+  }
+
+  const parseDateList = (raw: string | null | undefined, fallback?: Date | null): Date[] => {
+    const out: Date[] = []
+    if (raw) {
+      try {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr)) {
+          for (const item of arr) {
+            const d = parseInstallerCalendarDate(item)
+            if (d) out.push(d)
+          }
+        }
+      } catch {
+        const d = parseInstallerCalendarDate(raw)
+        if (d) out.push(d)
+      }
+    }
+    if (out.length === 0 && fallback) {
+      const d = parseInstallerCalendarDate(fallback)
+      if (d) out.push(d)
+    }
+    return out
+  }
+
   // BTR
   cells.btr = fieldExpiryCell(input.btrExpiry)
 
-  // WCE: Workers Comp Exemption
-  cells.wce =
-    input.hasWorkersComp || !input.hasWorkersCompExemption
-      ? { state: 'na' }
-      : fieldExpiryCell(input.workersCompExemExpiry)
+  // WCE: N/A only when both WC insurance and exemption flags are off (installer profile).
+  if (!input.hasWorkersComp && !input.hasWorkersCompExemption) {
+    cells.wce = { state: 'na' }
+  } else {
+    const wceDates = parseDateList(input.workersCompExemExpiryDates, input.workersCompExemExpiry)
+    if (wceDates.length > 0) {
+      cells.wce = fieldExpiryCells(wceDates)
+    } else {
+      const wceDocKeys = ['workers_comp_exemption', 'workers_comp_certificate', 'workers_comp']
+      const wceDocStates = docStateList(wceDocKeys)
+      cells.wce =
+        wceDocStates.length > 0
+          ? withNullDetail(cellFromStates(wceDocStates), wceDocKeys, latestDocFor)
+          : { state: 'missing' }
+    }
+  }
 
   // WC: Workers Comp Insurance (employers liability)
   cells.wc = input.employersLiabilityExpiry
@@ -300,10 +346,10 @@ export function computeOnboardingMatrix(input: {
   // COI
   cells.coi = fieldExpiryCell(input.generalLiabilityExpiry)
 
-  // AL (auto)
+  // AL (auto) — profile uses the dates array, not only the single expiry field
   cells.al = input.hasCommercialAutoLiability === false
     ? { state: 'na' }
-    : fieldExpiryCell(input.automobileLiabilityExpiry)
+    : fieldExpiryCells(parseDateList(input.automobileLiabilityExpiryDates, input.automobileLiabilityExpiry))
 
   const w9States = docStateList(['w9'])
   cells.w9 =
@@ -328,10 +374,15 @@ export function computeOnboardingMatrix(input: {
   const leadStates = docStateList(['lead_firm_certificate'])
   cells.lead = withNullDetail(cellFromStates(leadStates), ['lead_firm_certificate'], latestDocFor)
 
-  // LLRP
-  cells.llrp = fieldExpiryCell(input.llrpExpiry)
+  // LLRP — profile expiry field, plus extra cert dates when present
+  cells.llrp = fieldExpiryCells(parseDateList(input.llrpExpiryDates, input.llrpExpiry))
 
-  cells.ics = input.icsSignedAt ? { state: 'ok' } : { state: 'missing' }
+  const icsStatus = String(input.icsStatus || '').trim().toLowerCase()
+  const icsSigned =
+    Boolean(input.icsSignedAt) ||
+    Boolean(String(input.icsAdminSignedDate || '').trim()) ||
+    icsStatus === 'approved'
+  cells.ics = icsSigned ? { state: 'ok' } : { state: 'missing' }
 
   // Bank — direct deposit info
   const hasAccount = (input.paymentAccountNumber || '').trim().length > 0

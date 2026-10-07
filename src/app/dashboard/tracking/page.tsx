@@ -1029,7 +1029,7 @@ export default function TrackingPage() {
 
   const renderMatrixCell = (
     cell: { state: string; detail?: string; items?: MatrixCellState[]; dateHint?: string | string[] | null } | undefined,
-    opts?: { trackingId: string; columnId: MatrixColumnId; columnLabel: string }
+    opts?: { trackingId: string; columnId: MatrixColumnId; columnLabel: string; editable?: boolean }
   ) => {
     if (!cell) return <span className="text-slate-300">—</span>
     if (opts?.columnId === 'surface') {
@@ -1084,6 +1084,7 @@ export default function TrackingPage() {
       })
     })()
     const defaultItemState: MatrixCellState = isMatrixCellState(cell.state) ? cell.state : 'ok'
+    const iconsEditable = Boolean(opts?.editable)
 
     const isWorkersCompColumn = opts?.columnId === 'wc' || opts?.columnId === 'wce'
     const isPhotoColumn = opts?.columnId === 'photo'
@@ -1135,9 +1136,8 @@ export default function TrackingPage() {
     const certColumns = (() => {
       if (dateHintsArr.length === 0 && itemStates.length === 0) return []
       const count = Math.max(dateHintsArr.length, itemStates.length)
-      const cellIsWarn = defaultItemState === 'warn'
       return Array.from({ length: count }, (_, i) => ({
-        state: cellIsWarn ? 'warn' : (itemStates[i] ?? defaultItemState),
+        state: (itemStates[i] ?? defaultItemState) as MatrixCellState,
         date: dateHintsArr[i] ?? null,
       }))
     })()
@@ -1210,7 +1210,7 @@ export default function TrackingPage() {
           title={itemStates.length > 0 ? itemsTitle : 'Complete'}
         >
           {itemStates.length > 0 || dateHintsArr.length > 0 ? (
-            renderItemStatusIcons(true)
+            renderItemStatusIcons(iconsEditable)
           ) : (
             <span className="inline-flex flex-col items-center gap-0.5">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
@@ -1240,7 +1240,7 @@ export default function TrackingPage() {
           }
         >
           {itemStates.length > 0 || dateHintsArr.length > 0 ? (
-            renderItemStatusIcons(true)
+            renderItemStatusIcons(iconsEditable)
           ) : (
             <CheckCircle2 className={`w-4 h-4 shrink-0 ${MATRIX_TABLE_WARN.icon}`} />
           )}
@@ -1255,7 +1255,7 @@ export default function TrackingPage() {
         <div className="flex flex-col items-center gap-0.5" title="Expired">
           {itemStates.length > 0 || dateHintsArr.length > 0 ? (
             <>
-              {renderItemStatusIcons(true)}
+              {renderItemStatusIcons(iconsEditable)}
               <span className="text-[7px] text-red-700 font-semibold leading-tight whitespace-nowrap">Expired</span>
             </>
           ) : (
@@ -1279,7 +1279,7 @@ export default function TrackingPage() {
       >
         {itemStates.length > 0 || dateHintsArr.length > 0 ? (
           <>
-            {renderItemStatusIcons(true)}
+            {renderItemStatusIcons(iconsEditable)}
             {missingReason ? (
               <span className="text-[7px] text-red-700 font-semibold leading-tight whitespace-nowrap">{missingReason}</span>
             ) : null}
@@ -2009,7 +2009,7 @@ export default function TrackingPage() {
                   </p>
                   <p className="text-slate-400 text-xs leading-relaxed">
                     {matrixStatusFilter === 'active' ? (
-                      'Switch to "Admin Added" to manually pin specific installers or names here.'
+                      'This list only includes people an admin added whose installer status is Active. Switch to "Admin Added" to see the full pinned list.'
                     ) : (
                       <>
                         Use{' '}
@@ -2065,6 +2065,7 @@ export default function TrackingPage() {
                       const rowLabelOption = MATRIX_ROW_LABEL_OPTIONS.find((opt) => opt.id === inst.rowLabelColor)
                       const isVirtualRow = !!inst.isVirtual
                       const canEditRow = canEdit && !isVirtualRow
+                      const canOverrideCells = canEditRow && !!inst.isManual
                       const matrixRowBgClass = isDropTarget
                         ? 'bg-emerald-50/60 group-hover:bg-emerald-50/70'
                         : isVirtualRow
@@ -2284,21 +2285,22 @@ export default function TrackingPage() {
                                 ) : def.id === 'surface' ? (
                                   <button
                                     type="button"
-                                    disabled={!canEditRow || matrixOrderSaving || matrixCellSaving}
+                                    disabled={!canOverrideCells || matrixOrderSaving || matrixCellSaving}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) =>
-                                      canEditRow
+                                      canOverrideCells
                                         ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
                                         : undefined
                                     }
                                     className="relative rounded-lg px-1 py-1.5 -mx-0.5 -my-0.5 min-w-[3.5rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
-                                    title={canEditRow ? 'Choose flooring surface' : 'Auto-populated row'}
+                                    title={canOverrideCells ? 'Choose flooring surface' : 'Mirrors installer profile'}
                                     aria-label="Choose flooring surface"
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
                                       trackingId: inst.trackingId,
                                       columnId: def.id,
                                       columnLabel: def.label,
+                                      editable: canOverrideCells,
                                     })}
                                     {inst.matrixOverriddenColumnIds?.includes(def.id) ? (
                                       <span
@@ -2320,16 +2322,16 @@ export default function TrackingPage() {
                                   </span>
                                 ) : inst.cells[def.id] && Array.isArray(inst.cells[def.id].items) && inst.cells[def.id].items!.length > 0 ? (
                                   <div
-                                    role={canEditRow ? 'button' : undefined}
-                                    tabIndex={canEditRow && !matrixOrderSaving && !matrixCellSaving ? 0 : -1}
+                                    role={canOverrideCells ? 'button' : undefined}
+                                    tabIndex={canOverrideCells && !matrixOrderSaving && !matrixCellSaving ? 0 : -1}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) =>
-                                      canEditRow
+                                      canOverrideCells
                                         ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
                                         : undefined
                                     }
                                     onKeyDown={(e) => {
-                                      if (!canEditRow) return
+                                      if (!canOverrideCells) return
                                       if (e.key === 'Enter' || e.key === ' ') {
                                         e.preventDefault()
                                         // Use currentTarget so we can anchor the menu to the cell container.
@@ -2344,12 +2346,13 @@ export default function TrackingPage() {
                                     }}
                                     className="relative rounded-lg px-0.5 py-1.5 -mx-0.5 -my-0.5 min-w-[1.75rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors cursor-pointer"
                                     aria-label={`Edit ${def.label} status`}
-                                    title="Edit column status"
+                                    title={canOverrideCells ? 'Edit column status' : 'Mirrors installer profile'}
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
                                       trackingId: inst.trackingId,
                                       columnId: def.id,
                                       columnLabel: def.label,
+                                      editable: canOverrideCells,
                                     })}
                                     {inst.matrixOverriddenColumnIds?.includes(def.id) ? (
                                       <span
@@ -2361,15 +2364,15 @@ export default function TrackingPage() {
                                 ) : (
                                   <button
                                     type="button"
-                                    disabled={!canEditRow || matrixOrderSaving || matrixCellSaving}
+                                    disabled={!canOverrideCells || matrixOrderSaving || matrixCellSaving}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) =>
-                                      canEditRow
+                                      canOverrideCells
                                         ? openMatrixCellPicker(e, inst.trackingId, def.id, def.label, inst.cells[def.id])
                                         : undefined
                                     }
                                     className="relative rounded-lg px-0.5 py-1.5 -mx-0.5 -my-0.5 min-w-[1.75rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
-                                    title="Set column status"
+                                    title={canOverrideCells ? 'Set column status' : 'Mirrors installer profile'}
                                   >
                                     {renderMatrixCell(inst.cells[def.id])}
                                     {inst.matrixOverriddenColumnIds?.includes(def.id) ? (

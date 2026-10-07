@@ -69,7 +69,7 @@ const installerSelect = {
   Document: { select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true } },
   InstallerAgreement: {
     where: { type: ICS },
-    select: { signedAt: true },
+    select: { signedAt: true, status: true, adminSignedDate: true },
     take: 1,
   },
 } as const
@@ -109,7 +109,7 @@ type InstallerForReport = {
     verificationLinkStatus: string | null
     createdAt: Date
   }>
-  InstallerAgreement: Array<{ signedAt: Date | null }>
+  InstallerAgreement: Array<{ signedAt: Date | null; status?: string | null; adminSignedDate?: string | null }>
 }
 
 function buildReportInstallerPayload(
@@ -117,7 +117,8 @@ function buildReportInstallerPayload(
   reportTrackingId: string,
   notes: string | null
 ) {
-  const icsSignedAt = inst.InstallerAgreement[0]?.signedAt ?? null
+  const ics = inst.InstallerAgreement[0]
+  const icsSignedAt = ics?.signedAt ?? null
   const activeStaffMembers = (inst.StaffMember || []).filter(
     (staff) => String(staff.status || 'active').toLowerCase() === 'active'
   )
@@ -134,16 +135,20 @@ function buildReportInstallerPayload(
     generalLiabilityExpiry: inst.generalLiabilityExpiry,
     hasCommercialAutoLiability: inst.hasCommercialAutoLiability,
     automobileLiabilityExpiry: inst.automobileLiabilityExpiry,
+    automobileLiabilityExpiryDates: inst.automobileLiabilityExpiryDates,
     canPassBackgroundCheck: inst.canPassBackgroundCheck,
     photoUrl: inst.photoUrl,
     paymentAccountNumber: inst.paymentAccountNumber,
     paymentRoutingNumber: inst.paymentRoutingNumber,
     llrpExpiry: inst.llrpExpiry,
     employersLiabilityExpiry: inst.employersLiabilityExpiry,
+    employerLiabilityPolicyNumber: inst.employerLiabilityPolicyNumber,
     workersCompExemExpiry: (inst as any).workersCompExemExpiry ?? null,
     workersCompExemExpiryDates: inst.workersCompExemExpiryDates,
     serviceAgreementSignedAt: inst.serviceAgreementSignedAt,
     icsSignedAt,
+    icsStatus: ics?.status ?? null,
+    icsAdminSignedDate: ics?.adminSignedDate ?? null,
     complianceStatus: inst.complianceStatus,
     Document: inst.Document,
     staffMemberPhotoUrls: activeStaffMembers.map((s) => s.photoUrl),

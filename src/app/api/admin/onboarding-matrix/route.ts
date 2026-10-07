@@ -83,7 +83,7 @@ const installerMatrixSelect = {
   Document: { select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true } },
   InstallerAgreement: {
     where: { type: ICS },
-    select: { signedAt: true },
+    select: { signedAt: true, status: true, adminSignedDate: true },
     take: 1,
   },
 } as const
@@ -282,16 +282,16 @@ export async function GET(_request: NextRequest) {
         surface: null,
         compliance: null,
         sunbiz: getLatestDocExpiry(['sunbiz']),
-        btr: fmt(raw.btrExpiry) || getLatestDocExpiry(['business_registration']),
-        wc: fmt(raw.employersLiabilityExpiry) || getLatestDocExpiry(['workers_comp', 'workers_comp_certificate']),
+        btr: fmt(raw.btrExpiry),
+        wc: fmt(raw.employersLiabilityExpiry),
         wce: fmtDatesArray(raw.workersCompExemExpiryDates) ?? fmt(raw.workersCompExemExpiry),
-        coi: fmt(raw.generalLiabilityExpiry) || getLatestDocExpiry(['liability_insurance']),
-        al: fmtDatesArray(raw.automobileLiabilityExpiryDates) ?? fmt(raw.automobileLiabilityExpiry) ?? getLatestDocExpiry(['auto_insurance']),
+        coi: fmt(raw.generalLiabilityExpiry),
+        al: fmtDatesArray(raw.automobileLiabilityExpiryDates) ?? fmt(raw.automobileLiabilityExpiry),
         w9: null,
         photo: null,
         bg: null,
         lead: getLatestDocExpiry(['lead_firm_certificate']),
-        llrp: fmtDatesArray(raw.llrpExpiryDates) ?? fmt(raw.llrpExpiry) ?? getLatestDocExpiry(['lrrp']),
+        llrp: fmtDatesArray(raw.llrpExpiryDates) ?? fmt(raw.llrpExpiry),
         ics: null,
       }
     }
@@ -359,7 +359,8 @@ export async function GET(_request: NextRequest) {
       if (t.installerId && inst) {
         // In "active" mode, only include tracked installers that are actually active
         if (statusFilter === 'active' && inst.status !== 'active') continue
-        const icsSignedAt = inst.InstallerAgreement[0]?.signedAt ?? null
+        const ics = inst.InstallerAgreement[0]
+        const icsSignedAt = ics?.signedAt ?? null
         const activeStaffMembers = (inst.StaffMember || []).filter(
           (staff) => String(staff.status || 'active').toLowerCase() === 'active'
         )
@@ -375,22 +376,28 @@ export async function GET(_request: NextRequest) {
           generalLiabilityExpiry: inst.generalLiabilityExpiry,
           hasCommercialAutoLiability: inst.hasCommercialAutoLiability,
           automobileLiabilityExpiry: inst.automobileLiabilityExpiry,
+          automobileLiabilityExpiryDates: inst.automobileLiabilityExpiryDates,
           canPassBackgroundCheck: inst.canPassBackgroundCheck,
           photoUrl: inst.photoUrl,
           paymentAccountNumber: inst.paymentAccountNumber,
           paymentRoutingNumber: inst.paymentRoutingNumber,
           llrpExpiry: inst.llrpExpiry,
+          llrpExpiryDates: inst.llrpExpiryDates,
           employersLiabilityExpiry: inst.employersLiabilityExpiry,
           employerLiabilityPolicyNumber: inst.employerLiabilityPolicyNumber,
           workersCompExemExpiry: inst.workersCompExemExpiry,
           workersCompExemExpiryDates: inst.workersCompExemExpiryDates,
           serviceAgreementSignedAt: inst.serviceAgreementSignedAt,
           icsSignedAt,
+          icsStatus: ics?.status ?? null,
+          icsAdminSignedDate: ics?.adminSignedDate ?? null,
           complianceStatus: inst.complianceStatus,
           Document: inst.Document,
           staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),
         })
-        const merged = applyMatrixCellOverrides(m, t.matrixCellOverrides)
+        // Linked installer rows always mirror the live profile. Manual cell
+        // overrides previously made some rows drift from Insurance & Registration.
+        const merged = m
         const cellDates = getCellDates(inst)
         const nullFields = (() => {
           try {
@@ -413,7 +420,7 @@ export async function GET(_request: NextRequest) {
           trackingId: t.id,
           photoUrl: inst.photoUrl,
           status: inst.status,
-          matrixOverriddenColumnIds: listMatrixOverrideColumnIds(t.matrixCellOverrides),
+          matrixOverriddenColumnIds: [],
           rowLabelColor: getRowLabelColor(t.matrixCellOverrides),
           rowNote: getRowNote(t.matrixCellOverrides),
           complianceSummary: {
@@ -448,114 +455,6 @@ export async function GET(_request: NextRequest) {
           rowLabelColor: getRowLabelColor(t.matrixCellOverrides),
           rowNote: getRowNote(t.matrixCellOverrides),
         })
-      }
-    }
-
-    // Auto-populate: when status=active, also include all active installers
-    // who aren't already in the manual tracker rows.
-    if (statusFilter === 'active') {
-      const alreadyTrackedInstallerIds = new Set(
-        manualTrackers.filter((t) => t.installerId).map((t) => t.installerId as string)
-      )
-
-      const autoInstallers = await prisma.installer.findMany({
-        where: {
-          status: 'active',
-          ...(alreadyTrackedInstallerIds.size > 0 ? { id: { notIn: Array.from(alreadyTrackedInstallerIds) } } : {}),
-        },
-        select: installerMatrixSelect,
-        orderBy: { firstName: 'asc' },
-        take: 500,
-      })
-
-      if (autoInstallers.length > 0) {
-        // Load primary surfaces for auto-added installers too
-        const autoIds = autoInstallers.map((i) => i.id)
-        const autoSurfaceMap = new Map<string, string | null>()
-        try {
-          const surfaceRows = await prisma.$queryRaw<{ id: string; primaryFlooringSurface: string | null }[]>(
-            Prisma.sql`
-              SELECT id, "primaryFlooringSurface" FROM "Installer"
-              WHERE id IN (${Prisma.join(autoIds.map((id) => Prisma.sql`${id}`))})
-            `
-          )
-          for (const row of surfaceRows) {
-            autoSurfaceMap.set(row.id, row.primaryFlooringSurface)
-          }
-        } catch {
-          // ignore
-        }
-
-        for (const inst of autoInstallers) {
-          const icsSignedAt = inst.InstallerAgreement[0]?.signedAt ?? null
-          const activeStaffMembers = (inst.StaffMember || []).filter(
-            (staff) => String(staff.status || 'active').toLowerCase() === 'active'
-          )
-          const m = computeOnboardingMatrix({
-            primaryFlooringSurface: autoSurfaceMap.get(inst.id) ?? primarySurfaceByInstallerId.get(inst.id) ?? null,
-            isSunbizRegistered: inst.isSunbizRegistered,
-            isSunbizActive: inst.isSunbizActive,
-            hasBusinessLicense: inst.hasBusinessLicense,
-            btrExpiry: inst.btrExpiry,
-            hasWorkersComp: inst.hasWorkersComp,
-            hasWorkersCompExemption: inst.hasWorkersCompExemption,
-            hasGeneralLiability: inst.hasGeneralLiability,
-            generalLiabilityExpiry: inst.generalLiabilityExpiry,
-            hasCommercialAutoLiability: inst.hasCommercialAutoLiability,
-            automobileLiabilityExpiry: inst.automobileLiabilityExpiry,
-            canPassBackgroundCheck: inst.canPassBackgroundCheck,
-            photoUrl: inst.photoUrl,
-            paymentAccountNumber: inst.paymentAccountNumber,
-            paymentRoutingNumber: inst.paymentRoutingNumber,
-            llrpExpiry: inst.llrpExpiry,
-            employersLiabilityExpiry: inst.employersLiabilityExpiry,
-            employerLiabilityPolicyNumber: inst.employerLiabilityPolicyNumber,
-            workersCompExemExpiry: inst.workersCompExemExpiry,
-            workersCompExemExpiryDates: inst.workersCompExemExpiryDates,
-            serviceAgreementSignedAt: inst.serviceAgreementSignedAt,
-            icsSignedAt,
-            complianceStatus: inst.complianceStatus,
-            Document: inst.Document,
-            staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),
-          })
-          const cellDates = getCellDates(inst)
-          const nullFields = (() => {
-            try {
-              const raw = (inst as any).dateNullFields
-              return raw ? JSON.parse(raw) : []
-            } catch { return [] }
-          })()
-          result.push({
-            id: inst.id,
-            firstName: inst.firstName,
-            lastName: inst.lastName,
-            companyName: inst.companyName,
-            createdAt: inst.createdAt.toISOString(),
-            updatedAt: inst.updatedAt.toISOString(),
-            workroom: inst.workroom,
-            cells: pushCells(m, cellDates, nullFields, inst.Document),
-            hasRequiredGap: m.hasRequiredGap,
-            missingRequiredCount: m.missingRequiredCount,
-            isManual: false,
-            trackingId: '', // virtual rows have no tracking row — they can't be edited inline
-            photoUrl: inst.photoUrl,
-            status: inst.status,
-            matrixOverriddenColumnIds: [],
-            rowLabelColor: null,
-            rowNote: null,
-            isVirtual: true,
-            complianceSummary: {
-              workers_comp: getComplianceField(inst, 'workers_comp'),
-              general_liability: getComplianceField(inst, 'general_liability'),
-              auto_liability: getComplianceField(inst, 'auto_liability'),
-              llrp: getComplianceField(inst, 'llrp'),
-              btr: getComplianceField(inst, 'btr'),
-              lead_firm: getComplianceField(inst, 'lead_firm'),
-              sunbiz: getComplianceField(inst, 'sunbiz'),
-              employers_liability: getComplianceField(inst, 'employers_liability'),
-            },
-          })
-        }
       }
     }
 
