@@ -21,7 +21,6 @@ const noStoreHeaders = {
   Pragma: 'no-cache',
 } as const
 
-const ICS = 'independent-contractor-services-agreement'
 const ROW_LABEL_KEY = '__rowLabel'
 const ROW_NOTE_KEY = '__rowNote'
 const ROW_LABEL_COLORS = ['gray', 'red', 'orange', 'amber', 'yellow', 'green', 'teal', 'sky', 'blue', 'purple'] as const
@@ -81,11 +80,9 @@ const installerMatrixSelect = {
       status: true,
     },
   },
-  Document: { select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true } },
+  Document: { select: { type: true, expiryDate: true, verificationLinkStatus: true, createdAt: true, url: true, name: true } },
   InstallerAgreement: {
-    where: { type: ICS },
-    select: { signedAt: true, status: true, adminSignedDate: true },
-    take: 1,
+    select: { type: true, signedAt: true, status: true, adminSignedDate: true, payload: true },
   },
 } as const
 
@@ -394,6 +391,7 @@ export async function GET(_request: NextRequest) {
           icsSignedAt,
           icsStatus: ics?.status ?? null,
           icsAdminSignedDate: ics?.adminSignedDate ?? null,
+          icsAgreements: inst.InstallerAgreement as any,
           complianceStatus: inst.complianceStatus,
           Document: inst.Document,
           staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),
@@ -526,6 +524,7 @@ export async function GET(_request: NextRequest) {
             icsSignedAt,
             icsStatus: ics?.status ?? null,
             icsAdminSignedDate: ics?.adminSignedDate ?? null,
+            icsAgreements: inst.InstallerAgreement as any,
             complianceStatus: inst.complianceStatus,
             Document: inst.Document,
             staffMemberPhotoUrls: activeStaffMembers.map((staff) => staff.photoUrl),

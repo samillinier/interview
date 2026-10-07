@@ -148,16 +148,72 @@ type BareDoc = {
   expiryDate: Date | null
   verificationLinkStatus?: string | null
   createdAt?: Date | null
+  url?: string | null
+  name?: string | null
+}
+
+function isStatusOnlyDocument(doc: BareDoc | null | undefined): boolean {
+  if (!doc) return false
+  const url = String(doc.url || '').trim()
+  const name = String(doc.name || '').trim()
+  return url.startsWith('status-only:') || name === 'Not needed (NULL)'
 }
 
 function normalizeDocStatus(raw: string | null | undefined): 'active' | 'inactive' | 'missing' | 'na' | 'pending' | '' {
   const s = String(raw || '').trim().toLowerCase()
-  if (s === 'active') return 'active'
-  if (s === 'inactive') return 'inactive'
-  if (s === 'missing') return 'missing'
-  if (s === 'na' || s === 'n/a' || s === 'null') return 'na'
+  if (s === 'active' || s === 'compliant') return 'active'
+  if (s === 'inactive' || s === 'not_compliant' || s === 'non_compliant' || s === 'not active') return 'inactive'
+  if (s === 'missing' || s === 'in_progress' || s === 'in progress' || s === 'required' || s === 'document_required') {
+    return 'missing'
+  }
+  if (s === 'expired') return 'missing'
+  if (s === 'na' || s === 'n/a') return 'na'
+  if (s === 'null') return 'na'
   if (s === 'pending') return 'pending'
   return ''
+}
+
+/** Same rules as installer profile Insurance & Registration document rows. */
+function profileDocCell(
+  docs: BareDoc[],
+  types: string[],
+  latestDocFor: (keys: string[]) => BareDoc | null
+): MatrixCell {
+  const relevant = docs.filter((d) => docMatchesMatrixKeys(d.type, types))
+  const hasFile = relevant.some((d) => !isStatusOnlyDocument(d))
+  const latest = latestDocFor(types)
+  const raw = String(latest?.verificationLinkStatus || '').trim().toLowerCase()
+  if (raw === 'null') return { state: 'na', detail: 'NULL' }
+  const override = normalizeDocStatus(latest?.verificationLinkStatus)
+  if (override === 'active') return { state: 'ok' }
+  if (override === 'pending') return { state: 'warn' }
+  if (override === 'na') return withNullDetail({ state: 'na' }, types, latestDocFor)
+  if (override === 'inactive') return { state: 'missing', detail: 'Inactive' }
+  if (override === 'missing' && raw === 'expired') return { state: 'missing', detail: 'exp' }
+  if (override === 'missing') return { state: 'missing' }
+  return hasFile ? { state: 'ok' } : { state: 'missing' }
+}
+
+export function isInstallerIcsSigned(
+  agreements: Array<{
+    type?: string | null
+    status?: string | null
+    signedAt?: Date | string | null
+    adminSignedDate?: string | null
+    payload?: { title?: string | null } | null
+  }>
+): boolean {
+  const match = (agreements || []).find((a) => {
+    const type = String(a?.type || '').trim().toLowerCase()
+    const title = String(a?.payload?.title || '').trim().toLowerCase()
+    return (
+      type === 'independent-contractor-services-agreement' ||
+      (type.startsWith('admin-uploaded-agreement:') && title === 'independent contractor services agreement')
+    )
+  })
+  if (!match) return false
+  const statusNorm = String(match.status || '').trim().toLowerCase()
+  return Boolean(match.signedAt) || Boolean(String(match.adminSignedDate || '').trim()) || statusNorm === 'approved'
 }
 
 function summarizeItemStates(states: MatrixCellState[]): MatrixCellState {
@@ -207,6 +263,13 @@ export function computeOnboardingMatrix(input: {
   /** Profile treats ICS as signed when status is approved or admin signed, not only signedAt. */
   icsStatus?: string | null
   icsAdminSignedDate?: string | null
+  icsAgreements?: Array<{
+    type?: string | null
+    status?: string | null
+    signedAt?: Date | string | null
+    adminSignedDate?: string | null
+    payload?: { title?: string | null } | null
+  }>
   Document: BareDoc[]
   staffMemberPhotoUrls?: Array<string | null | undefined>
   workersCompExemExpiry?: Date | null
@@ -257,20 +320,8 @@ export function computeOnboardingMatrix(input: {
 
   cells.compliance = complianceStatusToMatrixCell(input.complianceStatus)
 
-  // Sunbiz
-  // Per admin request: Sunbiz is driven ONLY by the latest document status dropdown.
-  // Ignore installer profile flags and any dates.
-  const sunbizDoc = latestDocFor(['sunbiz'])
-  if (!sunbizDoc) {
-    cells.sunbiz = { state: 'missing' }
-  } else {
-    const st = normalizeDocStatus(sunbizDoc.verificationLinkStatus)
-    if (st === 'active') cells.sunbiz = { state: 'ok' }
-    else if (st === 'pending') cells.sunbiz = { state: 'warn' }
-    else if (st === 'na') {
-      cells.sunbiz = withNullDetail({ state: 'na' }, ['sunbiz'], latestDocFor)
-    } else cells.sunbiz = { state: 'missing' } // inactive, missing, or blank
-  }
+  // Sunbiz — same as profile Insurance & Registration (doc + status dropdown)
+  cells.sunbiz = profileDocCell(docs, ['sunbiz'], latestDocFor)
 
   // Cert/licence columns mirror the installer profile: driven by the installer's
   // expiry-date field (valid → ok, expiring within 0–3 months → warn, past → expired).
@@ -284,13 +335,21 @@ export function computeOnboardingMatrix(input: {
     return { state: 'ok' }
   }
 
+  /** Profile badge: expired / missing / Active (expiring still counts as Active). Date chips keep warn. */
+  const profileExpiryOverall = (expiry: Date | null | undefined): MatrixCell => {
+    if (expiry == null) return { state: 'missing' }
+    const days = daysFromToday(expiry)
+    if (days !== null && days < 0) return { state: 'missing', detail: 'exp' }
+    return { state: 'ok' }
+  }
+
   /** Profile uses the earliest date for overall status; chips stay per date. */
   const fieldExpiryCells = (dates: Date[]): MatrixCell => {
     if (dates.length === 0) return { state: 'missing' }
     const items: MatrixCellState[] = dates.map((d) => fieldExpiryCell(d).state)
     const earliest = [...dates].sort((a, b) => a.getTime() - b.getTime())[0]
-    const overall = fieldExpiryCell(earliest)
-    return items.length > 1 ? { ...overall, items } : overall
+    const overall = profileExpiryOverall(earliest)
+    return items.length > 0 ? { ...overall, items } : overall
   }
 
   const parseDateList = (raw: string | null | undefined, fallback?: Date | null): Date[] => {
@@ -317,34 +376,24 @@ export function computeOnboardingMatrix(input: {
   }
 
   // BTR
-  cells.btr = fieldExpiryCell(input.btrExpiry)
+  cells.btr = fieldExpiryCells(parseDateList(null, input.btrExpiry))
 
-  // WCE: N/A only when both WC insurance and exemption flags are off (installer profile).
+  // WCE: N/A only when both flags are off; otherwise document status like the profile.
   if (!input.hasWorkersComp && !input.hasWorkersCompExemption) {
     cells.wce = { state: 'na' }
   } else {
-    const wceDates = parseDateList(input.workersCompExemExpiryDates, input.workersCompExemExpiry)
-    if (wceDates.length > 0) {
-      cells.wce = fieldExpiryCells(wceDates)
-    } else {
-      const wceDocKeys = ['workers_comp_exemption', 'workers_comp_certificate', 'workers_comp']
-      const wceDocStates = docStateList(wceDocKeys)
-      cells.wce =
-        wceDocStates.length > 0
-          ? withNullDetail(cellFromStates(wceDocStates), wceDocKeys, latestDocFor)
-          : { state: 'missing' }
-    }
+    cells.wce = profileDocCell(docs, ['workers_comp_certificate', 'workers_comp'], latestDocFor)
   }
 
   // WC: Workers Comp Insurance (employers liability)
   cells.wc = input.employersLiabilityExpiry
-    ? fieldExpiryCell(input.employersLiabilityExpiry)
+    ? fieldExpiryCells(parseDateList(null, input.employersLiabilityExpiry))
     : input.employerLiabilityPolicyNumber
       ? { state: 'missing' }
       : { state: 'na' }
 
   // COI
-  cells.coi = fieldExpiryCell(input.generalLiabilityExpiry)
+  cells.coi = fieldExpiryCells(parseDateList(null, input.generalLiabilityExpiry))
 
   // AL (auto) — profile uses the dates array, not only the single expiry field
   cells.al = input.hasCommercialAutoLiability === false
@@ -367,21 +416,24 @@ export function computeOnboardingMatrix(input: {
     cells.photo = input.photoUrl ? { state: 'ok' } : { state: 'missing' }
   }
 
-  if (input.canPassBackgroundCheck === true) cells.bg = { state: 'ok' }
+  const compliance = String(input.complianceStatus || '').trim().toUpperCase()
+  if (compliance === 'COMPLIANT') cells.bg = { state: 'ok' }
+  else if (compliance === 'NOT_COMPLIANT') cells.bg = { state: 'missing' }
+  else if (compliance === 'IN_PROGRESS') cells.bg = { state: 'warn' }
+  else if (input.canPassBackgroundCheck === true) cells.bg = { state: 'ok' }
   else if (input.canPassBackgroundCheck === false) cells.bg = { state: 'missing' }
   else cells.bg = { state: 'warn' }
 
-  const leadStates = docStateList(['lead_firm_certificate'])
-  cells.lead = withNullDetail(cellFromStates(leadStates), ['lead_firm_certificate'], latestDocFor)
+  cells.lead = profileDocCell(docs, ['lead_firm_certificate'], latestDocFor)
 
-  // LLRP — profile expiry field, plus extra cert dates when present
+  // LLRP — profile status uses the main expiry field; extra dates are chips only
   cells.llrp = fieldExpiryCells(parseDateList(input.llrpExpiryDates, input.llrpExpiry))
 
-  const icsStatus = String(input.icsStatus || '').trim().toLowerCase()
-  const icsSigned =
-    Boolean(input.icsSignedAt) ||
-    Boolean(String(input.icsAdminSignedDate || '').trim()) ||
-    icsStatus === 'approved'
+  const icsSigned = input.icsAgreements
+    ? isInstallerIcsSigned(input.icsAgreements)
+    : Boolean(input.icsSignedAt) ||
+      Boolean(String(input.icsAdminSignedDate || '').trim()) ||
+      String(input.icsStatus || '').trim().toLowerCase() === 'approved'
   cells.ics = icsSigned ? { state: 'ok' } : { state: 'missing' }
 
   // Bank — direct deposit info
