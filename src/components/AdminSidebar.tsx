@@ -25,6 +25,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
+  Receipt,
   Settings,
   ShieldAlert,
   StickyNote,
@@ -280,6 +281,7 @@ export function AdminSidebar({ pathname }: Props) {
     const base: NavItem[] = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (path) => path === '/dashboard' },
       { href: '/dashboard', label: 'Installers', icon: Users, match: (path) => path.startsWith('/dashboard/installers') },
+      { href: '/dashboard/invoices', label: 'Invoices', icon: Receipt, match: (path) => path.startsWith('/dashboard/invoices') },
       { href: '/dashboard/jobs' as const, label: 'Jobs', icon: Hammer, match: (path: string) => path.startsWith('/dashboard/jobs') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck, badge: signatureNotSignedCount },
@@ -308,7 +310,18 @@ export function AdminSidebar({ pathname }: Props) {
     ]
 
     const filtered = base.filter((item) => {
-      if (normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING') {
+      if (normalizedRole === 'MANAGER') {
+        return ![
+          '/dashboard/approvals',
+          '/dashboard/signature',
+          '/dashboard/report',
+          '/dashboard/correction',
+          '/dashboard/ltr',
+          '/dashboard/settings',
+          '/dashboard/invoices',
+        ].includes(item.href)
+      }
+      if (normalizedRole === 'ACCOUNTING') {
         return ![
           '/dashboard/approvals',
           '/dashboard/signature',
@@ -319,7 +332,7 @@ export function AdminSidebar({ pathname }: Props) {
         ].includes(item.href)
       }
       if (normalizedRole === 'MODERATOR') {
-        return !['/dashboard/signature', '/dashboard/correction', '/dashboard/ltr', '/dashboard/settings', '/dashboard/updates'].includes(item.href)
+        return !['/dashboard/signature', '/dashboard/correction', '/dashboard/ltr', '/dashboard/settings', '/dashboard/updates', '/dashboard/invoices'].includes(item.href)
       }
       return true
     })

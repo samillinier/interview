@@ -16,6 +16,7 @@ export function installerNotificationOpenPath(opts?: {
 export function notificationDestinationLabel(link: string | null | undefined, type?: string | null) {
   const href = String(link || '')
   if (type === 'survey' || href.includes('/survey')) return 'View Survey →'
+  if (href.includes('/invoices')) return 'View Invoice →'
   if (href.includes('/attachments')) return 'View Attachments →'
   if (href.includes('/agreements')) return 'View Agreement →'
   if (href.includes('/jobs')) return 'View Jobs →'

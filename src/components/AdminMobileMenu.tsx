@@ -27,6 +27,7 @@ import {
   PhoneCall,
   Megaphone,
   Radar,
+  Receipt,
 } from 'lucide-react'
 
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -247,6 +248,7 @@ export function AdminMobileMenu({ pathname }: Props) {
     const base: MobileNavItem[] = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/dashboard', label: 'Installers', icon: Users, match: (p: string) => p.startsWith('/dashboard/installers') },
+      { href: '/dashboard/invoices', label: 'Invoices', icon: Receipt, match: (p: string) => p.startsWith('/dashboard/invoices') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck, badge: signatureNotSignedCount },
       {
@@ -287,7 +289,18 @@ export function AdminMobileMenu({ pathname }: Props) {
         ? [...base, corporateItem]
         : base
 
-    if (role === 'MANAGER' || role === 'ACCOUNTING') {
+    if (role === 'MANAGER') {
+      return withCorporate.filter(
+        (it) =>
+          it.href !== '/dashboard/approvals' &&
+          it.href !== '/dashboard/signature' &&
+          it.href !== '/dashboard/correction' &&
+          it.href !== '/dashboard/ltr' &&
+          it.href !== '/dashboard/settings' &&
+          it.href !== '/dashboard/invoices',
+      )
+    }
+    if (role === 'ACCOUNTING') {
       return withCorporate.filter(
         (it) =>
           it.href !== '/dashboard/approvals' &&
@@ -304,7 +317,8 @@ export function AdminMobileMenu({ pathname }: Props) {
           it.href !== '/dashboard/correction' &&
           it.href !== '/dashboard/updates' &&
           it.href !== '/dashboard/ltr' &&
-          it.href !== '/dashboard/settings',
+          it.href !== '/dashboard/settings' &&
+          it.href !== '/dashboard/invoices',
       )
     }
     const withPropertyPortal = [

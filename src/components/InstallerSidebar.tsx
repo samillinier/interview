@@ -15,6 +15,7 @@ import {
   ClipboardList,
   CalendarDays,
   BookUser,
+  Receipt,
 } from 'lucide-react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 
@@ -95,6 +96,15 @@ export default function InstallerSidebar({ notificationCount = 0, surveyCount = 
             {sidebarOpen && <span>Invoice</span>}
           </Link>
         ) : null}
+        <Link
+          href="/installer/invoices"
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+            isActive('/installer/invoices') ? 'bg-white/20 text-white font-medium' : 'text-white/90 hover:bg-white/10'
+          }`}
+        >
+          <Receipt className="w-5 h-5 flex-shrink-0" />
+          {sidebarOpen && <span>Invoices</span>}
+        </Link>
         <Link
           href="/installer/agreements"
           className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${

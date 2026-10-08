@@ -87,6 +87,7 @@ import { OpenInMapsLinks } from '@/components/OpenInMapsLinks'
 import { googleMapsEmbedUrl } from '@/lib/maps'
 import { canAccessInvoices } from '@/lib/invoiceAccess'
 import { AdminEstimatorWeeklyReports } from '@/components/AdminEstimatorWeeklyReports'
+import { AdminInstallerInvoicesPanel } from '@/components/AdminInstallerInvoicesPanel'
 
 
 const DOCUMENT_TYPES: Array<{
@@ -9238,6 +9239,17 @@ export default function InstallerProfileViewPage() {
 
           {isEstimator && canAccessInvoices(normalizedRole) ? (
             <AdminEstimatorWeeklyReports installerId={installerId} />
+          ) : null}
+
+          {canAccessInvoices(normalizedRole) ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.97 }}
+              className="mb-6"
+            >
+              <AdminInstallerInvoicesPanel installerId={installerId} />
+            </motion.div>
           ) : null}
 
         </main>

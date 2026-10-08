@@ -36,6 +36,7 @@ export async function POST(request: Request) {
           (pathname.startsWith('documents/') ||
             pathname.startsWith('corrections/') ||
             pathname.startsWith('updates/') ||
+            pathname.startsWith('invoices/') ||
             pathname.startsWith('profile-photos/') ||
             pathname.startsWith('staff/') ||
             /^installers\/[^/]+\/agreements\//u.test(pathname))
@@ -48,6 +49,9 @@ export async function POST(request: Request) {
             'application/pdf',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/csv',
             'image/jpeg',
             'image/png',
             'image/jpg',
