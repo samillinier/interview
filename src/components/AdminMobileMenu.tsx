@@ -268,7 +268,6 @@ export function AdminMobileMenu({ pathname }: Props) {
       ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/archive', label: 'Archive', icon: Archive, match: (p: string) => p.startsWith('/dashboard/archive') }]
         : []),
-      { href: '/dashboard/correction', label: 'Correction', icon: FileText },
       ...(role === 'ADMIN' || role === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (p: string) => p.startsWith('/dashboard/marketing') }]
         : []),
@@ -294,7 +293,6 @@ export function AdminMobileMenu({ pathname }: Props) {
         (it) =>
           it.href !== '/dashboard/approvals' &&
           it.href !== '/dashboard/signature' &&
-          it.href !== '/dashboard/correction' &&
           it.href !== '/dashboard/ltr' &&
           it.href !== '/dashboard/settings' &&
           it.href !== '/dashboard/invoices',
@@ -305,7 +303,6 @@ export function AdminMobileMenu({ pathname }: Props) {
         (it) =>
           it.href !== '/dashboard/approvals' &&
           it.href !== '/dashboard/signature' &&
-          it.href !== '/dashboard/correction' &&
           it.href !== '/dashboard/ltr' &&
           it.href !== '/dashboard/settings',
       )
@@ -314,7 +311,6 @@ export function AdminMobileMenu({ pathname }: Props) {
       return withCorporate.filter(
         (it) =>
           it.href !== '/dashboard/signature' &&
-          it.href !== '/dashboard/correction' &&
           it.href !== '/dashboard/updates' &&
           it.href !== '/dashboard/ltr' &&
           it.href !== '/dashboard/settings' &&

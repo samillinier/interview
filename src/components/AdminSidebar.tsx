@@ -300,7 +300,6 @@ export function AdminSidebar({ pathname }: Props) {
       ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/archive', label: 'Archive', icon: Archive, match: (path: string) => path.startsWith('/dashboard/archive') }]
         : []),
-      { href: '/dashboard/correction', label: 'Correction', icon: FileText },
       ...(normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN'
         ? [{ href: '/dashboard/marketing', label: 'Marketing', icon: Radar, match: (path: string) => path.startsWith('/dashboard/marketing') }]
         : []),
@@ -315,7 +314,6 @@ export function AdminSidebar({ pathname }: Props) {
           '/dashboard/approvals',
           '/dashboard/signature',
           '/dashboard/report',
-          '/dashboard/correction',
           '/dashboard/ltr',
           '/dashboard/settings',
           '/dashboard/invoices',
@@ -326,13 +324,12 @@ export function AdminSidebar({ pathname }: Props) {
           '/dashboard/approvals',
           '/dashboard/signature',
           '/dashboard/report',
-          '/dashboard/correction',
           '/dashboard/ltr',
           '/dashboard/settings',
         ].includes(item.href)
       }
       if (normalizedRole === 'MODERATOR') {
-        return !['/dashboard/signature', '/dashboard/correction', '/dashboard/ltr', '/dashboard/settings', '/dashboard/updates', '/dashboard/invoices'].includes(item.href)
+        return !['/dashboard/signature', '/dashboard/ltr', '/dashboard/settings', '/dashboard/updates', '/dashboard/invoices'].includes(item.href)
       }
       return true
     })
