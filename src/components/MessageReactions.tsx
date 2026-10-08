@@ -150,7 +150,9 @@ export function MessageReactionButton({
       {open && (
         <div
           ref={pickerRef}
-          className="absolute bottom-full mb-2 z-30 flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-xl"
+          className={`absolute bottom-full mb-2 z-30 flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-xl ${
+            align === 'right' ? 'right-0' : 'left-0'
+          }`}
         >
           {EMOJIS.map((e) => (
             <button
