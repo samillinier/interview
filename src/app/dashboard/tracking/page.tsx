@@ -2060,7 +2060,8 @@ export default function TrackingPage() {
                       const rowLabelOption = MATRIX_ROW_LABEL_OPTIONS.find((opt) => opt.id === inst.rowLabelColor)
                       const isVirtualRow = !!inst.isVirtual
                       const canEditRow = canEdit && !isVirtualRow
-                      const canOverrideCells = canEditRow && !!inst.isManual
+                      const canOverrideCells =
+                        canEditRow && (!!inst.isManual || matrixStatusFilter === 'tracked')
                       const matrixRowBgClass = isDropTarget
                         ? 'bg-emerald-50/60 group-hover:bg-emerald-50/70'
                         : isVirtualRow

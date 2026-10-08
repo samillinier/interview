@@ -473,9 +473,10 @@ export async function GET(_request: NextRequest) {
           Document: inst.Document,
           staffMemberPhotoUrls: activeStaffMembers.map((staff: { photoUrl?: string | null }) => staff.photoUrl),
         })
-        // Linked installer rows always mirror the live profile. Manual cell
-        // overrides previously made some rows drift from Insurance & Registration.
-        const merged = m
+        // Active tab always mirrors Insurance & Registration. Admin Added keeps
+        // click-to-set cell overrides so admins can mark status by hand.
+        const allowCellOverrides = statusFilter !== 'active'
+        const merged = allowCellOverrides ? applyMatrixCellOverrides(m, t.matrixCellOverrides) : m
         const cellDates = getCellDates(inst)
         const nullFields = (() => {
           try {
@@ -498,7 +499,9 @@ export async function GET(_request: NextRequest) {
           trackingId: t.id,
           photoUrl: inst.photoUrl,
           status: inst.status,
-          matrixOverriddenColumnIds: [],
+          matrixOverriddenColumnIds: allowCellOverrides
+            ? listMatrixOverrideColumnIds(t.matrixCellOverrides)
+            : [],
           rowLabelColor: getRowLabelColor(t.matrixCellOverrides),
           rowNote: getRowNote(t.matrixCellOverrides),
           complianceSummary: {
