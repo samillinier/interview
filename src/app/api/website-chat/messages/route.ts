@@ -25,8 +25,43 @@ function sleep(ms: number) {
 async function loadVisitorMessages(token: string) {
   return prisma.websiteChat.findUnique({
     where: { visitorToken: token },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        include: { reactions: { orderBy: { createdAt: 'asc' } } },
+      },
+    },
   })
+}
+
+function serializeMessage(message: {
+  id: string
+  createdAt: Date
+  senderType: string
+  senderName: string | null
+  content: string
+  reactions?: Array<{
+    id: string
+    emoji: string
+    reactorId: string
+    reactorType: string
+    reactorName: string | null
+  }>
+}) {
+  return {
+    id: message.id,
+    createdAt: message.createdAt,
+    senderType: message.senderType,
+    senderName: message.senderName,
+    content: message.content,
+    reactions: (message.reactions || []).map((r) => ({
+      id: r.id,
+      emoji: r.emoji,
+      reactorId: r.reactorId,
+      reactorType: r.reactorType,
+      reactorName: r.reactorName,
+    })),
+  }
 }
 
 async function maybeCreateAliceReply(
@@ -85,7 +120,10 @@ export async function GET(request: NextRequest) {
     if (!chat) {
       return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: chatHeaders(request) })
     }
-    return NextResponse.json({ success: true, messages: chat.messages }, { headers: chatHeaders(request) })
+    return NextResponse.json(
+      { success: true, chatId: chat.id, messages: chat.messages.map(serializeMessage) },
+      { headers: chatHeaders(request) },
+    )
   } catch (error: any) {
     console.error('website-chat messages GET failed', error?.message || error)
     return NextResponse.json(
@@ -116,7 +154,7 @@ export async function POST(request: NextRequest) {
         chat = await loadVisitorMessages(token)
       }
       return NextResponse.json(
-        { success: true, messages: chat?.messages || [] },
+        { success: true, chatId: chat?.id, messages: (chat?.messages || []).map(serializeMessage) },
         { headers: chatHeaders(request) },
       )
     }
@@ -131,7 +169,10 @@ export async function POST(request: NextRequest) {
 
     if (body?.requestAi) {
       const aliceMessage = await maybeCreateAliceReply(chat, { forceAfterWait: true })
-      return NextResponse.json({ success: true, aliceMessage }, { headers: chatHeaders(request) })
+      return NextResponse.json(
+        { success: true, aliceMessage: aliceMessage ? serializeMessage(aliceMessage) : null },
+        { headers: chatHeaders(request) },
+      )
     }
 
     const content = sanitizeChatText(body?.content, 1000)
@@ -162,7 +203,14 @@ export async function POST(request: NextRequest) {
       { ...chat, messages: [...chat.messages, message] },
     )
 
-    return NextResponse.json({ success: true, message, aliceMessage }, { headers: chatHeaders(request) })
+    return NextResponse.json(
+      {
+        success: true,
+        message: serializeMessage(message),
+        aliceMessage: aliceMessage ? serializeMessage(aliceMessage) : null,
+      },
+      { headers: chatHeaders(request) },
+    )
   } catch (error: any) {
     console.error('website-chat messages POST failed', error?.message || error)
     return NextResponse.json(

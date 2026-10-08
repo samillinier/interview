@@ -1471,17 +1471,32 @@ model WebsiteChat {
 }
 
 model WebsiteChatMessage {
-  id         String      @id @default(cuid())
-  createdAt  DateTime    @default(now())
+  id         String                 @id @default(cuid())
+  createdAt  DateTime               @default(now())
   chatId     String
   senderType String
   senderName String?
   content    String
-  isRead     Boolean     @default(false)
-  Chat       WebsiteChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  isRead     Boolean                @default(false)
+  Chat       WebsiteChat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  reactions  WebsiteChatReaction[]
 
   @@index([chatId, createdAt])
   @@index([isRead])
+}
+
+model WebsiteChatReaction {
+  id          String             @id @default(cuid())
+  messageId   String
+  reactorId   String
+  reactorType String             // 'admin' | 'visitor'
+  reactorName String?
+  emoji       String
+  createdAt   DateTime           @default(now())
+  Message     WebsiteChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, reactorId, reactorType, emoji])
+  @@index([messageId])
 }
 
 enum AdminRole {

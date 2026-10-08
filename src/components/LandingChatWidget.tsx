@@ -7,6 +7,12 @@ import { ChevronDown, Loader2, Maximize2, Minimize2, Send } from 'lucide-react'
 import alicePhoto from '@/images/alice-interviewer.png'
 import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 import { LinkifiedText } from '@/components/LinkifiedText'
+import {
+  MessageReactions,
+  MessageReactionButton,
+  type MessageReaction,
+} from '@/components/MessageReactions'
+import { makeWebsiteChatPostReaction } from '@/lib/website-chat-reactions'
 import { AI_FALLBACK_WAIT_MS } from '@/lib/website-chat'
 
 const TOKEN_KEY = 'fis-website-chat-token'
@@ -21,6 +27,7 @@ type ChatMessage = {
   senderName?: string | null
   content: string
   createdAt: string
+  reactions?: MessageReaction[]
 }
 
 function formatRelativeTime(dateString: string) {
@@ -67,8 +74,10 @@ export function LandingChatWidget({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
+  const [chatId, setChatId] = useState('')
   const [started, setStarted] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [reactionOverrides, setReactionOverrides] = useState<Record<string, MessageReaction[]>>({})
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
@@ -103,6 +112,10 @@ export function LandingChatWidget({
     } catch {
       // ignore
     }
+  }
+
+  const handleReactionsToggled = (id: string) => (reactions: MessageReaction[]) => {
+    setReactionOverrides((prev) => ({ ...prev, [id]: reactions }))
   }
 
   useEffect(() => {
@@ -311,6 +324,7 @@ export function LandingChatWidget({
     const data = await res.json().catch(() => ({}))
     if (res.status === 404) return
     if (res.ok && Array.isArray(data.messages)) {
+      if (data.chatId) setChatId(String(data.chatId))
       const next = data.messages as ChatMessage[]
       const previousLastId = lastIdRef.current
       const nextLastId = next[next.length - 1]?.id || ''
@@ -434,6 +448,7 @@ export function LandingChatWidget({
       if (data.chat?.email && !String(data.chat.email).endsWith('@noreply.local')) {
         setEmail(data.chat.email)
       }
+      if (data.chat?.id) setChatId(String(data.chat.id))
       startedRef.current = true
       setStarted(true)
       await loadMessages(nextToken || tokenRef.current)
@@ -637,33 +652,51 @@ export function LandingChatWidget({
               messages.map((message) => {
                 const fromStaff = message.senderType === 'admin' || message.senderType === 'alice'
                 return (
-                  <div key={message.id} className={`flex ${fromStaff ? 'items-end gap-2.5 justify-start' : 'justify-end'}`}>
-                    {fromStaff ? (
-                      <span className="relative mb-6 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-                        <Image src={alicePhoto} alt="Support" className="h-full w-full object-cover object-top" />
-                      </span>
-                    ) : null}
-                    <div className={`min-w-0 ${fromStaff ? 'max-w-[calc(100%-2.75rem)]' : 'max-w-[78%]'}`}>
-                      <div className="relative">
-                        <div
-                          className={`relative z-[1] break-words text-[15px] leading-relaxed [overflow-wrap:anywhere] ${
-                            fromStaff
-                              ? 'whitespace-pre-wrap rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
-                              : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
-                          }`}
-                        >
-                          {fromStaff ? <LinkifiedText text={message.content} /> : message.content}
-                        </div>
-                        <span
-                          aria-hidden
-                          className={`absolute bottom-3 h-2.5 w-2.5 rotate-45 ${
-                            fromStaff ? '-left-[5px] bg-slate-100' : '-right-[5px] bg-brand-green'
-                          }`}
-                        />
-                      </div>
+                  <div key={message.id} className={`flex flex-col ${fromStaff ? 'items-start' : 'items-end'}`}>
+                    <div className={`flex ${fromStaff ? 'items-end gap-2.5 justify-start' : 'justify-end'}`}>
                       {fromStaff ? (
-                        <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
+                        <span className="relative mb-6 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                          <Image src={alicePhoto} alt="Support" className="h-full w-full object-cover object-top" />
+                        </span>
                       ) : null}
+                      <div className={`min-w-0 ${fromStaff ? 'max-w-[calc(100%-2.75rem)]' : 'max-w-[78%]'}`}>
+                        <div className="relative">
+                          <div
+                            className={`relative z-[1] break-words text-[15px] leading-relaxed [overflow-wrap:break-word] ${
+                              fromStaff
+                                ? 'whitespace-pre-wrap rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-slate-800'
+                                : 'rounded-2xl rounded-br-md bg-brand-green px-4 py-2.5 font-medium text-white'
+                            }`}
+                          >
+                            {fromStaff ? <LinkifiedText text={message.content} /> : message.content}
+                          </div>
+                          <span
+                            aria-hidden
+                            className={`absolute bottom-3 h-2.5 w-2.5 rotate-45 ${
+                              fromStaff ? '-left-[5px] bg-slate-100' : '-right-[5px] bg-brand-green'
+                            }`}
+                          />
+                        </div>
+                        {fromStaff ? (
+                          <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className={`flex items-center gap-1.5 mt-1 ${fromStaff ? 'flex-row-reverse pl-10' : 'pr-1'}`}>
+                      <MessageReactionButton
+                        messageId={message.id}
+                        align={fromStaff ? 'left' : 'right'}
+                        onToggled={handleReactionsToggled(message.id)}
+                        postReaction={makeWebsiteChatPostReaction(token || undefined)}
+                      />
+                      <MessageReactions
+                        messageId={message.id}
+                        reactions={reactionOverrides[message.id] || message.reactions || []}
+                        viewer={chatId ? { id: chatId, type: 'visitor' } : undefined}
+                        align={fromStaff ? 'left' : 'right'}
+                        onToggled={handleReactionsToggled(message.id)}
+                        postReaction={makeWebsiteChatPostReaction(token || undefined)}
+                      />
                     </div>
                   </div>
                 )

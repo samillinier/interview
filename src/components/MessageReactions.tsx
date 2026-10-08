@@ -38,7 +38,9 @@ function groupReactions(items: MessageReaction[], viewer?: Viewer): GroupedReact
   return Array.from(map.values())
 }
 
-async function postReaction(messageId: string, emoji: string): Promise<MessageReaction[] | null> {
+export type PostReaction = (messageId: string, emoji: string) => Promise<MessageReaction[] | null>
+
+async function postNotificationReaction(messageId: string, emoji: string): Promise<MessageReaction[] | null> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   const installerToken =
     typeof window !== 'undefined' ? window.localStorage.getItem('installerToken') : null
@@ -62,12 +64,14 @@ export function MessageReactions({
   viewer,
   align = 'left',
   onToggled,
+  postReaction = postNotificationReaction,
 }: {
   messageId: string
   reactions?: MessageReaction[]
   viewer?: Viewer
   align?: 'left' | 'right'
   onToggled?: (reactions: MessageReaction[]) => void
+  postReaction?: PostReaction
 }) {
   const grouped = groupReactions(reactions, viewer)
   if (grouped.length === 0) return null
@@ -107,10 +111,12 @@ export function MessageReactionButton({
   messageId,
   align = 'left',
   onToggled,
+  postReaction = postNotificationReaction,
 }: {
   messageId: string
   align?: 'left' | 'right'
   onToggled?: (reactions: MessageReaction[]) => void
+  postReaction?: PostReaction
 }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)

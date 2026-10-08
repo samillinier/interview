@@ -10,6 +10,14 @@ import { ChatLauncherButton } from '@/components/ChatLauncherButton'
 import { OnlineStatusDot } from '@/components/OnlineStatusDot'
 import { isStaffSender, isWebsiteChatId, isVisitorOnline } from '@/lib/website-chat'
 import { LinkifiedText } from '@/components/LinkifiedText'
+import {
+  MessageReactions,
+  MessageReactionButton,
+  type MessageReaction,
+} from '@/components/MessageReactions'
+import { makeWebsiteChatPostReaction } from '@/lib/website-chat-reactions'
+
+const adminPostReaction = makeWebsiteChatPostReaction()
 
 type WebsiteVisitor = {
   id: string
@@ -28,6 +36,7 @@ type ChatMessage = {
   senderType: string
   content: string
   createdAt: string
+  MessageReaction?: MessageReaction[]
 }
 
 function issueStatusLabel(status?: string) {
@@ -59,7 +68,12 @@ export function AdminWebsiteChatPopup() {
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [anyoneOnline, setAnyoneOnline] = useState(false)
+  const [reactionOverrides, setReactionOverrides] = useState<Record<string, MessageReaction[]>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  const handleReactionsToggled = (id: string) => (reactions: MessageReaction[]) => {
+    setReactionOverrides((prev) => ({ ...prev, [id]: reactions }))
+  }
 
   const persistOpen = (next: boolean) => {
     setOpen(next)
@@ -462,38 +476,56 @@ export function AdminWebsiteChatPopup() {
               messages.map((message) => {
                 const fromStaff = isStaffSender(message.senderType)
                 return (
-                  <div key={message.id} className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
-                    <div className="relative min-w-0 max-w-[78%]">
-                      <div
-                        className={`relative z-[1] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere] ${
-                          fromStaff
-                            ? 'whitespace-pre-wrap rounded-br-md bg-brand-green text-white'
-                            : 'rounded-bl-md bg-white text-slate-800 shadow-sm'
-                        }`}
-                      >
-                        <p className={`mb-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-                          fromStaff ? 'text-white/70' : 'text-slate-400'
-                        }`}>
-                          {message.senderType === 'alice'
-                            ? 'Alice'
-                            : message.senderType === 'admin'
-                              ? 'You'
-                              : selected.name}
-                        </p>
-                        <LinkifiedText text={message.content} />
+                  <div key={message.id} className={`flex flex-col ${fromStaff ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
+                      <div className="relative min-w-0 max-w-[78%]">
+                        <div
+                          className={`relative z-[1] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed [overflow-wrap:break-word] ${
+                            fromStaff
+                              ? 'whitespace-pre-wrap rounded-br-md bg-brand-green text-white'
+                              : 'rounded-bl-md bg-white text-slate-800 shadow-sm'
+                          }`}
+                        >
+                          <p className={`mb-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                            fromStaff ? 'text-white/70' : 'text-slate-400'
+                          }`}>
+                            {message.senderType === 'alice'
+                              ? 'Alice'
+                              : message.senderType === 'admin'
+                                ? 'You'
+                                : selected.name}
+                          </p>
+                          <LinkifiedText text={message.content} />
+                        </div>
+                        <span
+                          aria-hidden
+                          className={`absolute bottom-2 h-2.5 w-2.5 rotate-45 ${
+                            fromStaff ? '-right-[5px] bg-brand-green' : '-left-[5px] bg-white'
+                          }`}
+                        />
                       </div>
-                      <span
-                        aria-hidden
-                        className={`absolute bottom-2 h-2.5 w-2.5 rotate-45 ${
-                          fromStaff ? '-right-[5px] bg-brand-green' : '-left-[5px] bg-white'
-                        }`}
+                      {fromStaff ? (
+                        <span className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
+                          <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className={`flex items-center gap-1.5 mt-1 ${fromStaff ? 'flex-row-reverse' : ''}`}>
+                      <MessageReactionButton
+                        messageId={message.id}
+                        align={fromStaff ? 'right' : 'left'}
+                        onToggled={handleReactionsToggled(message.id)}
+                        postReaction={adminPostReaction}
+                      />
+                      <MessageReactions
+                        messageId={message.id}
+                        reactions={reactionOverrides[message.id] || message.MessageReaction || []}
+                        viewer={{ id: (session?.user?.email || '').toLowerCase(), type: 'admin' }}
+                        align={fromStaff ? 'right' : 'left'}
+                        onToggled={handleReactionsToggled(message.id)}
+                        postReaction={adminPostReaction}
                       />
                     </div>
-                    {fromStaff ? (
-                      <span className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
-                        <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
-                      </span>
-                    ) : null}
                   </div>
                 )
               })

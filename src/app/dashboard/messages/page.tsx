@@ -62,8 +62,11 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { LinkifiedText } from '@/components/LinkifiedText'
 import { isAliceSender, isStaffSender, isWebsiteChatId, isVisitorOnline } from '@/lib/website-chat'
+import { makeWebsiteChatPostReaction } from '@/lib/website-chat-reactions'
 import { ChatAiToggle } from '@/components/ChatAiToggle'
 import { OnlineStatusDot } from '@/components/OnlineStatusDot'
+
+const adminPostReaction = makeWebsiteChatPostReaction()
 
 interface Installer {
   id: string
@@ -2037,7 +2040,7 @@ export default function MessagesPage() {
                                 </p>
                               ) : null}
                               {message.content && (
-                                <p className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+                                <p className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:break-word] ${
                               isFromAdmin
                                     ? 'text-white font-medium' 
                                     : 'text-slate-800 font-normal'
@@ -2132,12 +2135,12 @@ export default function MessagesPage() {
                           </div>
 
                           {/* Reactions */}
-                          {!isWebsiteChatId(selectedInstaller.id) ? (
                           <div className={`flex items-center gap-1.5 mt-1.5 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}>
                             <MessageReactionButton
                               messageId={message.id}
                               align={isFromAdmin ? 'right' : 'left'}
                               onToggled={handleReactionsToggled(message.id)}
+                              postReaction={isWebsiteChatId(selectedInstaller.id) ? adminPostReaction : undefined}
                             />
                             <MessageReactions
                               messageId={message.id}
@@ -2145,9 +2148,9 @@ export default function MessagesPage() {
                               viewer={{ id: (session?.user?.email || '').toLowerCase(), type: 'admin' }}
                               align={isFromAdmin ? 'right' : 'left'}
                               onToggled={handleReactionsToggled(message.id)}
+                              postReaction={isWebsiteChatId(selectedInstaller.id) ? adminPostReaction : undefined}
                             />
                           </div>
-                          ) : null}
                         </motion.div>
                       )
                     })}

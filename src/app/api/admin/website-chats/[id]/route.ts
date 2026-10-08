@@ -18,7 +18,25 @@ async function requireSession() {
   return session
 }
 
-function mapMessage(message: { id: string; createdAt: Date; senderType: string; senderName: string | null; content: string; isRead: boolean; chatId: string }, chat: { id: string; name: string; email: string }) {
+function mapMessage(
+  message: {
+    id: string
+    createdAt: Date
+    senderType: string
+    senderName: string | null
+    content: string
+    isRead: boolean
+    chatId: string
+    reactions?: Array<{
+      id: string
+      emoji: string
+      reactorId: string
+      reactorType: string
+      reactorName: string | null
+    }>
+  },
+  chat: { id: string; name: string; email: string },
+) {
   const { firstName, lastName } = visitorDisplayParts(chat.name, chat.email)
   return {
     id: message.id,
@@ -32,6 +50,13 @@ function mapMessage(message: { id: string; createdAt: Date; senderType: string; 
     senderId:
       message.senderType === 'admin' ? 'admin' : message.senderType === 'alice' ? 'alice' : 'visitor',
     senderType: message.senderType,
+    MessageReaction: (message.reactions || []).map((r) => ({
+      id: r.id,
+      emoji: r.emoji,
+      reactorId: r.reactorId,
+      reactorType: r.reactorType,
+      reactorName: r.reactorName,
+    })),
     Installer: {
       id: websiteChatUiId(chat.id),
       firstName,
@@ -54,7 +79,12 @@ export async function GET(
     const id = websiteChatDbId(String(params.id || ''))
     const chat = await prisma.websiteChat.findUnique({
       where: { id },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: { reactions: { orderBy: { createdAt: 'asc' } } },
+        },
+      },
     })
     if (!chat) return NextResponse.json({ error: 'Chat not found' }, { status: 404, headers: noStoreHeaders })
 
