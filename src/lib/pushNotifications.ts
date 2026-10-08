@@ -239,6 +239,7 @@ export async function sendPushToInstallers(args: {
     link: installerNotificationOpenPath({
       type: args.data?.type,
       notificationId: args.data?.notificationId,
+      link: args.link,
     }),
   }
 

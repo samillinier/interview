@@ -271,19 +271,25 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate,
             return
         }
 
-        var path = "/installer/notifications"
-        var query: [String] = []
         let type = userInfo["type"] as? String ?? ""
-        if type == "message" {
-            query.append("tab=message")
-        } else if type == "news" {
-            query.append("tab=news")
-        }
-        if let notificationId = userInfo["notificationId"] as? String, !notificationId.isEmpty {
-            query.append("id=\(notificationId)")
-        }
-        if !query.isEmpty {
-            path += "?" + query.joined(separator: "&")
+        let destination = userInfo["destination"] as? String ?? ""
+        let payloadLink = userInfo["link"] as? String ?? ""
+        let opensInvoices = type == "invoice" || destination.contains("/invoices") || payloadLink.contains("/invoices")
+
+        var path = opensInvoices ? "/installer/invoices" : "/installer/notifications"
+        var query: [String] = []
+        if !opensInvoices {
+            if type == "message" {
+                query.append("tab=message")
+            } else if type == "news" {
+                query.append("tab=news")
+            }
+            if let notificationId = userInfo["notificationId"] as? String, !notificationId.isEmpty {
+                query.append("id=\(notificationId)")
+            }
+            if !query.isEmpty {
+                path += "?" + query.joined(separator: "&")
+            }
         }
 
         if let url = URL(string: "\(apiBase)\(path)") {

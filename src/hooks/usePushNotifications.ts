@@ -95,10 +95,14 @@ export function usePushNotifications(enabled: boolean = true) {
           (action: ActionPerformed) => {
             const data = action.notification?.data || {}
             if (data.type === 'badge-sync') return
+            const type = typeof data.type === 'string' ? data.type : ''
+            const destination = typeof data.destination === 'string' ? data.destination : ''
+            const link = typeof data.link === 'string' ? data.link : ''
             window.location.href = installerNotificationOpenPath({
-              type: typeof data.type === 'string' ? data.type : '',
+              type,
               notificationId:
                 typeof data.notificationId === 'string' ? data.notificationId : '',
+              link: destination || link,
             })
           }
         )
