@@ -653,12 +653,19 @@ export function LandingChatWidget({
                 const fromStaff = message.senderType === 'admin' || message.senderType === 'alice'
                 return (
                   <div key={message.id} className={`flex flex-col ${fromStaff ? 'items-start' : 'items-end'}`}>
-                    <div className={`flex ${fromStaff ? 'items-end gap-2.5 justify-start' : 'justify-end'}`}>
+                    <div className={`flex ${fromStaff ? 'items-end gap-2.5 justify-start' : 'items-end gap-1.5 justify-end'}`}>
                       {fromStaff ? (
                         <span className="relative mb-6 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
                           <Image src={alicePhoto} alt="Support" className="h-full w-full object-cover object-top" />
                         </span>
-                      ) : null}
+                      ) : (
+                        <MessageReactionButton
+                          messageId={message.id}
+                          align="right"
+                          onToggled={handleReactionsToggled(message.id)}
+                          postReaction={makeWebsiteChatPostReaction(token || undefined)}
+                        />
+                      )}
                       <div className={`min-w-0 ${fromStaff ? 'max-w-[calc(100%-2.75rem)]' : 'max-w-[78%]'}`}>
                         <div className="relative">
                           <div
@@ -681,14 +688,16 @@ export function LandingChatWidget({
                           <p className="mt-1.5 pl-1 text-xs text-slate-400">{formatRelativeTime(message.createdAt)}</p>
                         ) : null}
                       </div>
+                      {fromStaff ? (
+                        <MessageReactionButton
+                          messageId={message.id}
+                          align="left"
+                          onToggled={handleReactionsToggled(message.id)}
+                          postReaction={makeWebsiteChatPostReaction(token || undefined)}
+                        />
+                      ) : null}
                     </div>
-                    <div className={`flex items-center gap-1.5 mt-1 ${fromStaff ? 'flex-row-reverse pl-10' : 'pr-1'}`}>
-                      <MessageReactionButton
-                        messageId={message.id}
-                        align={fromStaff ? 'left' : 'right'}
-                        onToggled={handleReactionsToggled(message.id)}
-                        postReaction={makeWebsiteChatPostReaction(token || undefined)}
-                      />
+                    <div className={fromStaff ? 'pl-10' : 'pr-1'}>
                       <MessageReactions
                         messageId={message.id}
                         reactions={reactionOverrides[message.id] || message.reactions || []}

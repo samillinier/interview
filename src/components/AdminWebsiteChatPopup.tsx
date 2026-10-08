@@ -478,6 +478,14 @@ export function AdminWebsiteChatPopup() {
                 return (
                   <div key={message.id} className={`flex flex-col ${fromStaff ? 'items-end' : 'items-start'}`}>
                     <div className={`flex items-end gap-2 ${fromStaff ? 'justify-end' : 'justify-start'}`}>
+                      {fromStaff ? (
+                        <MessageReactionButton
+                          messageId={message.id}
+                          align="right"
+                          onToggled={handleReactionsToggled(message.id)}
+                          postReaction={adminPostReaction}
+                        />
+                      ) : null}
                       <div className="relative min-w-0 max-w-[78%]">
                         <div
                           className={`relative z-[1] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed [overflow-wrap:break-word] ${
@@ -508,15 +516,16 @@ export function AdminWebsiteChatPopup() {
                         <span className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-white shadow-sm">
                           <Image src={alicePhoto} alt="Alice" className="h-full w-full object-cover object-top" />
                         </span>
-                      ) : null}
+                      ) : (
+                        <MessageReactionButton
+                          messageId={message.id}
+                          align="left"
+                          onToggled={handleReactionsToggled(message.id)}
+                          postReaction={adminPostReaction}
+                        />
+                      )}
                     </div>
-                    <div className={`flex items-center gap-1.5 mt-1 ${fromStaff ? 'flex-row-reverse' : ''}`}>
-                      <MessageReactionButton
-                        messageId={message.id}
-                        align={fromStaff ? 'right' : 'left'}
-                        onToggled={handleReactionsToggled(message.id)}
-                        postReaction={adminPostReaction}
-                      />
+                    <div className={fromStaff ? 'pr-8' : 'pl-0'}>
                       <MessageReactions
                         messageId={message.id}
                         reactions={reactionOverrides[message.id] || message.MessageReaction || []}
