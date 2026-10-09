@@ -200,8 +200,8 @@ export default function PurchaseRequestPage() {
         }),
       })
       if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d.error || 'Failed to submit request')
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.details || d.error || 'Failed to submit request')
       }
       setShowForm(false)
       resetForm()

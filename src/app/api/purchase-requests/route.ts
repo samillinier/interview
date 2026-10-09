@@ -103,13 +103,17 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    await notifyCorporateAuthorizer({
-      kind: 'purchase-request',
-      recordId: purchaseRequest.id,
-      submittedByEmail: user.email,
-      submittedByName: user.name,
-      details: String(itemName).trim(),
-    })
+    try {
+      await notifyCorporateAuthorizer({
+        kind: 'purchase-request',
+        recordId: purchaseRequest.id,
+        submittedByEmail: user.email,
+        submittedByName: user.name,
+        details: String(itemName).trim(),
+      })
+    } catch (notifyError: any) {
+      console.error('Purchase request created but notification email failed:', notifyError)
+    }
 
     return NextResponse.json({ success: true, purchaseRequest })
   } catch (error: any) {
