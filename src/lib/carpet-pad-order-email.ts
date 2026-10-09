@@ -63,6 +63,10 @@ function rollQty(order: PadOrder, key: (typeof PAD_LINES)[number]['key']) {
   return Number.isFinite(n) ? n : 0
 }
 
+function orderedPadLines(order: PadOrder) {
+  return PAD_LINES.map((line) => ({ ...line, qty: rollQty(order, line.key) })).filter((line) => line.qty > 0)
+}
+
 async function loadKindRecipients(kind: string) {
   const rows = await prisma.corporateNotificationRecipient.findMany({
     where: { kind, isActive: true },
@@ -112,13 +116,14 @@ function buildOrderEmailHtml(order: PadOrder) {
       ? ''
       : String(order.recycledBalesCount)
 
-  const specRows = PAD_LINES.map((line) => {
-    const qty = rollQty(order, line.key)
-    return `<tr>
+  const specRows = orderedPadLines(order)
+    .map(
+      (line) => `<tr>
       <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;color:#24301f;">${escapeHtml(line.label)}</td>
-      <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;font-weight:700;color:#24301f;text-align:right;">${qty}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;font-weight:700;color:#24301f;text-align:right;">${line.qty}</td>
     </tr>`
-  }).join('')
+    )
+    .join('')
 
   return `
     <div style="margin:0;padding:0;background:#f6f8f5;font-family:Arial,sans-serif;color:#162015;">
@@ -165,7 +170,7 @@ function buildOrderEmailText(order: PadOrder) {
     '',
     'Order Specifications:',
     '',
-    ...PAD_LINES.map((line) => `${line.label}:  ${rollQty(order, line.key)}`),
+    ...orderedPadLines(order).map((line) => `${line.label}:  ${line.qty}`),
     '',
     `Recycle Bale Pick Up:  ${String(order.recycledBalesPickup || '').trim()}`,
     `Number of Bales:  ${order.recycledBalesCount ?? ''}`,
@@ -177,13 +182,67 @@ function buildOrderEmailText(order: PadOrder) {
   return lines.join('\n')
 }
 
+const SAMPLE_PAD_ORDER: PadOrder = {
+  id: 'sample',
+  location: 'Lakeland',
+  recycledBalesPickup: '',
+  recycledBalesCount: null,
+  stainmasterEliteRolls: 20,
+  odorBanRolls: 10,
+  stainmasterMemoryFoamRolls: 10,
+  superSixLbRolls: 0,
+  stainmasterSelectRolls: 10,
+  createdByEmail: 'scoudriet@fiscorponline.com',
+  createdByName: 'Steve Coudriet',
+}
+
+async function sendPadOrderEmail(args: {
+  to: string[]
+  cc?: string[]
+  order: PadOrder
+  sample?: boolean
+}) {
+  const resendApiKey = process.env.RESEND_API_KEY
+  if (!resendApiKey) {
+    return { ok: false as const, error: 'RESEND_API_KEY not configured' }
+  }
+  const location = String(args.order.location || '').trim() || 'Location'
+  const subject = `${args.sample ? '[SAMPLE] ' : ''}Pad Order for FIS ${location} Location`
+  try {
+    const resend = new Resend(resendApiKey)
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+    const result = await resend.emails.send({
+      from: `${companyDisplayName()} <${fromEmail}>`,
+      to: args.to,
+      cc: args.cc && args.cc.length ? args.cc : undefined,
+      subject,
+      html: buildOrderEmailHtml(args.order),
+      text: buildOrderEmailText(args.order),
+    })
+    if (result.error) {
+      console.error('Carpet pad vendor email failed:', result.error)
+      return { ok: false as const, error: result.error.message }
+    }
+    return { ok: true as const, id: result.data?.id || null }
+  } catch (error) {
+    console.error('Carpet pad vendor email failed:', error)
+    return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+/** Preview for one inbox only — never CCs vendor, Tim, Purchasing, or the GM. */
+export async function sendCarpetPadOrderPreview(toEmail: string, order: PadOrder = SAMPLE_PAD_ORDER) {
+  const to = normalizeEmail(toEmail)
+  if (!to) return { ok: false as const, error: 'Preview email is required' }
+  return sendPadOrderEmail({ to: [to], order, sample: true })
+}
+
 /**
  * Send the vendor pad-order email once an order is approved.
  * To/CC come from Settings → Communication; the requesting GM (the person who submitted the order) is always CC'd.
  */
 export async function notifyCarpetPadVendorOrder(order: PadOrder) {
-  const resendApiKey = process.env.RESEND_API_KEY
-  if (!resendApiKey) {
+  if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY not configured — carpet pad vendor email not sent')
     return { ok: false as const, error: 'RESEND_API_KEY not configured' }
   }
@@ -228,27 +287,5 @@ export async function notifyCarpetPadVendorOrder(order: PadOrder) {
     return { ok: false as const, error: 'No Carpet Pad Order To recipient is configured' }
   }
 
-  const location = String(order.location || '').trim() || 'Location'
-  const subject = `Pad Order for FIS ${location} Location`
-
-  try {
-    const resend = new Resend(resendApiKey)
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-    const result = await resend.emails.send({
-      from: `${companyDisplayName()} <${fromEmail}>`,
-      to: toList,
-      cc: ccList.length ? ccList : undefined,
-      subject,
-      html: buildOrderEmailHtml(order),
-      text: buildOrderEmailText(order),
-    })
-    if (result.error) {
-      console.error('Carpet pad vendor email failed:', result.error)
-      return { ok: false as const, error: result.error.message }
-    }
-    return { ok: true as const, id: result.data?.id || null }
-  } catch (error) {
-    console.error('Carpet pad vendor email failed:', error)
-    return { ok: false as const, error: error instanceof Error ? error.message : String(error) }
-  }
+  return sendPadOrderEmail({ to: toList, cc: ccList, order })
 }
