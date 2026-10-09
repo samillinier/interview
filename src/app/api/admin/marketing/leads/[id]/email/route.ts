@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { requireMarketingAdmin } from '@/lib/marketing-admin'
 import { companyDisplayName } from '@/lib/publicAppUrl'
-import { emailLogoImg } from '@/lib/email-brand'
+import { emailLogoImg, withEmailLogo } from '@/lib/email-brand'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -110,14 +110,14 @@ export async function POST(
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const fromName = companyDisplayName()
 
-    const emailResult = await resend.emails.send({
+    const emailResult = await resend.emails.send(withEmailLogo({
       from: `${fromName} <${fromEmail}>`,
       to: recipientEmail,
       ...(ccList.length ? { cc: ccList } : {}),
       reply_to: auth.email,
       subject: emailSubject,
       html: buildOptInEmailHtml({ content: emailContent }),
-    })
+    }))
 
     if (emailResult.error) {
       return NextResponse.json(

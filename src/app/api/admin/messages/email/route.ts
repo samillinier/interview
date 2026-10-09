@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { Resend } from 'resend'
 import { authOptions } from '@/lib/auth'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,9 +84,9 @@ export async function POST(request: NextRequest) {
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const fromName = companyDisplayName()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
-    const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+    const logoUrl = emailLogoCidSrc()
 
-    await resend.emails.send({
+    await resend.emails.send(withEmailLogo({
       from: `${fromName} <${fromEmail}>`,
       to: recipientEmail,
       subject: emailSubject,
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
         appUrl,
         logoUrl,
       }),
-    })
+    }))
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

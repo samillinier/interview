@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import prisma from '@/lib/db'
 import { companyDisplayName } from '@/lib/publicAppUrl'
-import { emailLogoUrl } from '@/lib/email-brand'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 
 /** Default recipient when no "job-application" recipients are configured. */
 const DEFAULT_RECIPIENT = {
@@ -116,7 +116,7 @@ export async function notifyJobApplication(args: JobApplicationArgs): Promise<bo
     'https://job.floorinteriorservices.com'
   ).replace(/\/$/, '')
   const reviewUrl = `${baseUrl}/dashboard/jobs/${args.job.id}`
-  const logoUrl = emailLogoUrl()
+  const logoUrl = emailLogoCidSrc()
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
   const fromName = companyDisplayName()
   const resend = new Resend(resendApiKey)
@@ -184,13 +184,13 @@ ${reviewUrl}
   try {
     const results = await Promise.all(
       targets.map((target) =>
-        resend.emails.send({
+        resend.emails.send(withEmailLogo({
           from: `${fromName} <${fromEmail}>`,
           to: target.email,
           subject,
           html: htmlFor(greetingName(target.email, target.name)),
           text: textFor(),
-        }),
+        })),
       ),
     )
 

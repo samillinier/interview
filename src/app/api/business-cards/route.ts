@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
-import { emailLogoUrl } from '@/lib/email-brand'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import { notifyCorporateAuthorizer, notifyRequesterDecision } from '@/lib/corporate-authorization-email'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
@@ -43,7 +43,7 @@ async function sendReceiptEmail(args: {
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
   const fromName = companyDisplayName()
-  const logoUrl = emailLogoUrl()
+  const logoUrl = emailLogoCidSrc()
 
   const subject = 'Your Business Card order receipt'
   const text = `Your Business Card order has been received.
@@ -84,13 +84,13 @@ Quantity: ${args.quantity}
 
   try {
     const resend = new Resend(resendApiKey)
-    const result = await resend.emails.send({
+    const result = await resend.emails.send(withEmailLogo({
       from: `${fromName} <${fromEmail}>`,
       to: args.to,
       subject,
       html,
       text,
-    })
+    }))
     if (result.error) {
       console.error('Business card receipt email failed:', result.error)
       return false

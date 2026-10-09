@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 import { companyDisplayName, publicAppUrl } from '@/lib/publicAppUrl'
-import { emailLogoUrl } from '@/lib/email-brand'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import type { WeeklyReportLine } from '@/lib/weeklyReport'
 import prisma from '@/lib/db'
 
@@ -59,7 +59,7 @@ export async function notifyAccountantOfWeeklyInvoice(args: NotifyInvoiceArgs): 
   const appUrl = publicAppUrl()
   const invoiceUrl = `${appUrl}/dashboard/corporate/invoice`
   const profileUrl = `${appUrl}/dashboard/installers/${args.installerId}`
-  const logoUrl = emailLogoUrl()
+  const logoUrl = emailLogoCidSrc()
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
   const fromName = companyDisplayName()
 
@@ -168,13 +168,13 @@ ${profileUrl}
     const resend = new Resend(resendApiKey)
     await Promise.all(
       recipients.map((to) =>
-        resend.emails.send({
+        resend.emails.send(withEmailLogo({
           from: `${fromName} <${fromEmail}>`,
           to,
           subject,
           html,
           text,
-        }),
+        })),
       ),
     )
     return true

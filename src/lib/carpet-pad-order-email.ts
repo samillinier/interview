@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import prisma from '@/lib/db'
 import { companyDisplayName } from '@/lib/publicAppUrl'
-import { emailLogoImg } from '@/lib/email-brand'
+import { emailLogoImg, withEmailLogo } from '@/lib/email-brand'
 
 /** Settings → Communication kinds for the approved Carpet Pad vendor email. */
 export const CARPET_PAD_ORDER_TO_KIND = 'carpet-pad-order-to'
@@ -221,14 +221,14 @@ async function sendPadOrderEmail(args: {
   try {
     const resend = new Resend(resendApiKey)
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-    const result = await resend.emails.send({
+    const result = await resend.emails.send(withEmailLogo({
       from: `${companyDisplayName()} <${fromEmail}>`,
       to: args.to,
       cc: args.cc && args.cc.length ? args.cc : undefined,
       subject,
       html: buildOrderEmailHtml(args.order),
       text: buildOrderEmailText(args.order),
-    })
+    }))
     if (result.error) {
       console.error('Carpet pad vendor email failed:', result.error)
       return { ok: false as const, error: result.error.message }

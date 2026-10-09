@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { Resend } from 'resend'
 import crypto from 'crypto'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,13 +64,13 @@ export async function POST(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app'
     
     // Use URL for logo to prevent email clipping
-    const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+    const logoUrl = emailLogoCidSrc()
 
     if (resendApiKey) {
       try {
         const resend = new Resend(resendApiKey)
         
-        await resend.emails.send({
+        await resend.emails.send(withEmailLogo({
           from: `${fromName} <${fromEmail}>`,
           to: installer.email,
           subject: installer.passwordHash ? 'Reset Your Password' : 'Set Up Your Password',
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
               </body>
             </html>
           `,
-        })
+        }))
 
         console.log('Password reset email sent successfully')
         console.log('Reset URL:', resetUrl) // Log URL for debugging

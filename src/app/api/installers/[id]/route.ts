@@ -8,6 +8,7 @@ import { extractLikelyPhone } from '@/lib/phone'
 import { writeAdminAuditLog } from '@/lib/audit'
 import { archiveInstallerAccount } from '@/lib/installerAccountArchive'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import { sendPushToInstaller } from '@/lib/pushNotifications'
 import { platformFromNativeDeviceToken } from '@/lib/installerAccess'
 
@@ -1159,7 +1160,7 @@ export async function PATCH(
               const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://floor-interior-service-six.vercel.app'
               
               // Use URL for logo to prevent email clipping (base64 makes emails too large)
-              const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+              const logoUrl = emailLogoCidSrc()
               
               // Create welcoming email message
               const getWelcomeMessage = (oldStatus: string, newStatus: string, oldTrackerStage: string | null, newTrackerStage: string | null, firstName: string, statusChanged: boolean, trackerStageChanged: boolean) => {
@@ -1219,7 +1220,7 @@ export async function PATCH(
               
               const welcomeMessage = getWelcomeMessage(oldStatus, newStatus, oldTrackerStage, newTrackerStage, currentInstaller.firstName || '', statusChanged, trackerStageChanged)
 
-              const emailResult = await resend.emails.send({
+              const emailResult = await resend.emails.send(withEmailLogo({
                 from: `${fromName} <${fromEmail}>`,
                 to: currentInstaller.email,
                 subject: statusChanged && trackerStageChanged 
@@ -1288,7 +1289,7 @@ If you have any questions, please don't hesitate to reach out to our support tea
 Best regards,
 Floor Interior Services Team
                 `,
-              })
+              }))
 
               if (emailResult && 'id' in emailResult) {
                 console.log(`✅ Status change email sent successfully to ${currentInstaller.email} (Email ID: ${emailResult.id})`)

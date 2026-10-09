@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import crypto from 'crypto'
 import { Resend } from 'resend'
 import { companyDisplayName, publicAppUrl } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import { ensureInstallerReferralCode } from '@/lib/referrals'
 
 export async function POST(request: NextRequest) {
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
       const baseUrl = publicAppUrl()
       const signInUrl = `${baseUrl}/installer/magic-link?token=${loginToken}&email=${encodeURIComponent(installer.email)}`
-      const logoUrl = process.env.EMAIL_LOGO_URL || `${baseUrl}/logo.png`
+      const logoUrl = emailLogoCidSrc()
 
       const resendApiKey = process.env.RESEND_API_KEY
       const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       if (resendApiKey) {
         try {
           const resend = new Resend(resendApiKey)
-          const emailResult = await resend.emails.send({
+          const emailResult = await resend.emails.send(withEmailLogo({
             from: `${fromName} <${fromEmail}>`,
             to: installer.email,
             subject: 'Sign in to your installer account',
@@ -147,7 +148,7 @@ If you didn't request this email, please ignore it.
 
 Floor Interior Services - Installer Portal
             `,
-          })
+          }))
 
           if (emailResult && typeof emailResult === 'object') {
             if ('error' in emailResult) {
@@ -212,7 +213,7 @@ Floor Interior Services - Installer Portal
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(installer.email)}`
     
     // Use URL for logo to prevent email clipping
-    const logoUrl = process.env.EMAIL_LOGO_URL || `${baseUrl}/logo.png`
+    const logoUrl = emailLogoCidSrc()
 
     // Send email with verification link
     const resendApiKey = process.env.RESEND_API_KEY
@@ -235,7 +236,7 @@ Floor Interior Services - Installer Portal
         console.log('   From:', `${fromName} <${fromEmail}>`)
         console.log('   Sending email via Resend...')
         
-        const emailResult = await resend.emails.send({
+        const emailResult = await resend.emails.send(withEmailLogo({
           from: `${fromName} <${fromEmail}>`,
           to: installer.email,
           subject: 'Verify your email to create your installer account',
@@ -298,7 +299,7 @@ If you didn't request this verification email, please ignore this message.
 
 Floor Interior Services - Installer Portal
           `,
-        })
+        }))
 
         // Check if email was actually sent successfully
         if (emailResult && typeof emailResult === 'object') {

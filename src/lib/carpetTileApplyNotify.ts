@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import prisma from '@/lib/db'
 import { companyDisplayName } from '@/lib/publicAppUrl'
-import { emailLogoUrl } from '@/lib/email-brand'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 
 /** Default recipient when no "installer-application" recipients are configured. */
 export const CARPET_TILE_NOTIFY_EMAIL = 'amunoz@fiscorponline.com'
@@ -110,7 +110,7 @@ export async function notifyAngelaOfCarpetTileApplicant(installer: NotifyInstall
   const name = [installer.firstName, installer.lastName].filter(Boolean).join(' ').trim() || 'Unknown installer'
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
   const profileUrl = `${appUrl.replace(/\/$/, '')}/dashboard/installers/${installer.id}`
-  const logoUrl = emailLogoUrl()
+  const logoUrl = emailLogoCidSrc()
   const skillLabel = classification.matched.join(', ') || 'Carpet / Tile'
   const categoryBits = [
     classification.hasCarpet ? 'Carpet' : null,
@@ -184,13 +184,13 @@ ${profileUrl}
   try {
     const results = await Promise.all(
       recipients.map((recipient) =>
-        resend.emails.send({
+        resend.emails.send(withEmailLogo({
           from: `${fromName} <${fromEmail}>`,
           to: recipient.email,
           subject,
           html: htmlFor(greetingName(recipient.email, recipient.name)),
           text: textFor(greetingName(recipient.email, recipient.name)),
-        }),
+        })),
       ),
     )
 

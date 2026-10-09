@@ -4,6 +4,7 @@ import { extractInterviewData, generateInterviewAdminRecap } from '@/lib/openai'
 import { calculateScore, determinePassFail } from '@/lib/utils'
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import { notifyAngelaOfCarpetTileApplicant } from '@/lib/carpetTileApplyNotify'
 
 const QUALIFIED_LOGIN_URL = 'https://job.floorinteriorservices.com/installer/login'
@@ -232,16 +233,16 @@ export async function POST(request: NextRequest) {
         const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
         const fromName = companyDisplayName()
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
-        const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+        const logoUrl = emailLogoCidSrc()
 
         try {
-          await resend.emails.send({
+          await resend.emails.send(withEmailLogo({
             from: `${fromName} <${fromEmail}>`,
             to: updatedInstaller.email,
             subject: 'Action Required: Complete Your AI Interview & Profile',
             html: buildQualifiedEmailHtml(logoUrl),
             text: qualifiedText,
-          })
+          }))
 
           await prisma.installer.updateMany({
             where: {

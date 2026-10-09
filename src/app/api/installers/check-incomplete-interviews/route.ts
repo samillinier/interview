@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import prisma from '@/lib/db'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 
 export const dynamic = 'force-dynamic'
 
@@ -130,7 +131,7 @@ async function sendIncompleteInterviewReminders(request: NextRequest) {
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
   const fromName = companyDisplayName()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
-  const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+  const logoUrl = emailLogoCidSrc()
   const html = buildReminderEmailHtml(appUrl, logoUrl)
   const subject = 'Action Required: Complete Your AI Interview & Profile'
 
@@ -142,13 +143,13 @@ async function sendIncompleteInterviewReminders(request: NextRequest) {
     if (!email) continue
 
     try {
-      await resend.emails.send({
+      await resend.emails.send(withEmailLogo({
         from: `${fromName} <${fromEmail}>`,
         to: email,
         subject,
         html,
         text: reminderText,
-      })
+      }))
 
       const updateResult = await prisma.interview.updateMany({
         where: {

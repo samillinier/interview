@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 
 export async function POST(
   request: NextRequest,
@@ -55,7 +56,7 @@ export async function POST(
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const fromName = companyDisplayName()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
-    const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+    const logoUrl = emailLogoCidSrc()
 
     const subject = "Congratulations! You're Qualified — Complete Your Profile ✅"
     const htmlContent = `
@@ -117,12 +118,12 @@ export async function POST(
       </html>
     `
 
-    await resend.emails.send({
+    await resend.emails.send(withEmailLogo({
       from: `${fromName} <${fromEmail}>`,
       to: installer.email,
       subject: subject,
       html: htmlContent,
-    })
+    }))
 
     return NextResponse.json({ 
       success: true, 

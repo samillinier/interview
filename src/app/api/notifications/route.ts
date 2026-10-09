@@ -5,6 +5,7 @@ import { Resend } from 'resend'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { companyDisplayName } from '@/lib/publicAppUrl'
+import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import { sendPushToInstallers } from '@/lib/pushNotifications'
 
 function escapeHtml(value: string) {
@@ -86,12 +87,12 @@ async function sendInstallerMessageEmails(args: {
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
   const fromName = companyDisplayName()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
-  const logoUrl = process.env.EMAIL_LOGO_URL || `${appUrl}/logo.png`
+  const logoUrl = emailLogoCidSrc()
 
   let sent = 0
   for (const installer of recipients) {
     const installerName = `${installer.firstName || ''} ${installer.lastName || ''}`.trim() || 'there'
-    await resend.emails.send({
+    await resend.emails.send(withEmailLogo({
       from: `${fromName} <${fromEmail}>`,
       to: installer.email!,
       subject: 'New message from Floor Interior Services',
@@ -103,7 +104,7 @@ async function sendInstallerMessageEmails(args: {
         appUrl,
         logoUrl,
       }),
-    })
+    }))
     sent += 1
   }
 

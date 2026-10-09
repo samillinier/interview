@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
-import { emailLogoImg } from '@/lib/email-brand'
+import { emailLogoImg, withEmailLogo } from '@/lib/email-brand'
 import prisma from '@/lib/db'
 import {
   getCorporateCommunicationKind,
@@ -252,7 +252,7 @@ export async function notifyCorporateAuthorizer(args: {
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
     const results = await Promise.all(
       targets.map((target) =>
-        resend.emails.send({
+        resend.emails.send(withEmailLogo({
           from: `${companyDisplayName()} <${fromEmail}>`,
           to: target.email,
           subject: args.sample ? `[SAMPLE] ${meta.subject}` : meta.subject,
@@ -263,7 +263,7 @@ export async function notifyCorporateAuthorizer(args: {
             details: args.details || null,
             greetingName: greetingName(target.email, target.name),
           }),
-        }),
+        })),
       ),
     )
 
@@ -356,7 +356,7 @@ export async function notifyRequesterDecision(args: {
   try {
     const resend = new Resend(resendApiKey)
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-    const result = await resend.emails.send({
+    const result = await resend.emails.send(withEmailLogo({
       from: `${companyDisplayName()} <${fromEmail}>`,
       to: email,
       subject,
@@ -368,7 +368,7 @@ export async function notifyRequesterDecision(args: {
         recordUrl,
         greetingName: greetingName(email, args.name),
       }),
-    })
+    }))
     if (result.error) {
       console.error('Requester decision email failed:', result.error)
       return { ok: false as const, error: result.error.message }
