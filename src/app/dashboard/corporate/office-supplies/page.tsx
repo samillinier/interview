@@ -474,7 +474,7 @@ export default function OfficeSuppliesPage() {
                                         type="number"
                                         min={0}
                                         max={item.max}
-                                        value={qty}
+                                        value={qty || ''}
                                         onChange={(e) => setQuantity(item.key, parseInt(e.target.value || '0', 10))}
                                         className="w-14 h-8 text-center border-2 border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
                                       />

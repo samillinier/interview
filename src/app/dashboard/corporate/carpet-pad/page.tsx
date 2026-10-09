@@ -324,11 +324,12 @@ export default function CarpetPadPage() {
         'Location': r.location,
         'Classification': r.orderClassification,
         'Recycled Bales Pickup': r.recycledBalesPickup,
-        'Bales Count': r.recycledBalesCount ?? '',
+        'Bales Count': r.recycledBalesCount && r.recycledBalesCount > 0 ? r.recycledBalesCount : '',
         'Reviewed Previous Orders': r.reviewedPreviousOrders,
       }
       for (const p of PAD_TYPES) {
-        row[`${p.name} (Rolls)`] = rollCount(r, p.key)
+        const qty = rollCount(r, p.key)
+        row[`${p.name} (Rolls)`] = qty > 0 ? qty : ''
       }
       row['Total Rolls'] = orderTotalRolls(r)
       row['Total Cost'] = orderTotalCost(r).toFixed(2)
@@ -478,7 +479,7 @@ export default function CarpetPadPage() {
                           </Field>
                           {form.recycledBalesPickup === 'Yes' && (
                             <Field label="How many?" required hint="The value must be a number.">
-                              <input type="number" inputMode="numeric" value={form.recycledBalesCount} onChange={(e) => update('recycledBalesCount', e.target.value)} placeholder="0" className={inputClass} />
+                              <input type="number" inputMode="numeric" value={form.recycledBalesCount} onChange={(e) => update('recycledBalesCount', e.target.value)} placeholder="Enter quantity" className={inputClass} />
                             </Field>
                           )}
                         </div>
@@ -535,7 +536,7 @@ export default function CarpetPadPage() {
                                 min="0"
                                 value={form[p.key]}
                                 onChange={(e) => update(p.key, e.target.value)}
-                                placeholder="0"
+                                placeholder="Enter quantity"
                                 className={inputClass}
                               />
                             </div>
@@ -781,13 +782,14 @@ export default function CarpetPadPage() {
                     </div>
 
                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {detail.recycledBalesPickup === 'Yes' && (
                       <div>
                         <p className="text-xs font-semibold text-slate-400 uppercase">Recycled Bales Pickup</p>
                         <p className="text-sm font-semibold text-slate-800">
-                          {detail.recycledBalesPickup}
-                          {detail.recycledBalesPickup === 'Yes' && detail.recycledBalesCount != null ? ` (${detail.recycledBalesCount})` : ''}
+                          Yes{detail.recycledBalesCount && detail.recycledBalesCount > 0 ? ` (${detail.recycledBalesCount})` : ''}
                         </p>
                       </div>
+                      )}
                       <div>
                         <p className="text-xs font-semibold text-slate-400 uppercase">Reviewed Previous Orders</p>
                         <p className="text-sm font-semibold text-slate-800">{detail.reviewedPreviousOrders}</p>
@@ -807,6 +809,7 @@ export default function CarpetPadPage() {
                       <div className="divide-y divide-slate-100">
                         {PAD_TYPES.map((p) => {
                           const qty = rollCount(detail, p.key)
+                          if (qty <= 0) return null
                           return (
                             <div key={p.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
                               <div className="flex items-center gap-3 min-w-0">

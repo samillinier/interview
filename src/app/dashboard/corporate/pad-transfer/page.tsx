@@ -758,7 +758,9 @@ export default function PadTransferPage() {
                       </div>
                       <div className="flex items-end pb-1">
                         <span className="text-sm font-bold text-brand-green">
-                          Total: {(parseInt(entry.rollQuantity) || 0) * (PAD_MULTIPLIERS[entry.padType] || 45)} LF
+                          {parseInt(entry.rollQuantity) > 0
+                            ? `Total: ${parseInt(entry.rollQuantity) * (PAD_MULTIPLIERS[entry.padType] || 45)} LF`
+                            : ''}
                         </span>
                       </div>
                     </div>

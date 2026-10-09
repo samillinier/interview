@@ -543,13 +543,13 @@ export default function VehicleInspectionPage() {
                           <YesNoSelect value={String(form.cleanedRegularly || '')} onChange={(v) => update('cleanedRegularly', v)} />
                         </Field>
                         <Field label={`${OPERATING_INDEX + 6}. What is the Current Mileage of the vehicle (odometer reading)?`} required hint="The value must be a number.">
-                          <input type="number" inputMode="numeric" value={form.currentMileage} onChange={(e) => update('currentMileage', e.target.value)} placeholder="0" className={inputClass} />
+                          <input type="number" inputMode="numeric" value={form.currentMileage} onChange={(e) => update('currentMileage', e.target.value)} placeholder="Enter mileage" className={inputClass} />
                         </Field>
                         <Field label={`${OPERATING_INDEX + 7}. Enter the Next Oil Change Date noted on the windshield sticker`} hint="If no windshield sticker, estimate the next oil change date. Skip if not applicable (i.e. Tesla models).">
                           <input type="date" value={form.nextOilChangeDate} onChange={(e) => update('nextOilChangeDate', e.target.value)} className={inputClass} />
                         </Field>
                         <Field label={`${OPERATING_INDEX + 8}. Enter the Next Oil Change Mileage noted on the windshield sticker`} hint="If no windshield sticker, estimate the next oil change mileage. Skip if not applicable (i.e. Tesla models). The value must be a number.">
-                          <input type="number" inputMode="numeric" value={form.nextOilChangeMileage} onChange={(e) => update('nextOilChangeMileage', e.target.value)} placeholder="0" className={inputClass} />
+                          <input type="number" inputMode="numeric" value={form.nextOilChangeMileage} onChange={(e) => update('nextOilChangeMileage', e.target.value)} placeholder="Enter mileage" className={inputClass} />
                         </Field>
                         <div className="md:col-span-2">
                           <Field label={`${OPERATING_INDEX + 9}. Note any additional comments or concerns here`} hint="Service, Maintenance or Repairs will not be made based on comments in this section. A service request must be submitted via a Service Request form for fleet services to be performed.">

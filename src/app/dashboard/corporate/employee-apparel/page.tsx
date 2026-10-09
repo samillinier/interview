@@ -673,7 +673,7 @@ export default function EmployeeApparelPage() {
                                 type="number"
                                 min={0}
                                 max={25}
-                                value={qty}
+                                value={qty || ''}
                                 onChange={(e) => setQuantity(product.key, parseInt(e.target.value || '0', 10))}
                                 className="w-20 h-9 text-center border-2 border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
                               />

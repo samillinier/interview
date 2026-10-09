@@ -143,7 +143,7 @@ export default function BolPage() {
       const authStatus = order.authorized
         ? (order.authorizedBy || order.authorizationMethod || 'Authorized')
         : 'Pending'
-      for (const item of order.items as PadOrderItem[]) {
+      for (const item of (order.items as PadOrderItem[]).filter((row) => (row.quantity || 0) > 0)) {
         rows.push({
           'Order Number': order.orderNumber || '-',
           'Workroom': order.workroom,
@@ -715,7 +715,7 @@ export default function BolPage() {
                           </td>
                           <td className="py-3.5 px-5">
                             <div className="flex flex-wrap gap-1.5">
-                              {(order.items as PadOrderItem[]).map((item, i) => (
+                              {(order.items as PadOrderItem[]).filter((item) => (item.quantity || 0) > 0).map((item, i) => (
                                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/10 text-brand-green rounded-full text-[11px] font-semibold">
                                   <Package className="w-3 h-3" />
                                   {item.name} x {(PAD_MULTIPLIERS[item.name] || 45) * item.quantity} LF
@@ -780,7 +780,7 @@ export default function BolPage() {
                               <div className="mt-3 bg-white rounded-lg p-4 border border-slate-100">
                                 <p className="text-xs font-semibold text-slate-400 uppercase mb-2">All Items</p>
                                 <div className="divide-y divide-slate-50">
-                                  {(order.items as PadOrderItem[]).map((item, i) => (
+                                  {(order.items as PadOrderItem[]).filter((item) => (item.quantity || 0) > 0).map((item, i) => (
                                     <div key={i} className="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
                                       <div className="flex items-center gap-2">
                                         <Package className="w-3.5 h-3.5 text-brand-green" />
@@ -970,12 +970,12 @@ export default function BolPage() {
                                     const val = parseInt(e.target.value) || 0
                                     handleItemQuantity(entry.id, itemName, val)
                                   }}
-                                  placeholder="0"
+                                  placeholder=""
                                   className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium"
                                 />
                               </td>
                               <td className="py-2 px-2 text-center">
-                                <span className="text-xs font-semibold text-brand-green">{totalFt}</span>
+                                <span className="text-xs font-semibold text-brand-green">{qty > 0 ? totalFt : ''}</span>
                               </td>
                             </tr>
                           )})}

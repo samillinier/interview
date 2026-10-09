@@ -67,6 +67,19 @@ function orderedPadLines(order: PadOrder) {
   return PAD_LINES.map((line) => ({ ...line, qty: rollQty(order, line.key) })).filter((line) => line.qty > 0)
 }
 
+function baleLines(order: PadOrder) {
+  const pickup = String(order.recycledBalesPickup || '').trim()
+  const count = Number(order.recycledBalesCount)
+  const rows: { label: string; value: string }[] = []
+  if (/^yes$/i.test(pickup)) {
+    rows.push({ label: 'Recycle Bale Pick Up', value: 'Yes' })
+  }
+  if (Number.isFinite(count) && count > 0) {
+    rows.push({ label: 'Number of Bales', value: String(count) })
+  }
+  return rows
+}
+
 async function loadKindRecipients(kind: string) {
   const rows = await prisma.corporateNotificationRecipient.findMany({
     where: { kind, isActive: true },
@@ -110,18 +123,20 @@ function buildOrderEmailHtml(order: PadOrder) {
   const logoImg = emailLogoImg(56)
   const place = escapeHtml(locationLabel(order.location))
   const requestedBy = [order.createdByName, order.createdByEmail].filter(Boolean).join(' · ')
-  const balesPickup = String(order.recycledBalesPickup || '').trim()
-  const balesCount =
-    order.recycledBalesCount === null || order.recycledBalesCount === undefined
-      ? ''
-      : String(order.recycledBalesCount)
-
   const specRows = orderedPadLines(order)
     .map(
       (line) => `<tr>
       <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;color:#24301f;">${escapeHtml(line.label)}</td>
       <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;font-weight:700;color:#24301f;text-align:right;">${line.qty}</td>
     </tr>`
+    )
+    .join('')
+  const baleRows = baleLines(order)
+    .map(
+      (line) => `<tr>
+                <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;color:#24301f;">${escapeHtml(line.label)}</td>
+                <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;font-weight:700;color:#24301f;text-align:right;">${escapeHtml(line.value)}</td>
+              </tr>`
     )
     .join('')
 
@@ -144,16 +159,13 @@ function buildOrderEmailHtml(order: PadOrder) {
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin:0 0 18px;">
               ${specRows}
             </table>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin:0 0 22px;">
-              <tr>
-                <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;color:#24301f;">Recycle Bale Pick Up</td>
-                <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;font-weight:700;color:#24301f;text-align:right;">${escapeHtml(balesPickup)}</td>
-              </tr>
-              <tr>
-                <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;color:#24301f;">Number of Bales</td>
-                <td style="padding:8px 0;border-bottom:1px solid #edf2e8;font-size:15px;font-weight:700;color:#24301f;text-align:right;">${escapeHtml(balesCount)}</td>
-              </tr>
-            </table>
+            ${
+              baleRows
+                ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin:0 0 22px;">
+              ${baleRows}
+            </table>`
+                : ''
+            }
             <p style="margin:0 0 6px;">Please confirm receipt of this order.</p>
             <p style="margin:0;">Thank You,<br/>Floor Interior Services</p>
             <p style="margin:22px 0 0;font-size:12px;color:#8a9585;">${place} pad order</p>
@@ -171,9 +183,7 @@ function buildOrderEmailText(order: PadOrder) {
     'Order Specifications:',
     '',
     ...orderedPadLines(order).map((line) => `${line.label}:  ${line.qty}`),
-    '',
-    `Recycle Bale Pick Up:  ${String(order.recycledBalesPickup || '').trim()}`,
-    `Number of Bales:  ${order.recycledBalesCount ?? ''}`,
+    ...baleLines(order).flatMap((line) => ['', `${line.label}:  ${line.value}`]),
     '',
     'Please confirm receipt of this order.',
     'Thank You,',

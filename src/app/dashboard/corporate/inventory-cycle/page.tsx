@@ -166,8 +166,8 @@ export default function InventoryCyclePage() {
             'Cycle Type': c.cycleCountType,
             'Workroom': c.workroom,
             'Pad Type': pt,
-            'Roll Count': rolls,
-            'LF Count': ft,
+            'Roll Count': rolls > 0 ? rolls : '',
+            'LF Count': ft > 0 ? ft : '',
             'Total LF': totalLF,
             'Authorized': authStatus,
             'Authorized By': c.authorized ? (c.authorizedBy || c.authorizationMethod || '-') : '-',
@@ -557,6 +557,7 @@ export default function InventoryCyclePage() {
                                       {PAD_TYPES.map(padType => {
                                         const rolls = c.rollCounts ? ((c.rollCounts as Record<string, number>)[padType] ?? 0) : 0
                                         const ft = c.linearFeetCounts ? ((c.linearFeetCounts as Record<string, number>)[padType] ?? 0) : 0
+                                        if (rolls <= 0 && ft <= 0) return null
                                         const totalFt = rolls * (PAD_MULTIPLIERS[padType] || 45) + ft
                                         return (
                                         <tr key={padType} className="border-b border-slate-50 last:border-0">
@@ -567,10 +568,10 @@ export default function InventoryCyclePage() {
                                             </div>
                                           </td>
                                           <td className="py-2 px-3 text-center">
-                                            <span className="font-semibold text-slate-800">{rolls}</span>
+                                            <span className="font-semibold text-slate-800">{rolls > 0 ? rolls : ''}</span>
                                           </td>
                                           <td className="py-2 px-3 text-center">
-                                            <span className="font-semibold text-slate-800">{ft}</span>
+                                            <span className="font-semibold text-slate-800">{ft > 0 ? ft : ''}</span>
                                           </td>
                                           <td className="py-2 px-3 text-center">
                                             <span className="font-semibold text-brand-green">{totalFt}</span>
@@ -696,17 +697,17 @@ export default function InventoryCyclePage() {
                                 <td className="py-2 px-2">
                                   <input type="number" min="0" value={entry.rollCounts[padType]}
                                     onChange={(e) => updateRollCount(entry.id, padType, e.target.value)}
-                                    placeholder="0"
+                                    placeholder=""
                                     className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium" />
                                 </td>
                                 <td className="py-2 px-2">
                                   <input type="number" min="0" value={entry.linearFeetCounts[padType]}
                                     onChange={(e) => updateLinearFeetCount(entry.id, padType, e.target.value)}
-                                    placeholder="0"
+                                    placeholder=""
                                     className="w-full px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none text-center font-medium" />
                                 </td>
                                 <td className="py-2 px-2 text-center">
-                                  <span className="text-xs font-semibold text-brand-green">{totalFt}</span>
+                                  <span className="text-xs font-semibold text-brand-green">{rollsVal > 0 || ftVal > 0 ? totalFt : ''}</span>
                                 </td>
                               </tr>
                             )})}

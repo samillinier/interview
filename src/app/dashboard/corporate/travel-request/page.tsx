@@ -535,7 +535,7 @@ export default function TravelRequestPage() {
                         <Field label="Uber/Lyft/Taxi Expected Budget" hint="If applicable, enter the budget in dollars. Once approved you are expected to stay within the budget.">
                           <div className="relative">
                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input type="text" inputMode="decimal" value={form.rideshareBudget} onChange={(e) => update('rideshareBudget', e.target.value)} placeholder="0.00" className={`${inputClass} pl-9`} />
+                            <input type="text" inputMode="decimal" value={form.rideshareBudget} onChange={(e) => update('rideshareBudget', e.target.value)} placeholder="Amount" className={`${inputClass} pl-9`} />
                           </div>
                         </Field>
                       </div>
