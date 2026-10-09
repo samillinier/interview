@@ -587,7 +587,7 @@ export default function SettingsPage() {
           </div>
         </header>
 
-        <main className="p-6 lg:p-8 max-w-6xl mx-auto">
+        <main className="p-6 lg:p-8 max-w-[1600px] mx-auto">
         {success && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -748,13 +748,14 @@ export default function SettingsPage() {
           </motion.div>
         )}
 
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 items-start">
         {/* Administrators Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8 mb-6"
+          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5 md:p-6 min-h-0"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
                 <Shield className="w-6 h-6 text-brand-green" />
@@ -790,7 +791,7 @@ export default function SettingsPage() {
                   {admins.filter((a) => a.role === 'SUPER_ADMIN').length}
                 </span>
               </div>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3">
                 {admins
                   .filter((a) => a.role === 'SUPER_ADMIN')
                   .map((a) => (
@@ -817,7 +818,7 @@ export default function SettingsPage() {
                   key={admin.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors"
+                  className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors"
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -934,7 +935,7 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8 mb-6"
+          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5 md:p-6 min-h-0 flex flex-col"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
@@ -967,7 +968,7 @@ export default function SettingsPage() {
                 ? 'These addresses are used only after a Carpet Pad order is approved. To is the vendor inbox; CC is the copy list. The GM who submitted the order is always CC’d automatically.'
                 : 'Assign an email to a request type. They will be notified every time that request is created.'}
             </p>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4">
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Request type</label>
                 <select
@@ -1073,7 +1074,7 @@ export default function SettingsPage() {
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading recipients…
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               {communicationKinds.map((kind) => {
                 const recipients = commRecipients.filter((r) => r.kind === kind.slug)
                 return (
@@ -1131,6 +1132,7 @@ export default function SettingsPage() {
             </div>
           )}
         </motion.div>
+        </div>
 
         {/* Audit Log Section */}
         <motion.div
