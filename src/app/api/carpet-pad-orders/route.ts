@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
+import { notifyCarpetPadVendorOrder } from '@/lib/carpet-pad-order-email'
 
 const CORPORATE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR', 'ACCOUNTING'])
 const MODIFY_ROLES = new Set(['ADMIN', 'MODERATOR', 'SUPER_ADMIN'])
@@ -169,6 +170,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Order id is required' }, { status: 400 })
     }
 
+    const existing = await prisma.carpetPadOrder.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
     const updateData: any = {}
 
     if (typeof authorized === 'boolean') {
@@ -185,10 +191,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const order = await prisma.carpetPadOrder.update({
+    let order = await prisma.carpetPadOrder.update({
       where: { id },
       data: updateData,
     })
+
+    // Vendor/Leggett order email goes out only after approval, and only once.
+    if (order.authorized && !order.vendorOrderEmailSentAt) {
+      const sent = await notifyCarpetPadVendorOrder(order)
+      if (sent.ok) {
+        order = await prisma.carpetPadOrder.update({
+          where: { id },
+          data: { vendorOrderEmailSentAt: new Date() },
+        })
+      } else {
+        console.error('Carpet pad vendor email was not sent:', sent.error)
+      }
+    }
 
     return NextResponse.json({ success: true, order })
   } catch (error: any) {

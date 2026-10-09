@@ -144,6 +144,8 @@ export default function SettingsPage() {
     { slug: 'vehicle-inspection', label: 'Monthly Vehicle Inspection' },
     { slug: 'forklift-inspection', label: 'Weekly Forklift Inspection' },
     { slug: 'carpet-pad', label: 'Carpet Pad' },
+    { slug: 'carpet-pad-order-to', label: 'Carpet Pad Order — To (vendor)' },
+    { slug: 'carpet-pad-order-cc', label: 'Carpet Pad Order — CC' },
     { slug: 'fleet-service-request', label: 'Fleet Service Request' },
     { slug: 'job-application', label: 'Job Application' },
     { slug: 'installer-application', label: 'Installer Application' },
@@ -940,7 +942,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-slate-900">Communication</h2>
-              <p className="text-sm text-slate-500">Choose who receives an email when a request is submitted on the corporate page</p>
+              <p className="text-sm text-slate-500">Choose who receives an email when a request is submitted. Carpet Pad Order To/CC emails are sent only after an order is approved.</p>
             </div>
           </div>
 
@@ -960,7 +962,11 @@ export default function SettingsPage() {
           {/* Add recipient */}
           <form onSubmit={handleAddCommunicationRecipient} className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
             <h3 className="text-lg font-bold text-slate-900 mb-1">Add email recipient</h3>
-            <p className="text-sm text-slate-500 mb-4">Assign an email to a request type. They will be notified every time that request is created.</p>
+            <p className="text-sm text-slate-500 mb-4">
+              {commForm.kind === 'carpet-pad-order-to' || commForm.kind === 'carpet-pad-order-cc'
+                ? 'These addresses are used only after a Carpet Pad order is approved. To is the vendor inbox; CC is the copy list. The GM who submitted the order is always CC’d automatically.'
+                : 'Assign an email to a request type. They will be notified every time that request is created.'}
+            </p>
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Request type</label>
@@ -1080,8 +1086,19 @@ export default function SettingsPage() {
                         </span>
                       </div>
                     </div>
+                    {kind.slug === 'carpet-pad-order-to' || kind.slug === 'carpet-pad-order-cc' ? (
+                      <p className="mb-2 text-xs text-slate-500">
+                        {kind.slug === 'carpet-pad-order-to'
+                          ? 'Vendor To address for the approved pad-order email. Sent once, only after authorization.'
+                          : 'CC list for the approved pad-order email. The GM who submitted the order is always included automatically.'}
+                      </p>
+                    ) : null}
                     {recipients.length === 0 ? (
-                      <p className="text-sm text-slate-400">No recipients — emails go to the default authorizer.</p>
+                      <p className="text-sm text-slate-400">
+                        {kind.slug === 'carpet-pad-order-to' || kind.slug === 'carpet-pad-order-cc'
+                          ? 'No recipients yet — defaults will be used until you add emails here.'
+                          : 'No recipients — emails go to the default authorizer.'}
+                      </p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {recipients.map((r) => (

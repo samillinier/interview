@@ -1307,6 +1307,7 @@ model CarpetPadOrder {
   authorizedBy              String?
   authorized                Boolean  @default(false)
   authorizationMethod       String?
+  vendorOrderEmailSentAt    DateTime?
 
   @@index([createdAt])
   @@index([location])

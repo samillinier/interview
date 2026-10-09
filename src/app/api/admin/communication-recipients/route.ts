@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
+import { ensureCarpetPadOrderRecipients } from '@/lib/carpet-pad-order-email'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const kind = String(new URL(request.url).searchParams.get('kind') || '').trim()
+    await ensureCarpetPadOrderRecipients()
     const recipients = await prisma.corporateNotificationRecipient.findMany({
       where: kind ? { kind } : undefined,
       orderBy: [{ kind: 'asc' }, { createdAt: 'asc' }],
