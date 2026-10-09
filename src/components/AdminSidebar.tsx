@@ -91,6 +91,7 @@ export function AdminSidebar({ pathname }: Props) {
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
   const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState(0)
+  const [pendingPurchaseRequestCount, setPendingPurchaseRequestCount] = useState(0)
   const [pendingFleetServiceCount, setPendingFleetServiceCount] = useState(0)
   const [monthlyInspectionCount, setMonthlyInspectionCount] = useState(0)
   const [forkliftInspectionCount, setForkliftInspectionCount] = useState(0)
@@ -170,7 +171,7 @@ export function AdminSidebar({ pathname }: Props) {
     let cancelled = false
     const loadCounts = async () => {
       try {
-        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes, officeSuppliesRes, fleetRes, inspectionRes, forkliftRes, carpetPadRes] = await Promise.all([
+        const [approvalsRes, signatureRes, updatesRes, bolRes, padTransferRes, invCycleRes, travelRes, officeSuppliesRes, purchaseRequestRes, fleetRes, inspectionRes, forkliftRes, carpetPadRes] = await Promise.all([
           fetch('/api/admin/change-requests/count', { cache: 'no-store' }),
           fetch('/api/admin/signatures/independent-contractor-services/count', { cache: 'no-store' }),
           fetch('/api/admin/updates/count', { cache: 'no-store' }),
@@ -179,6 +180,7 @@ export function AdminSidebar({ pathname }: Props) {
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
           fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
           fetch('/api/office-supplies?action=count', { cache: 'no-store' }),
+          fetch('/api/purchase-requests?action=count', { cache: 'no-store' }),
           fetch('/api/fleet-service-requests?action=count', { cache: 'no-store' }),
           fetch('/api/vehicle-inspections?action=count', { cache: 'no-store' }),
           fetch('/api/forklift-inspections?action=count', { cache: 'no-store' }),
@@ -233,6 +235,12 @@ export function AdminSidebar({ pathname }: Props) {
           const data = await officeSuppliesRes.json().catch(() => null)
           const count = Number(data?.count ?? 0)
           if (Number.isFinite(count)) setPendingOfficeSuppliesCount(count)
+        }
+
+        if (purchaseRequestRes.ok) {
+          const data = await purchaseRequestRes.json().catch(() => null)
+          const count = Number(data?.count ?? 0)
+          if (Number.isFinite(count)) setPendingPurchaseRequestCount(count)
         }
 
         if (fleetRes.ok) {
@@ -339,7 +347,7 @@ export function AdminSidebar({ pathname }: Props) {
       const isManagerOrAccounting = normalizedRole === 'MANAGER' || normalizedRole === 'ACCOUNTING'
       const corporatePendingTotal = isManagerOrAccounting
         ? 0
-        : pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + pendingFleetServiceCount + monthlyInspectionCount + forkliftInspectionCount + carpetPadCount + invoiceCount
+        : pendingBolCount + pendingPadTransferCount + pendingInventoryCycleCount + pendingTravelRequestCount + pendingOfficeSuppliesCount + pendingPurchaseRequestCount + pendingFleetServiceCount + monthlyInspectionCount + forkliftInspectionCount + carpetPadCount + invoiceCount
       const corporateItem: NavItem = {
         href: '/dashboard/corporate',
         label: 'Corporate',
@@ -361,7 +369,7 @@ export function AdminSidebar({ pathname }: Props) {
     if (portalNav.length === 0) return filtered
 
     return [...filtered, ...portalNav]
-  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, pendingOfficeSuppliesCount, pendingFleetServiceCount, monthlyInspectionCount, forkliftInspectionCount, carpetPadCount, invoiceCount])
+  }, [normalizedRole, pendingApprovalsCount, signatureNotSignedCount, unreadMessagesCount, updatesCount, pendingBolCount, pendingPadTransferCount, pendingInventoryCycleCount, pendingTravelRequestCount, pendingOfficeSuppliesCount, pendingPurchaseRequestCount, pendingFleetServiceCount, monthlyInspectionCount, forkliftInspectionCount, carpetPadCount, invoiceCount])
 
   const isActive = (item: NavItem) => (item.match ? item.match(pathname) : pathname === item.href)
 

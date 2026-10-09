@@ -174,6 +174,7 @@ export default function CorporatePage() {
   const [pendingInventoryCycleCount, setPendingInventoryCycleCount] = useState(0)
   const [pendingTravelRequestCount, setPendingTravelRequestCount] = useState(0)
   const [pendingOfficeSuppliesCount, setPendingOfficeSuppliesCount] = useState(0)
+  const [pendingPurchaseRequestCount, setPendingPurchaseRequestCount] = useState(0)
   const [pendingBusinessCardsCount, setPendingBusinessCardsCount] = useState(0)
   const [invoiceCount, setInvoiceCount] = useState(0)
   const [pendingFleetServiceCount, setPendingFleetServiceCount] = useState(0)
@@ -185,12 +186,13 @@ export default function CorporatePage() {
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [bolRes, ptRes, icRes, travelRes, osRes, bcRes, invoiceRes, fleetRes, inspectionRes, forkliftRes, carpetPadRes] = await Promise.all([
+        const [bolRes, ptRes, icRes, travelRes, osRes, prRes, bcRes, invoiceRes, fleetRes, inspectionRes, forkliftRes, carpetPadRes] = await Promise.all([
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
           fetch('/api/travel-requests?action=count', { cache: 'no-store' }),
           fetch('/api/office-supplies?action=count', { cache: 'no-store' }),
+          fetch('/api/purchase-requests?action=count', { cache: 'no-store' }),
           fetch('/api/business-cards?action=count', { cache: 'no-store' }),
           canAccessInvoices(normalizedRole)
             ? fetch('/api/admin/invoices/count', { cache: 'no-store' })
@@ -205,6 +207,7 @@ export default function CorporatePage() {
         if (icRes.ok) { const d = await icRes.json(); setPendingInventoryCycleCount(Number(d?.count ?? 0)) }
         if (travelRes.ok) { const d = await travelRes.json(); setPendingTravelRequestCount(Number(d?.count ?? 0)) }
         if (osRes.ok) { const d = await osRes.json(); setPendingOfficeSuppliesCount(Number(d?.count ?? 0)) }
+        if (prRes.ok) { const d = await prRes.json(); setPendingPurchaseRequestCount(Number(d?.count ?? 0)) }
         if (bcRes.ok) { const d = await bcRes.json(); setPendingBusinessCardsCount(Number(d?.count ?? 0)) }
         if (invoiceRes && invoiceRes.ok) {
           const d = await invoiceRes.json()
@@ -440,6 +443,7 @@ export default function CorporatePage() {
                             (card.title === 'Inventory Cycle' && pendingInventoryCycleCount > 0) ||
                             (card.title === 'Travel Request' && pendingTravelRequestCount > 0) ||
                             (card.title === 'Office Supplies' && pendingOfficeSuppliesCount > 0) ||
+                            (card.title === 'Purchase Request' && pendingPurchaseRequestCount > 0) ||
                             (card.title === 'Business Cards' && pendingBusinessCardsCount > 0) ||
                             (card.title === 'Fleet Service Request' && pendingFleetServiceCount > 0) ||
                             (card.title === 'Monthly Vehicle Inspection' && monthlyInspectionCount > 0) ||
@@ -457,7 +461,9 @@ export default function CorporatePage() {
                                         ? pendingTravelRequestCount
                                         : card.title === 'Office Supplies'
                                           ? pendingOfficeSuppliesCount
-                                          : card.title === 'Business Cards'
+                                          : card.title === 'Purchase Request'
+                                            ? pendingPurchaseRequestCount
+                                            : card.title === 'Business Cards'
                                             ? pendingBusinessCardsCount
                                             : card.title === 'Fleet Service Request'
                                               ? pendingFleetServiceCount
