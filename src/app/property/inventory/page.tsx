@@ -42,8 +42,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import {
   InventoryBarcode,
@@ -742,12 +743,31 @@ export default function InventoryPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <div className={`p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 ${propertyMobileSafeLeftPad}`}>
+        <div className="max-w-[1550px] mx-auto space-y-8">
         <PropertyPageHeader
+          variant="banner"
           title="Office Equipment"
           subtitle="Furniture, IT, supplies, and asset tags."
+          stats={[
+            { icon: Armchair, text: `${lineItemCount} line${lineItemCount === 1 ? '' : 's'}` },
+            { icon: Monitor, text: `${inUseCount} in use` },
+            ...(inStorageCount > 0 ? [{ icon: Package, text: `${inStorageCount} in storage` }] : []),
+            ...(retiredCount > 0 ? [{ icon: Archive, text: `${retiredCount} retired` }] : []),
+          ]}
+          actions={
+            <button
+              type="button"
+              onClick={openNewEquipmentModal}
+              className="flex items-center gap-2 px-5 py-3 bg-white text-brand-green rounded-xl font-semibold text-sm hover:bg-emerald-50 transition-all shadow-lg shadow-brand-green/20"
+            >
+              <Plus className="w-5 h-5" />
+              Add equipment
+            </button>
+          }
         />
 
-        <main className="px-4 pb-6 pt-6 lg:p-6">
+        <main>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -768,107 +788,28 @@ export default function InventoryPage() {
             </motion.div>
           )}
 
-          {/* Stats Cards — desktop / laptop only (hidden on mobile) */}
-          {inventory.length > 0 && (
-            <div className="mb-6 hidden gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-4">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-green/80 to-brand-green-dark/80" />
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Line items</p>
-                    <p className="mt-3 text-3xl font-bold text-slate-900">{lineItemCount}</p>
-                    <p className="mt-1 text-sm text-slate-500">Tracked pieces of equipment</p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-green/10 text-brand-green">
-                    <Armchair className="h-6 w-6" />
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 }}
-                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400/80 to-indigo-500/80" />
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">In use</p>
-                    <p className="mt-3 text-3xl font-bold text-slate-900">{inUseCount}</p>
-                    <p className="mt-1 text-sm text-slate-500">Active onsite (default placement)</p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
-                    <Monitor className="h-6 w-6" />
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.16 }}
-                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-400/80 to-slate-600/80" />
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Retired</p>
-                    <p className="mt-3 text-3xl font-bold text-slate-900">{retiredCount}</p>
-                    <p className="mt-1 text-sm text-slate-500">No longer in service</p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                    <Archive className="h-6 w-6" />
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.24 }}
-                className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-300/80 to-slate-500/80" />
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">In storage</p>
-                    <p className="mt-3 text-3xl font-bold text-slate-900">{inStorageCount}</p>
-                    <p className="mt-1 text-sm text-slate-500">Available but not deployed</p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                    <Package className="h-6 w-6" />
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
+          {inventory.length > 0 ? (
+            <PropertyMetricCards
+              cards={[
+                { label: 'Line items', value: lineItemCount, desc: 'Tracked pieces of equipment', icon: Armchair },
+                { label: 'In use', value: inUseCount, desc: 'Active onsite', icon: Monitor },
+                { label: 'In storage', value: inStorageCount, desc: 'Available but not deployed', icon: Package },
+                { label: 'Retired', value: retiredCount, desc: 'No longer in service', icon: Archive },
+              ]}
+            />
+          ) : null}
 
           {/* Filters */}
           {inventory.length > 0 && (
-            <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-lg font-semibold text-slate-900">Equipment library</h2>
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                      {filteredInventory.length} shown
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Browse equipment, print labels, and keep assignments organized by workroom.
-                  </p>
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                  <Armchair className="w-4 h-4 text-brand-green" />
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={openNewEquipmentModal}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-green to-brand-green-dark px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
-                >
-                  <Plus className="h-5 w-5" />
-                  Add equipment
-                </motion.button>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Equipment Records</h2>
+                  <p className="text-xs text-slate-400">{filteredInventory.length} shown</p>
+                </div>
               </div>
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <div className="flex w-full flex-col gap-2 lg:max-w-xl">
@@ -987,7 +928,7 @@ export default function InventoryPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-8px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/[0.04]"
+              className="overflow-hidden bg-white rounded-2xl shadow-md border border-slate-200/60"
             >
               <div className="border-b border-slate-100 bg-gradient-to-br from-white via-slate-50/40 to-brand-green/[0.04] px-5 py-5 sm:px-7 sm:py-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1272,6 +1213,8 @@ export default function InventoryPage() {
             </motion.div>
           )}
         </main>
+        </div>
+        </div>
       </div>
 
       {photoLightbox ? (

@@ -24,13 +24,14 @@ import {
   Image as ImageIcon,
   Upload,
   Car,
-  ArrowLeft
+  ArrowLeft,
+  Tag
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { FleetBarcode } from '@/components/FleetBarcode'
@@ -414,6 +415,15 @@ export default function FleetPage() {
     if (categoryFilter === 'all') return true
     return normalizeVehicleCategory(vehicle.category) === categoryFilter
   })
+  const carCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'car').length
+  const forkliftCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'forklift').length
+  const totalMileage = vehicles.reduce((sum, v) => sum + (Number(v.mileageAsOfAugust2025) || 0), 0)
+  const now = Date.now()
+  const expiringTags = vehicles.filter((v) => {
+    if (!v.tagRenewal) return false
+    const t = new Date(v.tagRenewal).getTime()
+    return t >= now && t <= now + 60 * 24 * 60 * 60 * 1000
+  }).length
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/property/login' })
@@ -462,41 +472,49 @@ export default function FleetPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <div className={`p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 ${propertyMobileSafeLeftPad}`}>
+        <div className="max-w-[1550px] mx-auto space-y-8">
         <PropertyPageHeader
-          title="Fleet Management"
+          variant="banner"
+          title="Fleet"
           subtitle="Vehicles, plates, mileage, and tag renewals."
+          stats={[
+            { icon: Car, text: `${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'}` },
+            ...(carCount > 0 ? [{ icon: Car, text: `${carCount} car${carCount === 1 ? '' : 's'}` }] : []),
+            ...(forkliftCount > 0 ? [{ icon: Package, text: `${forkliftCount} forklift${forkliftCount === 1 ? '' : 's'}` }] : []),
+            ...(expiringTags > 0 ? [{ icon: Tag, text: `${expiringTags} tag${expiringTags === 1 ? '' : 's'} expiring` }] : []),
+          ]}
           actions={
             <>
               <div className="hidden sm:flex items-center gap-2">
-                <label className="text-sm font-semibold text-slate-700">Category</label>
+                <label className="text-sm font-semibold text-white/80">Category</label>
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value as 'all' | 'car' | 'forklift')}
-                  className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-700 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none"
+                  className="px-3 py-2 rounded-xl border border-white/30 bg-white/15 text-sm font-medium text-white focus:border-white focus:ring-2 focus:ring-white/30 outline-none"
                 >
-                  <option value="all">All</option>
-                  <option value="car">Car</option>
-                  <option value="forklift">Forklift</option>
+                  <option value="all" className="text-slate-800">All</option>
+                  <option value="car" className="text-slate-800">Car</option>
+                  <option value="forklift" className="text-slate-800">Forklift</option>
                 </select>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                type="button"
                 onClick={() => {
                   resetForm()
                   setEditingVehicle(null)
                   setShowAddModal(true)
                 }}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
+                className="flex items-center gap-2 px-5 py-3 bg-white text-brand-green rounded-xl font-semibold text-sm hover:bg-emerald-50 transition-all shadow-lg shadow-brand-green/20"
               >
                 <Plus className="w-5 h-5" />
                 Add Vehicle
-              </motion.button>
+              </button>
             </>
           }
         />
 
-        <main className={`p-4 lg:p-6 ${propertyMobileSafeLeftPad}`}>
+        <main>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -516,6 +534,19 @@ export default function FleetPage() {
               {success}
             </motion.div>
           )}
+
+          {vehicles.length > 0 ? (
+            <PropertyMetricCards
+              cards={[
+                { label: 'Vehicles', value: vehicles.length, desc: 'All fleet records', icon: Car },
+                { label: 'Cars', value: carCount, desc: 'Passenger vehicles', icon: Car },
+                { label: 'Forklifts', value: forkliftCount, desc: 'Warehouse equipment', icon: Package },
+                ...(totalMileage > 0
+                  ? [{ label: 'Total Mileage', value: totalMileage.toLocaleString(), desc: 'Combined miles on file', icon: Gauge }]
+                  : [{ label: 'Expiring Tags', value: expiringTags, desc: 'Plates in the next 60 days', icon: Tag }]),
+              ]}
+            />
+          ) : null}
 
           {vehicles.length === 0 ? (
             <motion.div
@@ -555,20 +586,31 @@ export default function FleetPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden"
+              className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden"
             >
+              <div className="p-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                    <Car className="w-4 h-4 text-brand-green" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Fleet Records</h2>
+                    <p className="text-xs text-slate-400">{filteredVehicles.length} vehicle{filteredVehicles.length === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+              </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Vehicle</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Assigned Driver</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">VIN</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Plate</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Location</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Mileage</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Actions</th>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-slate-500 uppercase bg-slate-50/50">
+                      <th className="text-left py-3 px-5 font-semibold">Vehicle</th>
+                      <th className="text-left py-3 px-5 font-semibold">Category</th>
+                      <th className="text-left py-3 px-5 font-semibold">Assigned Driver</th>
+                      <th className="text-left py-3 px-5 font-semibold">VIN</th>
+                      <th className="text-left py-3 px-5 font-semibold">Plate</th>
+                      <th className="text-left py-3 px-5 font-semibold">Location</th>
+                      <th className="text-left py-3 px-5 font-semibold">Mileage</th>
+                      <th className="text-left py-3 px-5 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -677,6 +719,8 @@ export default function FleetPage() {
             </motion.div>
           )}
         </main>
+        </div>
+        </div>
       </div>
 
       {/* Add/Edit Modal */}

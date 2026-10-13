@@ -38,7 +38,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -796,6 +796,19 @@ export default function FacilitiesPage() {
     )
   }
 
+  const activeLocations = locations.filter((l) => !l.status || l.status === 'active').length
+  const totalRent = locations.reduce((sum, l) => sum + (Number(l.rentAmount) || 0), 0)
+  const now = Date.now()
+  const upcomingRenewals = locations.filter((l) => {
+    if (!l.leaseRenewal) return false
+    const t = new Date(l.leaseRenewal).getTime()
+    return t >= now && t <= now + 90 * 24 * 60 * 60 * 1000
+  }).length
+  const money = (n: number) =>
+    n > 0
+      ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : null
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <PropertySidebar
@@ -813,27 +826,37 @@ export default function FacilitiesPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <div className={`p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 ${propertyMobileSafeLeftPad}`}>
+        <div className="max-w-[1550px] mx-auto space-y-8">
         <PropertyPageHeader
+          variant="banner"
           title="Facilities"
           subtitle="Locations, leases, and landlord details."
+          stats={[
+            { icon: Building2, text: `${locations.length} location${locations.length === 1 ? '' : 's'}` },
+            { icon: Home, text: `${activeLocations} active` },
+            ...(upcomingRenewals > 0
+              ? [{ icon: Calendar, text: `${upcomingRenewals} renewal${upcomingRenewals === 1 ? '' : 's'} due` }]
+              : []),
+            ...(money(totalRent) ? [{ icon: DollarSign, text: `${money(totalRent)} rent` }] : []),
+          ]}
           actions={
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
+              type="button"
               onClick={() => {
                 resetForm()
                 setEditingLocation(null)
                 setShowAddModal(true)
               }}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
+              className="flex items-center gap-2 px-5 py-3 bg-white text-brand-green rounded-xl font-semibold text-sm hover:bg-emerald-50 transition-all shadow-lg shadow-brand-green/20"
             >
               <Plus className="w-5 h-5" />
               Add Location
-            </motion.button>
+            </button>
           }
         />
 
-        <main className={`p-4 lg:p-6 ${propertyMobileSafeLeftPad}`}>
+        <main>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -853,6 +876,19 @@ export default function FacilitiesPage() {
               {success}
             </motion.div>
           )}
+
+          {locations.length > 0 ? (
+            <PropertyMetricCards
+              cards={[
+                { label: 'Locations', value: locations.length, desc: 'All facility records', icon: Building2 },
+                { label: 'Active', value: activeLocations, desc: 'Currently in use', icon: Home },
+                ...(money(totalRent)
+                  ? [{ label: 'Total Rent', value: money(totalRent)!, desc: 'Combined monthly rent', icon: DollarSign }]
+                  : []),
+                { label: 'Upcoming Renewals', value: upcomingRenewals, desc: 'Leases in the next 90 days', icon: Calendar },
+              ]}
+            />
+          ) : null}
 
           {locations.length === 0 ? (
             <motion.div
@@ -883,18 +919,29 @@ export default function FacilitiesPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden"
+              className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden"
             >
+              <div className="p-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-brand-green" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Facility Records</h2>
+                    <p className="text-xs text-slate-400">{locations.length} location{locations.length === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+              </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Location</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Property Address</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Landlord</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Rent Amount</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-primary-800 uppercase tracking-wider">Actions</th>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-slate-500 uppercase bg-slate-50/50">
+                      <th className="text-left py-3 px-5 font-semibold">Location</th>
+                      <th className="text-left py-3 px-5 font-semibold">Property Address</th>
+                      <th className="text-left py-3 px-5 font-semibold">Landlord</th>
+                      <th className="text-left py-3 px-5 font-semibold">Rent Amount</th>
+                      <th className="text-left py-3 px-5 font-semibold">Status</th>
+                      <th className="text-left py-3 px-5 font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1002,6 +1049,8 @@ export default function FacilitiesPage() {
             </motion.div>
           )}
         </main>
+        </div>
+        </div>
       </div>
 
       {/* Add/Edit Modal */}
