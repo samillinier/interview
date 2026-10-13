@@ -93,7 +93,7 @@ export function PropertySidebar({
         </button>
       </div>
 
-      <nav className="flex-1 p-2 space-y-0">
+      <nav className="flex-1 p-3 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
@@ -101,7 +101,7 @@ export function PropertySidebar({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
                 active
                   ? 'bg-white/20 text-white font-medium'
                   : 'text-white/90 hover:bg-white/10'
@@ -114,7 +114,7 @@ export function PropertySidebar({
         })}
         <Link
           href="/dashboard"
-          className={`flex items-center gap-3 px-3 py-2 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-2 pt-2 ${
+          className={`flex items-center gap-3 px-3 py-2.5 text-white/90 hover:bg-white/10 rounded-xl transition-colors border-t border-white/10 mt-3 pt-3 ${
             !sidebarOpen ? 'justify-center' : ''
           }`}
         >
