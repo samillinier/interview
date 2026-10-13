@@ -26,6 +26,9 @@ import {
   Warehouse,
   PackageOpen,
   Ruler,
+  Users,
+  Hash,
+  Navigation,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -310,9 +313,17 @@ export default function PropertyDashboardPage() {
       totalMileage: 0,
       expiringTags: 0,
       averageMileage: 0,
+      assignedDrivers: 0,
+      unassigned: 0,
+      withGps: 0,
+      withoutGps: 0,
+      missingVin: 0,
+      missingPlate: 0,
+      avgVehicleYear: 0,
       categoryDistribution: [] as Dist[],
       makeDistribution: [] as Dist[],
       mileageByVehicle: [] as Dist[],
+      gpsCoverage: [] as Dist[],
     },
     gps: {
       total: 0,
@@ -563,6 +574,31 @@ export default function PropertyDashboardPage() {
         .sort((a: Dist, b: Dist) => b.value - a.value)
         .slice(0, 8)
 
+      const assignedDrivers = vehicles.filter((v: any) => v.assignedDriver && String(v.assignedDriver).trim()).length
+      const unassigned = vehicles.length - assignedDrivers
+      const missingVin = vehicles.filter((v: any) => !v.vin || !String(v.vin).trim()).length
+      const missingPlate = vehicles.filter((v: any) => !v.plate || !String(v.plate).trim()).length
+
+      // GPS coverage: match fleet vehicles to GPS devices by plate
+      const gpsPlates = new Set(
+        gpsDevices
+          .map((d: any) => (d.vehiclePlate ? String(d.vehiclePlate).trim().toUpperCase() : null))
+          .filter(Boolean),
+      )
+      const withGps = vehicles.filter((v: any) => v.plate && gpsPlates.has(String(v.plate).trim().toUpperCase())).length
+      const withoutGps = vehicles.length - withGps
+
+      const vehicleYears = vehicles
+        .map((v: any) => (v.vehicleYear ? Number(v.vehicleYear) : null))
+        .filter((y: number | null): y is number => y !== null && !Number.isNaN(y))
+      const avgVehicleYear =
+        vehicleYears.length > 0 ? Math.round(vehicleYears.reduce((s: number, y: number) => s + y, 0) / vehicleYears.length) : 0
+
+      const gpsCoverage: Dist[] = [
+        { label: 'GPS Tracked', value: withGps },
+        { label: 'Not Tracked', value: withoutGps },
+      ]
+
       // ---------- Inventory ----------
       const activeInventory = inventory.filter((i: any) => i.status === 'active').length
       const totalValue = inventory.reduce((sum: number, i: any) => sum + ((i.cost || 0) * (i.quantity || 0)), 0)
@@ -618,9 +654,17 @@ export default function PropertyDashboardPage() {
           totalMileage,
           expiringTags,
           averageMileage,
+          assignedDrivers,
+          unassigned,
+          withGps,
+          withoutGps,
+          missingVin,
+          missingPlate,
+          avgVehicleYear,
           categoryDistribution: fleetCategory,
           makeDistribution,
           mileageByVehicle,
+          gpsCoverage,
         },
         gps: {
           total: gpsDevices.length,
@@ -708,9 +752,17 @@ export default function PropertyDashboardPage() {
       : null,
     // Fleet
     { label: 'Vehicles', value: String(analytics.fleet.total), desc: 'Total fleet vehicles', icon: Car },
+    { label: 'Assigned Drivers', value: String(analytics.fleet.assignedDrivers), desc: analytics.fleet.unassigned > 0 ? `${analytics.fleet.unassigned} unassigned` : 'All vehicles covered', icon: Users },
+    { label: 'GPS Tracked', value: String(analytics.fleet.withGps), desc: analytics.fleet.withoutGps > 0 ? `${analytics.fleet.withoutGps} not tracked` : 'Full tracking coverage', icon: Navigation },
     { label: 'Total Mileage', value: analytics.fleet.totalMileage.toLocaleString(), desc: 'Fleet-wide odometer', icon: TrendingUp },
     { label: 'Avg Mileage', value: `${Math.round(analytics.fleet.averageMileage).toLocaleString()} mi`, desc: 'Average per vehicle', icon: BarChart3 },
     { label: 'Expiring Tags', value: String(analytics.fleet.expiringTags), desc: 'Plates in the next 60 days', icon: Tag },
+    analytics.fleet.missingVin > 0
+      ? { label: 'Missing VIN', value: String(analytics.fleet.missingVin), desc: 'VIN not on file', icon: Hash }
+      : null,
+    analytics.fleet.avgVehicleYear > 0
+      ? { label: 'Avg Vehicle Year', value: String(analytics.fleet.avgVehicleYear), desc: 'Fleet age', icon: Calendar }
+      : null,
     // GPS Tracking
     { label: 'Devices', value: String(analytics.gps.total), desc: 'Tracked units', icon: MapPin },
     { label: 'Online', value: String(analytics.gps.online), desc: 'Reporting now', icon: Signal },
@@ -824,6 +876,10 @@ export default function PropertyDashboardPage() {
 
                 <ChartCard title="Fleet Mileage" subtitle="Odometer by vehicle" icon={TrendingUp}>
                   <HorizontalBarList data={analytics.fleet.mileageByVehicle} formatValue={mileageFmt} />
+                </ChartCard>
+
+                <ChartCard title="Fleet GPS Coverage" subtitle="Vehicles with active tracking vs untracked" icon={Navigation}>
+                  <DonutWithLegend data={analytics.fleet.gpsCoverage} centerLabel="Vehicles" unit="vehicles" />
                 </ChartCard>
 
                 <ChartCard title="GPS Device Status" subtitle="Live tracking device states" icon={PieChart}>
