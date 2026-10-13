@@ -468,7 +468,6 @@ export default function PropertyDashboardPage() {
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <PropertyPageHeader
-          showBack={false}
           eyebrow="Property Portal"
           title="Dashboard"
           subtitle="Facilities, fleet, equipment, and communications."

@@ -2,8 +2,6 @@
 
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 
 type Stat = {
@@ -15,9 +13,6 @@ type Props = {
   title: string
   subtitle?: string
   eyebrow?: string
-  showBack?: boolean
-  backHref?: string
-  backLabel?: string
   actions?: ReactNode
   variant?: 'sticky' | 'banner'
   stats?: Stat[]
@@ -27,54 +22,38 @@ export function PropertyPageHeader({
   title,
   subtitle,
   eyebrow = 'Property Portal',
-  showBack = true,
-  backHref = '/property/dashboard',
-  backLabel = 'Back to Dashboard',
   actions,
   variant = 'sticky',
   stats,
 }: Props) {
-  const backLink = showBack ? (
-    <Link
-      href={backHref}
-      className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-green transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      {backLabel}
-    </Link>
-  ) : null
-
   if (variant === 'banner') {
     return (
-      <div className="space-y-4">
-        {backLink}
-        <div className="rounded-2xl border border-brand-green-dark/20 bg-brand-green shadow-sm p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-white/70 mb-2">
-                {eyebrow}
-              </p>
-              <h1 className="text-3xl font-bold text-white mb-2">{title}</h1>
-              {subtitle ? <p className="text-emerald-50/90">{subtitle}</p> : null}
-              {stats && stats.length > 0 ? (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {stats.map((stat) => {
-                    const Icon = stat.icon
-                    return (
-                      <span
-                        key={stat.text}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white"
-                      >
-                        {Icon ? <Icon className="w-3.5 h-3.5" /> : null}
-                        {stat.text}
-                      </span>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </div>
-            {actions ? <div className="flex flex-wrap items-center gap-3 flex-shrink-0">{actions}</div> : null}
+      <div className="rounded-2xl border border-brand-green-dark/20 bg-brand-green shadow-sm p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-white/70 mb-2">
+              {eyebrow}
+            </p>
+            <h1 className="text-3xl font-bold text-white mb-2">{title}</h1>
+            {subtitle ? <p className="text-emerald-50/90">{subtitle}</p> : null}
+            {stats && stats.length > 0 ? (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {stats.map((stat) => {
+                  const Icon = stat.icon
+                  return (
+                    <span
+                      key={stat.text}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white"
+                    >
+                      {Icon ? <Icon className="w-3.5 h-3.5" /> : null}
+                      {stat.text}
+                    </span>
+                  )
+                })}
+              </div>
+            ) : null}
           </div>
+          {actions ? <div className="flex flex-wrap items-center gap-3 flex-shrink-0">{actions}</div> : null}
         </div>
       </div>
     )
@@ -84,7 +63,6 @@ export function PropertyPageHeader({
     <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
       <div className={`px-4 lg:px-6 pt-16 lg:pt-6 pb-6 ${propertyMobileSafeLeftPad}`}>
         <div className="max-w-[1400px] mx-auto">
-          {showBack ? <div className="mb-3">{backLink}</div> : null}
           <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-brand-green mb-2">
             {eyebrow}
           </p>

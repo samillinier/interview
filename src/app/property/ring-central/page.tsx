@@ -22,10 +22,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface PropertyProfile {
@@ -309,29 +310,36 @@ export default function RingCentralPage() {
       {isManager ? <AdminMobileMenu pathname={pathname} /> : <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />}
 
       <div className={`flex-1 transition-all duration-300 ${isManager ? 'lg:ml-64' : sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
+        <div className={`p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 ${isManager ? '' : propertyMobileSafeLeftPad}`}>
+        <div className="max-w-[1550px] mx-auto space-y-8">
         <PropertyPageHeader
+          variant="banner"
           title="RingCentral"
           subtitle="Call logs, recordings, and communication analytics."
-          backHref={isManager ? '/dashboard' : '/property/dashboard'}
-          backLabel="Back to Dashboard"
+          stats={[
+            { icon: PhoneCall, text: `${totalRecords} call${totalRecords === 1 ? '' : 's'}` },
+            { icon: PhoneIncoming, text: `${inbound} inbound` },
+            { icon: PhoneOutgoing, text: `${outbound} outbound` },
+            { icon: PhoneMissed, text: `${missed} missed` },
+          ]}
           actions={
             <>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  showFilters ? 'bg-brand-green text-white' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                  showFilters ? 'bg-white text-brand-green' : 'bg-white/15 border border-white/30 text-white hover:bg-white/25'
                 }`}
               >
                 <Filter className="w-4 h-4" />
                 Filters
                 {(missedFilter || directionFilter !== "all" || searchPhone) && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-orange" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
                 )}
               </button>
               <button
                 onClick={fetchCalls}
                 disabled={callsLoading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-brand-green hover:bg-emerald-50 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${callsLoading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -339,7 +347,15 @@ export default function RingCentralPage() {
             </>
           }
         />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-10">
+        <div>
+          <PropertyMetricCards
+            cards={[
+              { label: 'Total Calls', value: totalRecords.toLocaleString(), desc: 'All records in range', icon: PhoneCall },
+              { label: 'Inbound', value: inbound, desc: 'Incoming calls', icon: PhoneIncoming },
+              { label: 'Outbound', value: outbound, desc: 'Outgoing calls', icon: PhoneOutgoing },
+              { label: 'Missed', value: missed, desc: 'Missed calls', icon: PhoneMissed },
+            ]}
+          />
 
           {/* Quick-filter call type buttons — Installer-style pill bar */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -637,6 +653,8 @@ export default function RingCentralPage() {
               </>
             )}
           </div>
+        </div>
+        </div>
         </div>
       </div>
     </div>
