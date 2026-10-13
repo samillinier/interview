@@ -38,7 +38,7 @@ function getSectionsFromFields(fields: string[]): string[] {
   
   // Insurance & Registration fields
   const insuranceFields = new Set([
-    'hasInsurance', 'insuranceType', 'hasGeneralLiability', 'hasCommercialAutoLiability',
+    'hasInsurance', 'insuranceType', 'complianceStatus', 'hasGeneralLiability', 'hasCommercialAutoLiability',
     'hasWorkersComp', 'hasWorkersCompExemption', 'isSunbizRegistered', 'isSunbizActive',
     'hasBusinessLicense', 'feiEin', 'employerLiabilityPolicyNumber'
   ])

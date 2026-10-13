@@ -268,7 +268,7 @@ interface InstallerProfile {
   automobileLiabilityExpiryDates?: string
   employersLiabilityExpiry?: string
   dateNullFields?: string
-  canPassBackgroundCheck?: boolean
+  canPassBackgroundCheck?: boolean | null
   backgroundCheckDetails?: string
   insuranceType?: string
   complianceStatus?: 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | null
@@ -539,7 +539,7 @@ export default function InstallerProfileViewPage() {
   const [isSunbizRegistered, setIsSunbizRegistered] = useState<boolean | undefined>(undefined)
   const [isSunbizActive, setIsSunbizActive] = useState<boolean | undefined>(undefined)
   const [hasBusinessLicense, setHasBusinessLicense] = useState<boolean | undefined>(undefined)
-  const [canPassBackgroundCheck, setCanPassBackgroundCheck] = useState<boolean | undefined>(undefined)
+  const [canPassBackgroundCheck, setCanPassBackgroundCheck] = useState<boolean | null | undefined>(undefined)
   const [backgroundCheckDetails, setBackgroundCheckDetails] = useState('')
   const [feiEin, setFeiEin] = useState('')
   const [employerLiabilityPolicyNumber, setEmployerLiabilityPolicyNumber] = useState('')
@@ -1503,17 +1503,11 @@ export default function InstallerProfileViewPage() {
         )
       })
       const backgroundStatusFromCompliance =
-        complianceStatus === 'COMPLIANT'
+        canPassBackgroundCheck === true
           ? 'COMPLIANT'
-          : complianceStatus === 'NOT_COMPLIANT'
+          : canPassBackgroundCheck === false
             ? 'NOT_COMPLIANT'
-            : complianceStatus === 'IN_PROGRESS'
-              ? 'IN_PROGRESS'
-              : canPassBackgroundCheck === true
-                ? 'COMPLIANT'
-                : canPassBackgroundCheck === false
-                  ? 'NOT_COMPLIANT'
-                  : 'IN_PROGRESS'
+            : 'IN_PROGRESS'
 
       // Helper to get status: use explicit admin override (active/inactive/expired/na),
       // but treat 'missing' as "no doc" — if there's no file attached, show Missing
@@ -1697,6 +1691,7 @@ export default function InstallerProfileViewPage() {
       employersLiabilityExpiry,
       staffMembers,
       agreements,
+      canPassBackgroundCheck,
     ])
 
     const complianceCounts = useMemo(() => {
@@ -2190,15 +2185,6 @@ export default function InstallerProfileViewPage() {
 
       // Build payload, then strip empty-string fields to avoid wiping existing DB values.
       // To intentionally clear a field, the API expects `null` (not an empty string).
-      const canPassBackgroundCheckFromCompliance =
-        complianceStatus === 'COMPLIANT'
-          ? true
-          : complianceStatus === 'NOT_COMPLIANT'
-            ? false
-            : complianceStatus === 'IN_PROGRESS'
-              ? null
-              : (canPassBackgroundCheck ?? false)
-
       const payload: any = {
         status,
         trackerStage,
@@ -2232,7 +2218,8 @@ export default function InstallerProfileViewPage() {
         isSunbizRegistered,
         isSunbizActive,
         hasBusinessLicense,
-        canPassBackgroundCheck: canPassBackgroundCheckFromCompliance,
+        canPassBackgroundCheck:
+          canPassBackgroundCheck === true ? true : canPassBackgroundCheck === false ? false : null,
         backgroundCheckDetails,
         feiEin,
         employerLiabilityPolicyNumber,
@@ -2375,6 +2362,49 @@ export default function InstallerProfileViewPage() {
       return next
     })
   }, [installerId])
+
+  const patchInstallerFields = async (fields: Record<string, unknown>, successMessage = 'Updated') => {
+    if (!installerId || isManager) return false
+    try {
+      setError('')
+      const response = await fetch(`/api/installers/${installerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        setError(
+          errorData.details
+            ? `${errorData.error || 'Failed to update'}: ${errorData.details}`
+            : errorData.error || 'Failed to update'
+        )
+        return false
+      }
+      const data = await response.json()
+      if (data.installer) setInstaller(data.installer)
+      setSuccess(successMessage)
+      setTimeout(() => setSuccess(''), 3000)
+      return true
+    } catch (err: any) {
+      setError(err.message || 'Failed to update')
+      return false
+    }
+  }
+
+  const handleComplianceStatusChange = async (value: 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS') => {
+    const previous = complianceStatus
+    setComplianceStatus(value)
+    const ok = await patchInstallerFields({ complianceStatus: value }, 'Compliance updated')
+    if (!ok) setComplianceStatus(previous)
+  }
+
+  const handleBackgroundCheckChange = async (value: boolean | null) => {
+    const previous = canPassBackgroundCheck
+    setCanPassBackgroundCheck(value)
+    const ok = await patchInstallerFields({ canPassBackgroundCheck: value }, 'Background check updated')
+    if (!ok) setCanPassBackgroundCheck(previous)
+  }
 
   // Quick status update (just status field)
   const handleQuickStatusUpdate = async (newStatus: string) => {
@@ -3911,22 +3941,45 @@ export default function InstallerProfileViewPage() {
                             title={complianceOpen ? 'Collapse compliance statuses' : 'Expand compliance statuses'}
                           >
                             <BarChart3 className="w-4 h-4 text-brand-green" />
-                            <span>Compliance: </span>
-                            <span className={`font-bold ${
-                              installer.complianceStatus === 'COMPLIANT'
-                                ? 'text-emerald-700'
-                                : installer.complianceStatus === 'NOT_COMPLIANT'
-                                  ? 'text-red-700'
-                                  : 'text-amber-700'
-                            }`}>
-                              {installer.complianceStatus === 'COMPLIANT' ? 'Compliant' : installer.complianceStatus === 'NOT_COMPLIANT' ? 'Not Compliant' : installer.complianceStatus ? 'In Progress' : 'Not set'}
-                            </span>
+                            <span>Compliance</span>
                             {complianceOpen ? (
                               <ChevronUp className="w-4 h-4 text-slate-500" />
                             ) : (
                               <ChevronDown className="w-4 h-4 text-slate-500" />
                             )}
                           </button>
+                          {!isManager ? (
+                            <select
+                              value={complianceStatus || installer.complianceStatus || ''}
+                              onChange={(e) => {
+                                const v = e.target.value as 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | ''
+                                if (!v) return
+                                void handleComplianceStatusChange(v)
+                              }}
+                              className={`px-2.5 py-2 rounded-xl border bg-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green ${
+                                (complianceStatus || installer.complianceStatus) === 'COMPLIANT'
+                                  ? 'border-emerald-200 text-emerald-700'
+                                  : (complianceStatus || installer.complianceStatus) === 'NOT_COMPLIANT'
+                                    ? 'border-red-200 text-red-700'
+                                    : 'border-amber-200 text-amber-700'
+                              }`}
+                              title="Set compliance status"
+                            >
+                              <option value="COMPLIANT">Compliant</option>
+                              <option value="NOT_COMPLIANT">Not compliant</option>
+                              <option value="IN_PROGRESS">In progress</option>
+                            </select>
+                          ) : (
+                            <span className={`px-2.5 py-2 rounded-xl border bg-white text-sm font-bold ${
+                              installer.complianceStatus === 'COMPLIANT'
+                                ? 'border-emerald-200 text-emerald-700'
+                                : installer.complianceStatus === 'NOT_COMPLIANT'
+                                  ? 'border-red-200 text-red-700'
+                                  : 'border-amber-200 text-amber-700'
+                            }`}>
+                              {installer.complianceStatus === 'COMPLIANT' ? 'Compliant' : installer.complianceStatus === 'NOT_COMPLIANT' ? 'Not Compliant' : installer.complianceStatus ? 'In Progress' : 'Not set'}
+                            </span>
+                          )}
 
                           <div className="flex flex-wrap items-center gap-2 text-xs">
                             <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
@@ -4010,9 +4063,42 @@ export default function InstallerProfileViewPage() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-3 flex-wrap">
-                                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-bold ${badgeClasses}`}>
-                                        {row.statusText}
-                                      </span>
+                                      {row.key === 'background_check' && !isManager ? (
+                                        <select
+                                          value={
+                                            canPassBackgroundCheck === true
+                                              ? 'true'
+                                              : canPassBackgroundCheck === false
+                                                ? 'false'
+                                                : 'progress'
+                                          }
+                                          onChange={(e) => {
+                                            const v =
+                                              e.target.value === 'true'
+                                                ? true
+                                                : e.target.value === 'false'
+                                                  ? false
+                                                  : null
+                                            void handleBackgroundCheckChange(v)
+                                          }}
+                                          className={`px-2.5 py-1 rounded-full border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-green/30 ${
+                                            canPassBackgroundCheck === true
+                                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                              : canPassBackgroundCheck === false
+                                                ? 'bg-red-50 text-red-700 border-red-200'
+                                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                                          }`}
+                                          title="Set background check status"
+                                        >
+                                          <option value="true">Compliant</option>
+                                          <option value="false">Not compliant</option>
+                                          <option value="progress">In progress</option>
+                                        </select>
+                                      ) : (
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-bold ${badgeClasses}`}>
+                                          {row.statusText}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 )
@@ -5757,10 +5843,18 @@ export default function InstallerProfileViewPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Compliance Status</p>
-                      {isEditing ? (
+                      {!isManager ? (
                         <select
                           value={complianceStatus}
-                          onChange={(e) => setComplianceStatus(e.target.value as any)}
+                          onChange={(e) => {
+                            const v = e.target.value as 'COMPLIANT' | 'NOT_COMPLIANT' | 'IN_PROGRESS' | ''
+                            if (!v) return
+                            if (isEditing) {
+                              setComplianceStatus(v)
+                              return
+                            }
+                            void handleComplianceStatusChange(v)
+                          }}
                           className="w-full max-w-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
                         >
                           <option value="">Select…</option>
@@ -6349,7 +6443,7 @@ export default function InstallerProfileViewPage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Background Check</p>
-                    {isEditing ? (
+                    {!isManager ? (
                       <>
                         <div className="flex items-center gap-4 mt-2">
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -6357,7 +6451,13 @@ export default function InstallerProfileViewPage() {
                               type="radio"
                               name="canPassBackgroundCheck"
                               checked={canPassBackgroundCheck === true}
-                              onChange={() => setCanPassBackgroundCheck(true)}
+                              onChange={() => {
+                                if (isEditing) {
+                                  setCanPassBackgroundCheck(true)
+                                  return
+                                }
+                                void handleBackgroundCheckChange(true)
+                              }}
                               className="w-4 h-4 text-brand-green focus:ring-brand-green"
                             />
                             <span className="text-slate-900 font-medium">Compliant</span>
@@ -6367,7 +6467,13 @@ export default function InstallerProfileViewPage() {
                               type="radio"
                               name="canPassBackgroundCheck"
                               checked={canPassBackgroundCheck === false}
-                              onChange={() => setCanPassBackgroundCheck(false)}
+                              onChange={() => {
+                                if (isEditing) {
+                                  setCanPassBackgroundCheck(false)
+                                  return
+                                }
+                                void handleBackgroundCheckChange(false)
+                              }}
                               className="w-4 h-4 text-brand-green focus:ring-brand-green"
                             />
                             <span className="text-slate-900 font-medium">Not compliant</span>
@@ -6376,20 +6482,32 @@ export default function InstallerProfileViewPage() {
                             <input
                               type="radio"
                               name="canPassBackgroundCheck"
-                              checked={canPassBackgroundCheck === undefined}
-                              onChange={() => setCanPassBackgroundCheck(undefined)}
+                              checked={canPassBackgroundCheck !== true && canPassBackgroundCheck !== false}
+                              onChange={() => {
+                                if (isEditing) {
+                                  setCanPassBackgroundCheck(null)
+                                  return
+                                }
+                                void handleBackgroundCheckChange(null)
+                              }}
                               className="w-4 h-4 text-brand-green focus:ring-brand-green"
                             />
                             <span className="text-slate-900 font-medium">In progress</span>
                           </label>
                         </div>
-                        <textarea
-                          value={backgroundCheckDetails}
-                          onChange={(e) => setBackgroundCheckDetails(e.target.value)}
-                          className="w-full mt-3 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
-                          placeholder="Background check details (optional)"
-                          rows={3}
-                        />
+                        {isEditing ? (
+                          <textarea
+                            value={backgroundCheckDetails}
+                            onChange={(e) => setBackgroundCheckDetails(e.target.value)}
+                            className="w-full mt-3 px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900 resize-none"
+                            placeholder="Background check details (optional)"
+                            rows={3}
+                          />
+                        ) : backgroundCheckDetails ? (
+                          <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{backgroundCheckDetails}</p>
+                        ) : (
+                          <p className="text-sm text-slate-400 mt-1 italic">No details</p>
+                        )}
                       </>
                     ) : (
                       <div className="mt-1">

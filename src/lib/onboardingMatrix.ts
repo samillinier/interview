@@ -485,11 +485,7 @@ export function computeOnboardingMatrix(input: {
     cells.photo = input.photoUrl ? { state: 'ok' } : { state: 'missing' }
   }
 
-  const compliance = String(input.complianceStatus || '').trim().toUpperCase()
-  if (compliance === 'COMPLIANT') cells.bg = { state: 'ok' }
-  else if (compliance === 'NOT_COMPLIANT') cells.bg = { state: 'missing' }
-  else if (compliance === 'IN_PROGRESS') cells.bg = { state: 'warn' }
-  else if (input.canPassBackgroundCheck === true) cells.bg = { state: 'ok' }
+  if (input.canPassBackgroundCheck === true) cells.bg = { state: 'ok' }
   else if (input.canPassBackgroundCheck === false) cells.bg = { state: 'missing' }
   else cells.bg = { state: 'warn' }
 
