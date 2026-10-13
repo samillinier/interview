@@ -14,10 +14,7 @@ import {
   BarChart3,
   Car,
   Armchair,
-  ArrowRight,
   MapPin,
-  PhoneCall,
-  Settings,
   CheckCircle2,
   Signal,
   Satellite,
@@ -28,7 +25,6 @@ import {
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
 import { PropertyPageHeader } from '@/components/PropertyPageHeader'
@@ -378,84 +374,6 @@ export default function PropertyDashboardPage() {
       ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : null
 
-  const hubCards = [
-    {
-      title: 'Facilities',
-      description: 'View and update property locations, leases, and landlord details.',
-      href: '/property/facilities',
-      icon: Building2,
-      cta: 'Open Facilities',
-      highlights: [
-        `${analytics.facilities.total} location${analytics.facilities.total === 1 ? '' : 's'}`,
-        `${analytics.facilities.active} active`,
-        analytics.facilities.upcomingRenewals > 0
-          ? `${analytics.facilities.upcomingRenewals} renewal${analytics.facilities.upcomingRenewals === 1 ? '' : 's'} due`
-          : null,
-        money(analytics.facilities.totalRent) ? `${money(analytics.facilities.totalRent)} rent` : null,
-      ].filter((item): item is string => Boolean(item)),
-    },
-    {
-      title: 'Fleet',
-      description: 'Track vehicles, plates, mileage, and tag renewals.',
-      href: '/property/fleet',
-      icon: Car,
-      cta: 'Open Fleet',
-      highlights: [
-        `${analytics.fleet.total} vehicle${analytics.fleet.total === 1 ? '' : 's'}`,
-        analytics.fleet.totalMileage > 0
-          ? `${analytics.fleet.totalMileage.toLocaleString()} mi`
-          : null,
-        analytics.fleet.expiringTags > 0
-          ? `${analytics.fleet.expiringTags} tag${analytics.fleet.expiringTags === 1 ? '' : 's'} expiring`
-          : null,
-      ].filter((item): item is string => Boolean(item)),
-    },
-    {
-      title: 'GPS Tracking',
-      description: 'Live fleet map, device status, and trip history.',
-      href: '/property/gps',
-      icon: MapPin,
-      cta: 'Open GPS',
-      highlights: [
-        `${analytics.gps.total} device${analytics.gps.total === 1 ? '' : 's'}`,
-        `${analytics.gps.online} online`,
-        analytics.gps.offline > 0 ? `${analytics.gps.offline} offline` : null,
-        analytics.gps.moving > 0 ? `${analytics.gps.moving} moving` : null,
-      ].filter((item): item is string => Boolean(item)),
-    },
-    {
-      title: 'Office Equipment',
-      description: 'Furniture, IT, supplies, and asset tags by workroom.',
-      href: '/property/inventory',
-      icon: Armchair,
-      cta: 'Open Equipment',
-      highlights: [
-        `${analytics.inventory.total} line${analytics.inventory.total === 1 ? '' : 's'}`,
-        analytics.inventory.active > 0 ? `${analytics.inventory.active} in use` : null,
-        analytics.inventory.lowStock > 0
-          ? `${analytics.inventory.lowStock} need reorder`
-          : null,
-        money(analytics.inventory.totalValue) || null,
-      ].filter((item): item is string => Boolean(item)),
-    },
-    {
-      title: 'RingCentral',
-      description: 'Call logs, recordings, and communication analytics.',
-      href: '/property/ring-central',
-      icon: PhoneCall,
-      cta: 'Open RingCentral',
-      highlights: ['Call logs', 'Recordings', 'Missed calls'],
-    },
-    {
-      title: 'Settings',
-      description: 'Manage property portal users and account access.',
-      href: '/property/settings',
-      icon: Settings,
-      cta: 'Open Settings',
-      highlights: ['Users', 'Portal access'],
-    },
-  ]
-
   const metricGroups: {
     title: string
     icon: typeof Building2
@@ -548,70 +466,6 @@ export default function PropertyDashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/60"
-              >
-                <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-r from-brand-green/10 via-lime-50/80 to-white p-5 sm:p-7">
-                  <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-green/10 blur-3xl" />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="relative">
-                      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-green">Property Portal</p>
-                      <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Overview</h2>
-                      <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-                        Manage facilities, fleet, equipment, and communications from one place.
-                      </p>
-                    </div>
-                    <span className="relative inline-flex w-fit items-center rounded-full border border-brand-green/20 bg-white px-4 py-2 text-xs font-extrabold text-brand-green shadow-sm">
-                      {hubCards.length} pages
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 sm:p-7">
-                  {hubCards.map((card) => {
-                    const Icon = card.icon
-                    return (
-                      <Link
-                        key={card.title}
-                        href={card.href}
-                        className="group relative min-h-[260px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-white via-white to-brand-green/5 p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-green/40 hover:shadow-2xl hover:shadow-brand-green/10"
-                      >
-                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-green via-lime-300 to-transparent opacity-80" />
-                        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-green/10 blur-2xl transition-transform group-hover:scale-125" />
-                        <div className="relative flex h-full flex-col">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-3xl border border-brand-green/15 bg-white shadow-lg shadow-slate-200/70 ring-8 ring-brand-green/5">
-                              <Icon className="h-8 w-8 text-brand-green" />
-                            </div>
-                            <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-slate-500 shadow-sm transition-colors group-hover:border-brand-green/30 group-hover:text-brand-green">
-                              Open
-                            </span>
-                          </div>
-                          <div className="mt-5 flex-1">
-                            <h3 className="text-2xl font-black text-slate-900">{card.title}</h3>
-                            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">{card.description}</p>
-                            {card.highlights.length > 0 ? (
-                              <div className="mt-5 flex flex-wrap gap-2">
-                                {card.highlights.map((highlight) => (
-                                  <span key={highlight} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-600 shadow-sm">
-                                    {highlight}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                          <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
-                            {card.cta}
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                          </span>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </motion.section>
-
               {metricGroups.map((group) => {
                 const GroupIcon = group.icon
                 return (
