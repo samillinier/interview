@@ -374,57 +374,33 @@ export default function PropertyDashboardPage() {
       ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : null
 
-  const metricGroups: {
-    title: string
-    icon: typeof Building2
-    cards: { label: string; value: string; desc: string; icon: typeof Building2 }[]
-  }[] = [
-    {
-      title: 'Facilities',
-      icon: Building2,
-      cards: [
-        { label: 'Locations', value: String(analytics.facilities.total), desc: 'Total facilities', icon: Building2 },
-        { label: 'Active', value: String(analytics.facilities.active), desc: 'Currently active', icon: CheckCircle2 },
-        { label: 'Total Rent', value: money(analytics.facilities.totalRent) ?? '—', desc: 'Monthly rent on file', icon: DollarSign },
-        { label: 'Total Deposits', value: money(analytics.facilities.totalDeposits) ?? '—', desc: 'Security deposits on file', icon: Layers },
-        { label: 'Upcoming Renewals', value: String(analytics.facilities.upcomingRenewals), desc: 'Leases in the next 90 days', icon: Calendar },
-        { label: 'Avg Rent', value: money(analytics.facilities.averageRent) ?? '—', desc: 'Average per facility', icon: BarChart3 },
-      ],
-    },
-    {
-      title: 'Fleet',
-      icon: Car,
-      cards: [
-        { label: 'Vehicles', value: String(analytics.fleet.total), desc: 'Total fleet vehicles', icon: Car },
-        { label: 'Total Mileage', value: analytics.fleet.totalMileage.toLocaleString(), desc: 'Fleet-wide odometer', icon: TrendingUp },
-        { label: 'Avg Mileage', value: `${Math.round(analytics.fleet.averageMileage).toLocaleString()} mi`, desc: 'Average per vehicle', icon: BarChart3 },
-        { label: 'Expiring Tags', value: String(analytics.fleet.expiringTags), desc: 'Plates in the next 60 days', icon: Tag },
-      ],
-    },
-    {
-      title: 'GPS Tracking',
-      icon: MapPin,
-      cards: [
-        { label: 'Devices', value: String(analytics.gps.total), desc: 'Tracked units', icon: MapPin },
-        { label: 'Online', value: String(analytics.gps.online), desc: 'Reporting now', icon: Signal },
-        { label: 'Offline', value: String(analytics.gps.offline), desc: 'No signal', icon: WifiOff },
-        { label: 'Moving', value: String(analytics.gps.moving), desc: 'Active on the road', icon: Gauge },
-        { label: 'Avg Satellites', value: String(Math.round(analytics.gps.avgSatellites)), desc: 'GPS lock quality', icon: Satellite },
-        { label: 'Connection', value: analytics.gps.connected ? 'Connected' : 'Offline', desc: 'Provider status', icon: Signal },
-      ],
-    },
-    {
-      title: 'Office Equipment',
-      icon: Armchair,
-      cards: [
-        { label: 'Line Items', value: String(analytics.inventory.total), desc: 'Asset records', icon: Package },
-        { label: 'Units on Hand', value: analytics.inventory.totalQuantity.toLocaleString(), desc: 'Total quantity', icon: Layers },
-        { label: 'In Use', value: String(analytics.inventory.active), desc: 'Active assets', icon: CheckCircle2 },
-        { label: 'Equipment Types', value: String(analytics.inventory.categories), desc: 'Unique categories', icon: Home },
-        { label: 'Est. Book Value', value: money(analytics.inventory.totalValue) ?? '—', desc: 'Total inventory value', icon: DollarSign },
-        { label: 'Needs Reorder', value: String(analytics.inventory.lowStock), desc: analytics.inventory.lowStock > 0 ? 'Action needed' : 'Stock levels are current', icon: AlertTriangle },
-      ],
-    },
+  const metricCards: { label: string; value: string; desc: string; icon: typeof Building2 }[] = [
+    // Facilities
+    { label: 'Locations', value: String(analytics.facilities.total), desc: 'Total facilities', icon: Building2 },
+    { label: 'Active', value: String(analytics.facilities.active), desc: 'Currently active', icon: CheckCircle2 },
+    { label: 'Total Rent', value: money(analytics.facilities.totalRent) ?? '—', desc: 'Monthly rent on file', icon: DollarSign },
+    { label: 'Total Deposits', value: money(analytics.facilities.totalDeposits) ?? '—', desc: 'Security deposits on file', icon: Layers },
+    { label: 'Upcoming Renewals', value: String(analytics.facilities.upcomingRenewals), desc: 'Leases in the next 90 days', icon: Calendar },
+    { label: 'Avg Rent', value: money(analytics.facilities.averageRent) ?? '—', desc: 'Average per facility', icon: BarChart3 },
+    // Fleet
+    { label: 'Vehicles', value: String(analytics.fleet.total), desc: 'Total fleet vehicles', icon: Car },
+    { label: 'Total Mileage', value: analytics.fleet.totalMileage.toLocaleString(), desc: 'Fleet-wide odometer', icon: TrendingUp },
+    { label: 'Avg Mileage', value: `${Math.round(analytics.fleet.averageMileage).toLocaleString()} mi`, desc: 'Average per vehicle', icon: BarChart3 },
+    { label: 'Expiring Tags', value: String(analytics.fleet.expiringTags), desc: 'Plates in the next 60 days', icon: Tag },
+    // GPS Tracking
+    { label: 'Devices', value: String(analytics.gps.total), desc: 'Tracked units', icon: MapPin },
+    { label: 'Online', value: String(analytics.gps.online), desc: 'Reporting now', icon: Signal },
+    { label: 'Offline', value: String(analytics.gps.offline), desc: 'No signal', icon: WifiOff },
+    { label: 'Moving', value: String(analytics.gps.moving), desc: 'Active on the road', icon: Gauge },
+    { label: 'Avg Satellites', value: String(Math.round(analytics.gps.avgSatellites)), desc: 'GPS lock quality', icon: Satellite },
+    { label: 'Connection', value: analytics.gps.connected ? 'Connected' : 'Offline', desc: 'Provider status', icon: Signal },
+    // Office Equipment
+    { label: 'Line Items', value: String(analytics.inventory.total), desc: 'Asset records', icon: Package },
+    { label: 'Units on Hand', value: analytics.inventory.totalQuantity.toLocaleString(), desc: 'Total quantity', icon: Layers },
+    { label: 'In Use', value: String(analytics.inventory.active), desc: 'Active assets', icon: CheckCircle2 },
+    { label: 'Equipment Types', value: String(analytics.inventory.categories), desc: 'Unique categories', icon: Home },
+    { label: 'Est. Book Value', value: money(analytics.inventory.totalValue) ?? '—', desc: 'Total inventory value', icon: DollarSign },
+    { label: 'Needs Reorder', value: String(analytics.inventory.lowStock), desc: analytics.inventory.lowStock > 0 ? 'Action needed' : 'Stock levels are current', icon: AlertTriangle },
   ]
 
   return (
@@ -465,45 +441,29 @@ export default function PropertyDashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {metricGroups.map((group) => {
-                const GroupIcon = group.icon
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {metricCards.map((card, i) => {
+                const Icon = card.icon
                 return (
-                  <motion.section
-                    key={group.title}
-                    initial={{ opacity: 0, y: 16 }}
+                  <motion.div
+                    key={card.label}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/60"
+                    transition={{ delay: (i % 4) * 0.05 }}
+                    className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5"
                   >
-                    <div className="flex items-center gap-3 border-b border-slate-200 bg-gradient-to-r from-brand-green/10 via-lime-50/60 to-white px-5 py-4 sm:px-7">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-brand-green/15 bg-white shadow-sm">
-                        <GroupIcon className="h-5 w-5 text-brand-green" />
-                      </div>
+                    <div className="h-1.5 w-full rounded-full bg-brand-green/90 mb-6" />
+                    <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="text-lg font-black tracking-tight text-slate-900">{group.title}</h3>
-                        <p className="text-xs font-semibold text-slate-500">{group.cards.length} metrics</p>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">{card.label}</p>
+                        <h3 className="text-4xl leading-none font-black tracking-tight text-slate-900 mb-2">{card.value}</h3>
+                        <p className="text-sm text-slate-500">{card.desc}</p>
+                      </div>
+                      <div className="w-14 h-14 bg-brand-green/10 rounded-2xl border border-brand-green/10 flex items-center justify-center shadow-sm flex-shrink-0">
+                        <Icon className="w-6 h-6 text-brand-green" />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 p-5 sm:p-7">
-                      {group.cards.map((card) => {
-                        const Icon = card.icon
-                        return (
-                          <div
-                            key={card.label}
-                            className="bg-white rounded-2xl shadow-[0_6px_18px_rgba(15,23,42,0.05)] border border-slate-200/80 p-4"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="h-1.5 w-full rounded-full bg-brand-green" />
-                              <Icon className="w-5 h-5 text-brand-green ml-3 flex-shrink-0" />
-                            </div>
-                            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-1.5">{card.label}</p>
-                            <h3 className="text-2xl leading-none font-black tracking-tight text-slate-900 mb-1">{card.value}</h3>
-                            <p className="text-xs text-slate-500">{card.desc}</p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </motion.section>
+                  </motion.div>
                 )
               })}
             </div>
