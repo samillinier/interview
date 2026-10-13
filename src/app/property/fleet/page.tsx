@@ -24,7 +24,6 @@ import {
   Image as ImageIcon,
   Upload,
   Car,
-  ArrowLeft,
   Tag
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -442,8 +441,8 @@ export default function FleetPage() {
       <div className="min-h-screen interview-gradient flex items-center justify-center p-4">
         <div className="text-center bg-white rounded-3xl shadow-xl p-8 max-w-md">
           <AlertCircle className="w-16 h-16 text-danger-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-primary-900 mb-2">Profile Not Found</h2>
-          <p className="text-primary-500 mb-6">{error || 'Unable to load your profile.'}</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Profile Not Found</h2>
+          <p className="text-slate-500 mb-6">{error || 'Unable to load your profile.'}</p>
           <button
             onClick={handleLogout}
             className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
@@ -557,8 +556,8 @@ export default function FleetPage() {
               <div className="w-24 h-24 bg-brand-green/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Car className="w-12 h-12 text-brand-green" />
               </div>
-              <h3 className="text-2xl font-bold text-primary-900 mb-2">No Vehicles Yet</h3>
-              <p className="text-primary-500 mb-8 text-lg">Get started by adding your first vehicle to the fleet.</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">No Vehicles Yet</h3>
+              <p className="text-slate-500 mb-8 text-lg">Get started by adding your first vehicle to the fleet.</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -567,7 +566,7 @@ export default function FleetPage() {
                   setEditingVehicle(null)
                   setShowAddModal(true)
                 }}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-brand-green text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
               >
                 <Plus className="w-5 h-5" />
                 Add Your First Vehicle
@@ -579,8 +578,8 @@ export default function FleetPage() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-3xl shadow-lg border border-slate-200 p-12 text-center"
             >
-              <h3 className="text-xl font-bold text-primary-900 mb-2">No vehicles in this category</h3>
-              <p className="text-primary-500">Try switching the category filter to All.</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">No vehicles in this category</h3>
+              <p className="text-slate-500">Try switching the category filter to All.</p>
             </motion.div>
           ) : (
             <motion.div
@@ -623,7 +622,7 @@ export default function FleetPage() {
                         onClick={() => handleEdit(vehicle)}
                         className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-transparent transition-all group cursor-pointer"
                       >
-                        <td className="px-6 py-4 text-sm font-medium text-primary-900">
+                        <td className="px-6 py-4 text-sm font-medium text-slate-900">
                           <div className="flex items-center gap-3">
                             {vehicle.photoUrl ? (
                               <div className="w-28 h-28 overflow-hidden flex-shrink-0">
@@ -639,7 +638,7 @@ export default function FleetPage() {
                               </div>
                             )}
                             <div className="min-w-0">
-                              <p className="font-semibold text-primary-900 truncate">
+                              <p className="font-semibold text-slate-900 truncate">
                                 {vehicle.vehicleYear || '—'} {vehicle.vehicleMake || ''} {vehicle.vehicleModel || 'N/A'}
                               </p>
                               <p className="text-xs text-slate-500 truncate">
@@ -648,32 +647,32 @@ export default function FleetPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-700">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
                             {vehicle.category
                               ? normalizeVehicleCategory(vehicle.category) || vehicle.category
                               : 'N/A'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-600">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4 text-slate-400" />
                             {vehicle.assignedDriver || 'N/A'}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-600 font-mono">
+                        <td className="px-6 py-4 text-sm text-slate-600 font-mono">
                           {vehicle.vin || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-primary-900">
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
                           {vehicle.plate || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-600">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-slate-400" />
                             {vehicle.location || 'N/A'}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-600">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           {vehicle.mileageAsOfAugust2025 ? (
                             <div className="flex items-center gap-1">
                               <Gauge className="w-4 h-4 text-brand-green" />
@@ -759,7 +758,7 @@ export default function FleetPage() {
               className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="sticky top-0 bg-gradient-to-r from-brand-green to-brand-green-dark px-8 py-6 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-brand-green px-8 py-6 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <Car className="w-6 h-6 text-white" />
@@ -774,19 +773,6 @@ export default function FleetPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false)
-                    setEditingVehicle(null)
-                    resetForm()
-                  }}
-                  className="hidden sm:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white/95 hover:bg-white/15 transition-colors"
-                  title="Back"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </button>
                 {editingVehicle?.id ? (
                   <div className="hidden sm:block">
                     <FleetBarcode vehicleId={editingVehicle.id} />
@@ -848,7 +834,7 @@ export default function FleetPage() {
                   )}
                 </div>
                 <div className="mt-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                     <Upload className="w-4 h-4 text-brand-green" />
                     Upload Photo
                   </label>
@@ -868,9 +854,9 @@ export default function FleetPage() {
 
               {/* Vehicle Information Section */}
               <div className="mb-8 lg:pr-[420px]">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Car className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Vehicle Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Vehicle Information</h3>
                 </div>
 
                 <div className="space-y-6">
@@ -880,7 +866,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Vehicle Year
                     </label>
@@ -899,7 +885,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Car className="w-4 h-4 text-brand-green" />
                       Vehicle Make
                     </label>
@@ -916,7 +902,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Package className="w-4 h-4 text-brand-green" />
                       Category
                     </label>
@@ -935,7 +921,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Car className="w-4 h-4 text-brand-green" />
                       Vehicle Model
                     </label>
@@ -956,7 +942,7 @@ export default function FleetPage() {
                       transition={{ delay: 0.25 }}
                       className="md:col-span-2"
                     >
-                      <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                         <Users className="w-4 h-4 text-brand-green" />
                         Assigned Driver
                       </label>
@@ -974,7 +960,7 @@ export default function FleetPage() {
                       transition={{ delay: 0.3 }}
                       className="md:col-span-1"
                     >
-                      <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                         <Hash className="w-4 h-4 text-brand-green" />
                         VIN #
                       </label>
@@ -993,9 +979,9 @@ export default function FleetPage() {
 
               {/* Location & Registration Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <MapPin className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Location & Registration</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Location & Registration</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1003,7 +989,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Location
                     </label>
@@ -1021,7 +1007,7 @@ export default function FleetPage() {
                     transition={{ delay: 0.4 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Location Address
                     </label>
@@ -1038,7 +1024,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <CreditCard className="w-4 h-4 text-brand-green" />
                       Plate
                     </label>
@@ -1055,7 +1041,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Tag Renewal
                     </label>
@@ -1071,9 +1057,9 @@ export default function FleetPage() {
 
               {/* Additional Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Shield className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Additional Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Additional Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1081,7 +1067,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Hash className="w-4 h-4 text-brand-green" />
                       Transponder Number
                     </label>
@@ -1098,7 +1084,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Gauge className="w-4 h-4 text-brand-green" />
                       Mileage (as of Aug 2025)
                     </label>
@@ -1116,9 +1102,9 @@ export default function FleetPage() {
 
               {/* Documents Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Package className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Documents</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Documents</h3>
                 </div>
 
                 {!editingVehicle?.id || !property?.id ? (
@@ -1283,9 +1269,9 @@ export default function FleetPage() {
 
               {/* Photo Section */}
               <div className="mb-8 lg:hidden">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <ImageIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Photo</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Photo</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1293,7 +1279,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Upload className="w-4 h-4 text-brand-green" />
                       Upload Photo
                     </label>
@@ -1328,7 +1314,7 @@ export default function FleetPage() {
                     transition={{ delay: 1.2 }}
                     className="lg:hidden"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <ImageIcon className="w-4 h-4 text-brand-green" />
                       Preview
                     </label>
@@ -1381,7 +1367,7 @@ export default function FleetPage() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="px-8 py-3 bg-brand-green text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 >
                   {isSaving ? (
                     <>

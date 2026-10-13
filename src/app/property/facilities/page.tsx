@@ -30,12 +30,10 @@ import {
   Lock,
   Trash2 as TrashIcon,
   Flame,
-  ChevronRight,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
 import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
@@ -783,8 +781,8 @@ export default function FacilitiesPage() {
       <div className="min-h-screen interview-gradient flex items-center justify-center p-4">
         <div className="text-center bg-white rounded-3xl shadow-xl p-8 max-w-md">
           <AlertCircle className="w-16 h-16 text-danger-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-primary-900 mb-2">Profile Not Found</h2>
-          <p className="text-primary-500 mb-6">{error || 'Unable to load your profile.'}</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Profile Not Found</h2>
+          <p className="text-slate-500 mb-6">{error || 'Unable to load your profile.'}</p>
           <button
             onClick={handleLogout}
             className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
@@ -899,8 +897,8 @@ export default function FacilitiesPage() {
               <div className="w-24 h-24 bg-brand-green/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Building2 className="w-12 h-12 text-brand-green" />
               </div>
-              <h3 className="text-2xl font-bold text-primary-900 mb-2">No Facilities Yet</h3>
-              <p className="text-primary-500 mb-8 text-lg">Get started by adding your first facility location.</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">No Facilities Yet</h3>
+              <p className="text-slate-500 mb-8 text-lg">Get started by adding your first facility location.</p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -909,7 +907,7 @@ export default function FacilitiesPage() {
                   setEditingLocation(null)
                   setShowAddModal(true)
                 }}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-brand-green text-white rounded-xl font-semibold hover:shadow-lg transition-all shadow-md"
               >
                 <Plus className="w-5 h-5" />
                 Add Your First Location
@@ -954,7 +952,7 @@ export default function FacilitiesPage() {
                         onClick={() => handleEdit(location)}
                         className="hover:bg-gradient-to-r hover:from-brand-green/5 hover:to-transparent transition-all group cursor-pointer"
                       >
-                        <td className="px-6 py-4 text-sm font-medium text-primary-900">
+                        <td className="px-6 py-4 text-sm font-medium text-slate-900">
                           <div className="flex items-center gap-3">
                             {location.photoUrl ? (
                               <div className="relative w-28 h-28 overflow-hidden flex-shrink-0 rounded-3xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100 p-2">
@@ -974,7 +972,7 @@ export default function FacilitiesPage() {
                               </div>
                             )}
                             <div className="min-w-0">
-                              <p className="font-semibold text-primary-900 truncate">
+                              <p className="font-semibold text-slate-900 truncate">
                                 {location.location || location.aliasLocation || 'N/A'}
                               </p>
                               <p className="text-xs text-slate-500 truncate">
@@ -983,16 +981,16 @@ export default function FacilitiesPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-600">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           {location.propertyAddress || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 text-sm text-primary-600">
+                        <td className="px-6 py-4 text-sm text-slate-600">
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4 text-slate-400" />
                             {location.landlord || 'N/A'}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-primary-900">
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
                           {location.rentAmount ? (
                             <div className="flex items-center gap-1">
                               <DollarSign className="w-4 h-4 text-brand-green" />
@@ -1089,7 +1087,7 @@ export default function FacilitiesPage() {
               className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="sticky top-0 bg-gradient-to-r from-brand-green to-brand-green-dark px-8 py-6 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-brand-green px-8 py-6 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <Building2 className="w-6 h-6 text-white" />
@@ -1120,42 +1118,6 @@ export default function FacilitiesPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-              {/* Breadcrumbs */}
-              <div className="px-8 pt-6 pb-4 bg-white border-b border-slate-200">
-                <nav className="flex items-center gap-2 text-sm">
-                  <Link 
-                    href="/property/dashboard" 
-                    className="text-slate-500 hover:text-brand-green transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setShowAddModal(false)
-                      setEditingLocation(null)
-                      resetForm()
-                      router.push('/property/dashboard')
-                    }}
-                  >
-                    Dashboard
-                  </Link>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setShowAddModal(false)
-                      setEditingLocation(null)
-                      resetForm()
-                    }}
-                    className="text-slate-500 hover:text-brand-green transition-colors"
-                  >
-                    Facilities
-                  </button>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                  <span className="text-primary-900 font-medium">
-                    {editingLocation ? (editingLocation.location || editingLocation.aliasLocation || 'Edit Location') : 'Add Location'}
-                  </span>
-                </nav>
-              </div>
-
               {/* Hero Image Section */}
               {(photoPreview || editingLocation?.photoUrl) && (
                 <div className="relative w-full h-64 md:h-80 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
@@ -1185,9 +1147,9 @@ export default function FacilitiesPage() {
               <div className="p-8">
               {/* Basic Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <MapPin className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Basic Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Basic Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1195,7 +1157,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Location
                     </label>
@@ -1212,7 +1174,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Home className="w-4 h-4 text-brand-green" />
                       Alias Location
                     </label>
@@ -1229,7 +1191,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Property Address
                     </label>
@@ -1246,7 +1208,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone
                     </label>
@@ -1273,9 +1235,9 @@ export default function FacilitiesPage() {
 
                 return (
                   <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-3 mb-5">
                       <MapPin className="w-5 h-5 text-brand-green" />
-                      <h3 className="text-lg font-semibold text-primary-900">Location Map</h3>
+                      <h3 className="text-lg font-bold text-slate-900">Location Map</h3>
                     </div>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -1314,9 +1276,9 @@ export default function FacilitiesPage() {
 
               {/* Lease Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Calendar className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Lease Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Lease Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1324,7 +1286,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Lease Start
                     </label>
@@ -1340,7 +1302,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Lease Renewal
                     </label>
@@ -1356,9 +1318,9 @@ export default function FacilitiesPage() {
 
               {/* Documents Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <FileText className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Documents</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Documents</h3>
                 </div>
 
                 {!editingLocation?.id || !getLocationPropertyId(editingLocation) ? (
@@ -1551,9 +1513,9 @@ export default function FacilitiesPage() {
 
               {/* Contact Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Users className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Contact Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Contact Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1561,7 +1523,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Users className="w-4 h-4 text-brand-green" />
                       Landlord
                     </label>
@@ -1578,7 +1540,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Landlord Phone
                     </label>
@@ -1595,7 +1557,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Users className="w-4 h-4 text-brand-green" />
                       Property Manager
                     </label>
@@ -1612,7 +1574,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Shield className="w-4 h-4 text-brand-green" />
                       Status
                     </label>
@@ -1631,9 +1593,9 @@ export default function FacilitiesPage() {
 
               {/* Financial Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <DollarSign className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Financial Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Financial Information</h3>
                 </div>
                 <div className="grid md:grid-cols-3 gap-6">
                   <motion.div
@@ -1641,7 +1603,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Rent Amount
                     </label>
@@ -1662,7 +1624,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Deposit Amount
                     </label>
@@ -1683,7 +1645,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.65 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Deposit Payback Date
                     </label>
@@ -1699,9 +1661,9 @@ export default function FacilitiesPage() {
 
               {/* Insurance & Additional Information */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Shield className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Insurance & Additional Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Insurance & Additional Information</h3>
                 </div>
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -1709,7 +1671,7 @@ export default function FacilitiesPage() {
                   transition={{ delay: 0.7 }}
                   className="mb-6"
                 >
-                  <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                     <FileText className="w-4 h-4 text-brand-green" />
                     Insurance Requirements
                   </label>
@@ -1727,7 +1689,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.75 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Square className="w-4 h-4 text-brand-green" />
                       Square Feet
                     </label>
@@ -1745,9 +1707,9 @@ export default function FacilitiesPage() {
 
               {/* Sublease Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Users className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Sublease Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Sublease Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1755,7 +1717,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Users className="w-4 h-4 text-brand-green" />
                       Sub Broker
                     </label>
@@ -1772,7 +1734,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.85 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Users className="w-4 h-4 text-brand-green" />
                       Sublessee
                     </label>
@@ -1789,7 +1751,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.9 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Sub Rent
                     </label>
@@ -1810,7 +1772,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.95 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Sub Deposit
                     </label>
@@ -1831,7 +1793,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.0 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Users className="w-4 h-4 text-brand-green" />
                       Sub Contacts
                     </label>
@@ -1848,7 +1810,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.05 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Sub Phone
                     </label>
@@ -1865,9 +1827,9 @@ export default function FacilitiesPage() {
 
               {/* Photo Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <ImageIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Photo</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Photo</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1875,7 +1837,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Upload className="w-4 h-4 text-brand-green" />
                       Upload Photo
                     </label>
@@ -1908,7 +1870,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <ImageIcon className="w-4 h-4 text-brand-green" />
                       Preview
                     </label>
@@ -1940,9 +1902,9 @@ export default function FacilitiesPage() {
 
               {/* WiFi Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Wifi className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">WiFi Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">WiFi Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1950,7 +1912,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Wifi className="w-4 h-4 text-brand-green" />
                       WiFi Name (SSID)
                     </label>
@@ -1967,7 +1929,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.26 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Lock className="w-4 h-4 text-brand-green" />
                       WiFi Password
                     </label>
@@ -1984,9 +1946,9 @@ export default function FacilitiesPage() {
 
               {/* Water Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Droplet className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Water Provider Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Water Provider Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -1994,7 +1956,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.3 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2011,7 +1973,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.31 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2028,7 +1990,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.32 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2045,7 +2007,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.33 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2063,7 +2025,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.34 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Provider Address
                     </label>
@@ -2081,7 +2043,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.35 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2098,9 +2060,9 @@ export default function FacilitiesPage() {
 
               {/* Internet Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Globe className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Internet Provider Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Internet Provider Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -2108,7 +2070,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.4 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2125,7 +2087,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.41 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2142,7 +2104,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.42 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2159,7 +2121,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.43 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2176,7 +2138,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.44 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Plan/Service
                     </label>
@@ -2193,7 +2155,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.45 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Zap className="w-4 h-4 text-brand-green" />
                       Speed
                     </label>
@@ -2211,7 +2173,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.46 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Router Location
                     </label>
@@ -2229,7 +2191,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.47 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2246,9 +2208,9 @@ export default function FacilitiesPage() {
 
               {/* Power Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Zap className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Power Provider Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Power Provider Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -2256,7 +2218,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.5 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2273,7 +2235,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.51 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2290,7 +2252,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.52 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2307,7 +2269,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.53 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2325,7 +2287,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.54 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Service Address
                     </label>
@@ -2342,7 +2304,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.55 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Meter Number
                     </label>
@@ -2360,7 +2322,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.56 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2377,9 +2339,9 @@ export default function FacilitiesPage() {
 
               {/* Dumpster Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <TrashIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Dumpster Provider Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Dumpster Provider Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -2387,7 +2349,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.57 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2404,7 +2366,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.58 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2421,7 +2383,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.59 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2438,7 +2400,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2455,7 +2417,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.61 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Pickup Day
                     </label>
@@ -2473,7 +2435,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.62 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Provider Address
                     </label>
@@ -2491,7 +2453,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.63 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2508,9 +2470,9 @@ export default function FacilitiesPage() {
 
               {/* Propane Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Flame className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Propane Provider Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Propane Provider Information</h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
@@ -2518,7 +2480,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.64 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2535,7 +2497,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.65 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2552,7 +2514,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.66 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2569,7 +2531,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.67 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2586,7 +2548,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.68 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Tank Location
                     </label>
@@ -2603,7 +2565,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.69 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <Square className="w-4 h-4 text-brand-green" />
                       Tank Size
                     </label>
@@ -2621,7 +2583,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.7 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Provider Address
                     </label>
@@ -2639,7 +2601,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.71 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2656,9 +2618,9 @@ export default function FacilitiesPage() {
 
               {/* Security Lock Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-3 mb-5">
                   <Lock className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Security Lock Information</h3>
+                  <h3 className="text-lg font-bold text-slate-900">Security Lock Information</h3>
                 </div>
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -2666,7 +2628,7 @@ export default function FacilitiesPage() {
                   transition={{ delay: 1.6 }}
                   className="md:col-span-2"
                 >
-                  <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
                     <Lock className="w-4 h-4 text-brand-green" />
                     Security Lock Details
                   </label>
@@ -2701,7 +2663,7 @@ export default function FacilitiesPage() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-3 bg-gradient-to-r from-brand-green to-brand-green-dark text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="px-8 py-3 bg-brand-green text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 >
                   {isSaving ? (
                     <>
