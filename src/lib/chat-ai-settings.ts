@@ -86,7 +86,7 @@ export async function setWebsiteChatAiEnabled(chatId: string, enabled: boolean) 
 export async function isInstallerChatAiEnabled(installerId: string) {
   try {
     const rows = await prisma.$queryRaw<Array<{ aiChatEnabled: boolean | null }>>`
-      SELECT "aiChatEnabled" FROM "Installer" WHERE id = ${installerId} LIMIT 1
+      SELECT "aiChatEnabled" FROM "Subcontractor" WHERE id = ${installerId} LIMIT 1
     `
     return rows[0]?.aiChatEnabled !== false
   } catch {
@@ -96,9 +96,9 @@ export async function isInstallerChatAiEnabled(installerId: string) {
 
 export async function setInstallerChatAiEnabled(installerId: string, enabled: boolean) {
   const updated = await prisma.$executeRaw`
-    UPDATE "Installer" SET "aiChatEnabled" = ${enabled} WHERE id = ${installerId}
+    UPDATE "Subcontractor" SET "aiChatEnabled" = ${enabled} WHERE id = ${installerId}
   `
-  if (Number(updated) < 1) throw new Error('Installer not found')
+  if (Number(updated) < 1) throw new Error('Subcontractor not found')
   return enabled
 }
 
@@ -114,7 +114,7 @@ export async function getWebsiteChatAiFlags(ids: string[]) {
 export async function getInstallerChatAiFlags(ids: string[]) {
   return flagsById(ids, async (installerIds) => {
     const rows = await prisma.$queryRaw<Array<{ id: string; aiChatEnabled: boolean | null }>>`
-      SELECT id, "aiChatEnabled" FROM "Installer" WHERE id IN (${Prisma.join(installerIds)})
+      SELECT id, "aiChatEnabled" FROM "Subcontractor" WHERE id IN (${Prisma.join(installerIds)})
     `
     return rows.map((row) => ({ id: row.id, enabled: row.aiChatEnabled }))
   })

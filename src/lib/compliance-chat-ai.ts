@@ -92,7 +92,7 @@ VOICE:
 - Reply in the user's language (English or Spanish). Keep official names, dollar amounts, addresses, and URLs unchanged.
 - Keep replies in short paragraphs. Do not put every sentence on its own line.
 - Do not dump every form field. Point them to the fillable form unless they asked about one specific field.
-- Be polite, friendly, and warm — treat everyone like family. Lowe's providers and partners (associates, vendors, store teams, installers) are valued; welcome them and answer helpfully. If they identify as a Lowe's associate or provider, greet them warmly and reassure them you're here to help.
+- Be polite, friendly, and warm — treat everyone like family. Lowe's providers and partners (associates, vendors, store teams, subcontractors) are valued; welcome them and answer helpfully. If they identify as a Lowe's associate or provider, greet them warmly and reassure them you're here to help.
 - When someone asks who to contact, or asks for a person's email, phone, or workroom, use the CONTACT DIRECTORY below. Give the exact name, email, phone, and workroom from the directory. Never invent a contact or phone number.
 
 HARD LIMITS:
@@ -157,7 +157,7 @@ export function fallbackComplianceReply(question: string) {
   const wantsW9 = includesAny(q, ['w-9', 'w9', 'w 9', 'tax form'])
   const wantsBank = includesAny(q, ['bank', 'voided', 'direct deposit', 'ach', 'routing', 'account information'])
   const wantsBackground = includesAny(q, ['background', 'first advantage', 'authorization and release'])
-  const wantsProcess = includesAny(q, ['process', 'steps', 'how long', 'next step', 'onboard', 'get started', 'become an installer', 'join'])
+  const wantsProcess = includesAny(q, ['process', 'steps', 'how long', 'next step', 'onboard', 'get started', 'become an subcontractor', 'join'])
   const wantsPrice = includesAny(q, ['price sheet', 'price sheets', 'pay rate', 'how much', 'rates'])
   const wantsSunbiz = includesAny(q, ['sunbiz', 'sun biz', 'division of corporation'])
   const wantsJobs = includesAny(q, ['jobs', 'work order', 'guarantee', 'how many jobs', 'employee'])
@@ -238,7 +238,7 @@ export function fallbackComplianceReply(question: string) {
   }
 
   if (wantsDocs || wantsSunbiz) {
-    parts.push(`Upload the packet in the Installer Portal (${FORM_LINKS.portal}), or send signed PDFs in one email. The ${FIS_APP_NAME} app is faster and easier on a phone — iPhone: ${FORM_LINKS.appIos} Android: ${FORM_LINKS.appAndroid}. You can also reach ${COMPLIANCE_CONTACT_EMAIL}, ${COMPLIANCE_CONTACT_PHONE}.
+    parts.push(`Upload the packet in the Subcontractor Portal (${FORM_LINKS.portal}), or send signed PDFs in one email. The ${FIS_APP_NAME} app is faster and easier on a phone — iPhone: ${FORM_LINKS.appIos} Android: ${FORM_LINKS.appAndroid}. You can also reach ${COMPLIANCE_CONTACT_EMAIL}, ${COMPLIANCE_CONTACT_PHONE}.
 
 • Active SunBiz / Division of Corporations proof
 • Independent Contractor Information Form
@@ -279,11 +279,11 @@ It asks for company name, contact, phone, business address, email, bank name, ac
   }
 
   if (wantsAuto) {
-    parts.push(`Auto Liability can be $300,000 combined single limit, or split limits of $100,000 / $300,000 / $50,000. On the sample COI, Any Auto, Hired Autos, and Non-Owned Autos are marked. Carpet installers have a 60-day exemption; tile, vinyl, and hard surface have 30 days. That 60-day window is carpet only.`)
+    parts.push(`Auto Liability can be $300,000 combined single limit, or split limits of $100,000 / $300,000 / $50,000. On the sample COI, Any Auto, Hired Autos, and Non-Owned Autos are marked. Carpet subcontractors have a 60-day exemption; tile, vinyl, and hard surface have 30 days. That 60-day window is carpet only.`)
   }
 
   if (wantsWc) {
-    parts.push(`If you work solo, send a Workers’ Comp exemption for the owner. If you have helpers, you also need Workers’ Comp liability covering them ($1,000,000), with a 30-day helper exemption. The owner still needs an exemption certificate. All helpers need background forms and badge photos, and an English-speaking installer/helper must be on-site.`)
+    parts.push(`If you work solo, send a Workers’ Comp exemption for the owner. If you have helpers, you also need Workers’ Comp liability covering them ($1,000,000), with a 30-day helper exemption. The owner still needs an exemption certificate. All helpers need background forms and badge photos, and an English-speaking subcontractor/helper must be on-site.`)
   }
 
   if (wantsLead) {
@@ -295,7 +295,7 @@ It asks for company name, contact, phone, business address, email, bank name, ac
   }
 
   if (wantsProcess && !wantsDocs) {
-    parts.push(`Start with the 5–10 minute prescreening: ${FORM_LINKS.prescreen}. Then complete your installer profile and upload documents in ${FIS_APP_NAME} — it is faster, sleeker, and easier than the website. iPhone: ${FORM_LINKS.appIos} Android: ${FORM_LINKS.appAndroid}. You can also use the portal at ${FORM_LINKS.portal}. Compliance reviews them, then the owner background check (about 3 days to a week), the contractor agreement, and a meeting with the GM. Price sheets and work-order consideration come only after full onboarding approval.`)
+    parts.push(`Start with the 5–10 minute prescreening: ${FORM_LINKS.prescreen}. Then complete your subcontractor profile and upload documents in ${FIS_APP_NAME} — it is faster, sleeker, and easier than the website. iPhone: ${FORM_LINKS.appIos} Android: ${FORM_LINKS.appAndroid}. You can also use the portal at ${FORM_LINKS.portal}. Compliance reviews them, then the owner background check (about 3 days to a week), the contractor agreement, and a meeting with the GM. Price sheets and work-order consideration come only after full onboarding approval.`)
   }
 
   if (wantsJobs) {
@@ -313,7 +313,7 @@ It asks for company name, contact, phone, business address, email, bank name, ac
   if (wantsVideo) {
     parts.push(`Helpful walkthroughs:
 • Prescreening: ${FORM_LINKS.prescreenVideo}
-• Installer profile: ${FORM_LINKS.profileVideo}
+• Subcontractor profile: ${FORM_LINKS.profileVideo}
 • Certificate of insurance: ${FORM_LINKS.coiVideo}`)
   }
 
@@ -326,7 +326,7 @@ It asks for company name, contact, phone, business address, email, bank name, ac
   }
 
   if (wantsContact && parts.length === 0) {
-    parts.push(`You can reach us at ${COMPLIANCE_CONTACT_EMAIL}, ${COMPLIANCE_CONTACT_PHONE}. Documents can also be uploaded in the Installer Portal: ${FORM_LINKS.portal}`)
+    parts.push(`You can reach us at ${COMPLIANCE_CONTACT_EMAIL}, ${COMPLIANCE_CONTACT_PHONE}. Documents can also be uploaded in the Subcontractor Portal: ${FORM_LINKS.portal}`)
   }
 
   if (parts.length === 0) {

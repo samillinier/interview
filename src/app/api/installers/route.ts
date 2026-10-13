@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
             },
           })
         } catch (e) {
-          console.error('Failed to provision Admin record for installer list:', e)
+          console.error('Failed to provision Admin record for subcontractor list:', e)
         }
       }
     }
@@ -331,7 +331,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (error) {
-        console.error('Failed to backfill phones in installer list:', error)
+        console.error('Failed to backfill phones in subcontractor list:', error)
       }
     }
 
@@ -411,7 +411,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (error) {
-        console.error('Failed to backfill primary flooring surface in installer list:', error)
+        console.error('Failed to backfill primary flooring surface in subcontractor list:', error)
       }
     }
 
@@ -571,10 +571,10 @@ export async function GET(request: NextRequest) {
       },
     }, { headers: noStore })
   } catch (error: any) {
-    console.error('Error fetching installers:', error)
+    console.error('Error fetching subcontractors:', error)
     console.error('Error details:', error.message, error.stack)
     return NextResponse.json(
-      { error: 'Failed to fetch installers', details: error.message },
+      { error: 'Failed to fetch subcontractors', details: error.message },
       { status: 500 }
     )
   }
@@ -749,7 +749,7 @@ export async function POST(request: NextRequest) {
     try {
       installerCreateData.referralCode = await generateUniqueReferralCode()
     } catch (err) {
-      console.error('Failed to generate referral code for new installer:', err)
+      console.error('Failed to generate referral code for new subcontractor:', err)
     }
 
     const installer = await prisma.installer.create({
@@ -758,7 +758,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ installer })
   } catch (error: any) {
-    console.error('Error creating installer:', error)
+    console.error('Error creating subcontractor:', error)
     console.error('Error details:', {
       message: error?.message,
       code: error?.code,
@@ -766,7 +766,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(
       { 
-        error: 'Failed to create installer',
+        error: 'Failed to create subcontractor',
         details: error?.message || 'Unknown error occurred'
       },
       { status: 500 }

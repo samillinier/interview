@@ -48,7 +48,7 @@ export async function PATCH(
 
       if (!targetId) {
         return NextResponse.json(
-          { error: 'No installer message to mark unread' },
+          { error: 'No subcontractor message to mark unread' },
           { status: 400 }
         )
       }

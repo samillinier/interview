@@ -90,7 +90,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, surveyCou
         }`}
         role="dialog"
         aria-modal="true"
-        aria-label={isEstimator ? 'Estimator navigation menu' : 'Installer navigation menu'}
+        aria-label={isEstimator ? 'Estimator navigation menu' : 'Subcontractor navigation menu'}
       >
         <div className="px-5 pt-4 pb-5">
           <div className="flex justify-center mb-3">
@@ -105,7 +105,7 @@ export function InstallerMobileMenu({ pathname, notificationCount = 0, surveyCou
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-primary-900 text-base truncate">
-                  {isEstimator ? 'Estimator Portal' : 'Installer Portal'}
+                  {isEstimator ? 'Estimator Portal' : 'Subcontractor Portal'}
                 </div>
                 <div className="text-xs text-primary-500 truncate">Menu</div>
               </div>

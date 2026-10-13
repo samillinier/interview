@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (!isRowLabelUpdate && !isRowNoteUpdate && columnId === 'compliance') {
       return NextResponse.json(
-        { error: 'Compliance status is set on the installer profile (Insurance & Registration)' },
+        { error: 'Compliance status is set on the subcontractor profile (Insurance & Registration)' },
         { status: 400, headers: noStoreHeaders }
       )
     }

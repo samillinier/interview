@@ -161,7 +161,7 @@ const SERVICE_PHRASES = [
   'pre engineered',
   'peb',
   'barndominium',
-  'building installer',
+  'building subcontractor',
   'building erection',
   'metal erection',
   'steel erection',
@@ -171,7 +171,7 @@ const SERVICE_PHRASES = [
   'installer',
   'builder',
   'flooring',
-  'floor installer',
+  'floor subcontractor',
   'carpet',
   'hardwood',
 ]

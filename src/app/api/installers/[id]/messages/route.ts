@@ -131,7 +131,7 @@ export async function POST(
 
     if (!installerId) {
       return NextResponse.json(
-        { error: 'Installer ID is required' },
+        { error: 'Subcontractor ID is required' },
         { status: 400 }
       )
     }
@@ -143,7 +143,7 @@ export async function POST(
 
     if (!installer) {
       return NextResponse.json(
-        { error: 'Installer not found' },
+        { error: 'Subcontractor not found' },
         { status: 404 }
       )
     }

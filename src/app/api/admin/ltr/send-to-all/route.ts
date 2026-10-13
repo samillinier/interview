@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       const nameParts = splitFullName(installer)
       if (!nameParts) {
         skipped += 1
-        failures.push({ workroom, company, installer, reason: 'Installer name missing last name' })
+        failures.push({ workroom, company, installer, reason: 'Subcontractor name missing last name' })
         continue
       }
 
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
       if (candidates.length === 0) {
         skipped += 1
-        failures.push({ workroom, company, installer, reason: 'No matching installer record' })
+        failures.push({ workroom, company, installer, reason: 'No matching subcontractor record' })
         continue
       }
 

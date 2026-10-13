@@ -88,6 +88,7 @@ import { googleMapsEmbedUrl } from '@/lib/maps'
 import { canAccessInvoices } from '@/lib/invoiceAccess'
 import { AdminEstimatorWeeklyReports } from '@/components/AdminEstimatorWeeklyReports'
 import { AdminInstallerInvoicesPanel } from '@/components/AdminInstallerInvoicesPanel'
+import { accountRoleLabel } from '@/lib/accountTypeLabel'
 
 
 const DOCUMENT_TYPES: Array<{
@@ -1182,7 +1183,7 @@ export default function InstallerProfileViewPage() {
       }
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to load installer profile')
+        throw new Error(errorData.error || 'Failed to load subcontractor profile')
       }
       const data = await response.json()
       setInstaller(data.installer)
@@ -1219,7 +1220,7 @@ export default function InstallerProfileViewPage() {
         setScheduledJobs([])
         setChargebackJobs([])
       } catch (jobsError) {
-        console.error('Error loading installer jobs:', jobsError)
+        console.error('Error loading subcontractor jobs:', jobsError)
       } finally {
         setJobsLoading(false)
       }
@@ -1236,8 +1237,8 @@ export default function InstallerProfileViewPage() {
         console.error('Error checking expirations:', expirationError)
       }
     } catch (err: any) {
-      console.error('Error fetching installer profile:', err)
-      setError(err.message || 'Failed to load installer profile')
+      console.error('Error fetching subcontractor profile:', err)
+      setError(err.message || 'Failed to load subcontractor profile')
     } finally {
       setIsLoading(false)
     }
@@ -2323,7 +2324,7 @@ export default function InstallerProfileViewPage() {
         const errorData = await response.json()
         const errorMessage = errorData.details 
           ? `${errorData.error || 'Failed to update installer'}: ${errorData.details}`
-          : errorData.error || 'Failed to update installer'
+          : errorData.error || 'Failed to update subcontractor'
         console.error('Update error:', errorData)
         throw new Error(errorMessage)
       }
@@ -2339,8 +2340,8 @@ export default function InstallerProfileViewPage() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
-      console.error('Error saving installer profile:', err)
-      setError(err.message || 'Failed to update installer profile')
+      console.error('Error saving subcontractor profile:', err)
+      setError(err.message || 'Failed to update subcontractor profile')
     } finally {
       setIsSaving(false)
     }
@@ -3047,7 +3048,7 @@ export default function InstallerProfileViewPage() {
           <XCircle className="w-16 h-16 text-danger-600 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-primary-900 mb-2">Profile Not Found</h2>
           <p className="text-primary-500 mb-6">
-            {error || 'Unable to load installer profile.'}
+            {error || 'Unable to load subcontractor profile.'}
           </p>
           <button
             onClick={() => router.push(`/dashboard${getReturnURL()}`)}
@@ -3065,8 +3066,8 @@ export default function InstallerProfileViewPage() {
   const remarkButtonTitle = isManager ? 'Manager Remark' : 'Admin Remark'
   const canShowManagerRemarksToAdmin = !isManager && managerRemarks.length > 0
   const isEstimator = installer.accountType === 'estimator'
-  const roleLabel = isEstimator ? 'Estimator' : 'Installer'
-  const roleLabelLower = isEstimator ? 'estimator' : 'installer'
+  const roleLabel = accountRoleLabel(installer.accountType)
+  const roleLabelLower = accountRoleLabel(installer.accountType, { lowercase: true })
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -3205,7 +3206,7 @@ export default function InstallerProfileViewPage() {
                             </div>
                           ) : !interviewRecap?.summary ? (
                             <p className="py-2 text-sm text-slate-500">
-                              No AI interview summary yet for this installer.
+                              No AI interview summary yet for this subcontractor.
                             </p>
                           ) : (
                             <div className="space-y-3">
@@ -4306,12 +4307,12 @@ export default function InstallerProfileViewPage() {
                         onChange={(e) => setAccountType(e.target.value as 'installer' | 'estimator')}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                       >
-                        <option value="installer">Installer</option>
+                        <option value="installer">Subcontractor</option>
                         <option value="estimator">Estimator</option>
                       </select>
                     ) : (
                       <p className="font-semibold text-slate-900 text-lg">
-                        {installer.accountType === 'estimator' ? 'Estimator' : 'Installer'}
+                        {installer.accountType === 'estimator' ? 'Estimator' : 'Subcontractor'}
                       </p>
                     )}
                   </div>
@@ -11493,7 +11494,7 @@ export default function InstallerProfileViewPage() {
                 <div>
                   <h3 className="text-xl font-bold text-white">Send Message</h3>
                   <p className="text-sm text-white/80 mt-0.5">
-                    To {installer?.firstName} {installer?.lastName}
+                    To {subcontractor?.firstName} {subcontractor?.lastName}
                   </p>
                 </div>
               </div>
@@ -11613,7 +11614,7 @@ export default function InstallerProfileViewPage() {
                 <div>
                   <h3 className="text-xl font-bold text-white">Send Notification</h3>
                   <p className="text-sm text-white/80 mt-0.5">
-                    To {installer?.firstName} {installer?.lastName}
+                    To {subcontractor?.firstName} {subcontractor?.lastName}
                   </p>
                 </div>
               </div>
@@ -11706,7 +11707,7 @@ export default function InstallerProfileViewPage() {
                 <div>
                   <h3 className="text-xl font-bold text-white">Add Remark</h3>
                   <p className="text-sm text-white/80 mt-0.5">
-                    {installer?.firstName} {installer?.lastName}
+                    {subcontractor?.firstName} {subcontractor?.lastName}
                   </p>
                 </div>
               </div>

@@ -31,7 +31,7 @@ export async function POST(
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = String(resolvedParams?.id || '').trim()
     if (!installerId) {
-      return NextResponse.json({ error: 'Installer ID is required' }, { status: 400, headers: noStoreHeaders })
+      return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400, headers: noStoreHeaders })
     }
 
     const body = await request.json().catch(() => ({}))
@@ -45,7 +45,7 @@ export async function POST(
 
     const installer = await prisma.installer.findUnique({ where: { id: installerId }, select: { id: true } })
     if (!installer) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404, headers: noStoreHeaders })
+      return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404, headers: noStoreHeaders })
     }
 
     const type = `admin-uploaded-agreement:${randomUUID()}`

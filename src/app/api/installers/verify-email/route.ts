@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     if (!installer) {
       return NextResponse.json(
-        { error: 'Installer not found' },
+        { error: 'Subcontractor not found' },
         { status: 404 }
       )
     }

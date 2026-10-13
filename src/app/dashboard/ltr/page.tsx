@@ -120,7 +120,7 @@ function LtrDetailModalContent({ rows, context }: { rows: SurveyDetailRow[]; con
         <FieldBlock label="Store name">{storeDisplay}</FieldBlock>
         <FieldBlock label="Labor category">{laborDisplay}</FieldBlock>
         <FieldBlock label="Company name">{context.companyName === '—' ? '' : context.companyName}</FieldBlock>
-        <FieldBlock label="Installer name">{context.installerName === '—' ? '' : context.installerName}</FieldBlock>
+        <FieldBlock label="Subcontractor name">{context.installerName === '—' ? '' : context.installerName}</FieldBlock>
         <FieldBlock label="Customer name">{customerHeader}</FieldBlock>
         <div className="flex flex-col justify-end">
           <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500 mb-0.5">LTR avg</p>
@@ -287,7 +287,7 @@ export default function LtrPage() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.details || data?.error || `Failed (${res.status})`)
-      setMessage({ type: 'ok', text: `Sent ${data?.sent ?? 0} surveys to installers (${data?.skipped ?? 0} skipped).` })
+      setMessage({ type: 'ok', text: `Sent ${data?.sent ?? 0} surveys to subcontractors (${data?.skipped ?? 0} skipped).` })
     } catch (e: any) {
       setMessage({ type: 'err', text: e?.message || 'Failed to send to all' })
     } finally {
@@ -298,7 +298,7 @@ export default function LtrPage() {
   const deleteSelectedBatch = useCallback(async () => {
     if (!selectedBatchId) return
     const ok = window.confirm(
-      'Remove this upload from the admin Survey list? Surveys already sent to installers stay in their portal with full details.'
+      'Remove this upload from the admin Survey list? Surveys already sent to subcontractors stay in their portal with full details.'
     )
     if (!ok) return
     setMessage(null)
@@ -312,7 +312,7 @@ export default function LtrPage() {
       if (!res.ok) throw new Error(data?.details || data?.error || `Failed (${res.status})`)
       setMessage({
         type: 'ok',
-        text: `Removed “${data?.deleted?.fileName || 'upload'}” from your list (${data?.deleted?.rowCount ?? 0} rows). Installer copies are unchanged.`,
+        text: `Removed “${data?.deleted?.fileName || 'upload'}” from your list (${data?.deleted?.rowCount ?? 0} rows). Subcontractor copies are unchanged.`,
       })
       const list = await loadBatches()
       setSelectedBatchId(list?.[0]?.id || '')
@@ -545,7 +545,7 @@ export default function LtrPage() {
                         Company name
                       </th>
                       <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">
-                        Installer name
+                        Subcontractor name
                       </th>
                       <th className="text-right font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800 w-36">
                         Surveys
@@ -610,7 +610,7 @@ export default function LtrPage() {
                       className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {sendingToInstaller ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                      Send to installer
+                      Send to subcontractor
                     </button>
                     <button
                       type="button"

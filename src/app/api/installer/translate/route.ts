@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
       speakError,
     })
   } catch (error: any) {
-    console.error('Installer translate error:', error)
+    console.error('Subcontractor translate error:', error)
     return NextResponse.json(
       { error: error?.message || 'Translation failed' },
       { status: 500 }

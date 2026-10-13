@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (!installerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: noStore })
 
     const installer = await prisma.installer.findUnique({ where: { id: installerId }, select: { id: true } })
-    if (!installer) return NextResponse.json({ error: 'Installer not found' }, { status: 404, headers: noStore })
+    if (!installer) return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404, headers: noStore })
 
     const deliveryId = request.nextUrl.searchParams.get('deliveryId')?.trim()
     if (!deliveryId) return NextResponse.json({ error: 'deliveryId required' }, { status: 400, headers: noStore })
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, delivery, rows }, { headers: noStore })
   } catch (e: any) {
-    console.error('installer survey details:', e)
+    console.error('subcontractor survey details:', e)
     return NextResponse.json(
       { error: 'Failed to load survey details', details: e?.message },
       { status: 500, headers: noStore }

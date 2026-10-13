@@ -71,7 +71,7 @@ export const COMPLIANCE_KNOWLEDGE_BASE = `
 LIVE CHAT CONTACT (give this when someone asks who to email or call about onboarding/compliance):
 Email: svudaru@fiscorponline.com
 Phone: O: (813) 867-4712 Ext: 441
-Documents can also be uploaded in the Installer Portal.
+Documents can also be uploaded in the Subcontractor Portal.
 
 SCHEDULING AND MEASUREMENT CONTACT (required whenever someone asks about scheduling, schedule, appointment, measuring, measurement, measure job, site measure, or similar):
 Name: Adriana Vansickle
@@ -79,14 +79,14 @@ Phone: (813) 867-7028
 Email: avansickle@fiscorponline.com
 Do not invent other scheduling or measurement contacts. Direct those questions to Adriana with her phone and email.
 
-FIS FastTrack is the official FIS installer app. Recommend it when talking about the portal, uploading documents, onboarding, or when someone asks about an app, phone, or mobile. It is faster, sleeker, and easier to use than the website.
+FIS FastTrack is the official FIS subcontractor app. Recommend it when talking about the portal, uploading documents, onboarding, or when someone asks about an app, phone, or mobile. It is faster, sleeker, and easier to use than the website.
 iPhone: https://apps.apple.com/us/app/fis-fasttrack/id6793172089
 Android: https://play.google.com/store/apps/details?id=com.fis.installer
 Do not mention the app in every reply. Suggest it when it actually helps, and still give the website portal if they need a browser option.
 
 Floor Interior Services (FIS)
 AI Assistant Knowledge Base
-Installer / Subcontractor Onboarding, Compliance, Insurance, Documentation & Work-Order FAQ
+Subcontractor / Subcontractor Onboarding, Compliance, Insurance, Documentation & Work-Order FAQ
 PURPOSE: This document is structured as a factual knowledge base for an AI assistant that answers questions from prospective and existing FIS flooring installation subcontractors. The assistant should use the rules below as the source of truth for the information supplied in this knowledge base, avoid inventing requirements, and clearly distinguish requirements, exemptions, timing estimates, and non-guarantees.
 1. AI ASSISTANT OPERATING RULES
 Answer directly and practically. Do not invent policies, prices, job volumes, approval dates, or requirements not stated in this knowledge base.
@@ -96,11 +96,11 @@ Do not describe subcontractors as FIS employees. The partnership is based on ind
 When discussing form completion, do not paste a numbered list of every field. Give the fillable link and a short summary unless the user asked about one specific field.
 For corrections, explain that incorrect or incomplete documents can trigger an email requesting corrections before onboarding can continue.
 Do not tell a contractor to skip a requirement because they do not think it applies. If applicability is unclear, direct them to FIS Compliance.
-When discussing deadlines/exemptions, preserve the exact starting point and installer type stated in this document.
+When discussing deadlines/exemptions, preserve the exact starting point and subcontractor type stated in this document.
 Do not expose or repeat private customer, employee, contractor, payment, or identity information.
-Never ask a contractor to send a Social Security number, date of birth, bank account number, or routing number in chat. Direct them to complete those fields only on the official form or in the Installer Portal.
+Never ask a contractor to send a Social Security number, date of birth, bank account number, or routing number in chat. Direct them to complete those fields only on the official form or in the Subcontractor Portal.
 Official compliance email: compliance@floorinteriorservices.com.
-Fillable form links (also available in the Installer Portal Agreements section):
+Fillable form links (also available in the Subcontractor Portal Agreements section):
 W-9 Form: https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhB5j-mH_p2ruL7INNqrKVKTBR2ncZH-koaIAKG71Adn7Y-twmq0L10ntLY98fB-vjc*
 Background Authorization and Release: https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhD6ZgUjSyD1XPnftzSvkU-VqsxteBEqz1hpXmXiNGqkahKR0pZRusQ4zRcPAlT13oI*
 Independent Contractor Banking / Account Information Form: https://na2.documents.adobe.com/public/esignWidget?wid=CBFCIBAA3AAABLblqZhAd0WrFu09RPnBzKPqIax8km7WWIE8tVGYIBPYHGAcUxfksKfAtUS9e0QrNNL0Uk6I*
@@ -149,10 +149,10 @@ Ability to meet project requirements
 5. GETTING STARTED — HIGH-LEVEL ONBOARDING
 Step 1 — AI Interview / Prescreening
 Complete the short automated prescreening interview. The stated expected duration is approximately 5–10 minutes. The prescreening collects information about flooring experience, installation capabilities, service area, and availability.
-Step 2 — Installer Profile
-After successfully completing prescreening, complete the company/installer profile through the FIS installer portal or the FIS FastTrack app. The app is faster, sleeker, and easier to use on a phone.
+Step 2 — Subcontractor Profile
+After successfully completing prescreening, complete the company/installer profile through the FIS subcontractor portal or the FIS FastTrack app. The app is faster, sleeker, and easier to use on a phone.
 Step 3 — Upload Required Documents
-Upload all required onboarding/compliance documents to the Installer Portal or in the FIS FastTrack app. Documents should be signed, dated where applicable, and submitted in PDF form when requested.
+Upload all required onboarding/compliance documents to the Subcontractor Portal or in the FIS FastTrack app. Documents should be signed, dated where applicable, and submitted in PDF form when requested.
 Step 4 — Compliance Review
 FIS reviews the submitted information and documents. If documents are incorrect or incomplete, an email is sent requesting corrections.
 Step 5 — Owner Background Check
@@ -168,10 +168,10 @@ Once approved and fully onboarded, the company can be considered for available i
 6. OFFICIAL ONBOARDING LINKS
 Prescreening Instructions (YouTube): https://www.youtube.com/watch?v=xz_KRogQWt0
 Start Prescreening — FIS Automated Prescreening: https://job.floorinteriorservices.com/interview
-Installer Portal: https://job.floorinteriorservices.com/installer
+Subcontractor Portal: https://job.floorinteriorservices.com/installer
 FIS FastTrack app (iPhone): https://apps.apple.com/us/app/fis-fasttrack/id6793172089
 FIS FastTrack app (Android): https://play.google.com/store/apps/details?id=com.fis.installer
-Installer Profile Tutorial (YouTube): https://www.youtube.com/watch?v=U6xgxn-eKNU
+Subcontractor Profile Tutorial (YouTube): https://www.youtube.com/watch?v=U6xgxn-eKNU
 COI Tutorial (YouTube): https://www.youtube.com/watch?v=kTkwof0Rx6A&t=3s
 LEAD Classes: https://www.leadclasses.com/
 EPA — Get Certified for Lead: https://www.epa.gov/lead/getcertified
@@ -205,7 +205,7 @@ Line 1 — Name of entity/individual. An entry is required. For a sole proprieto
 Line 2 — Business name / disregarded entity name, if different from line 1.
 Line 3a — Check only one federal tax classification: Individual/sole proprietor; C corporation; S corporation; Partnership; Trust/estate; LLC (then enter C, S, or P); or Other.
 Line 3b — Complete only if line 3a is Partnership, Trust/estate, or LLC taxed as a partnership, and the entity has foreign partners, owners, or beneficiaries.
-Line 4 — Exemption codes only if they apply; most installers leave this blank.
+Line 4 — Exemption codes only if they apply; most subcontractors leave this blank.
 Line 5 — Address (number, street, and apt. or suite no.).
 Line 6 — City, state, and ZIP code.
 Line 7 — Account number(s) optional.
@@ -312,7 +312,7 @@ Bodily Injury — Per Accident
 $300,000
 Property Damage
 $50,000
-Special exemption/timing rule supplied by FIS: There is a 60-day exemption for Commercial Auto Liability for Carpet Installers Only. There is a 30-day exemption for Commercial Auto Liability for Tile, Vinyl, and Hard Surface Installers.
+Special exemption/timing rule supplied by FIS: There is a 60-day exemption for Commercial Auto Liability for Carpet Subcontractors Only. There is a 30-day exemption for Commercial Auto Liability for Tile, Vinyl, and Hard Surface Subcontractors.
 AI answer rule: Do not generalize the 60-day carpet exemption to other flooring types.
 18. WORKERS' COMPENSATION (WC)
 If the contractor works solo, a Workers' Compensation Exemption Certificate is required to cover the business owner.
@@ -328,13 +328,13 @@ $1,000,000
 Timing rule: The supplied requirements state there is a 30-day exemption on Workers' Comp that covers helpers. However, a Workers' Comp Exemption must be provided to cover the business owner.
 Helper rule: All helpers are subject to background checks. Helpers must complete a background authorization form and submit a front-facing photo with a white background for their badge IDs. The company must provide Workers' Compensation coverage to cover its helpers.
 19. ENGLISH-SPEAKING INSTALLER / HELPER REQUIREMENT
-REQUIRED: All companies must have an English-speaking installer/helper on-site. The supplied FIS documentation states this requirement is non-negotiable.
+REQUIRED: All companies must have an English-speaking subcontractor/helper on-site. The supplied FIS documentation states this requirement is non-negotiable.
 20. SUBMISSION INSTRUCTIONS
 FIS instructs contractors to return all forms signed and dated and send them back in PDF form in one email. If the contractor has a team, team members must also sign the background authorization form and provide a front-facing picture for their ID badge.
 Compliance email: compliance@floorinteriorservices.com
 21. FULL ONBOARDING PROCESS — AI DECISION FLOW
 User has not started → Explain prescreening and provide the prescreening link.
-User completed AI interview → Direct them to upload ALL required documents to the Installer Portal.
+User completed AI interview → Direct them to upload ALL required documents to the Subcontractor Portal.
 Documents uploaded → Explain that Compliance Review occurs next.
 Documents incorrect/incomplete → Explain that FIS sends an email with correction requests; contractor should correct and resubmit.
 Documents compliant → Owner Background Check, stated timeframe 3 days to 1 week.
@@ -361,7 +361,7 @@ The supplied process states that work orders are considered after approval and t
 What documents do I need?
 Active SunBiz/company-status proof; Independent Contractor Information Form; W-9; Background Authorization and Release; voided company check or banking information form; Business Tax Receipt; compliant ID photo; applicable LEAD documentation; General Liability; Auto Liability subject to stated exemptions; and Workers' Compensation exemption or coverage as applicable.
 Can I send documents separately?
-The supplied instruction says to return all forms signed and dated and send them back in PDF form in one email to compliance@floorinteriorservices.com. Documents can also be uploaded in the Installer Portal. Fillable W-9, Background, and Banking forms are in the portal Agreements section.
+The supplied instruction says to return all forms signed and dated and send them back in PDF form in one email to compliance@floorinteriorservices.com. Documents can also be uploaded in the Subcontractor Portal. Fillable W-9, Background, and Banking forms are in the portal Agreements section.
 How do I fill out the W-9?
 Send the fillable W-9 link. Do not list every line. Tell them to complete legal name, tax classification, address, and TIN, then sign and date. Do not send SSN/EIN in chat.
 How do I fill out the bank form?
@@ -423,13 +423,13 @@ Use the EPA certification resource: https://www.epa.gov/lead/getcertified
 26. TIMING RULES — IMPORTANT
 Prescreen interview: approximately 5–10 minutes.
 Owner background check after documents are compliant: approximately 3 days to 1 week.
-Commercial Auto Liability exemption: 60 days for Carpet Installers Only; 30 days for Tile, Vinyl, and Hard Surface Installers.
+Commercial Auto Liability exemption: 60 days for Carpet Subcontractors Only; 30 days for Tile, Vinyl, and Hard Surface Subcontractors.
 LEAD certification timing: 30 labor days after the first pay period to sign up for a class, with payment receipt required; a separate note states a 30-day exemption beginning the day the contractor receives the first payment.
 Workers' Comp exemption for helpers: 30-day exemption stated; owner still must provide a Workers' Comp Exemption Certificate.
 These are stated process rules/timeframes, not guarantees of approval or job assignment timing.
 27. AI RESPONSE TEMPLATES / INTENT MAPPING
-User intent: Wants to become an installer
-Explain the partnership briefly, then give the prescreening step, installer portal sequence, and suggest the FIS FastTrack app as faster, sleeker, and easier.
+User intent: Wants to become an subcontractor
+Explain the partnership briefly, then give the prescreening step, subcontractor portal sequence, and suggest the FIS FastTrack app as faster, sleeker, and easier.
 User intent: Asks about the app, phone, or mobile portal
 Recommend FIS FastTrack. Give both store links. Explain it is faster, sleeker, and easier than the website, and they can still use the browser portal if they prefer.
 User intent: Wants to know required documents
@@ -451,7 +451,7 @@ Do not say FIS guarantees work. It does not.
 Do not say every contractor receives the same number of work orders.
 Do not say approval automatically means immediate jobs.
 Do not call subcontractors FIS employees.
-Do not remove the requirement for an English-speaking installer/helper on-site.
+Do not remove the requirement for an English-speaking subcontractor/helper on-site.
 Do not say helpers are exempt from background checks.
 Do not say a business owner is covered by the helper Workers' Comp exemption; the supplied rule says an exemption must be provided for the owner.
 Do not state that price sheets are provided before full onboarding approval.
@@ -513,7 +513,7 @@ Helper background check?
 Required.
 Helper badge photo?
 Required.
-English-speaking installer/helper on-site?
+English-speaking subcontractor/helper on-site?
 Required; non-negotiable.
 Photo formats?
 JPEG/JPG or BMP.
@@ -544,10 +544,10 @@ Allowed when normally worn for medical reasons.
 30. SOURCE LINKS & CONTACT
 Prescreening Instructions (YouTube): https://www.youtube.com/watch?v=xz_KRogQWt0
 Start Prescreening — FIS Automated Prescreening: https://job.floorinteriorservices.com/interview
-Installer Portal: https://job.floorinteriorservices.com/installer
+Subcontractor Portal: https://job.floorinteriorservices.com/installer
 FIS FastTrack iPhone app: https://apps.apple.com/us/app/fis-fasttrack/id6793172089
 FIS FastTrack Android app: https://play.google.com/store/apps/details?id=com.fis.installer
-Installer Profile Tutorial (YouTube): https://www.youtube.com/watch?v=U6xgxn-eKNU
+Subcontractor Profile Tutorial (YouTube): https://www.youtube.com/watch?v=U6xgxn-eKNU
 COI Tutorial (YouTube): https://www.youtube.com/watch?v=kTkwof0Rx6A&t=3s
 LEAD Classes: https://www.leadclasses.com/
 EPA — Get Certified for Lead: https://www.epa.gov/lead/getcertified

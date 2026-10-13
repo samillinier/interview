@@ -13,7 +13,7 @@ export async function PATCH(
 
     if (!installerId || !historyId) {
       return NextResponse.json(
-        { error: 'Installer ID and History ID are required' },
+        { error: 'Subcontractor ID and History ID are required' },
         { status: 400 }
       )
     }
@@ -120,7 +120,7 @@ export async function DELETE(
 
     if (!installerId || !historyId) {
       return NextResponse.json(
-        { error: 'Installer ID and History ID are required' },
+        { error: 'Subcontractor ID and History ID are required' },
         { status: 400 }
       )
     }

@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       { headers: noStore }
     )
   } catch (error: any) {
-    console.error('admin installer invoices GET failed', error)
+    console.error('admin subcontractor invoices GET failed', error)
     return NextResponse.json(
       { error: 'Failed to load invoices', details: error?.message },
       { status: 500, headers: noStore }
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       })
     } else {
       if (installerIds.length === 0) {
-        return NextResponse.json({ error: 'Select at least one installer' }, { status: 400, headers: noStore })
+        return NextResponse.json({ error: 'Select at least one subcontractor' }, { status: 400, headers: noStore })
       }
       recipients = await prisma.installer.findMany({
         where: { id: { in: installerIds }, ...notArchivedInstallerWhere },
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (recipients.length === 0) {
-      return NextResponse.json({ error: 'No installers found to send this invoice' }, { status: 400, headers: noStore })
+      return NextResponse.json({ error: 'No subcontractors found to send this invoice' }, { status: 400, headers: noStore })
     }
 
     const created = await prisma.installerInvoice.createMany({
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
             attachmentName: fileName,
             data: { type: 'invoice' },
           }).catch((err) => {
-            console.error('installer invoice notify failed', installer.id, err)
+            console.error('subcontractor invoice notify failed', installer.id, err)
             return null
           })
         )
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       { headers: noStore }
     )
   } catch (error: any) {
-    console.error('admin installer invoices POST failed', error)
+    console.error('admin subcontractor invoices POST failed', error)
     return NextResponse.json(
       { error: 'Failed to send invoice', details: error?.message },
       { status: 500, headers: noStore }

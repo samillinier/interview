@@ -63,10 +63,10 @@ interface SecurityStatus {
 }
 
 const actionLabels: Record<string, string> = {
-  'installer.status_change': 'Installer status changed',
-  'installer.delete': 'Installer deleted',
+  'installer.status_change': 'Subcontractor status changed',
+  'installer.delete': 'Subcontractor deleted',
   'installer.contract_generated': 'Contract generated',
-  'installer.credentials_update': 'Installer login updated',
+  'installer.credentials_update': 'Subcontractor login updated',
   'admin.role_change': 'Admin role changed',
   'admin.create': 'Admin created',
 }
@@ -438,7 +438,7 @@ export default function AuditPage() {
                     if (e.key === 'Enter')
                       fetchAuditLogs({ q: (e.target as HTMLInputElement).value })
                   }}
-                  placeholder="Search: installer name/email/id or admin email..."
+                  placeholder="Search: subcontractor name/email/id or admin email..."
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
                 />
               </div>
@@ -453,10 +453,10 @@ export default function AuditPage() {
                 aria-label="Audit action"
               >
                 <option value="">All actions</option>
-                <option value="installer.status_change">Installer status changed</option>
-                <option value="installer.delete">Installer deleted</option>
+                <option value="installer.status_change">Subcontractor status changed</option>
+                <option value="installer.delete">Subcontractor deleted</option>
                 <option value="installer.contract_generated">Contract generated</option>
-                <option value="installer.credentials_update">Installer login updated</option>
+                <option value="installer.credentials_update">Subcontractor login updated</option>
                 <option value="admin.role_change">Admin role changed</option>
                 <option value="admin.create">Admin created</option>
               </select>
@@ -497,7 +497,7 @@ export default function AuditPage() {
                     <th className="py-3 px-4 font-semibold">When</th>
                     <th className="py-3 px-4 font-semibold">Admin</th>
                     <th className="py-3 px-4 font-semibold">Action</th>
-                    <th className="py-3 px-4 font-semibold">Installer</th>
+                    <th className="py-3 px-4 font-semibold">Subcontractor</th>
                     <th className="py-3 px-4 font-semibold">Details</th>
                   </tr>
                 </thead>

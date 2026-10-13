@@ -288,7 +288,7 @@ export function AdminSidebar({ pathname }: Props) {
   const items = useMemo((): NavItem[] => {
     const base: NavItem[] = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (path) => path === '/dashboard' },
-      { href: '/dashboard', label: 'Installers', icon: Users, match: (path) => path.startsWith('/dashboard/installers') },
+      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (path) => path.startsWith('/dashboard/installers') },
       { href: '/dashboard/invoices', label: 'Invoices', icon: Receipt, match: (path) => path.startsWith('/dashboard/invoices') },
       { href: '/dashboard/jobs' as const, label: 'Jobs', icon: Hammer, match: (path: string) => path.startsWith('/dashboard/jobs') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },

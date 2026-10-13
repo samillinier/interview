@@ -56,7 +56,7 @@ export function AnalyticsGeoMap({ pins }: Props) {
           `<div style="font-size:12px;line-height:1.35">
              <strong>${pin.label}</strong><br/>
              Type: ${pin.type}<br/>
-             Installers: ${pin.count}<br/>
+             Subcontractors: ${pin.count}<br/>
              Avg Radius: ${radius.toFixed(1)} mi
            </div>`
         )

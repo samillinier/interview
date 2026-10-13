@@ -600,7 +600,7 @@ export default function TrackingPage() {
 
   const handleAddMatrixManualRow = async () => {
     if (!matrixSelectedInstallerId && !matrixManualName.trim()) {
-      setError('Search and select an installer, or type a company / name below.')
+      setError('Search and select an subcontractor, or type a company / name below.')
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -623,7 +623,7 @@ export default function TrackingPage() {
       setMatrixSelectedInstallerId('')
       setMatrixInstallerSearchQuery('')
       setShowMatrixInstallerDropdown(false)
-      setSuccess(addedLinked ? 'Installer added to the matrix' : 'Row added to the matrix')
+      setSuccess(addedLinked ? 'Subcontractor added to the matrix' : 'Row added to the matrix')
       setTimeout(() => setSuccess(''), 3000)
       await loadOnboardingMatrix()
     } catch (err: any) {
@@ -1298,7 +1298,7 @@ export default function TrackingPage() {
       const data = await response.json()
       setInstallers(data.installers || [])
     } catch (err) {
-      console.error('Error fetching installers:', err)
+      console.error('Error fetching subcontractors:', err)
     }
   }
 
@@ -1329,7 +1329,7 @@ export default function TrackingPage() {
       }
       setResults(Array.isArray(data?.installers) ? data.installers : [])
     } catch (e) {
-      console.error('installer search', e)
+      console.error('subcontractor search', e)
       setResults([])
       setErr('Search failed')
     } finally {
@@ -1565,7 +1565,7 @@ export default function TrackingPage() {
     const isManualEntry = newItem.installerId?.startsWith('manual_') || (showManualInstallerInput && manualInstallerName.trim())
     
     if (!isManualEntry && !newItem.installerId) {
-      setError('Please select an installer or enter a manual installer name')
+      setError('Please select an subcontractor or enter a manual subcontractor name')
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -1575,7 +1575,7 @@ export default function TrackingPage() {
       return
     }
     if (isManualEntry && !manualInstallerName.trim()) {
-      setError('Installer name is required for manual entry')
+      setError('Subcontractor name is required for manual entry')
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -1815,7 +1815,7 @@ export default function TrackingPage() {
                 <div className="p-2 bg-brand-green/10 rounded-xl">
                   <Activity className="w-6 h-6 text-brand-green" />
                 </div>
-                <h1 className="text-3xl font-bold text-slate-900">Installer Tracking</h1>
+                <h1 className="text-3xl font-bold text-slate-900">Subcontractor Tracking</h1>
               </div>
               <p className="text-slate-600 ml-14">Track installer activities and monitor issue resolution</p>
             </div>
@@ -1857,7 +1857,7 @@ export default function TrackingPage() {
                   <LayoutGrid className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Installer onboarding documents</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Subcontractor onboarding documents</h2>
                 </div>
               </div>
               <div />
@@ -1969,7 +1969,7 @@ export default function TrackingPage() {
                   </button>
                 </div>
                 <span className="text-xs text-slate-400 tabular-nums">
-                  {filteredMatrixInstallers.length} installer
+                  {filteredMatrixInstallers.length} subcontractor
                   {filteredMatrixInstallers.length !== 1 ? 's' : ''}
                 </span>
                 </div>
@@ -1999,16 +1999,16 @@ export default function TrackingPage() {
                 <div className="py-12 text-center text-slate-500 text-sm px-4 max-w-lg mx-auto space-y-2">
                   <p>
                     {matrixStatusFilter === 'active'
-                      ? 'No active installers on this matrix yet.'
+                      ? 'No active subcontractors on this matrix yet.'
                       : 'No one has been added to this matrix yet.'}
                   </p>
                   <p className="text-slate-400 text-xs leading-relaxed">
                     {matrixStatusFilter === 'active' ? (
-                      'Installers with Active status appear here automatically. Switch to "Admin Added" to see only names an admin pinned.'
+                      'Subcontractors with Active status appear here automatically. Switch to "Admin Added" to see only names an admin pinned.'
                     ) : (
                       <>
                         Use{' '}
-                        <strong className="text-slate-700">Add row</strong> above to pin installers or names here.
+                        <strong className="text-slate-700">Add row</strong> above to pin subcontractors or names here.
                       </>
                     )}
                   </p>
@@ -2019,7 +2019,7 @@ export default function TrackingPage() {
                     <tr>
                       <th className={`sticky top-[-1.5rem] left-0 z-30 bg-slate-50 px-3 py-3 text-left align-bottom border-r border-slate-200 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.08)] ${installerColClass}`}>
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Installer</span>
+                          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Subcontractor</span>
                           <span className="text-[10px] font-medium text-slate-500 normal-case tracking-normal leading-snug">
                             Name & company
                           </span>
@@ -2154,7 +2154,7 @@ export default function TrackingPage() {
                                         type="button"
                                         onClick={() => router.push(`/dashboard/installers/${inst.id}`)}
                                         className="text-left min-w-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/40 flex flex-col gap-1 items-start"
-                                        title="Open installer profile"
+                                        title="Open subcontractor profile"
                                       >
                                         <span className="block max-w-full truncate font-bold text-slate-900 group-hover:text-brand-green transition-colors text-lg leading-snug tracking-tight">
                                           {installerName}
@@ -2289,7 +2289,7 @@ export default function TrackingPage() {
                                         : undefined
                                     }
                                     className="relative rounded-lg px-1 py-1.5 -mx-0.5 -my-0.5 min-w-[3.5rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
-                                    title={canOverrideCells ? 'Choose flooring surface' : 'Mirrors installer profile'}
+                                    title={canOverrideCells ? 'Choose flooring surface' : 'Mirrors subcontractor profile'}
                                     aria-label="Choose flooring surface"
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
@@ -2308,7 +2308,7 @@ export default function TrackingPage() {
                                 ) : def.id === 'compliance' ? (
                                   <span
                                     className="inline-flex min-w-[4rem] min-h-[2.25rem] items-center justify-center px-1 py-1.5 text-center"
-                                    title="Set on installer profile → Insurance & Registration"
+                                    title="Set on subcontractor profile → Insurance & Registration"
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
                                       trackingId: inst.trackingId,
@@ -2342,7 +2342,7 @@ export default function TrackingPage() {
                                     }}
                                     className="relative rounded-lg px-0.5 py-1.5 -mx-0.5 -my-0.5 min-w-[1.75rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors cursor-pointer"
                                     aria-label={`Edit ${def.label} status`}
-                                    title={canOverrideCells ? 'Edit column status' : 'Mirrors installer profile'}
+                                    title={canOverrideCells ? 'Edit column status' : 'Mirrors subcontractor profile'}
                                   >
                                     {renderMatrixCell(inst.cells[def.id], {
                                       trackingId: inst.trackingId,
@@ -2368,7 +2368,7 @@ export default function TrackingPage() {
                                         : undefined
                                     }
                                     className="relative rounded-lg px-0.5 py-1.5 -mx-0.5 -my-0.5 min-w-[1.75rem] min-h-[2.25rem] flex items-center justify-center text-center hover:bg-slate-100/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-green/50 disabled:opacity-50 transition-colors"
-                                    title={canOverrideCells ? 'Set column status' : 'Mirrors installer profile'}
+                                    title={canOverrideCells ? 'Set column status' : 'Mirrors subcontractor profile'}
                                   >
                                     {renderMatrixCell(inst.cells[def.id])}
                                     {inst.matrixOverriddenColumnIds?.includes(def.id) ? (
@@ -2579,7 +2579,7 @@ export default function TrackingPage() {
                                     type="button"
                                     onClick={() => router.push(`/dashboard/installers/${item.Installer!.id}`)}
                                     className="text-left group/profile"
-                                    title="Open installer profile"
+                                    title="Open subcontractor profile"
                                   >
                                     <p className="font-bold text-slate-900 group-hover:text-brand-green transition-colors">
                                       {installerName}
@@ -3154,7 +3154,7 @@ export default function TrackingPage() {
             </p>
 
             <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Installer <span className="text-red-500">*</span>
+              Subcontractor <span className="text-red-500">*</span>
             </label>
             <div className="relative mb-4">
               <div className="relative">
@@ -3379,7 +3379,7 @@ export default function TrackingPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Installer <span className="text-red-500">*</span>
+                    Subcontractor <span className="text-red-500">*</span>
                   </label>
                   
                   {!showManualInstallerInput ? (
@@ -3394,7 +3394,7 @@ export default function TrackingPage() {
                             setShowInstallerDropdown(true)
                           }}
                           onFocus={() => setShowInstallerDropdown(true)}
-                          placeholder="Search installer by name, email, or company..."
+                          placeholder="Search subcontractor by name, email, or company..."
                           className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green text-base"
                         />
                         {newItem.installerId && !newItem.installerId.startsWith('manual_') && (
@@ -3509,7 +3509,7 @@ export default function TrackingPage() {
                           type="text"
                           value={manualInstallerName}
                           onChange={(e) => setManualInstallerName(e.target.value)}
-                          placeholder="Enter installer name..."
+                          placeholder="Enter subcontractor name..."
                           className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green text-base"
                         />
                       </div>

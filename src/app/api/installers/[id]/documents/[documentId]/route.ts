@@ -65,7 +65,7 @@ export async function PATCH(
       try {
         await prisma.installer.update({ where: { id: installerId }, data: { btrExpiry: parsedExpiry } })
       } catch (e) {
-        console.error('Failed to sync installer.btrExpiry:', e)
+        console.error('Failed to sync subcontractor.btrExpiry:', e)
       }
     }
 
@@ -99,7 +99,7 @@ export async function POST(
     }
 
     if (document.installerId !== installerId) {
-      return NextResponse.json({ error: 'Document does not belong to this installer' }, { status: 403 })
+      return NextResponse.json({ error: 'Document does not belong to this subcontractor' }, { status: 403 })
     }
 
     if (document.type !== 'business_registration') {

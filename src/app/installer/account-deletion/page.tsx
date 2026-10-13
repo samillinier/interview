@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Delete Your Account | FIS FastTrack',
-  description: 'Instructions for deleting your FIS FastTrack installer account and associated data.',
+  description: 'Instructions for deleting your FIS FastTrack subcontractor account and associated data.',
 }
 
 export default function AccountDeletionPage() {
@@ -14,9 +14,9 @@ export default function AccountDeletionPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">
             FIS FastTrack
           </p>
-          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Delete your installer account</h1>
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Delete your subcontractor account</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-emerald-50 sm:text-base">
-            Floor Interior Services gives installers a self-service way to permanently delete their
+            Floor Interior Services gives subcontractors a self-service way to permanently delete their
             account and associated personal data.
           </p>
         </header>
@@ -25,7 +25,7 @@ export default function AccountDeletionPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900">Delete your account in FIS FastTrack</h2>
             <ol className="mt-4 list-decimal space-y-2 pl-5 leading-7">
-              <li>Sign in to your installer account.</li>
+              <li>Sign in to your subcontractor account.</li>
               <li>Open <strong>Profile</strong> and scroll to the <strong>Account</strong> section.</li>
               <li>Select <strong>Delete My Account</strong>.</li>
               <li>Enter your password, type <strong>DELETE</strong>, and confirm.</li>
@@ -49,7 +49,7 @@ export default function AccountDeletionPage() {
                 support@fiscorponline.com
               </a>{' '}
               from the email address associated with your account. Include your full name and state
-              that you want your FIS FastTrack installer account deleted. We may ask you to verify
+              that you want your FIS FastTrack subcontractor account deleted. We may ask you to verify
               your identity before processing the request.
             </p>
           </section>
@@ -58,8 +58,8 @@ export default function AccountDeletionPage() {
             <h2 className="text-xl font-bold text-slate-900">Data that is deleted</h2>
             <p className="mt-3 leading-7">
               After confirmation, we permanently remove your account access, login credentials,
-              installer profile and contact information, profile and staff photos, uploaded
-              documents, and other data directly associated with your installer account.
+              subcontractor profile and contact information, profile and staff photos, uploaded
+              documents, and other data directly associated with your subcontractor account.
             </p>
           </section>
 

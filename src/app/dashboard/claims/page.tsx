@@ -265,7 +265,7 @@ export default function ClaimsPage() {
   const navItems = useMemo(() => {
     const base = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/dashboard', label: 'Installers', icon: Users, match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/installers') },
+      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/installers') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert },
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck },
       { href: '/dashboard/tracking', label: 'Tracking', icon: Activity, match: (p: string) => p.startsWith('/dashboard/tracking') },
@@ -662,7 +662,7 @@ export default function ClaimsPage() {
       }
       setInstallerSearchResults(Array.isArray(data?.installers) ? data.installers : [])
     } catch (e) {
-      console.error('installer search', e)
+      console.error('subcontractor search', e)
       setInstallerSearchResults([])
       setInstallerSearchError('Search failed')
     } finally {
@@ -865,7 +865,7 @@ export default function ClaimsPage() {
                           <div className="min-w-0">
                             <p className="truncate text-lg font-extrabold text-slate-900">{claim.customer || 'Untitled claim'}</p>
                             <p className="mt-0.5 truncate text-sm font-medium text-slate-500">
-                              {formatInstallerSummary(claim.installer, claim.installerCompanyName) || 'No installer selected'}
+                              {formatInstallerSummary(claim.installer, claim.installerCompanyName) || 'No subcontractor selected'}
                             </p>
                           </div>
                           <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-extrabold shadow-sm ${getStatusStyle(claim.status)}`}>
@@ -920,7 +920,7 @@ export default function ClaimsPage() {
                         <h2 className="text-2xl font-bold text-slate-900">{selectedClaim.customer}</h2>
                         <p className="text-sm text-slate-500 mt-1">
                           {selectedClaim.jobNumber} • {selectedClaim.workroom} •{' '}
-                          {formatInstallerSummary(selectedClaim.installer, selectedClaim.installerCompanyName) || 'No installer'}
+                          {formatInstallerSummary(selectedClaim.installer, selectedClaim.installerCompanyName) || 'No subcontractor'}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -988,7 +988,7 @@ export default function ClaimsPage() {
                         />
                       </label>
                       <label className="block relative">
-                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Installer Name</span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Subcontractor Name</span>
                         <input
                           value={selectedClaim.installer}
                           onChange={(e) => {
@@ -999,14 +999,14 @@ export default function ClaimsPage() {
                             setShowInstallerDropdown(true)
                           }}
                           onFocus={() => setShowInstallerDropdown(true)}
-                          placeholder="Search or type installer name"
+                          placeholder="Search or type subcontractor name"
                           className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                         />
                         {showInstallerDropdown && (
                           <>
                             <button
                               type="button"
-                              aria-label="Close installer search"
+                              aria-label="Close subcontractor search"
                               className="fixed inset-0 z-30 cursor-default"
                               onClick={() => setShowInstallerDropdown(false)}
                             />
@@ -1054,7 +1054,7 @@ export default function ClaimsPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <div className="px-4 py-3 text-sm text-slate-500">Type to search installers</div>
+                                <div className="px-4 py-3 text-sm text-slate-500">Type to search subcontractors</div>
                               )}
                             </div>
                           </>
@@ -1067,7 +1067,7 @@ export default function ClaimsPage() {
                           onChange={(e) =>
                             updateRow(selectedClaim.id, { installerCompanyName: e.target.value })
                           }
-                          placeholder="Installer company name"
+                          placeholder="Subcontractor company name"
                           className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                         />
                       </label>

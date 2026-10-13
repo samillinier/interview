@@ -258,7 +258,7 @@ export async function GET(_request: NextRequest) {
       try {
         const surfaceRows = await prisma.$queryRaw<{ id: string; primaryFlooringSurface: string | null }[]>(
           Prisma.sql`
-            SELECT id, "primaryFlooringSurface" FROM "Installer"
+            SELECT id, "primaryFlooringSurface" FROM "Subcontractor"
             WHERE id IN (${Prisma.join(installerIdsForSurface.map((id) => Prisma.sql`${id}`))})
           `
         )
@@ -566,7 +566,7 @@ export async function GET(_request: NextRequest) {
         try {
           const surfaceRows = await prisma.$queryRaw<{ id: string; primaryFlooringSurface: string | null }[]>(
             Prisma.sql`
-              SELECT id, "primaryFlooringSurface" FROM "Installer"
+              SELECT id, "primaryFlooringSurface" FROM "Subcontractor"
               WHERE id IN (${Prisma.join(autoIds.map((id) => Prisma.sql`${id}`))})
             `
           )

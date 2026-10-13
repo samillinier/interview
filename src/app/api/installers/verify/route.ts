@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
             ipAddress: getClientIp(request),
           })
         } catch (err) {
-          console.error('Failed to record installer heartbeat:', err)
+          console.error('Failed to record subcontractor heartbeat:', err)
         }
       }
 

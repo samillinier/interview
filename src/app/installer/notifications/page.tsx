@@ -416,7 +416,7 @@ export default function NotificationsPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!installer || !installer.id) {
-      setError('Installer information not loaded. Please refresh the page.')
+      setError('Subcontractor information not loaded. Please refresh the page.')
       return
     }
     if (!messageContent.trim() && !selectedFile) return

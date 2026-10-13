@@ -12,7 +12,7 @@ export async function DELETE(
 
     if (!installerId || !notificationId) {
       return NextResponse.json(
-        { error: 'Installer ID and Notification ID are required' },
+        { error: 'Subcontractor ID and Notification ID are required' },
         { status: 400 }
       )
     }

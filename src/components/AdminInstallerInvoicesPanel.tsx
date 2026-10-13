@@ -48,7 +48,7 @@ type InstallerOption = {
 
 function installerLabel(row: { firstName?: string | null; lastName?: string | null; email?: string | null; companyName?: string | null }) {
   const name = `${row.firstName || ''} ${row.lastName || ''}`.trim()
-  return name || row.email || 'Installer'
+  return name || row.email || 'Subcontractor'
 }
 
 function formatWhen(value: string | null) {
@@ -109,7 +109,7 @@ export function AdminInstallerInvoicesPanel({ installerId }: { installerId?: str
             fetch('/api/admin/installers/names', { cache: 'no-store' })
               .then(async (res) => {
                 const data = await res.json().catch(() => ({}))
-                if (!res.ok) throw new Error(data.error || 'Failed to load installers')
+                if (!res.ok) throw new Error(data.error || 'Failed to load subcontractors')
                 if (!cancelled) setInstallers(Array.isArray(data.installers) ? data.installers : [])
               })
           )
@@ -180,7 +180,7 @@ export function AdminInstallerInvoicesPanel({ installerId }: { installerId?: str
       return
     }
     if (!lockedInstallerId && !sendToAll && selectedIds.length === 0) {
-      setError('Select at least one installer.')
+      setError('Select at least one subcontractor.')
       return
     }
 
@@ -252,8 +252,8 @@ export function AdminInstallerInvoicesPanel({ installerId }: { installerId?: str
         <h2 className="text-lg font-bold text-slate-900 mb-1">Attach and send</h2>
         <p className="text-sm text-slate-500 mb-4">
           {lockedInstallerId
-            ? 'Upload an invoice file and send it to this installer.'
-            : 'Upload an invoice file, choose installers, and send it to their Invoices page.'}
+            ? 'Upload an invoice file and send it to this subcontractor.'
+            : 'Upload an invoice file, choose subcontractors, and send it to their Invoices page.'}
         </p>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
@@ -274,7 +274,7 @@ export function AdminInstallerInvoicesPanel({ installerId }: { installerId?: str
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
-                placeholder="Anything the installer should know…"
+                placeholder="Anything the subcontractor should know…"
                 className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
               />
             </div>
@@ -332,10 +332,10 @@ export function AdminInstallerInvoicesPanel({ installerId }: { installerId?: str
                   }}
                   className="rounded border-slate-300 text-brand-green focus:ring-brand-green"
                 />
-                Send to all installers
+                Send to all subcontractors
               </label>
               <p className="text-xs text-slate-500">
-                {sendToAll ? `${installers.length} installers` : `${selectedIds.length} selected`}
+                {sendToAll ? `${installers.length} subcontractors` : `${selectedIds.length} selected`}
               </p>
             </div>
             {!sendToAll ? (
@@ -345,13 +345,13 @@ export function AdminInstallerInvoicesPanel({ installerId }: { installerId?: str
                   <input
                     value={pickerQuery}
                     onChange={(e) => setPickerQuery(e.target.value)}
-                    placeholder="Search installers…"
+                    placeholder="Search subcontractors…"
                     className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/30"
                   />
                 </div>
                 <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200">
                   {filteredInstallers.length === 0 ? (
-                    <p className="p-4 text-sm text-slate-500">No installers match that search.</p>
+                    <p className="p-4 text-sm text-slate-500">No subcontractors match that search.</p>
                   ) : (
                     filteredInstallers.map((row) => {
                       const selected = selectedIds.includes(row.id)

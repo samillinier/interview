@@ -59,7 +59,7 @@ export default function AccessDeniedPage() {
               Please contact your administrator to request access to the dashboard.
             </p>
             <a
-              href="mailto:admin@fiscorponline.com?subject=Dashboard Access Request&body=Hi,%0A%0AI would like to request access to the FIS Installer Dashboard.%0A%0AMy email: [Your Email]%0ARole: [Your Role]%0A%0AThank you!"
+              href="mailto:admin@fiscorponline.com?subject=Dashboard Access Request&body=Hi,%0A%0AI would like to request access to the FIS Subcontractor Dashboard.%0A%0AMy email: [Your Email]%0ARole: [Your Role]%0A%0AThank you!"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors text-sm"
             >
               <Mail className="w-4 h-4" />

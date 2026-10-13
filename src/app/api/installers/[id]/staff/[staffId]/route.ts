@@ -57,7 +57,7 @@ export async function PATCH(
 
     if (!installerId || !staffId) {
       return NextResponse.json(
-        { error: 'Installer ID and Staff ID are required' },
+        { error: 'Subcontractor ID and Staff ID are required' },
         { status: 400 }
       )
     }
@@ -77,7 +77,7 @@ export async function PATCH(
 
     if (staffMember.installerId !== installerId) {
       return NextResponse.json(
-        { error: 'Staff member does not belong to this installer' },
+        { error: 'Staff member does not belong to this subcontractor' },
         { status: 403 }
       )
     }
@@ -191,7 +191,7 @@ export async function DELETE(
 
     if (!installerId || !staffId) {
       return NextResponse.json(
-        { error: 'Installer ID and Staff ID are required' },
+        { error: 'Subcontractor ID and Staff ID are required' },
         { status: 400 }
       )
     }
@@ -211,7 +211,7 @@ export async function DELETE(
 
     if (staffMember.installerId !== installerId) {
       return NextResponse.json(
-        { error: 'Staff member does not belong to this installer' },
+        { error: 'Staff member does not belong to this subcontractor' },
         { status: 403 }
       )
     }

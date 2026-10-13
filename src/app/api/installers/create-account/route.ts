@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     if (!installer || installer.accountDeletedAt || String(installer.status || '').toLowerCase() === 'deleted') {
       return NextResponse.json(
-        { error: 'Installer not found' },
+        { error: 'Subcontractor not found' },
         { status: 404 }
       )
     }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     // Check if account already exists
     if (installer.passwordHash) {
       return NextResponse.json(
-        { error: 'Account already exists for this installer' },
+        { error: 'Account already exists for this subcontractor' },
         { status: 400 }
       )
     }

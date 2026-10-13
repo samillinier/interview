@@ -170,7 +170,7 @@ export default function AdminViewNDAPage({
             href={`/dashboard/installers/${installerId}`}
             className="inline-block px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
           >
-            Back to Installer Profile
+            Back to Subcontractor Profile
           </Link>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function AdminViewNDAPage({
                     )}
                   </div>
                   <p className="text-sm text-slate-500 mt-1">
-                    Installer: {installer ? `${installer.firstName} ${installer.lastName}` : installerId}
+                    Subcontractor: {installer ? `${installer.firstName} ${installer.lastName}` : installerId}
                     {signedDate && ` • Signed: ${signedDate}`}
                   </p>
                 </div>
@@ -353,7 +353,7 @@ export default function AdminViewNDAPage({
                         <div className="mt-1 text-xl leading-tight text-slate-900 font-mono">
                           {form.installerSignature || '—'}
                         </div>
-                        <div className="mt-1 text-xs text-slate-600">Installer</div>
+                        <div className="mt-1 text-xs text-slate-600">Subcontractor</div>
                         <div className="mt-1 text-sm text-slate-900">{signedDate || ''}</div>
                       </div>
                     </div>

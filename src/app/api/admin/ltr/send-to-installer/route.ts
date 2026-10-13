@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const nameParts = splitFullName(installer)
     if (!nameParts) {
       return NextResponse.json(
-        { error: 'Could not match installer: invalid name', details: `Installer name "${installer}" must include first and last name.` },
+        { error: 'Could not match subcontractor: invalid name', details: `Subcontractor name "${installer}" must include first and last name.` },
         { status: 400, headers: noStore }
       )
     }
@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
     if (candidates.length === 0) {
       return NextResponse.json(
         {
-          error: 'Installer not found',
-          details: `No installer matched "${nameParts.firstName} ${nameParts.lastName}".`,
+          error: 'Subcontractor not found',
+          details: `No subcontractor matched "${nameParts.firstName} ${nameParts.lastName}".`,
         },
         { status: 404, headers: noStore }
       )
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       { headers: noStore }
     )
   } catch (e: any) {
-    console.error('send survey to installer:', e)
+    console.error('send survey to subcontractor:', e)
     return NextResponse.json(
       { error: 'Failed to send survey', details: e?.message },
       { status: 500, headers: noStore }

@@ -24,7 +24,7 @@ const corporateGroups = [
     cards: [
       {
         title: 'Claims',
-        description: 'Manage claim records, loss details, installer links, status updates, and notes.',
+        description: 'Manage claim records, loss details, subcontractor links, status updates, and notes.',
         href: '/dashboard/corporate/claims',
         icon: FileText,
         cta: 'Claims',

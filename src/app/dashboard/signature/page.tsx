@@ -328,7 +328,7 @@ export default function SignaturePage() {
     try {
       const res = await fetch(`/api/installers/${installerId}/agreements`, { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || 'Failed to load installer agreements')
+      if (!res.ok) throw new Error(data?.error || 'Failed to load subcontractor agreements')
       const agreements = Array.isArray(data?.agreements) ? data.agreements : []
       setInstallerDocuments(
         agreements
@@ -353,7 +353,7 @@ export default function SignaturePage() {
       )
     } catch (e: any) {
       setInstallerDocuments([])
-      setError(e?.message || 'Failed to load installer agreements')
+      setError(e?.message || 'Failed to load subcontractor agreements')
       setTimeout(() => setError(''), 5000)
     } finally {
       setLoadingInstallerDocuments(false)
@@ -434,7 +434,7 @@ export default function SignaturePage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || data?.details || 'Failed to use existing document')
 
-      setSuccess('Existing installer document linked as the signed agreement.')
+      setSuccess('Existing subcontractor document linked as the signed agreement.')
       setSignedDocModal({ open: false, row: null, url: '' })
       setSignedDocFile(null)
       setSelectedExistingDocumentId('')
@@ -649,7 +649,7 @@ export default function SignaturePage() {
                                 ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
                                 : 'border-blue-300 text-blue-700 hover:bg-blue-50 disabled:opacity-50'
                             }`}
-                            title={isEmailSent ? 'Email already sent to installer' : 'Send agreement email to installer'}
+                            title={isEmailSent ? 'Email already sent to subcontractor' : 'Send agreement email to subcontractor'}
                           >
                             {isSendingEmailForRow ? (
                               <>

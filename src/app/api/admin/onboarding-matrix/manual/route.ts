@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (installerId) {
       const inst = await prisma.installer.findUnique({ where: { id: installerId }, select: { id: true } })
       if (!inst) {
-        return NextResponse.json({ error: 'Installer not found' }, { status: 404, headers: noStoreHeaders })
+        return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404, headers: noStoreHeaders })
       }
       const dup = (
         await prisma.installerTracking.findMany({
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       ).find((row) => !isAutoPromotedMatrixRow(row.metadata))
       if (dup) {
         return NextResponse.json(
-          { error: 'This installer is already on the matrix. Remove the existing row first.' },
+          { error: 'This subcontractor is already on the matrix. Remove the existing row first.' },
           { status: 409, headers: noStoreHeaders }
         )
       }
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     if (!name) {
       return NextResponse.json(
-        { error: 'Select an installer or enter a company / name' },
+        { error: 'Select an subcontractor or enter a company / name' },
         { status: 400, headers: noStoreHeaders }
       )
     }

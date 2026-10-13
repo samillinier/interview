@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     if (!installerId) {
       return NextResponse.json(
-        { error: 'Installer ID is required' },
+        { error: 'Subcontractor ID is required' },
         { status: 400 }
       )
     }
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     if (!installer) {
       return NextResponse.json(
-        { error: 'Installer not found' },
+        { error: 'Subcontractor not found' },
         { status: 404 }
       )
     }
@@ -509,7 +509,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Checked ${installers.length} installers`,
+      message: `Checked ${installers.length} subcontractors`,
       notificationsSent: results.length,
       installersWithExpiringItems: results,
     })

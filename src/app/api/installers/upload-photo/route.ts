@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     if (!installerId || !photoUrl) {
       return NextResponse.json(
-        { error: 'Installer ID and photo URL are required' },
+        { error: 'Subcontractor ID and photo URL are required' },
         { status: 400 }
       )
     }
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     if (!installer) {
       return NextResponse.json(
-        { error: 'Installer not found' },
+        { error: 'Subcontractor not found' },
         { status: 404 }
       )
     }
@@ -77,7 +77,7 @@ export async function DELETE(request: NextRequest) {
 
     const installerId = request.nextUrl.searchParams.get('installerId')
     if (!installerId) {
-      return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
     }
 
     const installer = await prisma.installer.findUnique({
@@ -86,7 +86,7 @@ export async function DELETE(request: NextRequest) {
     })
 
     if (!installer) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
     }
 
     if (installer.photoUrl) {

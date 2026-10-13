@@ -246,12 +246,12 @@ export async function GET(
     
     if (!installerId) {
       return NextResponse.json(
-        { error: 'Installer ID is required' },
+        { error: 'Subcontractor ID is required' },
         { status: 400 }
       )
     }
     
-    console.log('Fetching installer with ID:', installerId)
+    console.log('Fetching subcontractor with ID:', installerId)
     
     try {
       let installer = await prisma.installer.findUnique({
@@ -259,9 +259,9 @@ export async function GET(
     })
 
     if (!installer) {
-        console.error('Installer not found with ID:', installerId)
+        console.error('Subcontractor not found with ID:', installerId)
         return NextResponse.json(
-          { error: 'Installer not found', installerId },
+          { error: 'Subcontractor not found', installerId },
           { status: 404 }
         )
     }
@@ -277,7 +277,7 @@ export async function GET(
             })
           }
         } catch (err) {
-          console.error('Failed to backfill installer phone:', err)
+          console.error('Failed to backfill subcontractor phone:', err)
         }
       }
 
@@ -308,7 +308,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
           }
         } catch {
-          return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
+          return NextResponse.json({ error: 'Unauthorized', details: 'Invalid subcontractor token' }, { status: 401 })
         }
       } else {
         const session = await getServerSession(authOptions)
@@ -363,7 +363,7 @@ export async function GET(
         console.error('Failed to compute pendingChangeRequestsCount:', err)
       }
 
-      console.log('Installer found:', installer?.email)
+      console.log('Subcontractor found:', installer?.email)
       const responseInstaller = {
         ...installer,
         referralCode,
@@ -383,7 +383,7 @@ export async function GET(
       })
     } catch (dbError: any) {
       // Handle Prisma/database specific errors
-      console.error('Database error fetching installer:', dbError)
+      console.error('Database error fetching subcontractor:', dbError)
       if (dbError.code === 'P2002') {
         return NextResponse.json(
           { error: 'Database constraint violation', details: dbError.message },
@@ -394,14 +394,14 @@ export async function GET(
       return NextResponse.json(
         { 
           error: 'Database error', 
-          details: dbError.message || 'An error occurred while fetching installer',
+          details: dbError.message || 'An error occurred while fetching subcontractor',
           code: dbError.code || 'DB_ERROR'
         },
         { status: 500 }
       )
     }
   } catch (error: any) {
-    console.error('Error fetching installer:', error)
+    console.error('Error fetching subcontractor:', error)
     console.error('Error details:', {
       message: error.message,
       code: error.code,
@@ -422,7 +422,7 @@ export async function GET(
     
     return NextResponse.json(
       { 
-        error: 'Failed to fetch installer', 
+        error: 'Failed to fetch subcontractor', 
         details: error.message || 'An unexpected error occurred',
         code: error.code || 'UNKNOWN_ERROR'
       },
@@ -530,7 +530,7 @@ export async function PATCH(
     
     if (!installerId) {
       return NextResponse.json(
-        { error: 'Installer ID is required' },
+        { error: 'Subcontractor ID is required' },
         { status: 400 }
       )
     }
@@ -557,7 +557,7 @@ export async function PATCH(
         const nextType = String(data.accountType || '').trim().toLowerCase()
         if (nextType !== 'installer' && nextType !== 'estimator') {
           return NextResponse.json(
-            { error: 'accountType must be installer or estimator' },
+            { error: 'accountType must be subcontractor or estimator' },
             { status: 400 }
           )
         }
@@ -776,12 +776,12 @@ export async function PATCH(
         try {
           payload = verifyInstallerToken(token)
         } catch {
-          return NextResponse.json({ error: 'Unauthorized', details: 'Invalid installer token' }, { status: 401 })
+          return NextResponse.json({ error: 'Unauthorized', details: 'Invalid subcontractor token' }, { status: 401 })
         }
 
         if (!payload.installerId || payload.installerId !== installerId) {
           return NextResponse.json(
-            { error: 'Forbidden', details: 'Token does not match installer' },
+            { error: 'Forbidden', details: 'Token does not match subcontractor' },
             { status: 403 }
           )
         }
@@ -789,11 +789,11 @@ export async function PATCH(
         // Load current installer state so we can create a true diff (avoid "changed everything" requests).
         const currentInstaller = await prismaAny.installer.findUnique({ where: { id: installerId } })
         if (!currentInstaller) {
-          return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+          return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
         }
         if ((currentInstaller.status || '').toLowerCase() === 'deactive') {
           return NextResponse.json(
-            { error: 'Account deactivated', details: 'This installer account is deactivated.' },
+            { error: 'Account deactivated', details: 'This subcontractor account is deactivated.' },
             { status: 403 }
           )
         }
@@ -926,7 +926,7 @@ export async function PATCH(
 
       if (!adminEmail) {
         return NextResponse.json(
-          { error: 'Unauthorized', details: 'Missing installer token' },
+          { error: 'Unauthorized', details: 'Missing subcontractor token' },
           { status: 401 }
         )
       }
@@ -963,14 +963,14 @@ export async function PATCH(
 
         const alreadyHasSystemNote = remarksArr.some((r) => {
           const note = (r as any)?.note
-          return typeof note === 'string' && note.startsWith('SYSTEM: Installer deactivated.')
+          return typeof note === 'string' && note.startsWith('SYSTEM: Subcontractor deactivated.')
         })
 
         // Add the system note if missing (even if installer was already deactive from a previous version)
         if (!alreadyHasSystemNote) {
           const installerName = `${currentInstaller?.firstName || ''} ${currentInstaller?.lastName || ''}`.trim()
           const installerEmail = currentInstaller?.email || ''
-          const note = `SYSTEM: Installer deactivated. Please disable access for any associated staff/team members. (${installerName || installerId}${installerEmail ? ` • ${installerEmail}` : ''})`
+          const note = `SYSTEM: Subcontractor deactivated. Please disable access for any associated staff/team members. (${installerName || installerId}${installerEmail ? ` • ${installerEmail}` : ''})`
           remarksArr.unshift({ note, createdAt: new Date().toISOString() })
           cleanedData.remarks = JSON.stringify(remarksArr)
         }
@@ -987,7 +987,7 @@ export async function PATCH(
       const effectiveNotificationMethod = notificationMethod !== undefined && notificationMethod !== null ? notificationMethod : 'both'
       
       // Debug logging - check what's in cleanedData
-      console.log(`🔍 Checking changes for installer ${installerId}:`)
+      console.log(`🔍 Checking changes for subcontractor ${installerId}:`)
       console.log(`  - cleanedData keys: ${Object.keys(cleanedData).join(', ')}`)
       console.log(`  - Current status: ${currentInstaller?.status}, New status: ${cleanedData.status}`)
       console.log(`  - Current trackerStage: ${currentInstaller?.trackerStage}, New trackerStage: ${cleanedData.trackerStage}`)
@@ -1043,7 +1043,7 @@ export async function PATCH(
       
       // Log changes for debugging
       if (statusChanged || trackerStageChanged) {
-        console.log(`📢 Status/Stage change detected for installer ${installerId}:`)
+        console.log(`📢 Status/Stage change detected for subcontractor ${installerId}:`)
         if (statusChanged && currentInstaller) {
           console.log(`  - Status: ${currentInstaller.status} → ${cleanedData.status}`)
         }
@@ -1135,7 +1135,7 @@ export async function PATCH(
                 senderType: 'admin',
               },
             })
-            console.log(`✅ ${trackerStageChanged ? 'Tracker stage' : 'Status'} change notification created successfully for installer ${installerId} (Notification ID: ${notification.id})`)
+            console.log(`✅ ${trackerStageChanged ? 'Tracker stage' : 'Status'} change notification created successfully for subcontractor ${installerId} (Notification ID: ${notification.id})`)
             await sendPushToInstaller({
               installerId,
               title: notificationTitle,
@@ -1168,7 +1168,7 @@ export async function PATCH(
                 if (trackerStageChanged && newTrackerStage) {
                   switch (newTrackerStage) {
                     case 'PENDING':
-                      return `Thank you for your interest in working with Floor Interior Services and for completing the AI interview! 🎉 Your status is now <strong>Pending ⏳</strong>. To move forward to the next stage, please complete your full profile in the installer portal, including all required information and documents. We're excited to move ahead with you!`
+                      return `Thank you for your interest in working with Floor Interior Services and for completing the AI interview! 🎉 Your status is now <strong>Pending ⏳</strong>. To move forward to the next stage, please complete your full profile in the subcontractor portal, including all required information and documents. We're excited to move ahead with you!`
                     
                     case 'QUALIFIED':
                       return `Great news! 🎉 Your status has been updated to <strong>Qualified ✅</strong>. You've successfully met our initial requirements, and we're excited to continue the process with you. Please complete your full profile, upload all required attachments, and add expiration dates. Once submitted, your documents will move to verification. You're getting closer! 🚀`
@@ -1183,7 +1183,7 @@ export async function PATCH(
                       return `Congratulations! 🎊 You've moved to the <strong>Background 🛡️</strong> stage. This process typically takes 3–7 days to complete. Once finalized, you'll be just one step away from becoming fully approved. Thank you for your patience during this final review!`
                     
                     case 'ACTIVE_APPROVED':
-                      return `Congratulations! Your background has been successfully completed, and your status is now <strong>Active / Approved 🎉🚀</strong>! You are officially an approved installer with Floor Interior Services. You'll now connect with your Regional Manager and be ready to get started with work. We're excited to have you on board — welcome to the team! 👏🔥`
+                      return `Congratulations! Your background has been successfully completed, and your status is now <strong>Active / Approved 🎉🚀</strong>! You are officially an approved subcontractor with Floor Interior Services. You'll now connect with your Regional Manager and be ready to get started with work. We're excited to have you on board — welcome to the team! 👏🔥`
                     
                     default:
                       // Fall through to status-based messages
@@ -1208,13 +1208,13 @@ export async function PATCH(
                 }
                 
                 if (newStatus === 'qualified' || newStatus === 'active' || newTrackerStage === 'ACTIVE_APPROVED') {
-                  return `We're thrilled to inform you that ${changeDesc}! 🎉<br><br>This is an exciting milestone, and we're delighted to have you as part of our team. You can now access all the features available to active installers and start exploring opportunities with us.`
+                  return `We're thrilled to inform you that ${changeDesc}! 🎉<br><br>This is an exciting milestone, and we're delighted to have you as part of our team. You can now access all the features available to active subcontractors and start exploring opportunities with us.`
                 } else if (newStatus === 'pending' || newTrackerStage === 'PENDING') {
                   return `We wanted to let you know that ${changeDesc}.<br><br>Our team is currently reviewing your information and documentation. We appreciate your patience during this process and will be in touch with you soon. If you have any questions in the meantime, please don't hesitate to reach out.`
                 } else if (newStatus === 'failed' || newStatus === 'deactive') {
                   return `We're writing to inform you that ${changeDesc}.<br><br>If you have any questions about this change or would like to discuss your account status, our support team is here to help. Please feel free to contact us at any time.`
                 } else {
-                  return `We wanted to keep you informed that ${changeDesc}.<br><br>Thank you for being part of our installer community. We value your partnership and look forward to continuing to work together.`
+                  return `We wanted to keep you informed that ${changeDesc}.<br><br>Thank you for being part of our subcontractor community. We value your partnership and look forward to continuing to work together.`
                 }
               }
               
@@ -1270,7 +1270,7 @@ export async function PATCH(
                       
                       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                       <p style="color: #999; font-size: 12px; text-align: center;">
-                        Floor Interior Services - Installer Portal
+                        Floor Interior Services - Subcontractor Portal
                       </p>
                     </body>
                   </html>
@@ -1308,7 +1308,7 @@ Floor Interior Services Team
       return NextResponse.json({ installer })
     } catch (dbError: any) {
       // Handle database-specific errors
-      console.error('Database error updating installer:', dbError)
+      console.error('Database error updating subcontractor:', dbError)
       console.error('Error details:', {
         message: dbError?.message,
         code: dbError?.code,
@@ -1318,7 +1318,7 @@ Floor Interior Services Team
       console.error('Attempted update data:', JSON.stringify(cleanedData, null, 2))
       
       // Provide more detailed error information
-      let errorMessage = 'Failed to update installer'
+      let errorMessage = 'Failed to update subcontractor'
       let errorDetails = dbError?.message || 'Unknown error'
       
       // Check for Prisma errors
@@ -1327,8 +1327,8 @@ Floor Interior Services Team
           errorMessage = 'A record with this value already exists'
           errorDetails = dbError.meta?.target ? `Duplicate value for: ${dbError.meta.target.join(', ')}` : dbError.message
         } else if (dbError.code === 'P2025') {
-          errorMessage = 'Installer not found'
-          errorDetails = 'The installer you are trying to update does not exist'
+          errorMessage = 'Subcontractor not found'
+          errorDetails = 'The subcontractor you are trying to update does not exist'
         } else if (dbError.code === 'P2003') {
           errorMessage = 'Invalid reference'
           errorDetails = dbError.message || 'A referenced record does not exist'
@@ -1354,7 +1354,7 @@ Floor Interior Services Team
       )
     }
   } catch (error: any) {
-    console.error('Error updating installer:', error)
+    console.error('Error updating subcontractor:', error)
     console.error('Error details:', {
       message: error?.message,
       code: error?.code,
@@ -1363,7 +1363,7 @@ Floor Interior Services Team
     })
     
     // Provide more detailed error information
-    let errorMessage = 'Failed to update installer'
+    let errorMessage = 'Failed to update subcontractor'
     let errorDetails = error?.message || 'Unknown error'
     
     // Check for Prisma errors
@@ -1372,8 +1372,8 @@ Floor Interior Services Team
         errorMessage = 'A record with this value already exists'
         errorDetails = error.meta?.target ? `Duplicate value for: ${error.meta.target.join(', ')}` : error.message
       } else if (error.code === 'P2025') {
-        errorMessage = 'Installer not found'
-        errorDetails = 'The installer you are trying to update does not exist'
+        errorMessage = 'Subcontractor not found'
+        errorDetails = 'The subcontractor you are trying to update does not exist'
       } else if (error.code === 'P2003') {
         errorMessage = 'Invalid reference'
         errorDetails = error.message || 'A referenced record does not exist'
@@ -1423,7 +1423,7 @@ export async function DELETE(
       select: { id: true, email: true, firstName: true, lastName: true, status: true, accountDeletedAt: true } as any,
     })
     if (!existing) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
     }
 
     await archiveInstallerAccount(installerId, `admin:${email}`)
@@ -1443,14 +1443,14 @@ export async function DELETE(
         after: { status: 'deleted' },
       })
     } catch (e) {
-      console.error('Failed to write audit log (installer.archive):', e)
+      console.error('Failed to write audit log (subcontractor.archive):', e)
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting installer:', error)
+    console.error('Error deleting subcontractor:', error)
     return NextResponse.json(
-      { error: 'Failed to delete installer' },
+      { error: 'Failed to delete subcontractor' },
       { status: 500 }
     )
   }

@@ -31,7 +31,7 @@ export async function GET() {
 
     return NextResponse.json({ installers })
   } catch (error: any) {
-    console.error("Error fetching installer names:", error)
-    return NextResponse.json({ error: "Failed to fetch installers" }, { status: 500 })
+    console.error("Error fetching subcontractor names:", error)
+    return NextResponse.json({ error: "Failed to fetch subcontractors" }, { status: 500 })
   }
 }

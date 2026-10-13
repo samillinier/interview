@@ -75,7 +75,7 @@ export async function recordInstallerAccess(
       }
     }
   } catch (err) {
-    console.error('Failed to look up installer device token:', err)
+    console.error('Failed to look up subcontractor device token:', err)
   }
 
   let existing: string | null = null
@@ -86,7 +86,7 @@ export async function recordInstallerAccess(
     })
     existing = row?.lastPlatform || null
   } catch (err) {
-    console.error('Failed to read installer lastPlatform:', err)
+    console.error('Failed to read subcontractor lastPlatform:', err)
   }
 
   // Prefer an explicit OS from the caller, then the request UA (iPhone/Android),
@@ -132,7 +132,7 @@ export async function platformFromNativeDeviceToken(
     })
     return lastPlatform
   } catch (err) {
-    console.error('Failed to backfill installer app platform:', err)
+    console.error('Failed to backfill subcontractor app platform:', err)
     return current
   }
 }

@@ -32,7 +32,7 @@ export async function POST(
     })
 
     if (!installer) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
     }
 
     const { status } = await request.json()
@@ -43,7 +43,7 @@ export async function POST(
 
     // Check if installer has email
     if (!installer.email) {
-      return NextResponse.json({ error: 'Installer does not have an email address' }, { status: 400 })
+      return NextResponse.json({ error: 'Subcontractor does not have an email address' }, { status: 400 })
     }
 
     // Send email via Resend
@@ -72,13 +72,13 @@ export async function POST(
           </div>
 
           <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 18px; border-radius: 12px; margin-bottom: 18px;">
-            <h1 style="color: #15803d; margin: 0; text-align: center; font-size: 22px;">You’re now a Qualified Installer 🥳</h1>
+            <h1 style="color: #15803d; margin: 0; text-align: center; font-size: 22px;">You’re now a Qualified Subcontractor 🥳</h1>
           </div>
 
           <p style="margin: 0 0 12px 0;">Hello${installer.firstName ? ` ${installer.firstName}` : ''},</p>
 
           <p style="margin: 0 0 12px 0;">
-            Thank you for your interest in partnering with Floor Interior Services. Congratulations! You are now a qualified Installer!
+            Thank you for your interest in partnering with Floor Interior Services. Congratulations! You are now a qualified Subcontractor!
           </p>
 
           <p style="margin: 0 0 16px 0;">
@@ -90,7 +90,7 @@ export async function POST(
             <ol style="margin: 0; padding-left: 22px; color: #111827;">
               <li style="margin: 10px 0;">
                 <strong>Complete Your Profile</strong><br/>
-                Please log in and complete your installer profile using the same email you used for the AI interview:<br/>
+                Please log in and complete your subcontractor profile using the same email you used for the AI interview:<br/>
                 <a href="https://job.floorinteriorservices.com/create-account" style="color: #16a34a; text-decoration: none; font-weight: 700;">https://job.floorinteriorservices.com/create-account</a>
               </li>
               <li style="margin: 10px 0;">

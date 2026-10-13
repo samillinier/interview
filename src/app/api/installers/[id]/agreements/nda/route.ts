@@ -29,7 +29,7 @@ export async function GET(
     const installerId = resolvedParams.id
 
     if (!installerId) {
-      return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
     }
 
     // First try to get from InstallerAgreement table

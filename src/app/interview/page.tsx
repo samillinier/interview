@@ -66,7 +66,7 @@ function InterviewStartContent() {
   // Text content based on language
   const content = {
     en: {
-      title: 'Installer Prescreening',
+      title: 'Subcontractor Prescreening',
       subtitle: 'Complete your interview in just a few minutes',
       feature1: 'Voice-Powered Interview',
       feature1Desc: 'Simply speak your answers naturally',

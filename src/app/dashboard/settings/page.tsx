@@ -148,7 +148,7 @@ export default function SettingsPage() {
     { slug: 'carpet-pad-order-cc', label: 'Carpet Pad Order — CC' },
     { slug: 'fleet-service-request', label: 'Fleet Service Request' },
     { slug: 'job-application', label: 'Job Application' },
-    { slug: 'installer-application', label: 'Installer Application' },
+    { slug: 'installer-application', label: 'Subcontractor Application' },
     { slug: 'invoice', label: 'Invoice' },
     { slug: 'btr', label: 'BTR' },
     { slug: 'firm-lead', label: 'Firm Lead' },
@@ -357,7 +357,7 @@ export default function SettingsPage() {
     const q = credentialSearch.trim()
     if (q.length < 2) {
       setCredentialResults([])
-      setError('Type at least 2 characters to search installers')
+      setError('Type at least 2 characters to search subcontractors')
       return
     }
 
@@ -367,11 +367,11 @@ export default function SettingsPage() {
     try {
       const res = await fetch(`/api/admin/installers/credentials?q=${encodeURIComponent(q)}`, { cache: 'no-store' })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || 'Failed to search installers')
+      if (!res.ok) throw new Error(data?.error || 'Failed to search subcontractors')
       setCredentialResults(Array.isArray(data?.installers) ? data.installers : [])
     } catch (err: any) {
       setCredentialResults([])
-      setError(err?.message || 'Failed to search installers')
+      setError(err?.message || 'Failed to search subcontractors')
     } finally {
       setCredentialSearchLoading(false)
     }
@@ -392,7 +392,7 @@ export default function SettingsPage() {
   const handleCredentialSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCredentialInstaller) {
-      setError('Select an installer first')
+      setError('Select an subcontractor first')
       return
     }
     if (credentialForm.password && credentialForm.password !== credentialForm.confirmPassword) {
@@ -415,7 +415,7 @@ export default function SettingsPage() {
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || 'Failed to update installer credentials')
+      if (!res.ok) throw new Error(data?.error || 'Failed to update subcontractor credentials')
 
       const updated = data.installer as InstallerCredentialResult
       setSelectedCredentialInstaller(updated)
@@ -426,10 +426,10 @@ export default function SettingsPage() {
         password: '',
         confirmPassword: '',
       })
-      setSuccess('Installer login credentials updated successfully')
+      setSuccess('Subcontractor login credentials updated successfully')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
-      setError(err?.message || 'Failed to update installer credentials')
+      setError(err?.message || 'Failed to update subcontractor credentials')
     } finally {
       setCredentialSaving(false)
     }
@@ -622,8 +622,8 @@ export default function SettingsPage() {
                   <KeyRound className="w-6 h-6 text-brand-green" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Installer Login Access</h2>
-                  <p className="text-sm text-slate-500">Search an installer and update their login email, username, or password</p>
+                  <h2 className="text-2xl font-bold text-slate-900">Subcontractor Login Access</h2>
+                  <p className="text-sm text-slate-500">Search a subcontractor and update their login email, username, or password</p>
                 </div>
               </div>
             </div>
@@ -634,7 +634,7 @@ export default function SettingsPage() {
                 <input
                   value={credentialSearch}
                   onChange={(e) => setCredentialSearch(e.target.value)}
-                  placeholder="Search by installer name, email, username, or company..."
+                  placeholder="Search by subcontractor name, email, username, or company..."
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20"
                 />
               </div>
@@ -1167,7 +1167,7 @@ export default function SettingsPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') fetchAuditLogs({ q: (e.target as HTMLInputElement).value })
                 }}
-                placeholder="Search: installer name/email/id or admin email…"
+                placeholder="Search: subcontractor name/email/id or admin email…"
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
               />
             </div>
@@ -1182,10 +1182,10 @@ export default function SettingsPage() {
               aria-label="Audit action"
             >
               <option value="all">All actions</option>
-              <option value="installer.status_change">Installer status changed</option>
-              <option value="installer.delete">Installer deleted</option>
+              <option value="installer.status_change">Subcontractor status changed</option>
+              <option value="installer.delete">Subcontractor deleted</option>
               <option value="installer.contract_generated">Contract generated</option>
-              <option value="installer.credentials_update">Installer login updated</option>
+              <option value="installer.credentials_update">Subcontractor login updated</option>
               <option value="admin.role_change">Admin role changed</option>
               <option value="admin.create">Admin created</option>
             </select>
@@ -1226,7 +1226,7 @@ export default function SettingsPage() {
                   <th className="py-3 px-4 font-semibold">When</th>
                   <th className="py-3 px-4 font-semibold">Admin</th>
                   <th className="py-3 px-4 font-semibold">Action</th>
-                  <th className="py-3 px-4 font-semibold">Installer</th>
+                  <th className="py-3 px-4 font-semibold">Subcontractor</th>
                   <th className="py-3 px-4 font-semibold">Details</th>
                 </tr>
               </thead>
@@ -1247,13 +1247,13 @@ export default function SettingsPage() {
                   auditLogs.map((log) => {
                     const actionLabel =
                       log.action === 'installer.delete'
-                        ? 'Installer deleted'
+                        ? 'Subcontractor deleted'
                         : log.action === 'installer.status_change'
-                        ? 'Installer status changed'
+                        ? 'Subcontractor status changed'
                         : log.action === 'installer.contract_generated'
                           ? 'Contract generated'
                         : log.action === 'installer.credentials_update'
-                          ? 'Installer login updated'
+                          ? 'Subcontractor login updated'
                           : log.action === 'admin.role_change'
                             ? 'Admin role changed'
                             : log.action === 'admin.create'

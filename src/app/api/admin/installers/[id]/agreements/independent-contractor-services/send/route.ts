@@ -30,7 +30,7 @@ export async function POST(
 
     const resolvedParams = context.params instanceof Promise ? await context.params : context.params
     const installerId = resolvedParams.id
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     // Agreement record
     const agreement = await prisma.installerAgreement.findUnique({
@@ -51,7 +51,7 @@ export async function POST(
       select: { email: true, firstName: true, lastName: true },
     })
     if (!installer?.email) {
-      return NextResponse.json({ error: 'Installer does not have an email address' }, { status: 400 })
+      return NextResponse.json({ error: 'Subcontractor does not have an email address' }, { status: 400 })
     }
 
     const resendApiKey = process.env.RESEND_API_KEY

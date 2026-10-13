@@ -237,7 +237,7 @@ export default function LicencesPage() {
   const navItems = useMemo(() => {
     const base = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/dashboard', label: 'Installers', icon: Users, match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/installers') },
+      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/installers') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert },
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck },
       { href: '/dashboard/tracking', label: 'Tracking', icon: Activity, match: (p: string) => p.startsWith('/dashboard/tracking') },

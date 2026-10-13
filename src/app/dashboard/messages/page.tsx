@@ -159,7 +159,7 @@ function mapWebsiteConversations(websiteData: {
     installerId: string
     lastMessage?: Message | null
     unreadCount?: number
-    Installer?: Message['Installer'] & {
+    Installer?: Message['Subcontractor'] & {
       status?: string
       online?: boolean
       aiEnabled?: boolean
@@ -495,7 +495,7 @@ export default function MessagesPage() {
       setInstallers(installersList)
       return installersList
     } catch (error) {
-      console.error('Error fetching installers:', error)
+      console.error('Error fetching subcontractors:', error)
       return []
     }
   }
@@ -515,7 +515,7 @@ export default function MessagesPage() {
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-                Installer?: Message['Installer'] & {
+                Installer?: Message['Subcontractor'] & {
                   status?: string
                   online?: boolean
                   lastSeenAt?: string | Date | null
@@ -596,7 +596,7 @@ export default function MessagesPage() {
       // Verify that the installer is accessible (important for moderators)
       const installerExists = installers.find((i) => i.id === installerId)
       if (!installerExists) {
-        console.error('Installer not accessible:', installerId)
+        console.error('Subcontractor not accessible:', installerId)
         setMessages([])
         return
       }
@@ -609,7 +609,7 @@ export default function MessagesPage() {
       )
       setMessages(sortedMessages)
     } catch (error) {
-      console.error('Error fetching messages for installer:', error)
+      console.error('Error fetching messages for subcontractor:', error)
     }
   }
 
@@ -843,7 +843,7 @@ export default function MessagesPage() {
     }
 
     if (composerMode === 'installer' && !composerInstaller && !composerSelectAll) {
-      setError('Please choose an installer or select all installers.')
+      setError('Please choose an subcontractor or select all subcontractors.')
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -937,7 +937,7 @@ export default function MessagesPage() {
       setSuccess(
         composerMode === 'installer'
           ? sentToAll
-            ? `Message sent to all ${installers.length} installers!`
+            ? `Message sent to all ${installers.length} subcontractors!`
             : 'Message and email sent!'
           : 'Email sent!'
       )
@@ -1195,7 +1195,7 @@ export default function MessagesPage() {
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Compose Message</h2>
                   <p className="text-sm text-slate-500">
-                    Send to an installer, a website visitor, or an outside email address.
+                    Send to a subcontractor, a website visitor, or an outside email address.
                   </p>
                 </div>
                 <button
@@ -1231,7 +1231,7 @@ export default function MessagesPage() {
                     }`}
                   >
                     <Users className="w-4 h-4" />
-                    Installer
+                    Subcontractor
                   </button>
                   <button
                     type="button"
@@ -1330,9 +1330,9 @@ export default function MessagesPage() {
                             <CheckSquare className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-900">Select all installers</p>
+                            <p className="font-semibold text-slate-900">Select all subcontractors</p>
                             <p className="text-sm text-slate-500">
-                              Send to every installer ({installers.length} total)
+                              Send to every subcontractor ({installers.length} total)
                             </p>
                           </div>
                         </button>
@@ -1342,13 +1342,13 @@ export default function MessagesPage() {
                             type="text"
                             value={composerSearchQuery}
                             onChange={(e) => setComposerSearchQuery(e.target.value)}
-                            placeholder="Or search installer by name or email..."
+                            placeholder="Or search subcontractor by name or email..."
                             className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green"
                           />
                         </div>
                         <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-200 divide-y divide-slate-100">
                           {filteredComposerInstallers.length === 0 ? (
-                            <p className="p-4 text-sm text-slate-500 text-center">No installers found</p>
+                            <p className="p-4 text-sm text-slate-500 text-center">No subcontractors found</p>
                           ) : (
                             filteredComposerInstallers.map((installer) => (
                               <button
@@ -1598,7 +1598,7 @@ export default function MessagesPage() {
                   conversationFilter === 'installers' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                Installers
+                Subcontractors
               </button>
               <button
                 type="button"
@@ -1900,7 +1900,7 @@ export default function MessagesPage() {
                               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors border-t border-slate-100"
                             >
                               <User className="w-4 h-4 text-slate-500" />
-                              <span className="text-sm font-semibold text-slate-800">View Installer Profile</span>
+                              <span className="text-sm font-semibold text-slate-800">View Subcontractor Profile</span>
                             </button>
                             <button
                               type="button"

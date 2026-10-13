@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     let installer = await prisma.installer.findUnique({
       where: { email },
     })
-    console.log('Existing installer:', installer?.id || 'none')
+    console.log('Existing subcontractor:', installer?.id || 'none')
 
     if (!installer) {
       const referredByInstallerId = await resolveReferrerInstallerId(referralCode)
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
           referredByInstallerId,
         },
       })
-      console.log('Created new installer:', installer.id)
+      console.log('Created new subcontractor:', installer.id)
     } else if (!installer.phone) {
       installer = await prisma.installer.update({
         where: { id: installer.id },

@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
             where: { id: interview.installerId },
             data: installerUpdateData,
           })
-          console.log('Installer interview fields saved immediately:', Object.keys(installerUpdateData))
+          console.log('Subcontractor interview fields saved immediately:', Object.keys(installerUpdateData))
         }
       } catch (error) {
         console.error('Error saving interview fields immediately:', error)

@@ -557,7 +557,7 @@ export default function AnalyticsPage() {
                 <div className="flex flex-wrap gap-2 mt-4">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
                     <Users className="w-3.5 h-3.5" />
-                    {analytics.totalInstallers} installers
+                    {analytics.totalInstallers} subcontractors
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -615,7 +615,7 @@ export default function AnalyticsPage() {
               <div className="h-1.5 w-full rounded-full bg-brand-green/90 mb-6" />
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Installers</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-3">Total Subcontractors</p>
                   <h3 className="text-5xl leading-none font-black tracking-tight text-slate-900 mb-2">{analytics.totalInstallers}</h3>
                   <p className="text-sm text-slate-500">Active records in analytics</p>
                 </div>
@@ -720,7 +720,7 @@ export default function AnalyticsPage() {
                         <div className="mt-1 text-lg font-bold text-slate-900 capitalize">
                           {leadingStatus.status}
                         </div>
-                        <div className="text-sm text-slate-500">{leadingStatus.count} installers</div>
+                        <div className="text-sm text-slate-500">{leadingStatus.count} subcontractors</div>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -733,7 +733,7 @@ export default function AnalyticsPage() {
 
                     <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
                       <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
-                        <span>Installer statuses</span>
+                        <span>Subcontractor statuses</span>
                         <span>Max {maxCount}</span>
                       </div>
 
@@ -759,7 +759,7 @@ export default function AnalyticsPage() {
                                 type="button"
                                 onClick={() => handleStatusDistributionClick(item.status)}
                                 className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-xl px-1 text-center focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                                title={`View ${item.status} installers`}
+                                title={`View ${item.status} subcontractors`}
                               >
                                 <div className="mb-2 text-sm font-semibold text-slate-900">
                                   {item.count}
@@ -890,7 +890,7 @@ export default function AnalyticsPage() {
                                   <span className="text-sm font-bold text-slate-900">{item.value}</span>
                                 </div>
                                 <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                                  <span>{percentage.toFixed(1)}% of installers</span>
+                                  <span>{percentage.toFixed(1)}% of subcontractors</span>
                                   <span>{item.value} profiles</span>
                                 </div>
                               </div>
@@ -934,7 +934,7 @@ export default function AnalyticsPage() {
                           Top Range
                         </div>
                         <div className="mt-1 text-lg font-bold text-slate-900">{leadingRange.range}</div>
-                        <div className="text-sm text-slate-500">{leadingRange.count} installers</div>
+                        <div className="text-sm text-slate-500">{leadingRange.count} subcontractors</div>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -947,7 +947,7 @@ export default function AnalyticsPage() {
 
                     <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
                       <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
-                        <span>Installer experience</span>
+                        <span>Subcontractor experience</span>
                         <span>Max {maxCount}</span>
                       </div>
 
@@ -970,7 +970,7 @@ export default function AnalyticsPage() {
                                 type="button"
                                 onClick={() => handleExperienceDistributionClick(item.range)}
                                 className="group flex h-full min-w-0 flex-1 flex-col justify-end rounded-xl px-1 text-center focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                                title={`View installers with ${item.range} experience`}
+                                title={`View subcontractors with ${item.range} experience`}
                               >
                                 <div className="mb-2 text-sm font-semibold text-slate-900">
                                   {item.count}
@@ -1020,7 +1020,7 @@ export default function AnalyticsPage() {
                     type="button"
                     onClick={() => handleFlooringSkillClick(item.skill)}
                     className="group w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-left transition-colors hover:bg-brand-green/5 focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                    title={`View installers with ${item.skill}`}
+                    title={`View subcontractors with ${item.skill}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
@@ -1301,7 +1301,7 @@ export default function AnalyticsPage() {
                           Top State
                         </div>
                         <div className="mt-1 text-lg font-bold text-slate-900">{leadingState.state}</div>
-                        <div className="text-sm text-slate-500">{leadingState.count} installers</div>
+                        <div className="text-sm text-slate-500">{leadingState.count} subcontractors</div>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1338,7 +1338,7 @@ export default function AnalyticsPage() {
                               type="button"
                               onClick={() => handleStateDistributionClick(item.state)}
                               className="group flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-left transition-colors hover:bg-brand-green/5 focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                              title={`View installers in ${item.state}`}
+                              title={`View subcontractors in ${item.state}`}
                             >
                               <div className="flex min-w-0 items-center gap-3">
                                 <span
@@ -1509,7 +1509,7 @@ export default function AnalyticsPage() {
                             Highest Risk
                           </div>
                           <div className="mt-1 text-lg font-bold text-slate-900">{highestRisk.label}</div>
-                          <div className="text-sm text-slate-500">{highestRisk.count} installers</div>
+                          <div className="text-sm text-slate-500">{highestRisk.count} subcontractors</div>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1738,7 +1738,7 @@ export default function AnalyticsPage() {
                             <div className="flex items-center justify-between gap-3 mb-1.5">
                               <p className="text-sm font-semibold text-slate-800">{doc.label}</p>
                               <p className="text-xs text-slate-600">
-                                <span className="font-bold text-slate-900">{doc.installersWithDoc}</span> / {analytics.totalInstallers} installers
+                                <span className="font-bold text-slate-900">{doc.installersWithDoc}</span> / {analytics.totalInstallers} subcontractors
                               </p>
                             </div>
                             <div className="mb-2">
@@ -1762,7 +1762,7 @@ export default function AnalyticsPage() {
             <div id="crew" className="scroll-mt-24">
               <SectionHeader
                 title="Crew & Capacity"
-                subtitle="Installer workforce composition, team availability, and capability signals."
+                subtitle="Subcontractor workforce composition, team availability, and capability signals."
                 icon={<Users className="w-5 h-5" />}
               />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
@@ -1847,7 +1847,7 @@ export default function AnalyticsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="text-3xl leading-none font-black tracking-tight text-slate-900">{analytics.crewAnalytics.installersWithTeams}</h3>
-                      <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Installers With Teams</p>
+                      <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Subcontractors With Teams</p>
                     </div>
                     <div className="w-12 h-12 bg-brand-green/10 rounded-2xl border border-brand-green/15 flex items-center justify-center shadow-sm">
                       <Users className="w-5 h-5 text-brand-green" />
@@ -1862,7 +1862,7 @@ export default function AnalyticsPage() {
             <div id="service" className="scroll-mt-24">
               <SectionHeader
                 title="Service & Availability"
-                subtitle="Installer readiness, travel willingness, and service area concentration."
+                subtitle="Subcontractor readiness, travel willingness, and service area concentration."
                 icon={<Calendar className="w-5 h-5" />}
               />
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-6">
@@ -2031,7 +2031,7 @@ export default function AnalyticsPage() {
                         type="button"
                         onClick={() => handleWorkroomClick(item.workroom)}
                         className="w-full space-y-1.5 text-left"
-                        title={`View installers in ${item.workroom}`}
+                        title={`View subcontractors in ${item.workroom}`}
                       >
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-slate-700">{item.workroom}</span>
@@ -2060,7 +2060,7 @@ export default function AnalyticsPage() {
                         type="button"
                         onClick={() => handleCountyClick(item.county)}
                         className="w-full space-y-1.5 text-left"
-                        title={`View installers in ${item.county} county`}
+                        title={`View subcontractors in ${item.county} county`}
                       >
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-slate-700">{item.county}</span>
@@ -2313,7 +2313,7 @@ export default function AnalyticsPage() {
             <div id="quality" className="scroll-mt-24">
               <SectionHeader
                 title="Quality & Scoring"
-                subtitle="Score quality bands and average performance split by installer outcomes."
+                subtitle="Score quality bands and average performance split by subcontractor outcomes."
                 icon={<TrendingUp className="w-5 h-5" />}
               />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -2400,7 +2400,7 @@ export default function AnalyticsPage() {
               <div id="registration-timing" className="scroll-mt-24 mt-10">
                 <SectionHeader
                   title="Sign-ups by weekday & month"
-                  subtitle="When installer accounts were created: day of the week (left) and calendar month across all years (right)."
+                  subtitle="When subcontractor accounts were created: day of the week (left) and calendar month across all years (right)."
                   icon={<Calendar className="w-5 h-5" />}
                 />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

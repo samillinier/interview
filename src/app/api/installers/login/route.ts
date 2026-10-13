@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         ipAddress: getClientIp(request),
       })
     } catch (err) {
-      console.error('Failed to record installer platform:', err)
+      console.error('Failed to record subcontractor platform:', err)
     }
 
     return NextResponse.json({

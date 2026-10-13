@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       { headers: noStore }
     )
   } catch (error: any) {
-    console.error('installer invoices GET failed', error)
+    console.error('subcontractor invoices GET failed', error)
     return NextResponse.json(
       { error: 'Failed to load invoices', details: error?.message },
       { status: 500, headers: noStore }

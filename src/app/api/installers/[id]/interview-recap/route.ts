@@ -48,7 +48,7 @@ export async function GET(
     const resolved = context.params instanceof Promise ? await context.params : context.params
     const installerId = String(resolved.id || '').trim()
     if (!installerId) {
-      return NextResponse.json({ error: 'Installer id required' }, { status: 400, headers: noStore })
+      return NextResponse.json({ error: 'Subcontractor id required' }, { status: 400, headers: noStore })
     }
 
     const interview = await prisma.interview.findFirst({

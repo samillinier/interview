@@ -264,7 +264,7 @@ export async function PATCH(
           attachmentName: isDocument && correctionUrl ? correctionName || 'Correction file' : null,
         })
       } catch (e) {
-        console.error('Failed to notify installer about rejection:', e)
+        console.error('Failed to notify subcontractor about rejection:', e)
       }
 
       return NextResponse.json({ success: true, request: updated })
@@ -341,7 +341,7 @@ export async function PATCH(
           link: '/installer/agreements/background-authorization',
         })
       } catch (e) {
-        console.error('Failed to notify installer about agreement approval:', e)
+        console.error('Failed to notify subcontractor about agreement approval:', e)
       }
 
       return NextResponse.json({ success: true, request: updated })
@@ -367,7 +367,7 @@ export async function PATCH(
         }
 
         if (document.installerId !== changeRequest.installerId) {
-          throw new Error('Document does not belong to this installer')
+          throw new Error('Document does not belong to this subcontractor')
         }
 
         // Mark document as verified
@@ -406,7 +406,7 @@ export async function PATCH(
           link: '/installer/attachments',
         })
       } catch (e) {
-        console.error('Failed to notify installer about document verification:', e)
+        console.error('Failed to notify subcontractor about document verification:', e)
       }
 
       return NextResponse.json({ success: true, request: updated })
@@ -454,7 +454,7 @@ export async function PATCH(
           link: '/installer/profile',
         })
         } catch (e) {
-          console.error('Failed to notify installer about approval:', e)
+          console.error('Failed to notify subcontractor about approval:', e)
         }
 
         return NextResponse.json({ success: true, staffMember, request: updatedRequest })
@@ -506,7 +506,7 @@ export async function PATCH(
           link: '/installer/profile',
         })
         } catch (e) {
-          console.error('Failed to notify installer about approval:', e)
+          console.error('Failed to notify subcontractor about approval:', e)
         }
 
         return NextResponse.json({ success: true, staffMember, request: updatedRequest })
@@ -538,7 +538,7 @@ export async function PATCH(
           link: '/installer/profile',
         })
         } catch (e) {
-          console.error('Failed to notify installer about approval:', e)
+          console.error('Failed to notify subcontractor about approval:', e)
         }
 
         return NextResponse.json({ success: true, request: updatedRequest })
@@ -580,7 +580,7 @@ export async function PATCH(
         link: '/installer/profile',
       })
     } catch (e) {
-      console.error('Failed to notify installer about approval:', e)
+      console.error('Failed to notify subcontractor about approval:', e)
     }
 
     return NextResponse.json({ success: true, installer, request: updatedRequest })

@@ -35,7 +35,7 @@ export async function POST(
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     // Body is optional for now (reserved for future overrides)
     await request.json().catch(() => ({}))
@@ -56,7 +56,7 @@ export async function POST(
       },
     })
 
-    if (!installer) return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+    if (!installer) return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
 
     const signerNameRaw = `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
     const signerName = signerNameRaw || (installer.email ? installer.email.split('@')[0] : '')

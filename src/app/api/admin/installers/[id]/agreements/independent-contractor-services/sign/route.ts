@@ -27,7 +27,7 @@ export async function PATCH(
 
     const resolvedParams = context.params instanceof Promise ? await context.params : context.params
     const installerId = resolvedParams.id
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     const body = await request.json()
     const signed = Boolean(body.signed)

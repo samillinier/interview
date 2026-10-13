@@ -802,7 +802,7 @@ export default function InstallerProfilePage() {
         
         // If installer not found, clear session and redirect
         if (profileResponse.status === 404) {
-          console.error('Installer not found in database. installerId:', installerId)
+          console.error('Subcontractor not found in database. installerId:', installerId)
           setError('Your account was not found. Please log in again or create a new account.')
           localStorage.removeItem('installerToken')
           localStorage.removeItem('installerId')
@@ -828,7 +828,7 @@ export default function InstallerProfilePage() {
       }
       
       if (profileData.installer) {
-        console.log('Installer profile loaded successfully:', profileData.installer.email)
+        console.log('Subcontractor profile loaded successfully:', profileData.installer.email)
         // Installer exists - set it even if data is minimal
         setInstaller(profileData.installer)
         setFirstName(profileData.installer.firstName || '')
@@ -987,7 +987,7 @@ export default function InstallerProfilePage() {
           setShowNDAModal(true)
         }
       } else {
-        console.error('No installer data in response:', profileData)
+        console.error('No subcontractor data in response:', profileData)
         setError('Profile data not found in response. Please try logging in again.')
       }
     } catch (err: any) {
@@ -1862,7 +1862,7 @@ export default function InstallerProfilePage() {
 
   const handleAgreeNDA = async () => {
     if (!installer) {
-      setError('Installer information not available. Please refresh the page.')
+      setError('Subcontractor information not available. Please refresh the page.')
       return
     }
 
@@ -1960,7 +1960,7 @@ export default function InstallerProfilePage() {
                 <p className="text-sm text-slate-500 mb-4">
                   {isEstimator
                     ? 'Manage your estimator profile and information'
-                    : 'Manage your installer profile and information'}
+                    : 'Manage your subcontractor profile and information'}
                 </p>
                 
                 {/* Profile Completion Progress */}
@@ -2000,7 +2000,7 @@ export default function InstallerProfilePage() {
               digitalId={installer?.digitalId}
               name={installer && (installer.firstName || installer.lastName)
                 ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                : (installer?.email?.split('@')[0] || 'Installer')}
+                : (installer?.email?.split('@')[0] || 'Subcontractor')}
               companyName={installer?.companyName}
               photoUrl={installer?.photoUrl}
             />
@@ -2020,7 +2020,7 @@ export default function InstallerProfilePage() {
                 <div className="flex-1">
                   <h3 className="font-bold text-amber-900 mb-1.5 text-lg">Complete Your Profile</h3>
                   <p className="text-sm text-amber-700 mb-4 leading-relaxed">
-                    Your profile is incomplete. To get the most out of the installer portal, please complete your profile information.
+                    Your profile is incomplete. To get the most out of the subcontractor portal, please complete your profile information.
                   </p>
                   {!isEditing && (
                     <button
@@ -2115,7 +2115,7 @@ export default function InstallerProfilePage() {
                 >
                   {installer && (installer.firstName || installer.lastName 
                     ? `${installer.firstName || ''} ${installer.lastName || ''}`.trim()
-                    : installer.email.split('@')[0] || 'Installer')
+                    : installer.email.split('@')[0] || 'Subcontractor')
                   }
                 </motion.h2>
                 {(() => {
@@ -6102,7 +6102,7 @@ export default function InstallerProfilePage() {
               <div className="flex gap-3">
                 <button
                   onClick={handleAgreeNDA}
-                  disabled={isAgreeingNDA || !installer}
+                  disabled={isAgreeingNDA || !subcontractor}
                   className="flex-1 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAgreeingNDA ? (
@@ -6119,7 +6119,7 @@ export default function InstallerProfilePage() {
                 </button>
               </div>
               <p className="text-xs text-primary-500 text-center mt-3">
-                You must agree to this NDA to continue using the installer portal.
+                You must agree to this NDA to continue using the subcontractor portal.
               </p>
             </div>
           </motion.div>
@@ -6287,7 +6287,7 @@ export default function InstallerProfilePage() {
                       value={staffForm.title}
                       onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })}
                       className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                      placeholder="e.g., Lead Installer, Assistant"
+                      placeholder="e.g., Lead Subcontractor, Assistant"
                     />
                   </div>
                 </div>

@@ -710,7 +710,7 @@ function DashboardPageContent() {
       const allData = await allResponse.json()
       const allInstallers = allData.installers || []
       
-      console.log('Stats - Total installers:', allData.pagination?.total || allInstallers.length)
+      console.log('Stats - Total subcontractors:', allData.pagination?.total || allInstallers.length)
       
       setStats({
         total: allData.pagination?.total || allInstallers.length,
@@ -752,14 +752,14 @@ function DashboardPageContent() {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('API Error fetching installers:', response.status, errorData)
+        console.error('API Error fetching subcontractors:', response.status, errorData)
         // Keep the previous list to avoid UI flicker while typing/searching
         return
       }
       
       const data = await response.json()
       if (!opts?.silent) {
-        console.log('Fetched installers:', data.installers?.length || 0, 'total:', data.pagination?.total || 0)
+        console.log('Fetched subcontractors:', data.installers?.length || 0, 'total:', data.pagination?.total || 0)
       }
       setInstallers(data.installers || [])
       
@@ -774,7 +774,7 @@ function DashboardPageContent() {
         setCurrentPage(1)
       }
     } catch (error: any) {
-      console.error('Error fetching installers:', error)
+      console.error('Error fetching subcontractors:', error)
       console.error('Error details:', error.message || 'Network error')
       // Keep the previous list to avoid UI flicker while typing/searching
     } finally {
@@ -998,7 +998,7 @@ function DashboardPageContent() {
     setDeleteConfirm({
       show: true,
       installerId,
-      installerName: installerName || 'this installer',
+      installerName: installerName || 'this subcontractor',
     })
   }
 
@@ -1013,7 +1013,7 @@ function DashboardPageContent() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to delete installer')
+        throw new Error(data.error || 'Failed to delete subcontractor')
       }
 
       // Refresh the list
@@ -1023,8 +1023,8 @@ function DashboardPageContent() {
       // Close modal and show success
       setDeleteConfirm({ show: false, installerId: null, installerName: '' })
     } catch (error: any) {
-      console.error('Error deleting installer:', error)
-      alert(error.message || 'Failed to delete installer. Please try again.')
+      console.error('Error deleting subcontractor:', error)
+      alert(error.message || 'Failed to delete subcontractor. Please try again.')
     } finally {
       setIsDeleting(false)
     }
@@ -1184,10 +1184,10 @@ function DashboardPageContent() {
             if (photoResponse.ok) {
               const photoData = await photoResponse.json()
               // Photo URL is already saved in the database by the API
-              console.log('Installer photo uploaded successfully:', photoData.photoUrl)
+              console.log('Subcontractor photo uploaded successfully:', photoData.photoUrl)
             }
           } catch (photoError) {
-            console.error('Error uploading installer photo:', photoError)
+            console.error('Error uploading subcontractor photo:', photoError)
             // Don't fail the entire operation if photo upload fails
           } finally {
             setIsUploadingInstallerPhoto(false)
@@ -1451,12 +1451,12 @@ function DashboardPageContent() {
           installsTrim: false,
         })
       } else {
-        console.error('Error creating installer:', data.error)
-        alert(data.error || 'Failed to create installer')
+        console.error('Error creating subcontractor:', data.error)
+        alert(data.error || 'Failed to create subcontractor')
       }
     } catch (error: any) {
-      console.error('Error creating installer:', error)
-      alert(error.message || 'Failed to create installer. Please try again.')
+      console.error('Error creating subcontractor:', error)
+      alert(error.message || 'Failed to create subcontractor. Please try again.')
     } finally {
       setIsAdding(false)
     }
@@ -1799,7 +1799,7 @@ function DashboardPageContent() {
           <div className={`flex items-center justify-between ${isExpirySectionCollapsed ? '' : 'mb-6'}`}>
             <div>
               <h2 className="text-2xl font-bold text-slate-900 mb-1">Insurance & Certificate Expiry</h2>
-              <p className="text-sm text-slate-500">Monitor expiring and expired certificates across all installers</p>
+              <p className="text-sm text-slate-500">Monitor expiring and expired certificates across all subcontractors</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -1860,7 +1860,7 @@ function DashboardPageContent() {
                           type="text"
                           value={expiryInstallerSearch}
                           onChange={(e) => setExpiryInstallerSearch(e.target.value)}
-                          placeholder="Search installer…"
+                          placeholder="Search subcontractor…"
                           className="w-full rounded-full border border-brand-green/30 bg-brand-green/5 py-2.5 pl-9 pr-3 text-sm font-semibold text-slate-800 outline-none transition-colors placeholder:text-brand-green/60 focus:border-brand-green focus:bg-white focus:ring-2 focus:ring-brand-green/25"
                         />
                       </div>
@@ -1998,7 +1998,7 @@ function DashboardPageContent() {
                   </div>
                 ) : filteredExpiryItems.length > 0 ? (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Installers with Expiring or Expired Items</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Subcontractors with Expiring or Expired Items</h3>
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {filteredExpiryItems.map(
                         (
@@ -2093,7 +2093,7 @@ function DashboardPageContent() {
               <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="text"
-                placeholder="Search installers..."
+                placeholder="Search subcontractors..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
@@ -2191,7 +2191,7 @@ function DashboardPageContent() {
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]"
               >
                 <option value="all">All Types</option>
-                <option value="installer">Installers</option>
+                <option value="installer">Subcontractors</option>
                 <option value="estimator">Estimators</option>
               </select>
 
@@ -2201,7 +2201,7 @@ function DashboardPageContent() {
                   className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base"
                 >
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">Add Installer</span>
+                  <span className="hidden sm:inline">Add Subcontractor</span>
                   <span className="sm:hidden">Add</span>
                 </button>
               ) : null}
@@ -2215,7 +2215,7 @@ function DashboardPageContent() {
             {installers.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16">
                 <Users className="w-12 h-12 text-slate-300" />
-                <p className="text-slate-500 font-medium">No installers found</p>
+                <p className="text-slate-500 font-medium">No subcontractors found</p>
                 <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
               </div>
             ) : (
@@ -2383,7 +2383,7 @@ function DashboardPageContent() {
             <table className="w-full min-w-[1220px]">
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-200">
                 <tr>
-                  <th className="pl-8 pr-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Installer</th>
+                  <th className="pl-8 pr-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Subcontractor</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Workroom</th>
@@ -2398,7 +2398,7 @@ function DashboardPageContent() {
                     <td colSpan={7} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Users className="w-12 h-12 text-slate-300" />
-                        <p className="text-slate-500 font-medium">No installers found</p>
+                        <p className="text-slate-500 font-medium">No subcontractors found</p>
                         <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
                       </div>
                     </td>
@@ -2537,7 +2537,7 @@ function DashboardPageContent() {
                                 handleDeleteClick(installer.id, `${installer.firstName} ${installer.lastName}`.trim() || installer.email)
                               }}
                               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                              title="Delete installer"
+                              title="Delete subcontractor"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -2656,7 +2656,7 @@ function DashboardPageContent() {
                 <Trash2 className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Remove Installer</h3>
+                <h3 className="text-xl font-bold text-slate-900">Remove Subcontractor</h3>
                 <p className="text-sm text-slate-500">They will be moved to Archive</p>
               </div>
             </div>
@@ -2696,7 +2696,7 @@ function DashboardPageContent() {
         </div>
       )}
 
-      {/* Add Installer Modal - Full Screen */}
+      {/* Add Subcontractor Modal - Full Screen */}
       {showAddModal && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -2712,8 +2712,8 @@ function DashboardPageContent() {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-white sticky top-0 z-10">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Add New Installer</h2>
-                <p className="text-sm text-slate-500 mt-1">Fill in all installer details</p>
+                <h2 className="text-2xl font-bold text-slate-900">Add New Subcontractor</h2>
+                <p className="text-sm text-slate-500 mt-1">Fill in all subcontractor details</p>
               </div>
               <button
                 onClick={() => {
@@ -2890,7 +2890,7 @@ function DashboardPageContent() {
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Quick steps</p>
-                          <p className="text-sm font-bold text-slate-900 mt-1">Add Installer</p>
+                          <p className="text-sm font-bold text-slate-900 mt-1">Add Subcontractor</p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-slate-500">Required</p>
@@ -3031,7 +3031,7 @@ function DashboardPageContent() {
                         value={newInstaller.digitalId}
                         onChange={(e) => setNewInstaller({ ...newInstaller, digitalId: e.target.value })}
                         className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                        placeholder="e.g., Installer ID, Badge #"
+                        placeholder="e.g., Subcontractor ID, Badge #"
                       />
                     </div>
                     <div>
@@ -5166,7 +5166,7 @@ function DashboardPageContent() {
                                   setStaffMembersToAdd(updated)
                                 }}
                                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
-                                placeholder="e.g., Lead Installer"
+                                placeholder="e.g., Lead Subcontractor"
                               />
                             </div>
                             <div>
@@ -5238,7 +5238,7 @@ function DashboardPageContent() {
                       </div>
                       <div className="text-left">
                         <h3 className="text-lg font-bold text-slate-900">Attachments</h3>
-                        <p className="text-sm text-slate-500">Upload required documents (same as installer portal)</p>
+                        <p className="text-sm text-slate-500">Upload required documents (same as subcontractor portal)</p>
                       </div>
                     </div>
                     {expandedSections.attachments ? (
@@ -5347,12 +5347,12 @@ function DashboardPageContent() {
                   {isAdding ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Adding Installer...
+                      Adding Subcontractor...
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5" />
-                      Add Installer
+                      Add Subcontractor
                     </>
                   )}
                 </button>

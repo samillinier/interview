@@ -364,7 +364,7 @@ export default function AttachmentsPage() {
 
   const handleFileUpload = async (type: string, file: File) => {
     if (!installer) {
-      setError('Installer information not available. Please refresh the page.')
+      setError('Subcontractor information not available. Please refresh the page.')
       return
     }
 

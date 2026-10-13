@@ -100,9 +100,9 @@ export async function GET(request: NextRequest) {
       installers: installersWithRemarks,
     }, { headers: noStoreHeaders })
   } catch (error: any) {
-    console.error('Error fetching installers with remarks:', error)
+    console.error('Error fetching subcontractors with remarks:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch installers with remarks', details: error.message },
+      { error: 'Failed to fetch subcontractors with remarks', details: error.message },
       { status: 500, headers: noStoreHeaders }
     )
   }

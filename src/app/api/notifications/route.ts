@@ -51,7 +51,7 @@ function buildMessageEmailHtml(args: {
                 : ''
             }
             <a href="${safeAppUrl}/installer/notifications" style="display:inline-block;background:#8bbf3d;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:12px;">Open Messages</a>
-            <p style="margin:24px 0 0;font-size:12px;color:#8a9585;">This email is a copy of the message in your installer portal.</p>
+            <p style="margin:24px 0 0;font-size:12px;color:#8a9585;">This email is a copy of the message in your subcontractor portal.</p>
             <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#6b7280;">
               If you have any questions or need help, contact us at
               <a href="mailto:svudaru@fiscorponline.com" style="color:#4f8f16;font-weight:700;text-decoration:none;">svudaru@fiscorponline.com</a><br />
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     if (!installerIds || !Array.isArray(installerIds) || installerIds.length === 0) {
       return NextResponse.json(
-        { error: 'Installer IDs are required' },
+        { error: 'Subcontractor IDs are required' },
         { status: 400 }
       )
     }

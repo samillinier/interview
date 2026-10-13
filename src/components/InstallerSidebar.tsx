@@ -59,7 +59,7 @@ export default function InstallerSidebar({ notificationCount = 0, surveyCount = 
           </div>
           {sidebarOpen && (
             <div>
-              <h1 className="font-bold text-primary-900 text-sm">{isEstimator ? 'Estimator Portal' : 'Installer Portal'}</h1>
+              <h1 className="font-bold text-primary-900 text-sm">{isEstimator ? 'Estimator Portal' : 'Subcontractor Portal'}</h1>
               <p className="text-xs text-primary-500">Portal</p>
             </div>
           )}

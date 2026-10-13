@@ -107,7 +107,7 @@ export async function notifyAngelaOfCarpetTileApplicant(installer: NotifyInstall
     return false
   }
 
-  const name = [installer.firstName, installer.lastName].filter(Boolean).join(' ').trim() || 'Unknown installer'
+  const name = [installer.firstName, installer.lastName].filter(Boolean).join(' ').trim() || 'Unknown subcontractor'
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://job.floorinteriorservices.com'
   const profileUrl = `${appUrl.replace(/\/$/, '')}/dashboard/installers/${installer.id}`
   const logoUrl = emailLogoCidSrc()
@@ -122,10 +122,10 @@ export async function notifyAngelaOfCarpetTileApplicant(installer: NotifyInstall
   const fromName = companyDisplayName()
   const resend = new Resend(resendApiKey)
 
-  const subject = `New ${category} installer applied: ${name}`
+  const subject = `New ${category} subcontractor applied: ${name}`
   const textFor = (greeting: string) => `${greeting},
 
-A new ${category.toLowerCase()} installer just applied.
+A new ${category.toLowerCase()} subcontractor just applied.
 
 Name: ${name}
 Email: ${installer.email || '—'}
@@ -146,9 +146,9 @@ ${profileUrl}
     <div style="text-align:center;margin-bottom:20px;">
       <img src="${logoUrl}" alt="Floor Interior Services" style="max-width:180px;height:auto;" />
     </div>
-    <h1 style="font-size:20px;margin:0 0 12px 0;">New ${category} installer applied</h1>
+    <h1 style="font-size:20px;margin:0 0 12px 0;">New ${category} subcontractor applied</h1>
     <p style="margin:0 0 16px 0;">Hi ${escapeHtml(greeting)},</p>
-    <p style="margin:0 0 16px 0;">An installer who selected <strong>${category.toLowerCase()}</strong> skills just completed their AI interview application.</p>
+    <p style="margin:0 0 16px 0;">An subcontractor who selected <strong>${category.toLowerCase()}</strong> skills just completed their AI interview application.</p>
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;margin:0 0 20px 0;">
       <p style="margin:0 0 8px 0;"><strong>Name:</strong> ${escapeHtml(name)}</p>
       <p style="margin:0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(installer.email || '—')}</p>
@@ -158,7 +158,7 @@ ${profileUrl}
     </div>
     <p style="text-align:center;margin:0 0 20px 0;">
       <a href="${profileUrl}" style="background:#8CB63C;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
-        Open installer profile
+        Open subcontractor profile
       </a>
     </p>
     <p style="font-size:12px;color:#64748b;word-break:break-all;">${profileUrl}</p>
@@ -175,7 +175,7 @@ ${profileUrl}
     })
     recipients = rows.map((r) => ({ email: r.email, name: r.name || undefined })).filter((r) => r.email)
   } catch (error) {
-    console.error('Failed to load installer application recipients:', error)
+    console.error('Failed to load subcontractor application recipients:', error)
   }
   if (recipients.length === 0) {
     recipients = [{ email: CARPET_TILE_NOTIFY_EMAIL, name: CARPET_TILE_NOTIFY_NAME }]

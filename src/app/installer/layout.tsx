@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'FIS Fastrack',
-  description: 'Floor Interior Services Installer Portal - Manage jobs, payments, and documents on the go',
+  description: 'Floor Interior Services Subcontractor Portal - Manage jobs, payments, and documents on the go',
   manifest: '/installer-manifest.json',
   appleWebApp: {
     capable: true,

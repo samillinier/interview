@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const county = countyName(body?.county)
     const state = normalizeStateCode(body?.state)
     if (query.length < 3) {
-      return NextResponse.json({ error: 'Enter a search like “Floor installers”.' }, { status: 400, headers: noStoreHeaders })
+      return NextResponse.json({ error: 'Enter a search like “Floor subcontractors”.' }, { status: 400, headers: noStoreHeaders })
     }
 
     const place = { city, county, state }

@@ -222,14 +222,14 @@ export default function RemarksPage() {
       // Add cache-busting parameter to ensure fresh data
       const response = await fetch(`/api/installers/remarks?t=${Date.now()}`)
       if (!response.ok) {
-        throw new Error('Failed to fetch installers with remarks')
+        throw new Error('Failed to fetch subcontractors with remarks')
       }
       const data = await response.json()
       if (data.success) {
         setInstallers(data.installers)
       }
     } catch (error) {
-      console.error('Error fetching installers with remarks:', error)
+      console.error('Error fetching subcontractors with remarks:', error)
     } finally {
       setLoading(false)
       setIsRefreshing(false)
@@ -349,10 +349,10 @@ export default function RemarksPage() {
                 <div className="p-2 bg-brand-green/10 rounded-xl">
                   <StickyNote className="w-6 h-6 text-brand-green" />
                 </div>
-              <h1 className="text-3xl font-bold text-slate-900">{role === 'MANAGER' || role === 'ACCOUNTING' ? 'Manager Remarks' : 'Installer Remarks'}</h1>
+              <h1 className="text-3xl font-bold text-slate-900">{role === 'MANAGER' || role === 'ACCOUNTING' ? 'Manager Remarks' : 'Subcontractor Remarks'}</h1>
               </div>
               <p className="text-slate-600 ml-14">
-                {role === 'MANAGER' || role === 'ACCOUNTING' ? 'Track manager remarks you add for installers' : 'Track and manage admin and manager remarks for installers'}
+                {role === 'MANAGER' || role === 'ACCOUNTING' ? 'Track manager remarks you add for subcontractors' : 'Track and manage admin and manager remarks for subcontractors'}
               </p>
             </div>
             <button
@@ -414,8 +414,8 @@ export default function RemarksPage() {
               <h3 className="text-xl font-bold text-slate-900 mb-2">No Remarks Found</h3>
               <p className="text-slate-600 max-w-md mx-auto">
                 {searchQuery || statusFilter !== 'all'
-                  ? 'No installers match your search criteria. Try adjusting your filters.'
-                  : 'No installers have remarks yet. Start adding remarks from installer profiles.'}
+                  ? 'No subcontractors match your search criteria. Try adjusting your filters.'
+                  : 'No subcontractors have remarks yet. Start adding remarks from subcontractor profiles.'}
               </p>
             </div>
           ) : (

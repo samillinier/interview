@@ -203,7 +203,7 @@ function CreateAccountContent() {
             Start with the Automated Interview
           </h1>
           <p className="text-primary-500 mb-6">
-            We don&apos;t have <strong>{email}</strong> in our system yet. Complete a quick automated interview first, then you can create your installer account with the same email.
+            We don&apos;t have <strong>{email}</strong> in our system yet. Complete a quick automated interview first, then you can create your subcontractor account with the same email.
           </p>
 
           <div className="bg-primary-50 rounded-2xl p-6 mb-6 text-left">
@@ -266,7 +266,7 @@ function CreateAccountContent() {
                 ? 'Create your estimator account.'
                 : installerInfo?.firstName 
                 ? `Welcome, ${installerInfo.firstName}! Verify your email to get started.`
-                : "Enter your email to create your installer account. We'll send you a verification link."}
+                : "Enter your email to create your subcontractor account. We'll send you a verification link."}
             </p>
           </div>
 

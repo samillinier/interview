@@ -16,7 +16,7 @@ export async function GET(
     const installerId = resolvedParams.id
 
     if (!installerId) {
-      return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
     }
 
     const installer = await prisma.installer.findUnique({
@@ -34,7 +34,7 @@ export async function GET(
     })
 
     if (!installer) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
     }
 
     const raw = (installer.digitalId || '').trim()

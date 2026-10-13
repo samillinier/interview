@@ -20,7 +20,7 @@ export async function PATCH(
   try {
     const params = context.params instanceof Promise ? await context.params : context.params
     const installerId = params.installerId
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     const body = await request.json().catch(() => ({}))
     if (typeof body.aiEnabled === 'boolean') {
@@ -44,7 +44,7 @@ export async function PATCH(
 
     if (!latestInstallerMessage) {
       return NextResponse.json(
-        { error: 'No installer message to mark unread' },
+        { error: 'No subcontractor message to mark unread' },
         { status: 400 }
       )
     }
@@ -74,7 +74,7 @@ export async function DELETE(
   try {
     const params = context.params instanceof Promise ? await context.params : context.params
     const installerId = params.installerId
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     await prisma.notification.deleteMany({
       where: { installerId, type: 'message' },

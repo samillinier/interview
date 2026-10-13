@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     if (!normalizedEmail && !installerId) {
       return NextResponse.json(
-        { error: 'Email or installer ID is required' },
+        { error: 'Email or subcontractor ID is required' },
         { status: 400 }
       )
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
             success: false,
             requiresInterview: true,
             error:
-              "We don't have this email in our system yet. Please complete the AI interview first to create your installer profile.",
+              "We don't have this email in our system yet. Please complete the AI interview first to create your subcontractor profile.",
           },
           { status: 404 }
         )
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
           const emailResult = await resend.emails.send(withEmailLogo({
             from: `${fromName} <${fromEmail}>`,
             to: installer.email,
-            subject: 'Sign in to your installer account',
+            subject: 'Sign in to your subcontractor account',
             html: `
               <!DOCTYPE html>
               <html>
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
                     <h1 style="color: #22c55e; margin-top: 0; text-align: center;">Sign In</h1>
                   </div>
                   <p>Hi ${installer.firstName || 'there'},</p>
-                  <p>We found an existing installer account for this email. Click the button below to sign in — no password needed.</p>
+                  <p>We found an existing subcontractor account for this email. Click the button below to sign in — no password needed.</p>
                   <div style="text-align: center; margin: 30px 0;">
                     <a href="${signInUrl}" style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
                       Sign In
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
                   </p>
                   <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                   <p style="color: #999; font-size: 12px; text-align: center;">
-                    Floor Interior Services - Installer Portal
+                    Floor Interior Services - Subcontractor Portal
                   </p>
                 </body>
               </html>
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
             text: `
 Hi ${installer.firstName || 'there'},
 
-We found an existing installer account for this email. Click the link below to sign in — no password needed:
+We found an existing subcontractor account for this email. Click the link below to sign in — no password needed:
 
 ${signInUrl}
 
@@ -146,7 +146,7 @@ This sign-in link will expire in 30 minutes.
 
 If you didn't request this email, please ignore it.
 
-Floor Interior Services - Installer Portal
+Floor Interior Services - Subcontractor Portal
             `,
           }))
 
@@ -239,7 +239,7 @@ Floor Interior Services - Installer Portal
         const emailResult = await resend.emails.send(withEmailLogo({
           from: `${fromName} <${fromEmail}>`,
           to: installer.email,
-          subject: 'Verify your email to create your installer account',
+          subject: 'Verify your email to create your subcontractor account',
           html: `
             <!DOCTYPE html>
             <html>
@@ -259,7 +259,7 @@ Floor Interior Services - Installer Portal
                 
                 <p>Hi ${installer.firstName || 'there'},</p>
                 
-                <p>Thank you for creating an installer account! Please verify your email address by clicking the button below:</p>
+                <p>Thank you for creating an subcontractor account! Please verify your email address by clicking the button below:</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${verificationUrl}" 
@@ -281,7 +281,7 @@ Floor Interior Services - Installer Portal
                 
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                 <p style="color: #999; font-size: 12px; text-align: center;">
-                  Floor Interior Services - Installer Portal
+                  Floor Interior Services - Subcontractor Portal
                 </p>
               </body>
             </html>
@@ -289,7 +289,7 @@ Floor Interior Services - Installer Portal
           text: `
 Hi ${installer.firstName || 'there'},
 
-Thank you for creating an installer account! Please verify your email address by clicking the link below:
+Thank you for creating an subcontractor account! Please verify your email address by clicking the link below:
 
 ${verificationUrl}
 
@@ -297,7 +297,7 @@ This verification link will expire in 24 hours.
 
 If you didn't request this verification email, please ignore this message.
 
-Floor Interior Services - Installer Portal
+Floor Interior Services - Subcontractor Portal
           `,
         }))
 
@@ -356,7 +356,7 @@ Floor Interior Services - Installer Portal
       console.log('⚠️  Resend API Key not configured')
       console.log('📧 Verification Email (Development Mode):')
       console.log('   To:', installer.email)
-      console.log('   Subject: Verify your email to create your installer account')
+      console.log('   Subject: Verify your email to create your subcontractor account')
       console.log('   Verification Link:', verificationUrl)
       console.log('💡 To send actual emails:')
       console.log('   1. Get API key from https://resend.com')
@@ -388,7 +388,7 @@ Floor Interior Services - Installer Portal
     // Provide more specific error messages
     let errorMessage = 'Failed to send verification email'
     if (error.code === 'P2025') {
-      errorMessage = 'Installer not found. Please try again.'
+      errorMessage = 'Subcontractor not found. Please try again.'
     } else if (error.code === 'P2002') {
       errorMessage = 'An account with this email already exists. Please log in instead.'
     } else if (error.message?.includes('Unknown column') || error.message?.includes('emailVerificationToken')) {

@@ -127,7 +127,7 @@ Getting started is simple:
 1. Start the 5–10 minute prescreening:
 https://job.floorinteriorservices.com/interview
 
-2. Create your FIS installer profile:
+2. Create your FIS subcontractor profile:
 https://job.floorinteriorservices.com/installer
 
 Once approved, your company may be considered for available flooring work in your service area based on your capabilities and availability.
@@ -147,7 +147,7 @@ export default function MarketingPage() {
   const canView = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const { sidebarOpen } = useSidebarOpen()
 
-  const [query, setQuery] = useState('Floor installers')
+  const [query, setQuery] = useState('Floor subcontractors')
   const [city, setCity] = useState('')
   const [county, setCounty] = useState('')
   const [stateCode, setStateCode] = useState('FL')
@@ -299,7 +299,7 @@ export default function MarketingPage() {
     event?.preventDefault()
     const nextQuery = query.trim()
     if (nextQuery.length < 3) {
-      flash('Enter a search like “Floor installers”.', 'err')
+      flash('Enter a search like “Floor subcontractors”.', 'err')
       return
     }
     setSearching(true)
@@ -598,7 +598,7 @@ export default function MarketingPage() {
                   type="text"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search installers..."
+                  placeholder="Search subcontractors..."
                   className="w-full pl-10 sm:pl-12 pr-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
                 />
                 {searching ? (

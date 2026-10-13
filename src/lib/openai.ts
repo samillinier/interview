@@ -245,7 +245,7 @@ export async function generateInterviewAdminRecap(args: {
     messages: [
       {
         role: 'system',
-        content: `You write brief notes for flooring-company admins reviewing installer AI interviews.
+        content: `You write brief notes for flooring-company admins reviewing subcontractor AI interviews.
 
 Return ONLY valid JSON:
 {
@@ -269,12 +269,12 @@ Return ONLY valid JSON:
       ? data.watchNotes.map((n: unknown) => String(n || '').trim()).filter(Boolean).slice(0, 5)
       : []
     return {
-      summary: summary || 'Interview completed. Review the installer profile for details.',
+      summary: summary || 'Interview completed. Review the subcontractor profile for details.',
       watchNotes,
     }
   } catch {
     return {
-      summary: 'Interview completed. Review the installer profile for details.',
+      summary: 'Interview completed. Review the subcontractor profile for details.',
       watchNotes: [],
     }
   }

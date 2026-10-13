@@ -52,7 +52,7 @@ export async function POST(
         after: { status: restored.status },
       })
     } catch (e) {
-      console.error('Failed to write audit log (installer.restore):', e)
+      console.error('Failed to write audit log (subcontractor.restore):', e)
     }
 
     return NextResponse.json({ success: true, status: restored.status }, { headers: noStoreHeaders })

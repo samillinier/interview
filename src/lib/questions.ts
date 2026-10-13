@@ -20,7 +20,7 @@ export const FLOORING_SURFACE_OPTIONS = [
 export const INTERVIEW_QUESTIONS_EN = [
   {
     id: 'intro',
-    text: "Hello, I'm Alice from Floor Interior Services. Thank you for your interest in becoming an installer with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
+    text: "Hello, I'm Alice from Floor Interior Services. Thank you for your interest in becoming an subcontractor with us. I'll be conducting a brief qualification screening to learn about your experience, certifications, equipment, installation capabilities, and availability. This will take just a few minutes. Let's begin with your first and last name.",
     field: 'name',
     required: true,
   },

@@ -14,7 +14,7 @@ export async function GET(
 
     if (!installerId) {
       return NextResponse.json(
-        { error: 'Installer ID is required' },
+        { error: 'Subcontractor ID is required' },
         { status: 400 }
       )
     }

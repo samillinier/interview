@@ -47,8 +47,8 @@ function SetupPasswordContent() {
           }
         })
         .catch(err => {
-          console.error('Error fetching installer:', err)
-          setError('Failed to load installer information')
+          console.error('Error fetching subcontractor:', err)
+          setError('Failed to load subcontractor information')
         })
     } else if (email) {
       setInstallerInfo({ email })
@@ -167,7 +167,7 @@ function SetupPasswordContent() {
             <p className="text-primary-500">
               {installerInfo?.firstName 
                 ? `Welcome, ${installerInfo.firstName}! Create a secure password for your account.`
-                : 'Create a secure password for your installer account.'}
+                : 'Create a secure password for your subcontractor account.'}
             </p>
           </div>
 

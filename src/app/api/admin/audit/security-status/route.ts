@@ -58,14 +58,14 @@ export async function GET() {
       {
         id: 'jwt-verify-messages',
         category: 'Authentication',
-        label: 'JWT verification on installer messaging endpoint',
+        label: 'JWT verification on subcontractor messaging endpoint',
         status: 'secured',
-        description: 'POST /api/installers/[id]/messages now calls verifyToken to authenticate the installer.',
+        description: 'POST /api/installers/[id]/messages now calls verifyToken to authenticate the subcontractor.',
       },
       {
         id: 'check-expirations-auth',
         category: 'Authentication',
-        label: 'Authentication on installer expiration checks',
+        label: 'Authentication on subcontractor expiration checks',
         status: 'secured',
         description: 'GET/POST /api/installers/check-expirations requires getServerSession.',
       },

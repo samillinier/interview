@@ -26,7 +26,7 @@ type ArchivedAccount = {
 
 function removedByLabel(value: string | null) {
   const raw = String(value || '').trim()
-  if (!raw || raw === 'installer') return 'Installer'
+  if (!raw || raw === 'installer') return 'Subcontractor'
   if (raw.startsWith('admin:')) return `Admin (${raw.slice(6)})`
   if (raw.toLowerCase().startsWith('admin')) return 'Admin'
   return raw
@@ -199,7 +199,7 @@ export default function ArchivePage() {
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Installer</th>
+                    <th className="px-4 py-3">Subcontractor</th>
                     <th className="px-4 py-3">Company</th>
                     <th className="px-4 py-3">Removed</th>
                     <th className="px-4 py-3">Removed by</th>

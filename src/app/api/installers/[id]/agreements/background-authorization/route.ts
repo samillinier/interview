@@ -51,7 +51,7 @@ export async function GET(
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     const access = await requireInstallerOrAdmin(request, installerId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
@@ -86,7 +86,7 @@ export async function PUT(
     const params = context.params
     const resolvedParams = params instanceof Promise ? await params : params
     const installerId = resolvedParams.id
-    if (!installerId) return NextResponse.json({ error: 'Installer ID is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor ID is required' }, { status: 400 })
 
     const access = await requireInstallerOrAdmin(request, installerId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })

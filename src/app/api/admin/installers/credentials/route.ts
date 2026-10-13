@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
       })),
     })
   } catch (error: any) {
-    console.error('admin installer credentials GET:', error)
-    return NextResponse.json({ error: error?.message || 'Failed to search installers' }, { status: 500 })
+    console.error('admin subcontractor credentials GET:', error)
+    return NextResponse.json({ error: error?.message || 'Failed to search subcontractors' }, { status: 500 })
   }
 }
 
@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest) {
     const username = String(body.username || '').trim().toLowerCase()
     const password = String(body.password || '')
 
-    if (!installerId) return NextResponse.json({ error: 'Installer is required' }, { status: 400 })
+    if (!installerId) return NextResponse.json({ error: 'Subcontractor is required' }, { status: 400 })
     if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
@@ -115,7 +115,7 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    if (!installer) return NextResponse.json({ error: 'Installer not found' }, { status: 404 })
+    if (!installer) return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404 })
 
     const [emailConflict, usernameConflict] = await Promise.all([
       prisma.installer.findFirst({
@@ -136,8 +136,8 @@ export async function PATCH(request: NextRequest) {
         : Promise.resolve(null),
     ])
 
-    if (emailConflict) return NextResponse.json({ error: 'Another installer already uses this email' }, { status: 409 })
-    if (usernameConflict) return NextResponse.json({ error: 'Another installer already uses this username' }, { status: 409 })
+    if (emailConflict) return NextResponse.json({ error: 'Another subcontractor already uses this email' }, { status: 409 })
+    if (usernameConflict) return NextResponse.json({ error: 'Another subcontractor already uses this username' }, { status: 409 })
 
     const passwordHash = password ? await bcrypt.hash(password, 10) : undefined
     const updated = await prisma.installer.update({
@@ -191,7 +191,7 @@ export async function PATCH(request: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('admin installer credentials PATCH:', error)
-    return NextResponse.json({ error: error?.message || 'Failed to update installer credentials' }, { status: 500 })
+    console.error('admin subcontractor credentials PATCH:', error)
+    return NextResponse.json({ error: error?.message || 'Failed to update subcontractor credentials' }, { status: 500 })
   }
 }

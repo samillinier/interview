@@ -67,7 +67,7 @@ type ApprovalGroup = {
   key: string
   installerId: string
   source: string | null
-  Installer: ChangeRequest['Installer']
+  Installer: ChangeRequest['Subcontractor']
   requestIds: string[]
   createdAt: string // newest
   submittedBy: string | null
@@ -1717,7 +1717,7 @@ export default function ApprovalsPage() {
 
       await handleReject(correctionModal.id, correctionModal.reason.trim(), correction)
       setCorrectionModal({ open: false, id: '', label: '', documentName: '', documentUrl: '', reason: '', file: null })
-      setSuccess('Correction sent to installer.')
+      setSuccess('Correction sent to subcontractor.')
       setTimeout(() => setSuccess(''), 3000)
     } catch (e: any) {
       setError(e.message || 'Failed to send correction')

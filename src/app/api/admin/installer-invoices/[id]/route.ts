@@ -33,7 +33,7 @@ export async function DELETE(
     await prisma.installerInvoice.delete({ where: { id } })
     return NextResponse.json({ success: true }, { headers: noStore })
   } catch (error: any) {
-    console.error('admin installer invoices DELETE failed', error)
+    console.error('admin subcontractor invoices DELETE failed', error)
     return NextResponse.json(
       { error: 'Failed to delete invoice', details: error?.message },
       { status: 500, headers: noStore }

@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       message: 'Your account has been permanently deleted.',
     })
   } catch (error) {
-    console.error('Error deleting installer account:', error)
+    console.error('Error deleting subcontractor account:', error)
     return NextResponse.json(
       { error: 'Failed to delete account. Please try again or contact support.' },
       { status: 500 }

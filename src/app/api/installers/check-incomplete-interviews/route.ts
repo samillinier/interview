@@ -37,7 +37,7 @@ function buildReminderEmailHtml(appUrl: string, logoUrl: string) {
 
         <p>At the moment, it looks like your AI interview has not been completed, which is required to proceed to the next steps in the onboarding process.</p>
 
-        <p>Please log in to the installer portal using the link below and complete your onboarding process along with the required profile information. Make sure to use the same email address you used to start the process, as this is how your profile is tracked in our system.</p>
+        <p>Please log in to the subcontractor portal using the link below and complete your onboarding process along with the required profile information. Make sure to use the same email address you used to start the process, as this is how your profile is tracked in our system.</p>
 
         <div style="text-align: center; margin: 26px 0;">
           <a href="${LOGIN_URL}" style="background-color: #22c55e; color: white; padding: 13px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
@@ -66,7 +66,7 @@ Thank you for your interest in partnering with Floor Interior Services. We’re 
 
 At the moment, it looks like your AI interview has not been completed, which is required to proceed to the next steps in the onboarding process.
 
-Please log in to the installer portal using the link below and complete your onboarding process along with the required profile information. Make sure to use the same email address you used to start the process, as this is how your profile is tracked in our system.
+Please log in to the subcontractor portal using the link below and complete your onboarding process along with the required profile information. Make sure to use the same email address you used to start the process, as this is how your profile is tracked in our system.
 
 ${LOGIN_URL}
 

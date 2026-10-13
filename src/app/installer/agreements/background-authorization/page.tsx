@@ -488,7 +488,7 @@ export default function BackgroundAuthorizationAgreementPage() {
                       <div className={`mt-1 text-2xl leading-tight ${dancingScript.className} text-slate-900`}>
                         {form.applicantSignature || '\u2014'}
                       </div>
-                      <div className="mt-1 text-xs text-slate-600">Installer</div>
+                      <div className="mt-1 text-xs text-slate-600">Subcontractor</div>
                       <div className="mt-1 text-sm text-slate-900">{form.signatureDate || ''}</div>
                       <div className="hidden print:block border-b border-slate-500 h-8" />
                     </div>

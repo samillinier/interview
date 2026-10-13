@@ -197,8 +197,8 @@ export default function InstallerSurveyPage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search…"
-                    aria-label="Search workroom, company, installer"
-                    title="Search workroom, company, installer"
+                    aria-label="Search workroom, company, subcontractor"
+                    title="Search workroom, company, subcontractor"
                     className="min-w-0 flex-1 text-sm outline-none bg-transparent text-slate-800 placeholder:text-slate-400"
                   />
                   {query ? (
@@ -302,7 +302,7 @@ export default function InstallerSurveyPage() {
                         <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800 w-52">Sent</th>
                         <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Workroom</th>
                         <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Company</th>
-                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Installer</th>
+                        <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Subcontractor</th>
                         <th className="text-left font-bold uppercase tracking-wide text-xs px-5 py-3.5 border-b border-slate-800">Batch</th>
                       </tr>
                     </thead>

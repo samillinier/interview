@@ -110,8 +110,8 @@ export default function InstallerHelpPage() {
   }
 
   const isEstimator = installer?.accountType === 'estimator'
-  const portalLabel = isEstimator ? 'Estimator Portal' : 'Installer Portal'
-  const profileLabel = isEstimator ? 'estimator profile' : 'installer profile'
+  const portalLabel = isEstimator ? 'Estimator Portal' : 'Subcontractor Portal'
+  const profileLabel = isEstimator ? 'estimator profile' : 'subcontractor profile'
 
   return (
     <div className="ios-installer-help">
@@ -171,7 +171,7 @@ export default function InstallerHelpPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-slate-900 group-hover:text-brand-green transition-colors">
-                          How to Complete {isEstimator ? 'Estimator' : 'Installer'} Profile
+                          How to Complete {isEstimator ? 'Estimator' : 'Subcontractor'} Profile
                         </h4>
                         <p className="text-sm text-slate-600 mt-1">Step-by-step guide to complete your {profileLabel}</p>
                         <div className="mt-2 flex items-center gap-2 text-sm text-brand-green">

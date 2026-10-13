@@ -76,7 +76,7 @@ export async function notifyJobApplication(args: JobApplicationArgs): Promise<bo
   }
 
   const installerName =
-    [args.installer.firstName, args.installer.lastName].filter(Boolean).join(' ').trim() || 'Unknown installer'
+    [args.installer.firstName, args.installer.lastName].filter(Boolean).join(' ').trim() || 'Unknown subcontractor'
   const floorType = String(args.installer.primaryFlooringSurface || '').trim()
   const skills = parseSkills(args.installer.flooringSkills)
 
@@ -124,7 +124,7 @@ export async function notifyJobApplication(args: JobApplicationArgs): Promise<bo
   const subject = `New job application: ${installerName} — ${args.job.title}`
   const jobTypeLabel = args.job.jobType ? escapeHtml(args.job.jobType) : '—'
 
-  const textFor = () => `A new installer just applied to a job.
+  const textFor = () => `A new subcontractor just applied to a job.
 
 Installer: ${installerName}
 Email: ${args.installer.email || '—'}
@@ -158,7 +158,7 @@ ${reviewUrl}
     </div>
     <h1 style="font-size:20px;margin:0 0 12px 0;">New job application</h1>
     <p style="margin:0 0 16px 0;">Hi ${greeting},</p>
-    <p style="margin:0 0 16px 0;">An installer just applied to <strong>${escapeHtml(args.job.title)}</strong>.</p>
+    <p style="margin:0 0 16px 0;">A subcontractor just applied to <strong>${escapeHtml(args.job.title)}</strong>.</p>
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#f8fafc;margin:0 0 20px 0;">
       <p style="margin:0 0 8px 0;"><strong>Installer:</strong> ${escapeHtml(installerName)}</p>
       <p style="margin:0 0 8px 0;"><strong>Email:</strong> ${escapeHtml(args.installer.email || '—')}</p>

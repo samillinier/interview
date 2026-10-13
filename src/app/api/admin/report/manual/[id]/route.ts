@@ -40,7 +40,7 @@ export async function DELETE(
   } catch (error: any) {
     console.error('report manual DELETE:', error)
     return NextResponse.json(
-      { error: 'Failed to remove installer from report', details: error.message },
+      { error: 'Failed to remove subcontractor from report', details: error.message },
       { status: 500, headers: noStoreHeaders }
     )
   }

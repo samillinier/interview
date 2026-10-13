@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const inst = await prisma.installer.findUnique({ where: { id: installerId }, select: { id: true } })
     if (!inst) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 404, headers: noStoreHeaders })
+      return NextResponse.json({ error: 'Subcontractor not found' }, { status: 404, headers: noStoreHeaders })
     }
 
     const dup = await prisma.installerTracking.findFirst({
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     })
     if (dup) {
       return NextResponse.json(
-        { error: 'This installer is already on the report.' },
+        { error: 'This subcontractor is already on the report.' },
         { status: 409, headers: noStoreHeaders }
       )
     }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         installerId,
         type: 'report_manual',
         title: 'Report row',
-        description: 'Installer included on the admin Report page.',
+        description: 'Subcontractor included on the admin Report page.',
         status: 'pending',
         priority: 'normal',
         category: 'report',
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('report manual POST:', error)
     return NextResponse.json(
-      { error: 'Failed to add installer to report', details: error.message },
+      { error: 'Failed to add subcontractor to report', details: error.message },
       { status: 500, headers: noStoreHeaders }
     )
   }

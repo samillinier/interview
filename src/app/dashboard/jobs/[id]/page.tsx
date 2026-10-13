@@ -304,7 +304,7 @@ export default function JobApplicationsPage() {
             <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-12 text-center">
               <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 font-medium text-lg mb-2">No applications found</p>
-              <p className="text-slate-400 text-sm">No installers have applied to this job yet</p>
+              <p className="text-slate-400 text-sm">No subcontractors have applied to this job yet</p>
             </div>
           ) : (
             <div className="space-y-4">
