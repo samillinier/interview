@@ -392,7 +392,7 @@ export default function SettingsPage() {
   const handleCredentialSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCredentialInstaller) {
-      setError('Select an subcontractor first')
+      setError('Select a subcontractor first')
       return
     }
     if (credentialForm.password && credentialForm.password !== credentialForm.confirmPassword) {

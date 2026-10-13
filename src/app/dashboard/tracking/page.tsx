@@ -600,7 +600,7 @@ export default function TrackingPage() {
 
   const handleAddMatrixManualRow = async () => {
     if (!matrixSelectedInstallerId && !matrixManualName.trim()) {
-      setError('Search and select an subcontractor, or type a company / name below.')
+      setError('Search and select a subcontractor, or type a company / name below.')
       setTimeout(() => setError(''), 5000)
       return
     }
@@ -1565,7 +1565,7 @@ export default function TrackingPage() {
     const isManualEntry = newItem.installerId?.startsWith('manual_') || (showManualInstallerInput && manualInstallerName.trim())
     
     if (!isManualEntry && !newItem.installerId) {
-      setError('Please select an subcontractor or enter a manual subcontractor name')
+      setError('Please select a subcontractor or enter a manual subcontractor name')
       setTimeout(() => setError(''), 5000)
       return
     }

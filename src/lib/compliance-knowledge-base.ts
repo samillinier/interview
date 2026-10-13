@@ -428,7 +428,7 @@ LEAD certification timing: 30 labor days after the first pay period to sign up f
 Workers' Comp exemption for helpers: 30-day exemption stated; owner still must provide a Workers' Comp Exemption Certificate.
 These are stated process rules/timeframes, not guarantees of approval or job assignment timing.
 27. AI RESPONSE TEMPLATES / INTENT MAPPING
-User intent: Wants to become an subcontractor
+User intent: Wants to become a subcontractor
 Explain the partnership briefly, then give the prescreening step, subcontractor portal sequence, and suggest the FIS FastTrack app as faster, sleeker, and easier.
 User intent: Asks about the app, phone, or mobile portal
 Recommend FIS FastTrack. Give both store links. Explain it is faster, sleeker, and easier than the website, and they can still use the browser portal if they prefer.

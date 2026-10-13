@@ -11494,7 +11494,7 @@ export default function InstallerProfileViewPage() {
                 <div>
                   <h3 className="text-xl font-bold text-white">Send Message</h3>
                   <p className="text-sm text-white/80 mt-0.5">
-                    To {subcontractor?.firstName} {subcontractor?.lastName}
+                    To {installer?.firstName} {installer?.lastName}
                   </p>
                 </div>
               </div>
@@ -11614,7 +11614,7 @@ export default function InstallerProfileViewPage() {
                 <div>
                   <h3 className="text-xl font-bold text-white">Send Notification</h3>
                   <p className="text-sm text-white/80 mt-0.5">
-                    To {subcontractor?.firstName} {subcontractor?.lastName}
+                    To {installer?.firstName} {installer?.lastName}
                   </p>
                 </div>
               </div>
@@ -11707,7 +11707,7 @@ export default function InstallerProfileViewPage() {
                 <div>
                   <h3 className="text-xl font-bold text-white">Add Remark</h3>
                   <p className="text-sm text-white/80 mt-0.5">
-                    {subcontractor?.firstName} {subcontractor?.lastName}
+                    {installer?.firstName} {installer?.lastName}
                   </p>
                 </div>
               </div>

@@ -259,7 +259,7 @@ Floor Interior Services - Subcontractor Portal
                 
                 <p>Hi ${installer.firstName || 'there'},</p>
                 
-                <p>Thank you for creating an subcontractor account! Please verify your email address by clicking the button below:</p>
+                <p>Thank you for creating a subcontractor account! Please verify your email address by clicking the button below:</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${verificationUrl}" 
@@ -289,7 +289,7 @@ Floor Interior Services - Subcontractor Portal
           text: `
 Hi ${installer.firstName || 'there'},
 
-Thank you for creating an subcontractor account! Please verify your email address by clicking the link below:
+Thank you for creating a subcontractor account! Please verify your email address by clicking the link below:
 
 ${verificationUrl}
 

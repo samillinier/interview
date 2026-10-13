@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     if (!name) {
       return NextResponse.json(
-        { error: 'Select an subcontractor or enter a company / name' },
+        { error: 'Select a subcontractor or enter a company / name' },
         { status: 400, headers: noStoreHeaders }
       )
     }

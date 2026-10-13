@@ -6102,7 +6102,7 @@ export default function InstallerProfilePage() {
               <div className="flex gap-3">
                 <button
                   onClick={handleAgreeNDA}
-                  disabled={isAgreeingNDA || !subcontractor}
+                  disabled={isAgreeingNDA || !installer}
                   className="flex-1 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAgreeingNDA ? (

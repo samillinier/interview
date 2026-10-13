@@ -843,7 +843,7 @@ export default function MessagesPage() {
     }
 
     if (composerMode === 'installer' && !composerInstaller && !composerSelectAll) {
-      setError('Please choose an subcontractor or select all subcontractors.')
+      setError('Please choose a subcontractor or select all subcontractors.')
       setTimeout(() => setError(''), 5000)
       return
     }

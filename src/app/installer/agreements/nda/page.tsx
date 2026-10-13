@@ -248,7 +248,7 @@ export default function NDAPage() {
               <div className="text-sm text-slate-600">
                 {isCompleted ? (
                   <span>
-                    Completed on: <span className="font-semibold text-slate-900">{new Date(subcontractor?.ndaAgreedAt as string).toLocaleString()}</span>
+                    Completed on: <span className="font-semibold text-slate-900">{new Date(installer?.ndaAgreedAt as string).toLocaleString()}</span>
                   </span>
                 ) : (
                   <span>You must agree to this NDA to continue using the subcontractor portal.</span>

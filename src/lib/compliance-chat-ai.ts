@@ -157,7 +157,7 @@ export function fallbackComplianceReply(question: string) {
   const wantsW9 = includesAny(q, ['w-9', 'w9', 'w 9', 'tax form'])
   const wantsBank = includesAny(q, ['bank', 'voided', 'direct deposit', 'ach', 'routing', 'account information'])
   const wantsBackground = includesAny(q, ['background', 'first advantage', 'authorization and release'])
-  const wantsProcess = includesAny(q, ['process', 'steps', 'how long', 'next step', 'onboard', 'get started', 'become an subcontractor', 'join'])
+  const wantsProcess = includesAny(q, ['process', 'steps', 'how long', 'next step', 'onboard', 'get started', 'become a subcontractor', 'join'])
   const wantsPrice = includesAny(q, ['price sheet', 'price sheets', 'pay rate', 'how much', 'rates'])
   const wantsSunbiz = includesAny(q, ['sunbiz', 'sun biz', 'division of corporation'])
   const wantsJobs = includesAny(q, ['jobs', 'work order', 'guarantee', 'how many jobs', 'employee'])
