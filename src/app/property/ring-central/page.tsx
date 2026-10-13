@@ -312,8 +312,8 @@ export default function RingCentralPage() {
         <PropertyPageHeader
           title="RingCentral"
           subtitle="Call logs, recordings, and communication analytics."
-          backHref={isManager ? '/dashboard/corporate' : '/property/dashboard'}
-          backLabel={isManager ? 'Back to Corporate Hub' : 'Back to Property Hub'}
+          backHref={isManager ? '/dashboard' : '/property/dashboard'}
+          backLabel="Back to Dashboard"
           actions={
             <>
               <button

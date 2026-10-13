@@ -453,7 +453,7 @@ export default function PropertyDashboardPage() {
     <div className="min-h-screen bg-slate-50 flex">
       <PropertySidebar
         pathname={pathname}
-        subtitle="Property Hub"
+        subtitle="Dashboard"
         userName={
           property.firstName || property.lastName
             ? `${property.firstName || ''} ${property.lastName || ''}`.trim()
@@ -469,9 +469,9 @@ export default function PropertyDashboardPage() {
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <PropertyPageHeader
           showBack={false}
-          eyebrow="Property"
-          title="Property Hub"
-          subtitle="Fast access to facilities, fleet, equipment, and communications."
+          eyebrow="Property Portal"
+          title="Dashboard"
+          subtitle="Facilities, fleet, equipment, and communications."
         />
 
         <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
@@ -498,14 +498,14 @@ export default function PropertyDashboardPage() {
                   <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-green/10 blur-3xl" />
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="relative">
-                      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-green">Available workspaces</p>
-                      <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Property Tools</h2>
+                      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-green">Property Portal</p>
+                      <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Overview</h2>
                       <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
                         Manage facilities, fleet, equipment, and communications from one place.
                       </p>
                     </div>
                     <span className="relative inline-flex w-fit items-center rounded-full border border-brand-green/20 bg-white px-4 py-2 text-xs font-extrabold text-brand-green shadow-sm">
-                      {hubCards.length} active tools
+                      {hubCards.length} pages
                     </span>
                   </div>
                 </div>
@@ -526,7 +526,7 @@ export default function PropertyDashboardPage() {
                               <Icon className="h-8 w-8 text-brand-green" />
                             </div>
                             <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-slate-500 shadow-sm transition-colors group-hover:border-brand-green/30 group-hover:text-brand-green">
-                              Workspace
+                              Open
                             </span>
                           </div>
                           <div className="mt-5 flex-1">

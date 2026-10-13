@@ -21,7 +21,7 @@ export function PropertyPageHeader({
   eyebrow = 'Property Portal',
   showBack = true,
   backHref = '/property/dashboard',
-  backLabel = 'Back to Property Hub',
+  backLabel = 'Back to Dashboard',
   actions,
 }: Props) {
   return (
