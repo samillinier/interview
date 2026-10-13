@@ -11,7 +11,6 @@ import {
   Edit,
   Trash2,
   Save,
-  XCircle,
   MapPin,
   Calendar,
   Phone,
@@ -36,7 +35,7 @@ import { useSession, signOut } from 'next-auth/react'
 import Image from 'next/image'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader, PropertyMetricCards, PropertySectionHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards, PropertyFormSectionHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -1053,55 +1052,19 @@ export default function FacilitiesPage() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <>
-          {/* Backdrop - doesn't cover sidebar */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed top-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
-            onClick={(e) => {
-              setShowAddModal(false)
-              setEditingLocation(null)
-              resetForm()
-            }}
-          />
-          {/* Modal Content */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed top-0 right-0 bottom-0 z-40 flex items-center justify-center p-0 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowAddModal(false)
-                setEditingLocation(null)
-                resetForm()
-              }
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-            <div className="sticky top-0 bg-brand-green px-8 py-6 flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
+        <div className={`fixed top-0 right-0 bottom-0 z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'} bg-slate-50 overflow-y-auto`}>
+          <div className="p-4 sm:p-6 lg:p-8 min-h-full">
+            <div className="max-w-[1550px] mx-auto">
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden">
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-base font-bold text-slate-800">
                     {editingLocation ? 'Edit Location' : 'Add New Location'}
                   </h2>
-                  <p className="text-white/80 text-sm mt-1">
+                  <p className="text-xs text-slate-400">
                     {editingLocation ? 'Update facility information' : 'Enter facility details'}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1109,53 +1072,40 @@ export default function FacilitiesPage() {
                     setEditingLocation(null)
                     resetForm()
                   }}
-                  className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
+                  className="w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
                   aria-label="Close"
                 >
-                  <XCircle className="w-6 h-6" />
+                  <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
-            </div>
 
-            <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-              {/* Hero Image Section */}
               {(photoPreview || editingLocation?.photoUrl) && (
-                <div className="relative w-full h-64 md:h-80 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
-                  <Image
-                    src={photoPreview || editingLocation?.photoUrl || ''}
-                    alt={editingLocation?.location || editingLocation?.aliasLocation || 'Facility'}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 1024px"
-                    className="object-cover"
-                    loading="lazy"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-2xl md:text-3xl font-bold mb-2">
-                      {formData.location || editingLocation?.location || editingLocation?.aliasLocation || 'Facility Location'}
-                    </h3>
-                    {formData.propertyAddress || editingLocation?.propertyAddress ? (
-                      <p className="text-white/90 text-sm md:text-base">
-                        {formData.propertyAddress || editingLocation?.propertyAddress}
-                      </p>
-                    ) : null}
+                <div className="px-6 pt-6">
+                  <div className="relative w-full h-52 md:h-64 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
+                    <Image
+                      src={photoPreview || editingLocation?.photoUrl || ''}
+                      alt={editingLocation?.location || editingLocation?.aliasLocation || 'Facility'}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 1024px"
+                      className="object-cover"
+                      loading="lazy"
+                      unoptimized
+                    />
                   </div>
                 </div>
               )}
 
-              <div className="p-8">
+              <div className="p-6 space-y-8">
               {/* Basic Information Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={MapPin} eyebrow="Overview" title="Basic Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <PropertyFormSectionHeader icon={MapPin} step="Basic" title="Basic Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Location
                     </label>
                     <input
@@ -1171,8 +1121,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Home className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Alias Location
                     </label>
                     <input
@@ -1188,8 +1137,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Property Address
                     </label>
                     <input
@@ -1205,8 +1153,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Phone
                     </label>
                     <input
@@ -1232,12 +1179,12 @@ export default function FacilitiesPage() {
 
                 return (
                   <div className="mb-8">
-                    <PropertySectionHeader icon={MapPin} eyebrow="Map" title="Location Map" />
+                    <PropertyFormSectionHeader icon={MapPin} step="Location" title="Location Map" />
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.25 }}
-                      className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                      className="mt-5 rounded-2xl border border-slate-200/80 p-5"
                     >
                       <div className="flex items-center justify-between gap-3 mb-4">
                         <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 shrink-0">
@@ -1269,16 +1216,15 @@ export default function FacilitiesPage() {
               })()}
 
               {/* Lease Information Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Calendar} eyebrow="Lease" title="Lease Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Calendar} step="Lease" title="Lease Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Lease Start
                     </label>
                     <input
@@ -1293,8 +1239,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Lease Renewal
                     </label>
                     <input
@@ -1308,8 +1253,8 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Documents Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={FileText} eyebrow="Docs" title="Documents" />
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={FileText} step="Documents" title="Documents" />
 
                 {!editingLocation?.id || !getLocationPropertyId(editingLocation) ? (
                   <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
@@ -1500,16 +1445,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Contact Information Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Users} eyebrow="Contact" title="Contact Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Users} step="Contact" title="Contact Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Users className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Landlord
                     </label>
                     <input
@@ -1525,8 +1469,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Landlord Phone
                     </label>
                     <input
@@ -1542,8 +1485,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Users className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Property Manager
                     </label>
                     <input
@@ -1559,8 +1501,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Shield className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Status
                     </label>
                     <select
@@ -1577,16 +1518,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Financial Information Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={DollarSign} eyebrow="Financial" title="Financial Information" />
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={DollarSign} step="Financial" title="Financial Information" />
                 <div className="grid md:grid-cols-3 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Rent Amount
                     </label>
                     <div className="relative">
@@ -1606,8 +1546,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Deposit Amount
                     </label>
                     <div className="relative">
@@ -1627,8 +1566,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.65 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Deposit Payback Date
                     </label>
                     <input
@@ -1642,17 +1580,16 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Insurance & Additional Information */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Shield} eyebrow="Insurance" title="Insurance & Additional Information" />
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Shield} step="Insurance" title="Insurance & Additional Information" />
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
                   className="mb-6"
                 >
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                    <FileText className="w-4 h-4 text-brand-green" />
-                    Insurance Requirements
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Insurance Requirements
                   </label>
                   <textarea
                     value={formData.insuranceRequirements}
@@ -1662,14 +1599,13 @@ export default function FacilitiesPage() {
                     className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                   />
                 </motion.div>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.75 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Square className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Square Feet
                     </label>
                     <input
@@ -1685,16 +1621,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Sublease Information Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Users} eyebrow="Sublease" title="Sublease Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Users} step="Sublease" title="Sublease Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Users className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Sub Broker
                     </label>
                     <input
@@ -1710,8 +1645,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.85 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Users className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Sublessee
                     </label>
                     <input
@@ -1727,8 +1661,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.9 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Sub Rent
                     </label>
                     <div className="relative">
@@ -1748,8 +1681,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.95 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Sub Deposit
                     </label>
                     <div className="relative">
@@ -1769,8 +1701,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.0 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Users className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Sub Contacts
                     </label>
                     <input
@@ -1786,8 +1717,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.05 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Sub Phone
                     </label>
                     <input
@@ -1802,16 +1732,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Photo Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={ImageIcon} eyebrow="Photo" title="Photo" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={ImageIcon} step="Photo" title="Photo" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Upload className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Upload Photo
                     </label>
                     <input
@@ -1843,8 +1772,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.2 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <ImageIcon className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Preview
                     </label>
                     {photoPreview ? (
@@ -1874,16 +1802,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* WiFi Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Wifi} eyebrow="WiFi" title="WiFi Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Wifi} step="WiFi" title="WiFi Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.25 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Wifi className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       WiFi Name (SSID)
                     </label>
                     <input
@@ -1899,8 +1826,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.26 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Lock className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       WiFi Password
                     </label>
                     <input
@@ -1915,16 +1841,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Water Provider Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Droplet} eyebrow="Water" title="Water Provider Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Droplet} step="Water" title="Water Provider Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.3 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Building2 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Name
                     </label>
                     <input
@@ -1940,8 +1865,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.31 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Phone Number
                     </label>
                     <input
@@ -1957,8 +1881,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.32 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Globe className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Website
                     </label>
                     <input
@@ -1974,8 +1897,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.33 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Account Number
                     </label>
                     <input
@@ -1992,8 +1914,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.34 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Address
                     </label>
                     <input
@@ -2010,8 +1931,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.35 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Additional Notes
                     </label>
                     <textarea
@@ -2026,16 +1946,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Internet Provider Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Globe} eyebrow="Internet" title="Internet Provider Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Globe} step="Internet" title="Internet Provider Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.4 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Building2 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Name
                     </label>
                     <input
@@ -2051,8 +1970,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.41 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Phone Number
                     </label>
                     <input
@@ -2068,8 +1986,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.42 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Globe className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Website
                     </label>
                     <input
@@ -2085,8 +2002,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.43 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Account Number
                     </label>
                     <input
@@ -2102,8 +2018,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.44 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Plan/Service
                     </label>
                     <input
@@ -2119,8 +2034,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.45 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Zap className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Speed
                     </label>
                     <input
@@ -2137,8 +2051,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.46 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Router Location
                     </label>
                     <input
@@ -2155,8 +2068,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.47 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Additional Notes
                     </label>
                     <textarea
@@ -2171,16 +2083,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Power Provider Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Zap} eyebrow="Power" title="Power Provider Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Zap} step="Power" title="Power Provider Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.5 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Building2 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Name
                     </label>
                     <input
@@ -2196,8 +2107,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.51 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Phone Number
                     </label>
                     <input
@@ -2213,8 +2123,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.52 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Globe className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Website
                     </label>
                     <input
@@ -2230,8 +2139,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.53 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Account Number
                     </label>
                     <input
@@ -2248,8 +2156,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.54 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Service Address
                     </label>
                     <input
@@ -2265,8 +2172,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.55 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Meter Number
                     </label>
                     <input
@@ -2283,8 +2189,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.56 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Additional Notes
                     </label>
                     <textarea
@@ -2299,16 +2204,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Dumpster Provider Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={TrashIcon} eyebrow="Dumpster" title="Dumpster Provider Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={TrashIcon} step="Dumpster" title="Dumpster Provider Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.57 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Building2 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Name
                     </label>
                     <input
@@ -2324,8 +2228,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.58 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Phone Number
                     </label>
                     <input
@@ -2341,8 +2244,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.59 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Globe className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Website
                     </label>
                     <input
@@ -2358,8 +2260,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.6 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Account Number
                     </label>
                     <input
@@ -2375,8 +2276,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.61 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Pickup Day
                     </label>
                     <input
@@ -2393,8 +2293,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.62 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Address
                     </label>
                     <input
@@ -2411,8 +2310,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.63 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Additional Notes
                     </label>
                     <textarea
@@ -2427,16 +2325,15 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Propane Provider Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Flame} eyebrow="Propane" title="Propane Provider Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Flame} step="Propane" title="Propane Provider Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.64 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Building2 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Name
                     </label>
                     <input
@@ -2452,8 +2349,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.65 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Phone Number
                     </label>
                     <input
@@ -2469,8 +2365,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.66 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Globe className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Website
                     </label>
                     <input
@@ -2486,8 +2381,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.67 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Account Number
                     </label>
                     <input
@@ -2503,8 +2397,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.68 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Tank Location
                     </label>
                     <input
@@ -2520,8 +2413,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.69 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Square className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Tank Size
                     </label>
                     <input
@@ -2538,8 +2430,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.7 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Provider Address
                     </label>
                     <input
@@ -2556,8 +2447,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.71 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Additional Notes
                     </label>
                     <textarea
@@ -2572,17 +2462,16 @@ export default function FacilitiesPage() {
               </div>
 
               {/* Security Lock Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Lock} eyebrow="Security" title="Security Lock Information" />
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Lock} step="Security" title="Security Lock Information" />
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1.6 }}
                   className="md:col-span-2"
                 >
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                    <Lock className="w-4 h-4 text-brand-green" />
-                    Security Lock Details
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Security Lock Details
                   </label>
                   <textarea
                     value={formData.securityLock}
@@ -2596,44 +2485,40 @@ export default function FacilitiesPage() {
               </div>
               </div>
 
-              <div className="sticky bottom-0 bg-white border-t border-slate-200 px-8 py-6 mt-8 flex items-center justify-end gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-3">
+                <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false)
                     setEditingLocation(null)
                     resetForm()
                   }}
-                  className="px-8 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all"
+                  className="px-5 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-all"
                 >
                   Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+                <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-3 bg-brand-green text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold text-sm hover:bg-brand-green-dark transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-green/20"
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Saving...
                     </>
                   ) : (
                     <>
-                      <Save className="w-5 h-5" />
+                      <Save className="w-4 h-4" />
                       {editingLocation ? 'Update Location' : 'Add Location'}
                     </>
                   )}
-                </motion.button>
+                </button>
               </div>
             </form>
-            </motion.div>
-          </motion.div>
-        </>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

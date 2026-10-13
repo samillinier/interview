@@ -11,7 +11,6 @@ import {
   Edit,
   Trash2,
   Save,
-  XCircle,
   MapPin,
   Calendar,
   Phone,
@@ -30,7 +29,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader, PropertyMetricCards, PropertySectionHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards, PropertyFormSectionHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { FleetBarcode } from '@/components/FleetBarcode'
@@ -724,83 +723,48 @@ export default function FleetPage() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <>
-          {/* Backdrop - doesn't cover sidebar */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed top-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
-            onClick={() => {
-              setShowAddModal(false)
-              setEditingVehicle(null)
-              resetForm()
-            }}
-          />
-          {/* Modal Content */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed top-0 right-0 bottom-0 z-40 flex items-center justify-center p-0 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowAddModal(false)
-                setEditingVehicle(null)
-                resetForm()
-              }
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-            <div className="sticky top-0 bg-brand-green px-8 py-6 flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Car className="w-6 h-6 text-white" />
-                </div>
+        <div className={`fixed top-0 right-0 bottom-0 z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'} bg-slate-50 overflow-y-auto`}>
+          <div className="p-4 sm:p-6 lg:p-8 min-h-full">
+            <div className="max-w-[1550px] mx-auto">
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden relative">
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-base font-bold text-slate-800">
                     {editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
                   </h2>
-                  <p className="text-white/80 text-sm mt-1">
+                  <p className="text-xs text-slate-400">
                     {editingVehicle ? 'Update vehicle information' : 'Enter vehicle details'}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                {editingVehicle?.id ? (
-                  <div className="hidden sm:block">
-                    <FleetBarcode vehicleId={editingVehicle.id} />
-                  </div>
-                ) : (
-                  <div className="hidden sm:block text-right">
-                    <div className="bg-white/15 border border-white/20 rounded-2xl px-4 py-3">
-                      <p className="text-xs font-semibold text-white">Barcode</p>
-                      <p className="text-xs text-white/80">Available after saving</p>
+                <div className="flex items-center gap-3">
+                  {editingVehicle?.id ? (
+                    <div className="hidden sm:block">
+                      <FleetBarcode vehicleId={editingVehicle.id} />
                     </div>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false)
-                    setEditingVehicle(null)
-                    resetForm()
-                  }}
-                  className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
+                  ) : (
+                    <div className="hidden sm:block text-right">
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5">
+                        <p className="text-xs font-semibold text-slate-700">Barcode</p>
+                        <p className="text-xs text-slate-400">Available after saving</p>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false)
+                      setEditingVehicle(null)
+                      resetForm()
+                    }}
+                    className="w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5 text-slate-500" />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 relative">
+              <div className="p-6 space-y-8 relative">
               {/* Desktop photo panel (top-right, out of flow to avoid spacing gaps) */}
               <div className="hidden lg:block absolute top-8 right-8 w-[340px]">
                 <div className="flex items-center justify-end gap-3">
@@ -834,9 +798,8 @@ export default function FleetPage() {
                   )}
                 </div>
                 <div className="mt-3">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                    <Upload className="w-4 h-4 text-brand-green" />
-                    Upload Photo
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Upload Photo
                   </label>
                   <input
                     type="file"
@@ -854,17 +817,16 @@ export default function FleetPage() {
 
               {/* Vehicle Information Section */}
               <div className="mb-8 lg:pr-[420px]">
-                <PropertySectionHeader icon={Car} eyebrow="Vehicle" title="Vehicle Information" />
+                <PropertyFormSectionHeader icon={Car} step="Vehicle" title="Vehicle Information" />
 
-                <div className="space-y-6">
-                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="space-y-5 mt-5">
+                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Vehicle Year
                     </label>
                     <input
@@ -882,8 +844,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Car className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Vehicle Make
                     </label>
                     <input
@@ -899,8 +860,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Package className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Category
                     </label>
                     <select
@@ -918,8 +878,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Car className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Vehicle Model
                     </label>
                     <input
@@ -939,9 +898,8 @@ export default function FleetPage() {
                       transition={{ delay: 0.25 }}
                       className="md:col-span-2"
                     >
-                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                        <Users className="w-4 h-4 text-brand-green" />
-                        Assigned Driver
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Assigned Driver
                       </label>
                       <input
                         type="text"
@@ -957,9 +915,8 @@ export default function FleetPage() {
                       transition={{ delay: 0.3 }}
                       className="md:col-span-1"
                     >
-                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                        <Hash className="w-4 h-4 text-brand-green" />
-                        VIN #
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      VIN #
                       </label>
                       <input
                         type="text"
@@ -975,16 +932,15 @@ export default function FleetPage() {
               </div>
 
               {/* Location & Registration Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={MapPin} eyebrow="Location" title="Location & Registration" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={MapPin} step="Location" title="Location & Registration" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Location
                     </label>
                     <input
@@ -1001,8 +957,7 @@ export default function FleetPage() {
                     transition={{ delay: 0.4 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Location Address
                     </label>
                     <input
@@ -1018,8 +973,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <CreditCard className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Plate
                     </label>
                     <input
@@ -1035,8 +989,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Tag Renewal
                     </label>
                     <input
@@ -1050,16 +1003,15 @@ export default function FleetPage() {
               </div>
 
               {/* Additional Information Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Shield} eyebrow="Additional" title="Additional Information" />
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Shield} step="Additional" title="Additional Information" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Hash className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Transponder Number
                     </label>
                     <input
@@ -1075,8 +1027,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Gauge className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Mileage (as of Aug 2025)
                     </label>
                     <input
@@ -1092,8 +1043,8 @@ export default function FleetPage() {
               </div>
 
               {/* Documents Section */}
-              <div className="mb-8">
-                <PropertySectionHeader icon={Package} eyebrow="Docs" title="Documents" />
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Package} step="Documents" title="Documents" />
 
                 {!editingVehicle?.id || !property?.id ? (
                   <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
@@ -1257,15 +1208,14 @@ export default function FleetPage() {
 
               {/* Photo Section */}
               <div className="mb-8 lg:hidden">
-                <PropertySectionHeader icon={ImageIcon} eyebrow="Photo" title="Photo" />
-                <div className="grid md:grid-cols-2 gap-6">
+                <PropertyFormSectionHeader icon={ImageIcon} step="Photo" title="Photo" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <Upload className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Upload Photo
                     </label>
                     <input
@@ -1299,8 +1249,7 @@ export default function FleetPage() {
                     transition={{ delay: 1.2 }}
                     className="lg:hidden"
                   >
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
-                      <ImageIcon className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Preview
                     </label>
                     {(photoPreview || editingVehicle?.photoUrl) ? (
@@ -1333,44 +1282,41 @@ export default function FleetPage() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 bg-white border-t border-slate-200 px-8 py-6 -mx-8 -mb-8 mt-8 flex items-center justify-end gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              </div>
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-3">
+                <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false)
                     setEditingVehicle(null)
                     resetForm()
                   }}
-                  className="px-8 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all"
+                  className="px-5 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-all"
                 >
                   Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+                <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-3 bg-brand-green text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold text-sm hover:bg-brand-green-dark transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-green/20"
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Saving...
                     </>
                   ) : (
                     <>
-                      <Save className="w-5 h-5" />
+                      <Save className="w-4 h-4" />
                       {editingVehicle ? 'Update Vehicle' : 'Add Vehicle'}
                     </>
                   )}
-                </motion.button>
+                </button>
               </div>
             </form>
-          </motion.div>
-          </motion.div>
-        </>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

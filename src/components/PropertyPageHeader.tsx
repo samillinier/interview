@@ -79,14 +79,19 @@ export function PropertyPageHeader({
   )
 }
 
-export function PropertySectionHeader({
+export const PROPERTY_FORM_INPUT_CLASS =
+  'w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium'
+
+export function PropertyFormSectionHeader({
   icon: Icon,
-  eyebrow,
+  step,
   title,
+  subtitle,
 }: {
   icon: LucideIcon
-  eyebrow: string
+  step: string
   title: string
+  subtitle?: string
 }) {
   return (
     <div className="flex items-start gap-4">
@@ -94,8 +99,9 @@ export function PropertySectionHeader({
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-brand-green">{eyebrow}</p>
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-brand-green">{step}</p>
         <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+        {subtitle ? <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{subtitle}</p> : null}
       </div>
     </div>
   )
