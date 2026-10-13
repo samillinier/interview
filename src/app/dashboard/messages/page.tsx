@@ -159,7 +159,7 @@ function mapWebsiteConversations(websiteData: {
     installerId: string
     lastMessage?: Message | null
     unreadCount?: number
-    Installer?: Message['Subcontractor'] & {
+    Installer?: Message['Installer'] & {
       status?: string
       online?: boolean
       aiEnabled?: boolean
@@ -515,7 +515,7 @@ export default function MessagesPage() {
         installerId: string
         lastMessage?: Message
         unreadCount?: number
-                Installer?: Message['Subcontractor'] & {
+                Installer?: Message['Installer'] & {
                   status?: string
                   online?: boolean
                   lastSeenAt?: string | Date | null

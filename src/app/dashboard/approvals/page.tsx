@@ -67,7 +67,7 @@ type ApprovalGroup = {
   key: string
   installerId: string
   source: string | null
-  Installer: ChangeRequest['Subcontractor']
+  Installer: ChangeRequest['Installer']
   requestIds: string[]
   createdAt: string // newest
   submittedBy: string | null
