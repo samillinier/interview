@@ -1,3 +1,5 @@
+import type { CreateEmailOptions } from 'resend'
+
 /** Public HTTPS logo used in outbound emails. Never use localhost or preview URLs. */
 export const EMAIL_LOGO_CID = 'fis-logo'
 
@@ -28,7 +30,7 @@ export function emailLogoAttachment() {
 }
 
 /** Attach the FIS logo so <img src="cid:fis-logo"> renders in Outlook without loading remote images. */
-export function withEmailLogo<T extends { attachments?: unknown[] }>(payload: T) {
+export function withEmailLogo(payload: CreateEmailOptions): CreateEmailOptions {
   return {
     ...payload,
     attachments: [...(payload.attachments || []), emailLogoAttachment()],
