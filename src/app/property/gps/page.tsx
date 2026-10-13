@@ -381,19 +381,30 @@ export default function GPSPage() {
         } w-full`}
       >
         <PropertyPageHeader
+          variant="banner"
           title="GPS Fleet Tracking"
           subtitle="Live map, device status, and trip history."
+          stats={[
+            { icon: Car, text: `${devices.length} device${devices.length === 1 ? '' : 's'}` },
+            { icon: Signal, text: `${onlineCount} online` },
+            ...(devices.length - onlineCount > 0
+              ? [{ icon: WifiOff, text: `${devices.length - onlineCount} offline` }]
+              : []),
+            ...(devices.filter((d) => d.speed > 3 && d.status === 'online').length > 0
+              ? [{ icon: Gauge, text: `${devices.filter((d) => d.speed > 3 && d.status === 'online').length} moving` }]
+              : []),
+          ]}
           actions={
             <>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-white/70">
                 Last update: {lastRefresh.toLocaleTimeString()}
               </span>
               <button
                 onClick={() => setIsLive(!isLive)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   isLive
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-white/90 text-brand-green hover:bg-white'
+                    : 'bg-white/15 text-white hover:bg-white/25'
                 }`}
               >
                 {isLive ? (
@@ -409,7 +420,7 @@ export default function GPSPage() {
               <button
                 onClick={syncDevices}
                 disabled={isSyncing}
-                className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors disabled:opacity-50"
                 title="Sync GPS devices"
               >
                 {isSyncing ? (
