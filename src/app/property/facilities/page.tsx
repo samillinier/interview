@@ -36,7 +36,7 @@ import { useSession, signOut } from 'next-auth/react'
 import Image from 'next/image'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards, PropertySectionHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -1147,17 +1147,14 @@ export default function FacilitiesPage() {
               <div className="p-8">
               {/* Basic Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <MapPin className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Basic Information</h3>
-                </div>
+                <PropertySectionHeader icon={MapPin} eyebrow="Overview" title="Basic Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Location
                     </label>
@@ -1166,7 +1163,7 @@ export default function FacilitiesPage() {
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       placeholder="Enter location name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1174,7 +1171,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Home className="w-4 h-4 text-brand-green" />
                       Alias Location
                     </label>
@@ -1183,7 +1180,7 @@ export default function FacilitiesPage() {
                       value={formData.aliasLocation}
                       onChange={(e) => setFormData({ ...formData, aliasLocation: e.target.value })}
                       placeholder="Alternative name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1191,7 +1188,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Property Address
                     </label>
@@ -1200,7 +1197,7 @@ export default function FacilitiesPage() {
                       value={formData.propertyAddress}
                       onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
                       placeholder="Enter full property address"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1208,7 +1205,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone
                     </label>
@@ -1217,7 +1214,7 @@ export default function FacilitiesPage() {
                       value={formData.landlordPhone}
                       onChange={(e) => setFormData({ ...formData, landlordPhone: e.target.value })}
                       placeholder="Enter phone number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1235,10 +1232,7 @@ export default function FacilitiesPage() {
 
                 return (
                   <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-5">
-                      <MapPin className="w-5 h-5 text-brand-green" />
-                      <h3 className="text-lg font-bold text-slate-900">Location Map</h3>
-                    </div>
+                    <PropertySectionHeader icon={MapPin} eyebrow="Map" title="Location Map" />
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1276,17 +1270,14 @@ export default function FacilitiesPage() {
 
               {/* Lease Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Calendar className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Lease Information</h3>
-                </div>
+                <PropertySectionHeader icon={Calendar} eyebrow="Lease" title="Lease Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Lease Start
                     </label>
@@ -1294,7 +1285,7 @@ export default function FacilitiesPage() {
                       type="date"
                       value={formData.leaseStart}
                       onChange={(e) => setFormData({ ...formData, leaseStart: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1302,7 +1293,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Lease Renewal
                     </label>
@@ -1310,7 +1301,7 @@ export default function FacilitiesPage() {
                       type="date"
                       value={formData.leaseRenewal}
                       onChange={(e) => setFormData({ ...formData, leaseRenewal: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1318,10 +1309,7 @@ export default function FacilitiesPage() {
 
               {/* Documents Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <FileText className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Documents</h3>
-                </div>
+                <PropertySectionHeader icon={FileText} eyebrow="Docs" title="Documents" />
 
                 {!editingLocation?.id || !getLocationPropertyId(editingLocation) ? (
                   <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
@@ -1513,17 +1501,14 @@ export default function FacilitiesPage() {
 
               {/* Contact Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Users className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Contact Information</h3>
-                </div>
+                <PropertySectionHeader icon={Users} eyebrow="Contact" title="Contact Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Users className="w-4 h-4 text-brand-green" />
                       Landlord
                     </label>
@@ -1532,7 +1517,7 @@ export default function FacilitiesPage() {
                       value={formData.landlord}
                       onChange={(e) => setFormData({ ...formData, landlord: e.target.value })}
                       placeholder="Landlord name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1540,7 +1525,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Landlord Phone
                     </label>
@@ -1549,7 +1534,7 @@ export default function FacilitiesPage() {
                       value={formData.landlordPhone}
                       onChange={(e) => setFormData({ ...formData, landlordPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1557,7 +1542,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Users className="w-4 h-4 text-brand-green" />
                       Property Manager
                     </label>
@@ -1566,7 +1551,7 @@ export default function FacilitiesPage() {
                       value={formData.propertyMgr}
                       onChange={(e) => setFormData({ ...formData, propertyMgr: e.target.value })}
                       placeholder="Manager name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1574,14 +1559,14 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Shield className="w-4 h-4 text-brand-green" />
                       Status
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -1593,17 +1578,14 @@ export default function FacilitiesPage() {
 
               {/* Financial Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <DollarSign className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Financial Information</h3>
-                </div>
+                <PropertySectionHeader icon={DollarSign} eyebrow="Financial" title="Financial Information" />
                 <div className="grid md:grid-cols-3 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Rent Amount
                     </label>
@@ -1624,7 +1606,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Deposit Amount
                     </label>
@@ -1645,7 +1627,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.65 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Deposit Payback Date
                     </label>
@@ -1653,7 +1635,7 @@ export default function FacilitiesPage() {
                       type="date"
                       value={formData.depositPaybackDate}
                       onChange={(e) => setFormData({ ...formData, depositPaybackDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1661,17 +1643,14 @@ export default function FacilitiesPage() {
 
               {/* Insurance & Additional Information */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Shield className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Insurance & Additional Information</h3>
-                </div>
+                <PropertySectionHeader icon={Shield} eyebrow="Insurance" title="Insurance & Additional Information" />
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
                   className="mb-6"
                 >
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                     <FileText className="w-4 h-4 text-brand-green" />
                     Insurance Requirements
                   </label>
@@ -1680,7 +1659,7 @@ export default function FacilitiesPage() {
                     onChange={(e) => setFormData({ ...formData, insuranceRequirements: e.target.value })}
                     rows={4}
                     placeholder="Enter insurance requirements and details..."
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                    className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                   />
                 </motion.div>
                 <div className="grid md:grid-cols-2 gap-6">
@@ -1689,7 +1668,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.75 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Square className="w-4 h-4 text-brand-green" />
                       Square Feet
                     </label>
@@ -1699,7 +1678,7 @@ export default function FacilitiesPage() {
                       value={formData.sqFeet}
                       onChange={(e) => setFormData({ ...formData, sqFeet: e.target.value })}
                       placeholder="0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1707,17 +1686,14 @@ export default function FacilitiesPage() {
 
               {/* Sublease Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Users className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Sublease Information</h3>
-                </div>
+                <PropertySectionHeader icon={Users} eyebrow="Sublease" title="Sublease Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Users className="w-4 h-4 text-brand-green" />
                       Sub Broker
                     </label>
@@ -1726,7 +1702,7 @@ export default function FacilitiesPage() {
                       value={formData.subBroker}
                       onChange={(e) => setFormData({ ...formData, subBroker: e.target.value })}
                       placeholder="Broker name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1734,7 +1710,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.85 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Users className="w-4 h-4 text-brand-green" />
                       Sublessee
                     </label>
@@ -1743,7 +1719,7 @@ export default function FacilitiesPage() {
                       value={formData.sublessee}
                       onChange={(e) => setFormData({ ...formData, sublessee: e.target.value })}
                       placeholder="Sublessee name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1751,7 +1727,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.9 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Sub Rent
                     </label>
@@ -1772,7 +1748,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.95 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <DollarSign className="w-4 h-4 text-brand-green" />
                       Sub Deposit
                     </label>
@@ -1793,7 +1769,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.0 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Users className="w-4 h-4 text-brand-green" />
                       Sub Contacts
                     </label>
@@ -1802,7 +1778,7 @@ export default function FacilitiesPage() {
                       value={formData.subContacts}
                       onChange={(e) => setFormData({ ...formData, subContacts: e.target.value })}
                       placeholder="Contact name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1810,7 +1786,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.05 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Sub Phone
                     </label>
@@ -1819,7 +1795,7 @@ export default function FacilitiesPage() {
                       value={formData.subPhone}
                       onChange={(e) => setFormData({ ...formData, subPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1827,17 +1803,14 @@ export default function FacilitiesPage() {
 
               {/* Photo Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <ImageIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Photo</h3>
-                </div>
+                <PropertySectionHeader icon={ImageIcon} eyebrow="Photo" title="Photo" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Upload className="w-4 h-4 text-brand-green" />
                       Upload Photo
                     </label>
@@ -1845,7 +1818,7 @@ export default function FacilitiesPage() {
                       type="file"
                       accept="image/*"
                       onChange={handlePhotoSelect}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
                     />
 
                     {selectedPhotoFile ? (
@@ -1870,7 +1843,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <ImageIcon className="w-4 h-4 text-brand-green" />
                       Preview
                     </label>
@@ -1902,17 +1875,14 @@ export default function FacilitiesPage() {
 
               {/* WiFi Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Wifi className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">WiFi Information</h3>
-                </div>
+                <PropertySectionHeader icon={Wifi} eyebrow="WiFi" title="WiFi Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Wifi className="w-4 h-4 text-brand-green" />
                       WiFi Name (SSID)
                     </label>
@@ -1921,7 +1891,7 @@ export default function FacilitiesPage() {
                       value={formData.wifiName}
                       onChange={(e) => setFormData({ ...formData, wifiName: e.target.value })}
                       placeholder="Enter WiFi network name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1929,7 +1899,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.26 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Lock className="w-4 h-4 text-brand-green" />
                       WiFi Password
                     </label>
@@ -1938,7 +1908,7 @@ export default function FacilitiesPage() {
                       value={formData.wifiPassword}
                       onChange={(e) => setFormData({ ...formData, wifiPassword: e.target.value })}
                       placeholder="Enter WiFi password"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1946,17 +1916,14 @@ export default function FacilitiesPage() {
 
               {/* Water Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Droplet className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Water Provider Information</h3>
-                </div>
+                <PropertySectionHeader icon={Droplet} eyebrow="Water" title="Water Provider Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.3 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -1965,7 +1932,7 @@ export default function FacilitiesPage() {
                       value={formData.waterProviderName}
                       onChange={(e) => setFormData({ ...formData, waterProviderName: e.target.value })}
                       placeholder="Enter provider name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1973,7 +1940,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.31 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -1982,7 +1949,7 @@ export default function FacilitiesPage() {
                       value={formData.waterProviderPhone}
                       onChange={(e) => setFormData({ ...formData, waterProviderPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1990,7 +1957,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.32 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -1999,7 +1966,7 @@ export default function FacilitiesPage() {
                       value={formData.waterProviderWebsite}
                       onChange={(e) => setFormData({ ...formData, waterProviderWebsite: e.target.value })}
                       placeholder="https://example.com"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2007,7 +1974,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.33 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2016,7 +1983,7 @@ export default function FacilitiesPage() {
                       value={formData.waterProviderAccountNumber}
                       onChange={(e) => setFormData({ ...formData, waterProviderAccountNumber: e.target.value })}
                       placeholder="Enter account number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2025,7 +1992,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.34 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Provider Address
                     </label>
@@ -2034,7 +2001,7 @@ export default function FacilitiesPage() {
                       value={formData.waterProviderAddress}
                       onChange={(e) => setFormData({ ...formData, waterProviderAddress: e.target.value })}
                       placeholder="Enter provider address"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2043,7 +2010,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.35 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2052,7 +2019,7 @@ export default function FacilitiesPage() {
                       onChange={(e) => setFormData({ ...formData, waterProviderNotes: e.target.value })}
                       rows={3}
                       placeholder="Enter any additional notes or information"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                     />
                   </motion.div>
                 </div>
@@ -2060,17 +2027,14 @@ export default function FacilitiesPage() {
 
               {/* Internet Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Globe className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Internet Provider Information</h3>
-                </div>
+                <PropertySectionHeader icon={Globe} eyebrow="Internet" title="Internet Provider Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.4 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2079,7 +2043,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderName}
                       onChange={(e) => setFormData({ ...formData, internetProviderName: e.target.value })}
                       placeholder="Enter provider name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2087,7 +2051,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.41 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2096,7 +2060,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderPhone}
                       onChange={(e) => setFormData({ ...formData, internetProviderPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2104,7 +2068,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.42 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2113,7 +2077,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderWebsite}
                       onChange={(e) => setFormData({ ...formData, internetProviderWebsite: e.target.value })}
                       placeholder="https://example.com"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2121,7 +2085,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.43 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2130,7 +2094,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderAccountNumber}
                       onChange={(e) => setFormData({ ...formData, internetProviderAccountNumber: e.target.value })}
                       placeholder="Enter account number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2138,7 +2102,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.44 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Plan/Service
                     </label>
@@ -2147,7 +2111,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderPlan}
                       onChange={(e) => setFormData({ ...formData, internetProviderPlan: e.target.value })}
                       placeholder="e.g., Fiber 500 Mbps"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2155,7 +2119,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.45 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Zap className="w-4 h-4 text-brand-green" />
                       Speed
                     </label>
@@ -2164,7 +2128,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderSpeed}
                       onChange={(e) => setFormData({ ...formData, internetProviderSpeed: e.target.value })}
                       placeholder="e.g., 500 Mbps"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2173,7 +2137,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.46 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Router Location
                     </label>
@@ -2182,7 +2146,7 @@ export default function FacilitiesPage() {
                       value={formData.internetProviderRouterLocation}
                       onChange={(e) => setFormData({ ...formData, internetProviderRouterLocation: e.target.value })}
                       placeholder="e.g., Office, Server Room, etc."
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2191,7 +2155,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.47 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2200,7 +2164,7 @@ export default function FacilitiesPage() {
                       onChange={(e) => setFormData({ ...formData, internetProviderNotes: e.target.value })}
                       rows={3}
                       placeholder="Enter any additional notes or information"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                     />
                   </motion.div>
                 </div>
@@ -2208,17 +2172,14 @@ export default function FacilitiesPage() {
 
               {/* Power Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Zap className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Power Provider Information</h3>
-                </div>
+                <PropertySectionHeader icon={Zap} eyebrow="Power" title="Power Provider Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.5 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2227,7 +2188,7 @@ export default function FacilitiesPage() {
                       value={formData.powerProviderName}
                       onChange={(e) => setFormData({ ...formData, powerProviderName: e.target.value })}
                       placeholder="Enter provider name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2235,7 +2196,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.51 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2244,7 +2205,7 @@ export default function FacilitiesPage() {
                       value={formData.powerProviderPhone}
                       onChange={(e) => setFormData({ ...formData, powerProviderPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2252,7 +2213,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.52 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2261,7 +2222,7 @@ export default function FacilitiesPage() {
                       value={formData.powerProviderWebsite}
                       onChange={(e) => setFormData({ ...formData, powerProviderWebsite: e.target.value })}
                       placeholder="https://example.com"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2269,7 +2230,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.53 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2278,7 +2239,7 @@ export default function FacilitiesPage() {
                       value={formData.powerProviderAccountNumber}
                       onChange={(e) => setFormData({ ...formData, powerProviderAccountNumber: e.target.value })}
                       placeholder="Enter account number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2287,7 +2248,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.54 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Service Address
                     </label>
@@ -2296,7 +2257,7 @@ export default function FacilitiesPage() {
                       value={formData.powerProviderServiceAddress}
                       onChange={(e) => setFormData({ ...formData, powerProviderServiceAddress: e.target.value })}
                       placeholder="Enter service address"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2304,7 +2265,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.55 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Meter Number
                     </label>
@@ -2313,7 +2274,7 @@ export default function FacilitiesPage() {
                       value={formData.powerProviderMeterNumber}
                       onChange={(e) => setFormData({ ...formData, powerProviderMeterNumber: e.target.value })}
                       placeholder="Enter meter number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2322,7 +2283,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.56 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2331,7 +2292,7 @@ export default function FacilitiesPage() {
                       onChange={(e) => setFormData({ ...formData, powerProviderNotes: e.target.value })}
                       rows={3}
                       placeholder="Enter any additional notes or information"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                     />
                   </motion.div>
                 </div>
@@ -2339,17 +2300,14 @@ export default function FacilitiesPage() {
 
               {/* Dumpster Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <TrashIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Dumpster Provider Information</h3>
-                </div>
+                <PropertySectionHeader icon={TrashIcon} eyebrow="Dumpster" title="Dumpster Provider Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.57 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2358,7 +2316,7 @@ export default function FacilitiesPage() {
                       value={formData.garbageProviderName}
                       onChange={(e) => setFormData({ ...formData, garbageProviderName: e.target.value })}
                       placeholder="Enter provider name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2366,7 +2324,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.58 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2375,7 +2333,7 @@ export default function FacilitiesPage() {
                       value={formData.garbageProviderPhone}
                       onChange={(e) => setFormData({ ...formData, garbageProviderPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2383,7 +2341,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.59 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2392,7 +2350,7 @@ export default function FacilitiesPage() {
                       value={formData.garbageProviderWebsite}
                       onChange={(e) => setFormData({ ...formData, garbageProviderWebsite: e.target.value })}
                       placeholder="https://example.com"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2400,7 +2358,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2409,7 +2367,7 @@ export default function FacilitiesPage() {
                       value={formData.garbageProviderAccountNumber}
                       onChange={(e) => setFormData({ ...formData, garbageProviderAccountNumber: e.target.value })}
                       placeholder="Enter account number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2417,7 +2375,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.61 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Pickup Day
                     </label>
@@ -2426,7 +2384,7 @@ export default function FacilitiesPage() {
                       value={formData.garbageProviderPickupDay}
                       onChange={(e) => setFormData({ ...formData, garbageProviderPickupDay: e.target.value })}
                       placeholder="e.g., Monday, Wednesday, Friday"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2435,7 +2393,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.62 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Provider Address
                     </label>
@@ -2444,7 +2402,7 @@ export default function FacilitiesPage() {
                       value={formData.garbageProviderAddress}
                       onChange={(e) => setFormData({ ...formData, garbageProviderAddress: e.target.value })}
                       placeholder="Enter provider address"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2453,7 +2411,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.63 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2462,7 +2420,7 @@ export default function FacilitiesPage() {
                       onChange={(e) => setFormData({ ...formData, garbageProviderNotes: e.target.value })}
                       rows={3}
                       placeholder="Enter any additional notes or information"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                     />
                   </motion.div>
                 </div>
@@ -2470,17 +2428,14 @@ export default function FacilitiesPage() {
 
               {/* Propane Provider Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Flame className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Propane Provider Information</h3>
-                </div>
+                <PropertySectionHeader icon={Flame} eyebrow="Propane" title="Propane Provider Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.64 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Building2 className="w-4 h-4 text-brand-green" />
                       Provider Name
                     </label>
@@ -2489,7 +2444,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderName}
                       onChange={(e) => setFormData({ ...formData, propaneProviderName: e.target.value })}
                       placeholder="Enter provider name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2497,7 +2452,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.65 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Phone className="w-4 h-4 text-brand-green" />
                       Phone Number
                     </label>
@@ -2506,7 +2461,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderPhone}
                       onChange={(e) => setFormData({ ...formData, propaneProviderPhone: e.target.value })}
                       placeholder="(555) 123-4567"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2514,7 +2469,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.66 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Globe className="w-4 h-4 text-brand-green" />
                       Website
                     </label>
@@ -2523,7 +2478,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderWebsite}
                       onChange={(e) => setFormData({ ...formData, propaneProviderWebsite: e.target.value })}
                       placeholder="https://example.com"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2531,7 +2486,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.67 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Account Number
                     </label>
@@ -2540,7 +2495,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderAccountNumber}
                       onChange={(e) => setFormData({ ...formData, propaneProviderAccountNumber: e.target.value })}
                       placeholder="Enter account number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2548,7 +2503,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.68 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Tank Location
                     </label>
@@ -2557,7 +2512,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderTankLocation}
                       onChange={(e) => setFormData({ ...formData, propaneProviderTankLocation: e.target.value })}
                       placeholder="e.g., Behind building, Side yard"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2565,7 +2520,7 @@ export default function FacilitiesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.69 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Square className="w-4 h-4 text-brand-green" />
                       Tank Size
                     </label>
@@ -2574,7 +2529,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderTankSize}
                       onChange={(e) => setFormData({ ...formData, propaneProviderTankSize: e.target.value })}
                       placeholder="e.g., 500 gallons, 1000 gallons"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2583,7 +2538,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.7 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Provider Address
                     </label>
@@ -2592,7 +2547,7 @@ export default function FacilitiesPage() {
                       value={formData.propaneProviderAddress}
                       onChange={(e) => setFormData({ ...formData, propaneProviderAddress: e.target.value })}
                       placeholder="Enter provider address"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -2601,7 +2556,7 @@ export default function FacilitiesPage() {
                     transition={{ delay: 1.71 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <FileText className="w-4 h-4 text-brand-green" />
                       Additional Notes
                     </label>
@@ -2610,7 +2565,7 @@ export default function FacilitiesPage() {
                       onChange={(e) => setFormData({ ...formData, propaneProviderNotes: e.target.value })}
                       rows={3}
                       placeholder="Enter any additional notes or information"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                     />
                   </motion.div>
                 </div>
@@ -2618,17 +2573,14 @@ export default function FacilitiesPage() {
 
               {/* Security Lock Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Lock className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Security Lock Information</h3>
-                </div>
+                <PropertySectionHeader icon={Lock} eyebrow="Security" title="Security Lock Information" />
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1.6 }}
                   className="md:col-span-2"
                 >
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                     <Lock className="w-4 h-4 text-brand-green" />
                     Security Lock Details
                   </label>
@@ -2637,7 +2589,7 @@ export default function FacilitiesPage() {
                     onChange={(e) => setFormData({ ...formData, securityLock: e.target.value })}
                     rows={4}
                     placeholder="Enter security lock details (e.g., Lock Type, Code/Key Location, Access Instructions, Alarm Code, etc.)"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                    className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                   />
                   <p className="text-xs text-slate-500 mt-1">Include lock type, code/key location, access instructions, alarm codes, and any other relevant security information.</p>
                 </motion.div>

@@ -30,7 +30,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards, PropertySectionHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { FleetBarcode } from '@/components/FleetBarcode'
@@ -834,7 +834,7 @@ export default function FleetPage() {
                   )}
                 </div>
                 <div className="mt-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                     <Upload className="w-4 h-4 text-brand-green" />
                     Upload Photo
                   </label>
@@ -842,7 +842,7 @@ export default function FleetPage() {
                     type="file"
                     accept="image/*"
                     onChange={handlePhotoSelect}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
+                    className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
                   />
                   <div className="mt-3 text-xs text-slate-500">
                     {editingVehicle
@@ -854,10 +854,7 @@ export default function FleetPage() {
 
               {/* Vehicle Information Section */}
               <div className="mb-8 lg:pr-[420px]">
-                <div className="flex items-center gap-3 mb-5">
-                  <Car className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Vehicle Information</h3>
-                </div>
+                <PropertySectionHeader icon={Car} eyebrow="Vehicle" title="Vehicle Information" />
 
                 <div className="space-y-6">
                   <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -866,7 +863,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Vehicle Year
                     </label>
@@ -877,7 +874,7 @@ export default function FleetPage() {
                       placeholder="2024"
                       min="1900"
                       max="2100"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -885,7 +882,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Car className="w-4 h-4 text-brand-green" />
                       Vehicle Make
                     </label>
@@ -894,7 +891,7 @@ export default function FleetPage() {
                       value={formData.vehicleMake}
                       onChange={(e) => setFormData({ ...formData, vehicleMake: e.target.value })}
                       placeholder="Toyota"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -902,14 +899,14 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Package className="w-4 h-4 text-brand-green" />
                       Category
                     </label>
                     <select
                       value={formData.category}
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="">Select category</option>
                       <option value="car">Car</option>
@@ -921,7 +918,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Car className="w-4 h-4 text-brand-green" />
                       Vehicle Model
                     </label>
@@ -930,7 +927,7 @@ export default function FleetPage() {
                       value={formData.vehicleModel}
                       onChange={(e) => setFormData({ ...formData, vehicleModel: e.target.value })}
                       placeholder="Camry"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -942,7 +939,7 @@ export default function FleetPage() {
                       transition={{ delay: 0.25 }}
                       className="md:col-span-2"
                     >
-                      <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                         <Users className="w-4 h-4 text-brand-green" />
                         Assigned Driver
                       </label>
@@ -951,7 +948,7 @@ export default function FleetPage() {
                         value={formData.assignedDriver}
                         onChange={(e) => setFormData({ ...formData, assignedDriver: e.target.value })}
                         placeholder="Driver name"
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                        className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                       />
                     </motion.div>
                     <motion.div
@@ -960,7 +957,7 @@ export default function FleetPage() {
                       transition={{ delay: 0.3 }}
                       className="md:col-span-1"
                     >
-                      <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                         <Hash className="w-4 h-4 text-brand-green" />
                         VIN #
                       </label>
@@ -970,7 +967,7 @@ export default function FleetPage() {
                         onChange={(e) => setFormData({ ...formData, vin: e.target.value.toUpperCase() })}
                         placeholder="1HGBH41JXMN109186"
                         maxLength={17}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
+                        className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium font-mono"
                       />
                     </motion.div>
                   </div>
@@ -979,17 +976,14 @@ export default function FleetPage() {
 
               {/* Location & Registration Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <MapPin className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Location & Registration</h3>
-                </div>
+                <PropertySectionHeader icon={MapPin} eyebrow="Location" title="Location & Registration" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Location
                     </label>
@@ -998,7 +992,7 @@ export default function FleetPage() {
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       placeholder="Location name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1007,7 +1001,7 @@ export default function FleetPage() {
                     transition={{ delay: 0.4 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <MapPin className="w-4 h-4 text-brand-green" />
                       Location Address
                     </label>
@@ -1016,7 +1010,7 @@ export default function FleetPage() {
                       value={formData.locationAddress}
                       onChange={(e) => setFormData({ ...formData, locationAddress: e.target.value })}
                       placeholder="Full address"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1024,7 +1018,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.45 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <CreditCard className="w-4 h-4 text-brand-green" />
                       Plate
                     </label>
@@ -1033,7 +1027,7 @@ export default function FleetPage() {
                       value={formData.plate}
                       onChange={(e) => setFormData({ ...formData, plate: e.target.value.toUpperCase() })}
                       placeholder="ABC1234"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-semibold"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium font-semibold"
                     />
                   </motion.div>
                   <motion.div
@@ -1041,7 +1035,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Calendar className="w-4 h-4 text-brand-green" />
                       Tag Renewal
                     </label>
@@ -1049,7 +1043,7 @@ export default function FleetPage() {
                       type="date"
                       value={formData.tagRenewal}
                       onChange={(e) => setFormData({ ...formData, tagRenewal: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1057,17 +1051,14 @@ export default function FleetPage() {
 
               {/* Additional Information Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Shield className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Additional Information</h3>
-                </div>
+                <PropertySectionHeader icon={Shield} eyebrow="Additional" title="Additional Information" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.55 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Hash className="w-4 h-4 text-brand-green" />
                       Transponder Number
                     </label>
@@ -1076,7 +1067,7 @@ export default function FleetPage() {
                       value={formData.transponderNumber}
                       onChange={(e) => setFormData({ ...formData, transponderNumber: e.target.value })}
                       placeholder="Transponder ID"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1084,7 +1075,7 @@ export default function FleetPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Gauge className="w-4 h-4 text-brand-green" />
                       Mileage (as of Aug 2025)
                     </label>
@@ -1094,7 +1085,7 @@ export default function FleetPage() {
                       value={formData.mileageAsOfAugust2025}
                       onChange={(e) => setFormData({ ...formData, mileageAsOfAugust2025: e.target.value })}
                       placeholder="0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
@@ -1102,10 +1093,7 @@ export default function FleetPage() {
 
               {/* Documents Section */}
               <div className="mb-8">
-                <div className="flex items-center gap-3 mb-5">
-                  <Package className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Documents</h3>
-                </div>
+                <PropertySectionHeader icon={Package} eyebrow="Docs" title="Documents" />
 
                 {!editingVehicle?.id || !property?.id ? (
                   <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6">
@@ -1269,17 +1257,14 @@ export default function FleetPage() {
 
               {/* Photo Section */}
               <div className="mb-8 lg:hidden">
-                <div className="flex items-center gap-3 mb-5">
-                  <ImageIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-bold text-slate-900">Photo</h3>
-                </div>
+                <PropertySectionHeader icon={ImageIcon} eyebrow="Photo" title="Photo" />
                 <div className="grid md:grid-cols-2 gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <Upload className="w-4 h-4 text-brand-green" />
                       Upload Photo
                     </label>
@@ -1287,7 +1272,7 @@ export default function FleetPage() {
                       type="file"
                       accept="image/*"
                       onChange={handlePhotoSelect}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
                     />
 
                     {selectedPhotoFile ? (
@@ -1314,7 +1299,7 @@ export default function FleetPage() {
                     transition={{ delay: 1.2 }}
                     className="lg:hidden"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 mb-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1.5">
                       <ImageIcon className="w-4 h-4 text-brand-green" />
                       Preview
                     </label>

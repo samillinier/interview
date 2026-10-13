@@ -79,6 +79,28 @@ export function PropertyPageHeader({
   )
 }
 
+export function PropertySectionHeader({
+  icon: Icon,
+  eyebrow,
+  title,
+}: {
+  icon: LucideIcon
+  eyebrow: string
+  title: string
+}) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-green text-white shadow-lg shadow-brand-green/20">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-brand-green">{eyebrow}</p>
+        <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+      </div>
+    </div>
+  )
+}
+
 export function PropertyMetricCards({
   cards,
 }: {
