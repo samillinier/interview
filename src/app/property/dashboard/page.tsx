@@ -18,6 +18,13 @@ import {
   MapPin,
   PhoneCall,
   Settings,
+  CheckCircle2,
+  Signal,
+  Satellite,
+  WifiOff,
+  Gauge,
+  Package,
+  Home,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -64,6 +71,14 @@ export default function PropertyDashboardPage() {
       totalMileage: 0,
       expiringTags: 0,
       averageMileage: 0,
+    },
+    gps: {
+      total: 0,
+      online: 0,
+      offline: 0,
+      moving: 0,
+      avgSatellites: 0,
+      connected: false,
     },
     inventory: {
       total: 0,
@@ -218,6 +233,20 @@ export default function PropertyDashboardPage() {
       // Fetch inventory
       const inventoryRes = await fetch(`/api/properties/${property.id}/inventory`)
       const inventoryData = inventoryRes.ok ? await inventoryRes.json() : { inventory: [] }
+
+      // Fetch GPS devices
+      let gpsDevices: any[] = []
+      let gpsConnected = false
+      try {
+        const gpsRes = await fetch(`/api/gps/devices?_t=${Date.now()}`, { cache: 'no-store' })
+        if (gpsRes.ok) {
+          const gpsData = await gpsRes.json()
+          gpsDevices = gpsData.devices || []
+          gpsConnected = !!gpsData.gpsConnected
+        }
+      } catch (e) {
+        console.error('Error fetching GPS devices:', e)
+      }
       
       const locations = facilitiesData.locations || []
       const vehicles = fleetData.vehicles || []
@@ -262,6 +291,14 @@ export default function PropertyDashboardPage() {
       
       // Count unique categories
       const categories = new Set(inventory.map((i: any) => i.category).filter(Boolean))
+
+      // Calculate GPS stats
+      const gpsOnline = gpsDevices.filter((d: any) => d.status === 'online').length
+      const gpsMoving = gpsDevices.filter((d: any) => d.speed > 3 && d.status === 'online').length
+      const gpsAvgSatellites =
+        gpsDevices.length > 0
+          ? gpsDevices.reduce((s: number, d: any) => s + (d.satelliteCount || 0), 0) / gpsDevices.length
+          : 0
       
       setAnalytics({
         facilities: {
@@ -277,6 +314,14 @@ export default function PropertyDashboardPage() {
           totalMileage,
           expiringTags,
           averageMileage,
+        },
+        gps: {
+          total: gpsDevices.length,
+          online: gpsOnline,
+          offline: gpsDevices.length - gpsOnline,
+          moving: gpsMoving,
+          avgSatellites: gpsAvgSatellites,
+          connected: gpsConnected,
         },
         inventory: {
           total: inventory.length,
@@ -371,7 +416,12 @@ export default function PropertyDashboardPage() {
       href: '/property/gps',
       icon: MapPin,
       cta: 'Open GPS',
-      highlights: ['Live tracking', 'Fleet map', 'Trip history'],
+      highlights: [
+        `${analytics.gps.total} device${analytics.gps.total === 1 ? '' : 's'}`,
+        `${analytics.gps.online} online`,
+        analytics.gps.offline > 0 ? `${analytics.gps.offline} offline` : null,
+        analytics.gps.moving > 0 ? `${analytics.gps.moving} moving` : null,
+      ].filter((item): item is string => Boolean(item)),
     },
     {
       title: 'Office Equipment',
@@ -406,48 +456,58 @@ export default function PropertyDashboardPage() {
     },
   ]
 
-  const metricCards = [
-    analytics.facilities.totalDeposits > 0
-      ? { label: 'Total Deposits', value: money(analytics.facilities.totalDeposits)!, desc: 'Security deposits on file', icon: DollarSign }
-      : null,
+  const metricGroups: {
+    title: string
+    icon: typeof Building2
+    cards: { label: string; value: string; desc: string; icon: typeof Building2 }[]
+  }[] = [
     {
-      label: 'Upcoming Renewals',
-      value: String(analytics.facilities.upcomingRenewals),
-      desc: 'Leases in the next 90 days',
-      icon: Calendar,
+      title: 'Facilities',
+      icon: Building2,
+      cards: [
+        { label: 'Locations', value: String(analytics.facilities.total), desc: 'Total facilities', icon: Building2 },
+        { label: 'Active', value: String(analytics.facilities.active), desc: 'Currently active', icon: CheckCircle2 },
+        { label: 'Total Rent', value: money(analytics.facilities.totalRent) ?? '—', desc: 'Monthly rent on file', icon: DollarSign },
+        { label: 'Total Deposits', value: money(analytics.facilities.totalDeposits) ?? '—', desc: 'Security deposits on file', icon: Layers },
+        { label: 'Upcoming Renewals', value: String(analytics.facilities.upcomingRenewals), desc: 'Leases in the next 90 days', icon: Calendar },
+        { label: 'Avg Rent', value: money(analytics.facilities.averageRent) ?? '—', desc: 'Average per facility', icon: BarChart3 },
+      ],
     },
     {
-      label: 'Expiring Tags',
-      value: String(analytics.fleet.expiringTags),
-      desc: 'Plates in the next 60 days',
-      icon: Tag,
+      title: 'Fleet',
+      icon: Car,
+      cards: [
+        { label: 'Vehicles', value: String(analytics.fleet.total), desc: 'Total fleet vehicles', icon: Car },
+        { label: 'Total Mileage', value: analytics.fleet.totalMileage.toLocaleString(), desc: 'Fleet-wide odometer', icon: TrendingUp },
+        { label: 'Avg Mileage', value: `${Math.round(analytics.fleet.averageMileage).toLocaleString()} mi`, desc: 'Average per vehicle', icon: BarChart3 },
+        { label: 'Expiring Tags', value: String(analytics.fleet.expiringTags), desc: 'Plates in the next 60 days', icon: Tag },
+      ],
     },
-    analytics.inventory.totalQuantity > 0
-      ? {
-          label: 'Units on Hand',
-          value: analytics.inventory.totalQuantity.toLocaleString(),
-          desc: `${analytics.inventory.categories} equipment type${analytics.inventory.categories === 1 ? '' : 's'}`,
-          icon: Layers,
-        }
-      : null,
-    money(analytics.facilities.averageRent)
-      ? { label: 'Avg Rent / Facility', value: money(analytics.facilities.averageRent)!, desc: 'Average monthly rent', icon: BarChart3 }
-      : null,
-    analytics.fleet.averageMileage > 0
-      ? {
-          label: 'Avg Mileage',
-          value: `${Math.round(analytics.fleet.averageMileage).toLocaleString()} mi`,
-          desc: 'Average per vehicle',
-          icon: TrendingUp,
-        }
-      : null,
     {
-      label: 'Lines Needing Reorder',
-      value: String(analytics.inventory.lowStock),
-      desc: analytics.inventory.lowStock > 0 ? 'Action needed' : 'Stock levels are current',
-      icon: AlertTriangle,
+      title: 'GPS Tracking',
+      icon: MapPin,
+      cards: [
+        { label: 'Devices', value: String(analytics.gps.total), desc: 'Tracked units', icon: MapPin },
+        { label: 'Online', value: String(analytics.gps.online), desc: 'Reporting now', icon: Signal },
+        { label: 'Offline', value: String(analytics.gps.offline), desc: 'No signal', icon: WifiOff },
+        { label: 'Moving', value: String(analytics.gps.moving), desc: 'Active on the road', icon: Gauge },
+        { label: 'Avg Satellites', value: String(Math.round(analytics.gps.avgSatellites)), desc: 'GPS lock quality', icon: Satellite },
+        { label: 'Connection', value: analytics.gps.connected ? 'Connected' : 'Offline', desc: 'Provider status', icon: Signal },
+      ],
     },
-  ].filter((item): item is NonNullable<typeof item> => Boolean(item))
+    {
+      title: 'Office Equipment',
+      icon: Armchair,
+      cards: [
+        { label: 'Line Items', value: String(analytics.inventory.total), desc: 'Asset records', icon: Package },
+        { label: 'Units on Hand', value: analytics.inventory.totalQuantity.toLocaleString(), desc: 'Total quantity', icon: Layers },
+        { label: 'In Use', value: String(analytics.inventory.active), desc: 'Active assets', icon: CheckCircle2 },
+        { label: 'Equipment Types', value: String(analytics.inventory.categories), desc: 'Unique categories', icon: Home },
+        { label: 'Est. Book Value', value: money(analytics.inventory.totalValue) ?? '—', desc: 'Total inventory value', icon: DollarSign },
+        { label: 'Needs Reorder', value: String(analytics.inventory.lowStock), desc: analytics.inventory.lowStock > 0 ? 'Action needed' : 'Stock levels are current', icon: AlertTriangle },
+      ],
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -552,27 +612,46 @@ export default function PropertyDashboardPage() {
                 </div>
               </motion.section>
 
-              {metricCards.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {metricCards.map((card) => {
-                    const Icon = card.icon
-                    return (
-                      <div
-                        key={card.label}
-                        className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="h-1.5 w-full rounded-full bg-brand-green" />
-                          <Icon className="w-5 h-5 text-brand-green ml-3 flex-shrink-0" />
-                        </div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">{card.label}</p>
-                        <h3 className="text-3xl leading-none font-black tracking-tight text-slate-900 mb-1">{card.value}</h3>
-                        <p className="text-sm text-slate-500">{card.desc}</p>
+              {metricGroups.map((group) => {
+                const GroupIcon = group.icon
+                return (
+                  <motion.section
+                    key={group.title}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/60"
+                  >
+                    <div className="flex items-center gap-3 border-b border-slate-200 bg-gradient-to-r from-brand-green/10 via-lime-50/60 to-white px-5 py-4 sm:px-7">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-brand-green/15 bg-white shadow-sm">
+                        <GroupIcon className="h-5 w-5 text-brand-green" />
                       </div>
-                    )
-                  })}
-                </div>
-              ) : null}
+                      <div>
+                        <h3 className="text-lg font-black tracking-tight text-slate-900">{group.title}</h3>
+                        <p className="text-xs font-semibold text-slate-500">{group.cards.length} metrics</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 p-5 sm:p-7">
+                      {group.cards.map((card) => {
+                        const Icon = card.icon
+                        return (
+                          <div
+                            key={card.label}
+                            className="bg-white rounded-2xl shadow-[0_6px_18px_rgba(15,23,42,0.05)] border border-slate-200/80 p-4"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="h-1.5 w-full rounded-full bg-brand-green" />
+                              <Icon className="w-5 h-5 text-brand-green ml-3 flex-shrink-0" />
+                            </div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-1.5">{card.label}</p>
+                            <h3 className="text-2xl leading-none font-black tracking-tight text-slate-900 mb-1">{card.value}</h3>
+                            <p className="text-xs text-slate-500">{card.desc}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </motion.section>
+                )
+              })}
             </div>
           )}
         </main>
