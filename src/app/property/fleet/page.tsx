@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { 
   X,
@@ -20,7 +20,6 @@ import {
   CreditCard,
   Gauge,
   Package,
-  Image as ImageIcon,
   Upload,
   Car,
   Tag
@@ -100,6 +99,7 @@ export default function FleetPage() {
   const [vehicleDocFiles, setVehicleDocFiles] = useState<File[]>([])
   const [miscDocFiles, setMiscDocFiles] = useState<File[]>([])
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'car' | 'forklift'>('car')
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     category: '',
     vehicleYear: '',
@@ -726,7 +726,7 @@ export default function FleetPage() {
         <div className={`fixed top-0 right-0 bottom-0 z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'} bg-slate-50 overflow-y-auto`}>
           <div className="p-4 sm:p-6 lg:p-8 min-h-full">
             <div className="max-w-[1550px] mx-auto">
-            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden relative">
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden">
               <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
                 <div>
                   <h2 className="text-base font-bold text-slate-800">
@@ -736,91 +736,106 @@ export default function FleetPage() {
                     {editingVehicle ? 'Update vehicle information' : 'Enter vehicle details'}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  {editingVehicle?.id ? (
-                    <div className="hidden sm:block">
-                      <FleetBarcode vehicleId={editingVehicle.id} />
-                    </div>
-                  ) : (
-                    <div className="hidden sm:block text-right">
-                      <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5">
-                        <p className="text-xs font-semibold text-slate-700">Barcode</p>
-                        <p className="text-xs text-slate-400">Available after saving</p>
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false)
-                      setEditingVehicle(null)
-                      resetForm()
-                    }}
-                    className="w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
-                    aria-label="Close"
-                  >
-                    <X className="w-5 h-5 text-slate-500" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false)
+                    setEditingVehicle(null)
+                    resetForm()
+                  }}
+                  className="w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
               </div>
 
-              <div className="p-6 space-y-8 relative">
-              {/* Desktop photo panel (top-right, out of flow to avoid spacing gaps) */}
-              <div className="hidden lg:block absolute top-8 right-8 w-[340px]">
-                <div className="flex items-center justify-end gap-3">
-                  {(photoPreview || editingVehicle?.photoUrl) ? (
+              <div className="p-6 md:p-8 space-y-8">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                <div className="flex items-start gap-5 flex-1 min-w-0">
+                  <div className="flex-shrink-0">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
                     <button
                       type="button"
-                      onClick={() => {
-                        setPhotoPreview(null)
-                        setSelectedPhotoFile(null)
-                      }}
-                      className="text-xs font-semibold text-danger-600 hover:text-danger-700"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="relative group w-28 h-28 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 shadow-md"
                     >
-                      Remove
+                      {photoPreview || editingVehicle?.photoUrl ? (
+                        <img
+                          src={photoPreview || editingVehicle?.photoUrl || ''}
+                          alt="Vehicle"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Car className="w-10 h-10 text-slate-300" />
+                        </div>
+                      )}
+                      <span className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-white" />
+                      </span>
                     </button>
-                  ) : null}
+                    {(photoPreview || selectedPhotoFile) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoPreview(null)
+                          setSelectedPhotoFile(null)
+                        }}
+                        className="mt-2 block w-full text-center text-xs font-semibold text-danger-600 hover:text-danger-700"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
+                      {[formData.vehicleYear, formData.vehicleMake, formData.vehicleModel].filter(Boolean).join(' ') || 'Vehicle'}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      {formData.category ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold capitalize">
+                          <Car className="w-3.5 h-3.5 text-slate-500" />
+                          {formData.category}
+                        </span>
+                      ) : null}
+                      {formData.location ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                          <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                          {formData.location}
+                        </span>
+                      ) : null}
+                      {formData.plate ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                          {formData.plate}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-2 w-full h-[160px] overflow-hidden rounded-2xl bg-slate-50 border border-slate-200">
-                  {photoPreview || editingVehicle?.photoUrl ? (
-                    <img
-                      src={photoPreview || editingVehicle?.photoUrl || ''}
-                      alt="Vehicle photo"
-                      className="w-full h-full object-contain"
-                    />
+                <div className="flex-shrink-0">
+                  {editingVehicle?.id ? (
+                    <FleetBarcode vehicleId={editingVehicle.id} />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-center">
-                        <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-1" />
-                        <p className="text-xs text-slate-500">No photo</p>
-                      </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-right">
+                      <p className="text-xs font-semibold text-slate-700">Barcode</p>
+                      <p className="text-xs text-slate-400">Available after saving</p>
                     </div>
                   )}
                 </div>
-                <div className="mt-3">
-                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Upload Photo
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoSelect}
-                    className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
-                  />
-                  <div className="mt-3 text-xs text-slate-500">
-                    {editingVehicle
-                      ? 'Choose a photo to update this vehicle.'
-                      : 'You can choose a photo now. It will upload right after the vehicle is created.'}
-                  </div>
-                </div>
               </div>
 
-              {/* Vehicle Information Section */}
-              <div className="mb-8 lg:pr-[420px]">
+              <div className="pt-6 border-t border-slate-100">
                 <PropertyFormSectionHeader icon={Car} step="Vehicle" title="Vehicle Information" />
 
                 <div className="space-y-5 mt-5">
-                  <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
+                  <div className="grid md:grid-cols-2 gap-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -891,12 +906,11 @@ export default function FleetPage() {
                   </motion.div>
                 </div>
 
-                  <div className="grid md:grid-cols-3 gap-6">
+                  <div className="grid md:grid-cols-2 gap-5">
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.25 }}
-                      className="md:col-span-2"
                     >
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Assigned Driver
@@ -913,7 +927,6 @@ export default function FleetPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 }}
-                      className="md:col-span-1"
                     >
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       VIN #
@@ -1204,82 +1217,6 @@ export default function FleetPage() {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Photo Section */}
-              <div className="mb-8 lg:hidden">
-                <PropertyFormSectionHeader icon={ImageIcon} step="Photo" title="Photo" />
-                <div className="grid md:grid-cols-2 gap-5 mt-5">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.15 }}
-                  >
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Upload Photo
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoSelect}
-                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
-                    />
-
-                    {selectedPhotoFile ? (
-                      <div className="mt-3 text-xs text-slate-500">
-                        Photo will be uploaded when you click{' '}
-                        <span className="font-semibold text-slate-700">
-                          {editingVehicle ? 'Update Vehicle' : 'Add Vehicle'}
-                        </span>
-                        .
-                      </div>
-                    ) : (
-                      <div className="mt-3 text-xs text-slate-500">
-                        {editingVehicle
-                          ? 'Choose a photo to update this vehicle.'
-                          : 'You can choose a photo now. It will upload right after the vehicle is created.'}
-                      </div>
-                    )}
-                  </motion.div>
-
-                  {/* Mobile/tablet preview */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 }}
-                    className="lg:hidden"
-                  >
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Preview
-                    </label>
-                    {(photoPreview || editingVehicle?.photoUrl) ? (
-                      <div className="relative w-full h-48 rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50">
-                        <img
-                          src={photoPreview || editingVehicle?.photoUrl || ''}
-                          alt="Preview"
-                          className="w-full h-full object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPhotoPreview(null)
-                            setSelectedPhotoFile(null)
-                          }}
-                          className="absolute top-2 right-2 p-1 bg-danger-600 text-white rounded-full hover:bg-danger-700 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-full h-48 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
-                        <div className="text-center">
-                          <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-                          <p className="text-sm text-slate-500">No photo selected</p>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                </div>
               </div>
 
               </div>
