@@ -46,6 +46,8 @@ import Link from 'next/link'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { AdminSidebar } from '@/components/AdminSidebar'
+import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
+import { PropertySidebar } from '@/components/PropertySidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { AnalyticsGeoMap } from '@/components/AnalyticsGeoMap'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -289,7 +291,11 @@ function buildSmoothSvgPath(points: Array<{ x: number; y: number }>) {
   return path
 }
 
-export default function AnalyticsPage() {
+export default function AnalyticsPage({
+  variant = 'admin',
+}: {
+  variant?: 'admin' | 'property'
+} = {}) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -306,7 +312,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login')
+      router.push(variant === 'property' ? '/property/login' : '/login')
     } else if (status === 'authenticated') {
       fetchAnalytics()
       fetchNotificationCount()
@@ -399,7 +405,7 @@ export default function AnalyticsPage() {
   }
 
   const handleLogout = () => {
-    signOut({ callbackUrl: '/login' })
+    signOut({ callbackUrl: variant === 'property' ? '/property/login' : '/login' })
   }
 
   const handleExportJson = () => {
@@ -537,9 +543,26 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <AdminSidebar pathname={pathname} />
-
-      <AdminMobileMenu pathname={pathname} />
+      {variant === 'property' ? (
+        <>
+          <PropertySidebar
+            pathname={pathname}
+            subtitle="Dashboard"
+            userName={
+              (session?.user as any)?.name || session?.user?.email?.split('@')[0] || ''
+            }
+            userEmail={session?.user?.email || ''}
+            userImage={session?.user?.image || null}
+            onLogout={handleLogout}
+          />
+          <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
+        </>
+      ) : (
+        <>
+          <AdminSidebar pathname={pathname} />
+          <AdminMobileMenu pathname={pathname} />
+        </>
+      )}
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
         <div className="p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8">
