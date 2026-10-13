@@ -33,6 +33,10 @@ const AG_S658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/
 const AG_S639_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/s/6'
 const AG_S639_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/s/6'
 
+// Apparel Giant product imagery for the L658 Women's SuperPro Oxford Shirt.
+const AG_L658_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/l/6'
+const AG_L658_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/l/6'
+
 // Apparel Giant product imagery for the L575 Women's Crossover Raglan Polo.
 const AG_L575_IMG_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/l/5'
 const AG_L575_SWATCH_BASE = 'https://www.apparelgiant.com/media/catalog/product/cache/207e23213cf636ccdef205098cf3c8a3/l/5'
@@ -174,6 +178,34 @@ export const EMPLOYEE_APPAREL_PRODUCTS: ApparelProduct[] = [
       { name: "Oxford Blue", image: `${AG_S658_IMG_BASE}/s658_oxfordblue_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_oxfordblue_model_front_122014.jpg` },
       { name: "Soft Purple", image: `${AG_S658_IMG_BASE}/s658_softpurple_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_softpurple_model_front_122014.jpg` },
       { name: "White", image: `${AG_S658_IMG_BASE}/s658_white_model_front_122014.jpg`, swatch: `${AG_S658_SWATCH_BASE}/s658_white_model_front_122014.jpg` },
+    ],
+    sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+    badge: 'Onboarding will provide',
+  },
+  {
+    key: 'l658-shirt',
+    name: "Port Authority Women's Oxford Button Up Shirt. L658",
+    sku: 'L658',
+    price: 34.25,
+    description: [
+      "The L658 Women's SuperPro Oxford Shirt is a classic work shirt made from wrinkle-resistant soft cotton/poly fabric that looks professional and resists stains. It has bust darts, back shoulder pleats to give extra room for comfort and utility, rounded adjustable cuffs, and an open collar for comfort.",
+      "4.6-ounce, 60/40 cotton/poly",
+      "Gently contoured silhouette",
+      "Open collar",
+      "Bust darts",
+      "Back yoke with knife pleats",
+      "Button-through sleeve plackets",
+      "Two-button adjustable cuffs",
+      "Sizes XS–XL: $34.25 · 2XL–4XL: $36.25",
+    ],
+    image: `${AG_L658_IMG_BASE}/l658_oxfordblue_model_front_122014.jpg`,
+    colors: [
+      { name: "Black", image: `${AG_L658_IMG_BASE}/l658_black_model_front_122014.jpg`, swatch: `${AG_L658_SWATCH_BASE}/l658_black_model_front_122014.jpg` },
+      { name: "Green", image: `${AG_L658_IMG_BASE}/l658_green_model_front_122014.jpg`, swatch: `${AG_L658_SWATCH_BASE}/l658_green_model_front_122014.jpg` },
+      { name: "Navy", image: `${AG_L658_IMG_BASE}/l658_navy_model_front_122014.jpg`, swatch: `${AG_L658_SWATCH_BASE}/l658_navy_model_front_122014.jpg` },
+      { name: "Oxford Blue", image: `${AG_L658_IMG_BASE}/l658_oxfordblue_model_front_122014.jpg`, swatch: `${AG_L658_SWATCH_BASE}/l658_oxfordblue_model_front_122014.jpg` },
+      { name: "Soft Purple", image: `${AG_L658_IMG_BASE}/l658_softpurple_model_front_122014.jpg`, swatch: `${AG_L658_SWATCH_BASE}/l658_softpurple_model_front_122014.jpg` },
+      { name: "White", image: `${AG_L658_IMG_BASE}/l658_white_model_front_122014.jpg`, swatch: `${AG_L658_SWATCH_BASE}/l658_white_model_front_122014.jpg` },
     ],
     sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
     badge: 'Onboarding will provide',
