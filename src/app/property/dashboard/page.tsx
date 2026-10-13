@@ -16,5 +16,5 @@ const AnalyticsPage = dynamic(
 )
 
 export default function PropertyDashboardPage() {
-  return <AnalyticsPage variant="property" />
+  return <AnalyticsPage />
 }

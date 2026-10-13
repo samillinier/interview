@@ -291,14 +291,11 @@ function buildSmoothSvgPath(points: Array<{ x: number; y: number }>) {
   return path
 }
 
-export default function AnalyticsPage({
-  variant = 'admin',
-}: {
-  variant?: 'admin' | 'property'
-} = {}) {
+export default function AnalyticsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const isProperty = pathname?.startsWith('/property') ?? false
   const role = String((session?.user as any)?.role || '').toUpperCase()
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -312,7 +309,7 @@ export default function AnalyticsPage({
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push(variant === 'property' ? '/property/login' : '/login')
+      router.push(isProperty ? '/property/login' : '/login')
     } else if (status === 'authenticated') {
       fetchAnalytics()
       fetchNotificationCount()
@@ -405,7 +402,7 @@ export default function AnalyticsPage({
   }
 
   const handleLogout = () => {
-    signOut({ callbackUrl: variant === 'property' ? '/property/login' : '/login' })
+    signOut({ callbackUrl: isProperty ? '/property/login' : '/login' })
   }
 
   const handleExportJson = () => {
@@ -543,7 +540,7 @@ export default function AnalyticsPage({
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      {variant === 'property' ? (
+      {isProperty ? (
         <>
           <PropertySidebar
             pathname={pathname}
