@@ -5,7 +5,6 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-  Settings,
   UserPlus,
   Users,
   Trash2,
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -238,7 +238,7 @@ export default function PropertySettingsPage() {
   }
 
   return (
-    <div className="min-h-screen interview-gradient flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <PropertySidebar
         pathname={pathname}
@@ -253,20 +253,10 @@ export default function PropertySettingsPage() {
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-20 shadow-sm">
-          <div className={`pr-4 lg:px-6 py-6 ${propertyMobileSafeLeftPad}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center">
-                <Settings className="w-6 h-6 text-brand-green" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-                <p className="text-sm text-slate-500">Manage property users and system settings</p>
-              </div>
-            </div>
-          </div>
-        </header>
+        <PropertyPageHeader
+          title="Settings"
+          subtitle="Manage property users and portal access."
+        />
 
         <main className={`p-6 lg:p-8 max-w-6xl mx-auto ${propertyMobileSafeLeftPad}`}>
         {success && (

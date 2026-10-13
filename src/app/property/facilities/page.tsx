@@ -38,6 +38,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -812,9 +813,10 @@ export default function FacilitiesPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className={`pr-4 lg:px-6 py-4 flex items-center justify-between gap-3 ${propertyMobileSafeLeftPad}`}>
-            <h1 className="text-xl sm:text-2xl font-bold text-primary-900 min-w-0 break-words">Facilities</h1>
+        <PropertyPageHeader
+          title="Facilities"
+          subtitle="Locations, leases, and landlord details."
+          actions={
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -828,10 +830,10 @@ export default function FacilitiesPage() {
               <Plus className="w-5 h-5" />
               Add Location
             </motion.button>
-          </div>
-        </header>
+          }
+        />
 
-        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
+        <main className={`p-4 lg:p-6 ${propertyMobileSafeLeftPad}`}>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}

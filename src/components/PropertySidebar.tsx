@@ -42,7 +42,7 @@ export function PropertySidebar({
 
   const navItems = useMemo(
     () => [
-      { href: '/property/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/property/dashboard', label: 'Property Hub', icon: LayoutDashboard },
       { href: '/property/facilities', label: 'Facilities', icon: Building2 },
       { href: '/property/fleet', label: 'Fleet', icon: Car },
       { href: '/property/gps', label: 'GPS', icon: MapPin },

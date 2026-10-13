@@ -2,29 +2,30 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Loader2,
+import {
   AlertCircle,
   Building2,
   DollarSign,
   TrendingUp,
   AlertTriangle,
-  CheckCircle2,
   Calendar,
   Tag,
   Layers,
   BarChart3,
-  Shield,
   Car,
   Armchair,
+  ArrowRight,
+  MapPin,
+  PhoneCall,
+  Settings,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
-import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface PropertyProfile {
@@ -327,11 +328,132 @@ export default function PropertyDashboardPage() {
     )
   }
 
+  const money = (n: number) =>
+    n > 0
+      ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : null
+
+  const hubCards = [
+    {
+      title: 'Facilities',
+      description: 'View and update property locations, leases, and landlord details.',
+      href: '/property/facilities',
+      icon: Building2,
+      cta: 'Open Facilities',
+      highlights: [
+        `${analytics.facilities.total} location${analytics.facilities.total === 1 ? '' : 's'}`,
+        `${analytics.facilities.active} active`,
+        analytics.facilities.upcomingRenewals > 0
+          ? `${analytics.facilities.upcomingRenewals} renewal${analytics.facilities.upcomingRenewals === 1 ? '' : 's'} due`
+          : null,
+        money(analytics.facilities.totalRent) ? `${money(analytics.facilities.totalRent)} rent` : null,
+      ].filter((item): item is string => Boolean(item)),
+    },
+    {
+      title: 'Fleet',
+      description: 'Track vehicles, plates, mileage, and tag renewals.',
+      href: '/property/fleet',
+      icon: Car,
+      cta: 'Open Fleet',
+      highlights: [
+        `${analytics.fleet.total} vehicle${analytics.fleet.total === 1 ? '' : 's'}`,
+        analytics.fleet.totalMileage > 0
+          ? `${analytics.fleet.totalMileage.toLocaleString()} mi`
+          : null,
+        analytics.fleet.expiringTags > 0
+          ? `${analytics.fleet.expiringTags} tag${analytics.fleet.expiringTags === 1 ? '' : 's'} expiring`
+          : null,
+      ].filter((item): item is string => Boolean(item)),
+    },
+    {
+      title: 'GPS Tracking',
+      description: 'Live fleet map, device status, and trip history.',
+      href: '/property/gps',
+      icon: MapPin,
+      cta: 'Open GPS',
+      highlights: ['Live tracking', 'Fleet map', 'Trip history'],
+    },
+    {
+      title: 'Office Equipment',
+      description: 'Furniture, IT, supplies, and asset tags by workroom.',
+      href: '/property/inventory',
+      icon: Armchair,
+      cta: 'Open Equipment',
+      highlights: [
+        `${analytics.inventory.total} line${analytics.inventory.total === 1 ? '' : 's'}`,
+        analytics.inventory.active > 0 ? `${analytics.inventory.active} in use` : null,
+        analytics.inventory.lowStock > 0
+          ? `${analytics.inventory.lowStock} need reorder`
+          : null,
+        money(analytics.inventory.totalValue) || null,
+      ].filter((item): item is string => Boolean(item)),
+    },
+    {
+      title: 'RingCentral',
+      description: 'Call logs, recordings, and communication analytics.',
+      href: '/property/ring-central',
+      icon: PhoneCall,
+      cta: 'Open RingCentral',
+      highlights: ['Call logs', 'Recordings', 'Missed calls'],
+    },
+    {
+      title: 'Settings',
+      description: 'Manage property portal users and account access.',
+      href: '/property/settings',
+      icon: Settings,
+      cta: 'Open Settings',
+      highlights: ['Users', 'Portal access'],
+    },
+  ]
+
+  const metricCards = [
+    analytics.facilities.totalDeposits > 0
+      ? { label: 'Total Deposits', value: money(analytics.facilities.totalDeposits)!, desc: 'Security deposits on file', icon: DollarSign }
+      : null,
+    {
+      label: 'Upcoming Renewals',
+      value: String(analytics.facilities.upcomingRenewals),
+      desc: 'Leases in the next 90 days',
+      icon: Calendar,
+    },
+    {
+      label: 'Expiring Tags',
+      value: String(analytics.fleet.expiringTags),
+      desc: 'Plates in the next 60 days',
+      icon: Tag,
+    },
+    analytics.inventory.totalQuantity > 0
+      ? {
+          label: 'Units on Hand',
+          value: analytics.inventory.totalQuantity.toLocaleString(),
+          desc: `${analytics.inventory.categories} equipment type${analytics.inventory.categories === 1 ? '' : 's'}`,
+          icon: Layers,
+        }
+      : null,
+    money(analytics.facilities.averageRent)
+      ? { label: 'Avg Rent / Facility', value: money(analytics.facilities.averageRent)!, desc: 'Average monthly rent', icon: BarChart3 }
+      : null,
+    analytics.fleet.averageMileage > 0
+      ? {
+          label: 'Avg Mileage',
+          value: `${Math.round(analytics.fleet.averageMileage).toLocaleString()} mi`,
+          desc: 'Average per vehicle',
+          icon: TrendingUp,
+        }
+      : null,
+    {
+      label: 'Lines Needing Reorder',
+      value: String(analytics.inventory.lowStock),
+      desc: analytics.inventory.lowStock > 0 ? 'Action needed' : 'Stock levels are current',
+      icon: AlertTriangle,
+    },
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item))
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <PropertySidebar
         pathname={pathname}
-        subtitle="Dashboard"
+        subtitle="Property Hub"
         userName={
           property.firstName || property.lastName
             ? `${property.firstName || ''} ${property.lastName || ''}`.trim()
@@ -345,373 +467,114 @@ export default function PropertyDashboardPage() {
 
       {/* Main Content */}
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        {/* Top Header */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className={`pr-4 lg:px-6 py-4 ${propertyMobileSafeLeftPad}`} />
-        </header>
+        <PropertyPageHeader
+          showBack={false}
+          eyebrow="Property"
+          title="Property Hub"
+          subtitle="Fast access to facilities, fleet, equipment, and communications."
+        />
 
-        {/* Content Area */}
-        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
-          {/* Analytics Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-6"
-          >
-            <h2 className="text-xl font-bold text-primary-900 mb-4">Analytics Overview</h2>
-            {analyticsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
-                    <div className="animate-pulse">
-                      <div className="h-4 bg-slate-200 rounded w-1/2 mb-4"></div>
-                      <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-                    </div>
+        <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
+          {analyticsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="min-h-[260px] rounded-[1.75rem] border border-slate-200 bg-white p-6">
+                  <div className="animate-pulse">
+                    <div className="h-16 w-16 rounded-3xl bg-slate-100 mb-5" />
+                    <div className="h-7 bg-slate-100 rounded w-1/2 mb-3" />
+                    <div className="h-4 bg-slate-100 rounded w-3/4" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Facilities Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg border-2 border-blue-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-white" />
-                    </div>
-                    <Link
-                      href="/property/facilities"
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      View All →
-                    </Link>
-                  </div>
-                  <h3 className="text-3xl font-bold text-blue-900 mb-1">{analytics.facilities.total}</h3>
-                  <p className="text-sm text-blue-700 mb-4">Total Facilities</p>
-                  <div className="space-y-2 pt-4 border-t border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-blue-600">Active</span>
-                      <span className="text-sm font-semibold text-blue-900">{analytics.facilities.active}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-blue-600">Total Rent</span>
-                      <span className="text-sm font-semibold text-blue-900">
-                        ${analytics.facilities.totalRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Fleet Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg border-2 border-green-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
-                      <Car className="w-6 h-6 text-white" />
-                    </div>
-                    <Link
-                      href="/property/fleet"
-                      className="text-green-600 hover:text-green-700 text-sm font-medium"
-                    >
-                      View All →
-                    </Link>
-                  </div>
-                  <h3 className="text-3xl font-bold text-green-900 mb-1">{analytics.fleet.total}</h3>
-                  <p className="text-sm text-green-700 mb-4">Total Vehicles</p>
-                  <div className="space-y-2 pt-4 border-t border-green-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-green-600">Total Mileage</span>
-                      <span className="text-sm font-semibold text-green-900">
-                        {analytics.fleet.totalMileage.toLocaleString()} mi
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-green-600">Avg per Vehicle</span>
-                      <span className="text-sm font-semibold text-green-900">
-                        {analytics.fleet.total > 0 
-                          ? Math.round(analytics.fleet.totalMileage / analytics.fleet.total).toLocaleString()
-                          : '0'} mi
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Office equipment card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 }}
-                  className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg border-2 border-purple-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-                      <Armchair className="w-6 h-6 text-white" />
-                    </div>
-                    <Link
-                      href="/property/inventory"
-                      className="text-purple-600 hover:text-purple-700 text-sm font-medium"
-                    >
-                      View All →
-                    </Link>
-                  </div>
-                  <h3 className="text-3xl font-bold text-purple-900 mb-1">{analytics.inventory.total}</h3>
-                  <p className="text-sm text-purple-700 mb-4">Equipment lines</p>
-                  <div className="space-y-2 pt-4 border-t border-purple-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-purple-600">Est. book value</span>
-                      <span className="text-sm font-semibold text-purple-900">
-                        ${analytics.inventory.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-purple-600">Needs reorder</span>
-                      <span className={`text-sm font-semibold ${analytics.inventory.lowStock > 0 ? 'text-red-600' : 'text-purple-900'}`}>
-                        {analytics.inventory.lowStock}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-purple-600">In active use</span>
-                      <span className="text-sm font-semibold text-purple-900">{analytics.inventory.active}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Quick Links */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6"
-          >
-            <Link
-              href="/property/facilities"
-              className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-green/20"
-            >
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-primary-900 text-lg">Manage Facilities</h3>
-                <p className="text-sm text-primary-500">View and update your property locations.</p>
-              </div>
-            </Link>
-            <Link
-              href="/property/fleet"
-              className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-green/20"
-            >
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Car className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-primary-900 text-lg">Manage Fleet</h3>
-                <p className="text-sm text-primary-500">Track and manage your vehicles.</p>
-              </div>
-            </Link>
-            <Link
-              href="/property/inventory"
-              className="bg-white rounded-2xl shadow-lg p-6 flex items-center space-x-4 hover:shadow-xl transition-shadow border-2 border-transparent hover:border-brand-green/20"
-            >
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Armchair className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-primary-900 text-lg">Office equipment</h3>
-                <p className="text-sm text-primary-500">Furniture, IT, supplies, and asset tags.</p>
-              </div>
-            </Link>
-          </motion.div>
-
-          {/* Additional Analytics */}
-          {!analyticsLoading && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="mb-6"
-            >
-              <h2 className="text-xl font-bold text-primary-900 mb-4">Additional Metrics</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Facilities - Deposits */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.55 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <DollarSign className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Total Deposits</p>
-                      <p className="text-xl font-bold text-slate-900">
-                        ${analytics.facilities.totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              <motion.section
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-xl shadow-slate-200/60"
+              >
+                <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-r from-brand-green/10 via-lime-50/80 to-white p-5 sm:p-7">
+                  <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-green/10 blur-3xl" />
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="relative">
+                      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-green">Available workspaces</p>
+                      <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Property Tools</h2>
+                      <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
+                        Manage facilities, fleet, equipment, and communications from one place.
                       </p>
                     </div>
+                    <span className="relative inline-flex w-fit items-center rounded-full border border-brand-green/20 bg-white px-4 py-2 text-xs font-extrabold text-brand-green shadow-sm">
+                      {hubCards.length} active tools
+                    </span>
                   </div>
-                </motion.div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 sm:p-7">
+                  {hubCards.map((card) => {
+                    const Icon = card.icon
+                    return (
+                      <Link
+                        key={card.title}
+                        href={card.href}
+                        className="group relative min-h-[260px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-white via-white to-brand-green/5 p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-green/40 hover:shadow-2xl hover:shadow-brand-green/10"
+                      >
+                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-green via-lime-300 to-transparent opacity-80" />
+                        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-green/10 blur-2xl transition-transform group-hover:scale-125" />
+                        <div className="relative flex h-full flex-col">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-3xl border border-brand-green/15 bg-white shadow-lg shadow-slate-200/70 ring-8 ring-brand-green/5">
+                              <Icon className="h-8 w-8 text-brand-green" />
+                            </div>
+                            <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-extrabold text-slate-500 shadow-sm transition-colors group-hover:border-brand-green/30 group-hover:text-brand-green">
+                              Workspace
+                            </span>
+                          </div>
+                          <div className="mt-5 flex-1">
+                            <h3 className="text-2xl font-black text-slate-900">{card.title}</h3>
+                            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">{card.description}</p>
+                            {card.highlights.length > 0 ? (
+                              <div className="mt-5 flex flex-wrap gap-2">
+                                {card.highlights.map((highlight) => (
+                                  <span key={highlight} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-600 shadow-sm">
+                                    {highlight}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                          <span className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-green px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-brand-green/20 transition-all group-hover:bg-brand-green-dark group-hover:shadow-xl group-hover:shadow-brand-green/30">
+                            {card.cta}
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          </span>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </motion.section>
 
-                {/* Facilities - Upcoming Renewals */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${analytics.facilities.upcomingRenewals > 0 ? 'bg-orange-100' : 'bg-slate-100'}`}>
-                      <Calendar className={`w-5 h-5 ${analytics.facilities.upcomingRenewals > 0 ? 'text-orange-600' : 'text-slate-600'}`} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Upcoming Renewals</p>
-                      <p className={`text-xl font-bold ${analytics.facilities.upcomingRenewals > 0 ? 'text-orange-600' : 'text-slate-900'}`}>
-                        {analytics.facilities.upcomingRenewals}
-                      </p>
-                      <p className="text-xs text-slate-400">Next 90 days</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Fleet - Expiring Tags */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.65 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${analytics.fleet.expiringTags > 0 ? 'bg-red-100' : 'bg-slate-100'}`}>
-                      <Tag className={`w-5 h-5 ${analytics.fleet.expiringTags > 0 ? 'text-red-600' : 'text-slate-600'}`} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Expiring Tags</p>
-                      <p className={`text-xl font-bold ${analytics.fleet.expiringTags > 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                        {analytics.fleet.expiringTags}
-                      </p>
-                      <p className="text-xs text-slate-400">Next 60 days</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Equipment — total units */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                      <Layers className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Total units on hand</p>
-                      <p className="text-xl font-bold text-slate-900">
-                        {analytics.inventory.totalQuantity.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-slate-400">{analytics.inventory.categories} equipment types</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Facilities - Average Rent */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.75 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <BarChart3 className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Avg Rent/Facility</p>
-                      <p className="text-xl font-bold text-slate-900">
-                        ${analytics.facilities.averageRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Fleet - Average Mileage */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Avg Mileage</p>
-                      <p className="text-xl font-bold text-slate-900">
-                        {Math.round(analytics.fleet.averageMileage).toLocaleString()} mi
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Equipment — reorder alert */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.85 }}
-                  className={`rounded-2xl shadow-lg border-2 p-6 hover:shadow-xl transition-all ${analytics.inventory.lowStock > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${analytics.inventory.lowStock > 0 ? 'bg-red-100' : 'bg-slate-100'}`}>
-                      <AlertTriangle className={`w-5 h-5 ${analytics.inventory.lowStock > 0 ? 'text-red-600' : 'text-slate-600'}`} />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Lines needing reorder</p>
-                      <p className={`text-xl font-bold ${analytics.inventory.lowStock > 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                        {analytics.inventory.lowStock}
-                      </p>
-                      {analytics.inventory.lowStock > 0 && (
-                        <p className="text-xs text-red-500">Action needed</p>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Equipment — average line cost */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9 }}
-                  className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 p-6 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                      <DollarSign className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wide">Avg cost per line</p>
-                      <p className="text-xl font-bold text-slate-900">
-                        ${analytics.inventory.total > 0 
-                          ? (analytics.inventory.totalValue / analytics.inventory.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                          : '0.00'}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
+              {metricCards.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {metricCards.map((card) => {
+                    const Icon = card.icon
+                    return (
+                      <div
+                        key={card.label}
+                        className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-6"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="h-1.5 w-full rounded-full bg-brand-green" />
+                          <Icon className="w-5 h-5 text-brand-green ml-3 flex-shrink-0" />
+                        </div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 mb-2">{card.label}</p>
+                        <h3 className="text-3xl leading-none font-black tracking-tight text-slate-900 mb-1">{card.value}</h3>
+                        <p className="text-sm text-slate-500">{card.desc}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
           )}
         </main>
       </div>

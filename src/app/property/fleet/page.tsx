@@ -30,6 +30,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { FleetBarcode } from '@/components/FleetBarcode'
@@ -461,10 +462,11 @@ export default function FleetPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className={`pr-4 lg:px-6 py-4 flex flex-wrap items-center justify-between gap-3 ${propertyMobileSafeLeftPad}`}>
-            <h1 className="text-xl sm:text-2xl font-bold text-primary-900 min-w-0 break-words">Fleet Management</h1>
-            <div className="flex items-center gap-3">
+        <PropertyPageHeader
+          title="Fleet Management"
+          subtitle="Vehicles, plates, mileage, and tag renewals."
+          actions={
+            <>
               <div className="hidden sm:flex items-center gap-2">
                 <label className="text-sm font-semibold text-slate-700">Category</label>
                 <select
@@ -490,11 +492,11 @@ export default function FleetPage() {
                 <Plus className="w-5 h-5" />
                 Add Vehicle
               </motion.button>
-            </div>
-          </div>
-        </header>
+            </>
+          }
+        />
 
-        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
+        <main className={`p-4 lg:p-6 ${propertyMobileSafeLeftPad}`}>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}

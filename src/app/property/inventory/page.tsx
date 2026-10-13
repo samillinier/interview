@@ -42,6 +42,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import {
@@ -741,9 +742,10 @@ export default function InventoryPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="h-[73px] lg:h-[72px]" />
-        </header>
+        <PropertyPageHeader
+          title="Office Equipment"
+          subtitle="Furniture, IT, supplies, and asset tags."
+        />
 
         <main className="px-4 pb-6 pt-6 lg:p-6">
           {error && (

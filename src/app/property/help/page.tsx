@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -60,17 +60,17 @@ export default function PropertyHelpPage() {
       <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />
 
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className={`pr-4 lg:px-6 py-4 ${propertyMobileSafeLeftPad}`} />
-        </header>
+        <PropertyPageHeader
+          title="Help & Support"
+          subtitle="Getting started and contact information."
+        />
 
-        <main className={`p-4 lg:p-6 pt-16 lg:pt-6 ${propertyMobileSafeLeftPad}`}>
+        <main className={`p-4 lg:p-6 ${propertyMobileSafeLeftPad}`}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-4xl"
           >
-            <h1 className="text-3xl font-bold text-primary-900 mb-6">Help & Support</h1>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
               <h2 className="text-xl font-bold text-primary-900 mb-4">Getting Started</h2>

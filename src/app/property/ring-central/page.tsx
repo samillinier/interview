@@ -22,10 +22,10 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
+import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { AdminSidebar } from '@/components/AdminSidebar'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
-import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 
 interface PropertyProfile {
@@ -293,7 +293,7 @@ export default function RingCentralPage() {
   if (status === 'loading' || isLoading) return <LogoHeartbeatLoader />
 
   return (
-    <div className={`flex min-h-screen bg-slate-50 ${isManager ? '' : propertyMobileSafeLeftPad}`}>
+    <div className="flex min-h-screen bg-slate-50">
       {isManager ? (
         <AdminSidebar pathname={pathname} />
       ) : (
@@ -309,17 +309,13 @@ export default function RingCentralPage() {
       {isManager ? <AdminMobileMenu pathname={pathname} /> : <PropertyMobileMenu pathname={pathname} onLogout={handleLogout} />}
 
       <div className={`flex-1 transition-all duration-300 ${isManager ? 'lg:ml-64' : sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'} w-full`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Page header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-3">
-                <PhoneCall className="w-7 h-7 text-brand-green" />
-                RingCentral
-              </h1>
-              <p className="text-slate-500 mt-1">Call logs, recordings, and communication analytics</p>
-            </div>
-            <div className="flex items-center gap-2">
+        <PropertyPageHeader
+          title="RingCentral"
+          subtitle="Call logs, recordings, and communication analytics."
+          backHref={isManager ? '/dashboard/corporate' : '/property/dashboard'}
+          backLabel={isManager ? 'Back to Corporate Hub' : 'Back to Property Hub'}
+          actions={
+            <>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
@@ -340,8 +336,10 @@ export default function RingCentralPage() {
                 <RefreshCw className={`w-4 h-4 ${callsLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
-            </div>
-          </div>
+            </>
+          }
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-10">
 
           {/* Quick-filter call type buttons — Installer-style pill bar */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
