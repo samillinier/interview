@@ -22,7 +22,10 @@ import {
   Package,
   Upload,
   Car,
-  Tag
+  Tag,
+  Eye,
+  Download,
+  Pencil,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -326,6 +329,34 @@ export default function FleetPage() {
         setPhotoPreview(reader.result as string)
       }
       reader.readAsDataURL(file)
+    }
+    e.target.value = ''
+  }
+
+  const handleRemovePhoto = async () => {
+    setPhotoPreview(null)
+    setSelectedPhotoFile(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+
+    if (!property || !editingVehicle?.id || !editingVehicle.photoUrl) return
+
+    setUploadingPhoto(true)
+    setError('')
+    try {
+      const res = await fetch(
+        `/api/properties/${property.id}/vehicles/${editingVehicle.id}/upload-photo`,
+        { method: 'DELETE' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to remove photo')
+      setEditingVehicle({ ...editingVehicle, photoUrl: undefined })
+      setVehicles((prev) =>
+        prev.map((v) => (v.id === editingVehicle.id ? { ...v, photoUrl: undefined } : v))
+      )
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove photo')
+    } finally {
+      setUploadingPhoto(false)
     }
   }
 
@@ -761,11 +792,7 @@ export default function FleetPage() {
                       onChange={handlePhotoSelect}
                       className="hidden"
                     />
-                    <button
-                      type="button"
-                      onClick={() => photoInputRef.current?.click()}
-                      className="relative group w-52 h-36 rounded-2xl overflow-hidden border border-slate-200 bg-white"
-                    >
+                    <div className="relative group w-52 h-36 rounded-2xl overflow-hidden border border-slate-200 bg-white">
                       {photoPreview || editingVehicle?.photoUrl ? (
                         <img
                           src={photoPreview || editingVehicle?.photoUrl || ''}
@@ -777,22 +804,77 @@ export default function FleetPage() {
                           <Car className="w-10 h-10 text-slate-300" />
                         </div>
                       )}
-                      <span className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Upload className="w-5 h-5 text-white" />
-                      </span>
-                    </button>
-                    {(photoPreview || selectedPhotoFile) ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPhotoPreview(null)
-                          setSelectedPhotoFile(null)
-                        }}
-                        className="mt-2 block w-full text-center text-xs font-semibold text-danger-600 hover:text-danger-700"
-                      >
-                        Remove
-                      </button>
-                    ) : null}
+                      {(photoPreview || editingVehicle?.photoUrl) ? (
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center">
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const imgUrl = photoPreview || editingVehicle?.photoUrl
+                                if (imgUrl) window.open(imgUrl, '_blank', 'noopener,noreferrer')
+                              }}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium"
+                            >
+                              <Eye className="w-3 h-3" />
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const imgUrl = photoPreview || editingVehicle?.photoUrl
+                                if (!imgUrl) return
+                                const link = document.createElement('a')
+                                link.href = imgUrl
+                                link.download = `${[formData.vehicleYear, formData.vehicleMake, formData.vehicleModel].filter(Boolean).join('_') || 'vehicle'}_photo.jpg`
+                                link.target = '_blank'
+                                document.body.appendChild(link)
+                                link.click()
+                                document.body.removeChild(link)
+                              }}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium"
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => photoInputRef.current?.click()}
+                              disabled={uploadingPhoto}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium disabled:opacity-50"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Change
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRemovePhoto()}
+                              disabled={uploadingPhoto}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-red-600 rounded-md hover:bg-red-50 transition-colors text-xs font-medium disabled:opacity-50"
+                            >
+                              {uploadingPhoto ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          disabled={uploadingPhoto}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
+                        >
+                          {uploadingPhoto ? (
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          ) : (
+                            <Upload className="w-6 h-6 text-white" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">

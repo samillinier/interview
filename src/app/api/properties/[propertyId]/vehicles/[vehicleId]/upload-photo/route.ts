@@ -127,3 +127,55 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { propertyId: string; vehicleId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userEmail = session.user.email.toLowerCase()
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: params.vehicleId },
+    })
+
+    if (!vehicle) {
+      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
+    }
+
+    const isUserAdmin = await isAdmin(userEmail)
+    if (!isUserAdmin) {
+      const property = await prisma.property.findUnique({
+        where: { email: userEmail },
+      })
+      if (!property || property.id !== params.propertyId || vehicle.propertyId !== params.propertyId) {
+        return NextResponse.json({ error: 'Forbidden - Cannot access other properties' }, { status: 403 })
+      }
+    }
+
+    if (vehicle.photoUrl) {
+      try {
+        await deleteFile(vehicle.photoUrl)
+      } catch (deleteError: any) {
+        console.error('Error deleting vehicle photo:', deleteError)
+      }
+    }
+
+    await prisma.vehicle.update({
+      where: { id: params.vehicleId },
+      data: { photoUrl: null },
+    })
+
+    return NextResponse.json({ success: true, message: 'Photo removed successfully' })
+  } catch (error: any) {
+    console.error('Error removing vehicle photo:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to remove photo' },
+      { status: 500 }
+    )
+  }
+}
