@@ -6,19 +6,12 @@ import {
   X,
   Loader2,
   AlertCircle,
-  Building2,
   Plus,
   Edit,
   Trash2,
   Save,
   MapPin,
-  Calendar,
-  Phone,
   Users,
-  User,
-  Shield,
-  Hash,
-  CreditCard,
   Gauge,
   Monitor,
   Laptop,
@@ -27,22 +20,21 @@ import {
   Tag,
   FileText,
   BarChart3,
-  CheckCircle2,
   DollarSign,
   Search,
-  Image as ImageIcon,
   Upload,
   ChevronRight,
-  ZoomIn,
   Armchair,
-  ArrowLeft,
-  Archive
+  Archive,
+  Eye,
+  Download,
+  Pencil,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards, PropertyFormSectionHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
@@ -295,12 +287,12 @@ export default function InventoryPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [photoLightbox])
 
-  const mergeInventoryPhotoUrl = (inventoryId: string, photoUrl: string) => {
+  const mergeInventoryPhotoUrl = (inventoryId: string, photoUrl: string | null) => {
     setInventory((prev) =>
-      prev.map((it) => (it.id === inventoryId ? { ...it, photoUrl } : it))
+      prev.map((it) => (it.id === inventoryId ? { ...it, photoUrl: photoUrl || undefined } : it))
     )
     setEditingItem((prev) =>
-      prev && prev.id === inventoryId ? { ...prev, photoUrl } : prev
+      prev && prev.id === inventoryId ? { ...prev, photoUrl: photoUrl || undefined } : prev
     )
   }
 
@@ -475,25 +467,28 @@ export default function InventoryPage() {
       }
       reader.readAsDataURL(file)
     }
+    e.target.value = ''
   }
 
-  const handlePhotoUpload = async () => {
-    if (!selectedPhotoFile || !property || !editingItem) return
+  const handleRemovePhoto = async () => {
+    setPhotoPreview(null)
+    setSelectedPhotoFile(null)
+    if (newItemPhotoInputRef.current) newItemPhotoInputRef.current.value = ''
+
+    if (!property || !editingItem?.id || !editingItem.photoUrl) return
 
     setUploadingPhoto(true)
     setError('')
-
     try {
-      const uploadResult = await uploadInventoryPhoto(selectedPhotoFile, editingItem.id)
-      if (uploadResult?.photoUrl) {
-        mergeInventoryPhotoUrl(editingItem.id, uploadResult.photoUrl)
-        setPhotoPreview(uploadResult.photoUrl)
-      }
-      setSuccess('Photo uploaded successfully!')
-      setSelectedPhotoFile(null)
-      await loadPropertyAndInventory()
+      const res = await fetch(
+        `/api/properties/${property.id}/inventory/${editingItem.id}/upload-photo`,
+        { method: 'DELETE' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to remove photo')
+      mergeInventoryPhotoUrl(editingItem.id, null)
     } catch (err: any) {
-      setError(err.message || 'Failed to upload photo')
+      setError(err.message || 'Failed to remove photo')
     } finally {
       setUploadingPhoto(false)
     }
@@ -1242,45 +1237,21 @@ export default function InventoryPage() {
         </div>
       ) : null}
 
-      {/* Add/Edit Modal — full panel (matches Fleet) */}
+      {/* Add/Edit Modal — matches Fleet / subcontractor identity layout */}
       {showAddModal && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed top-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
-            onClick={() => {
-              setShowAddModal(false)
-              setEditingItem(null)
-              resetForm()
-            }}
-          />
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`fixed top-0 right-0 bottom-0 z-40 flex items-stretch justify-center p-0 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'}`}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowAddModal(false)
-                setEditingItem(null)
-                resetForm()
-              }
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 12 }}
-              className="bg-white w-full h-full max-w-none max-h-none overflow-hidden flex flex-col min-h-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-            <form
-              onSubmit={handleSubmit}
-              className="flex min-h-0 flex-1 flex-col overflow-hidden"
-            >
-              <div className="shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 sm:px-8">
+        <div className={`fixed top-0 right-0 bottom-0 z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'} bg-slate-50 overflow-y-auto`}>
+          <div className="p-4 sm:p-6 lg:p-8 min-h-full">
+            <div className="max-w-[1550px] mx-auto">
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden">
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">
+                    {editingItem ? 'Edit Equipment' : 'Add Equipment'}
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    {editingItem ? 'Update equipment information' : 'Enter equipment details'}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -1288,53 +1259,159 @@ export default function InventoryPage() {
                     setEditingItem(null)
                     resetForm()
                   }}
-                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false)
-                    setEditingItem(null)
-                    resetForm()
-                  }}
-                  className="rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-100"
+                  className="w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center transition-colors"
                   aria-label="Close"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-6 pt-6">
-              {labelPreviewId && (
-                <div className="mb-8 border-b border-slate-200 bg-slate-50/50 -mx-8 px-4 py-4 sm:px-8">
-                  <div className="mx-auto flex w-full max-w-6xl justify-end">
-                    <div className="w-full max-w-[400px]">
-                      <InventoryBarcode
-                        inventoryId={labelPreviewId}
-                        alignEnd
-                        workroom={formData.warehouse?.trim() || undefined}
-                      />
+
+              <div className="p-6 md:p-8 space-y-8">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                <div className="flex items-start gap-5 flex-1 min-w-0">
+                  <div className="flex-shrink-0">
+                    <input
+                      ref={newItemPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture={isCoarsePointer ? 'environment' : undefined}
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                    <div className="relative group w-52 h-36 rounded-2xl overflow-hidden border border-slate-200 bg-white">
+                      {photoPreview ? (
+                        <img
+                          src={photoPreview}
+                          alt={formData.itemName || 'Equipment'}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <EquipmentCategoryImage
+                            category={formData.category}
+                            itemName={formData.itemName}
+                            brand={formData.brand}
+                            className="h-24 w-24 object-contain"
+                          />
+                        </div>
+                      )}
+                      {photoPreview ? (
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center">
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => window.open(photoPreview, '_blank', 'noopener,noreferrer')}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium"
+                            >
+                              <Eye className="w-3 h-3" />
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement('a')
+                                link.href = photoPreview
+                                link.download = `${formData.itemName?.trim() || 'equipment'}_photo.jpg`
+                                link.target = '_blank'
+                                document.body.appendChild(link)
+                                link.click()
+                                document.body.removeChild(link)
+                              }}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium"
+                            >
+                              <Download className="w-3 h-3" />
+                              Download
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => newItemPhotoInputRef.current?.click()}
+                              disabled={uploadingPhoto}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-slate-900 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium disabled:opacity-50"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Change
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRemovePhoto()}
+                              disabled={uploadingPhoto}
+                              className="flex items-center gap-1 px-1.5 py-0.5 bg-white text-red-600 rounded-md hover:bg-red-50 transition-colors text-xs font-medium disabled:opacity-50"
+                            >
+                              {uploadingPhoto ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => newItemPhotoInputRef.current?.click()}
+                          disabled={uploadingPhoto}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
+                        >
+                          {uploadingPhoto ? (
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          ) : (
+                            <Upload className="w-6 h-6 text-white" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
+                      {formData.itemName.trim() || 'Equipment'}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      {formData.category ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                          {formData.category}
+                        </span>
+                      ) : null}
+                      {formData.warehouse ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold">
+                          <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                          {formData.warehouse}
+                        </span>
+                      ) : null}
+                      {formData.sku ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-semibold font-mono">
+                          {formData.sku}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
-              )}
-              {/* Basic Information Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Armchair className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Basics</h3>
+                <div className="flex-shrink-0 w-full max-w-[288px]">
+                  {labelPreviewId ? (
+                    <InventoryBarcode
+                      inventoryId={labelPreviewId}
+                      alignEnd
+                      workroom={formData.warehouse?.trim() || undefined}
+                    />
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-right">
+                      <p className="text-xs font-semibold text-slate-700">Barcode</p>
+                      <p className="text-xs text-slate-400">Available after saving</p>
+                    </div>
+                  )}
                 </div>
-                <div className="grid md:grid-cols-2 gap-6">
+              </div>
+
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Armchair} step="Basics" title="Basics" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Armchair className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Equipment name *
                     </label>
                     <input
@@ -1343,7 +1420,7 @@ export default function InventoryPage() {
                       onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
                       placeholder="e.g. Herman Miller Aeron, Dell 27&quot; monitor"
                       required
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1351,8 +1428,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Hash className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Asset or internal ID
                     </label>
                     <input
@@ -1360,7 +1436,7 @@ export default function InventoryPage() {
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       placeholder="Property asset tag, PO line, or internal code"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium font-mono"
                     />
                   </motion.div>
                   <motion.div
@@ -1368,8 +1444,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Tag className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Type / category
                     </label>
                     <input
@@ -1378,7 +1453,7 @@ export default function InventoryPage() {
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       placeholder="e.g. IT & AV, Furniture & seating"
                       list="office-equipment-categories"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                     <datalist id="office-equipment-categories">
                       {OFFICE_EQUIPMENT_CATEGORY_HINTS.map((c) => (
@@ -1391,8 +1466,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <BarChart3 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Quantity on hand *
                     </label>
                     <input
@@ -1402,7 +1476,7 @@ export default function InventoryPage() {
                       onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                       placeholder="How many units, sets, or stations"
                       required
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1410,14 +1484,13 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Gauge className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Count as
                     </label>
                     <select
                       value={formData.unitOfMeasure}
                       onChange={(e) => setFormData({ ...formData, unitOfMeasure: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="unit">Each</option>
                       <option value="piece">Piece</option>
@@ -1440,19 +1513,15 @@ export default function InventoryPage() {
               </div>
 
               {/* Where it lives */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Building2 className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Site & placement</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={MapPin} step="Site" title="Site & placement" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.7 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <MapPin className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Room or area
                     </label>
                     <input
@@ -1460,7 +1529,7 @@ export default function InventoryPage() {
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       placeholder="e.g. Open office B, IT closet, break room"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1468,8 +1537,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.75 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Building2 className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Workroom (site)
                     </label>
                     <select
@@ -1477,7 +1545,7 @@ export default function InventoryPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, warehouse: e.target.value })
                       }
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="">Select workroom</option>
                       {WORKROOM_OPTIONS.map((room) => (
@@ -1505,8 +1573,7 @@ export default function InventoryPage() {
                     transition={{ delay: 0.78 }}
                     className="md:col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <User className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Responsible person or team
                     </label>
                     <input
@@ -1514,26 +1581,22 @@ export default function InventoryPage() {
                       value={formData.responsiblePerson}
                       onChange={(e) => setFormData({ ...formData, responsiblePerson: e.target.value })}
                       placeholder="Name, role, or department accountable for this equipment"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
               </div>
 
               {/* Identification */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Laptop className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Make & identification</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Laptop} step="Make" title="Make & identification" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Tag className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Brand
                     </label>
                     <input
@@ -1541,7 +1604,7 @@ export default function InventoryPage() {
                       value={formData.brand}
                       onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                       placeholder="Brand name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1549,8 +1612,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.85 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Manufacturer
                     </label>
                     <input
@@ -1558,7 +1620,7 @@ export default function InventoryPage() {
                       value={formData.manufacturer}
                       onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
                       placeholder="Manufacturer name"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1566,8 +1628,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.9 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Hash className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Barcode
                     </label>
                     <input
@@ -1575,7 +1636,7 @@ export default function InventoryPage() {
                       value={formData.barcode}
                       onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                       placeholder="Asset barcode if labeled"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium font-mono"
                     />
                   </motion.div>
                   <motion.div
@@ -1583,8 +1644,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.95 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Hash className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Serial Number
                     </label>
                     <input
@@ -1592,7 +1652,7 @@ export default function InventoryPage() {
                       value={formData.serialNumber}
                       onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
                       placeholder="Serial number"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white font-mono"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium font-mono"
                     />
                   </motion.div>
                   <motion.div
@@ -1600,15 +1660,14 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.0 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Last received / restocked
                     </label>
                     <input
                       type="date"
                       value={formData.lastRestocked}
                       onChange={(e) => setFormData({ ...formData, lastRestocked: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1616,41 +1675,36 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.05 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Expiration date
                     </label>
                     <input
                       type="date"
                       value={formData.expirationDate}
                       onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
               </div>
 
               {/* Purchase & warranty */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <DollarSign className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Purchase & warranty</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={DollarSign} step="Purchase" title="Purchase & warranty" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.15 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Purchase date
                     </label>
                     <input
                       type="date"
                       value={formData.purchaseDate}
                       onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1658,15 +1712,14 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.2 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Calendar className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Warranty date
                     </label>
                     <input
                       type="date"
                       value={formData.warrantyDate}
                       onChange={(e) => setFormData({ ...formData, warrantyDate: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1674,8 +1727,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1.25 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <DollarSign className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Cost
                     </label>
                     <div className="relative">
@@ -1686,7 +1738,7 @@ export default function InventoryPage() {
                         value={formData.cost}
                         onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
                         placeholder="0.00"
-                        className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                        className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                       />
                     </div>
                   </motion.div>
@@ -1696,16 +1748,13 @@ export default function InventoryPage() {
                     transition={{ delay: 1.3 }}
                     className="min-w-0"
                   >
-                    <label className="mb-2 flex gap-2 text-sm font-semibold text-primary-700">
-                      <Package className="mt-0.5 h-4 w-4 shrink-0 text-brand-green" />
-                      <span className="leading-snug">
-                        Is the item currently in use, in storage, or checked out?
-                      </span>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Current placement
                     </label>
                     <select
                       value={formData.usagePlacement}
                       onChange={(e) => setFormData({ ...formData, usagePlacement: e.target.value })}
-                      className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 outline-none transition-all focus:border-brand-green focus:bg-white focus:ring-2 focus:ring-brand-green/20"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="in_use">In use</option>
                       <option value="in_storage">In storage</option>
@@ -1716,19 +1765,15 @@ export default function InventoryPage() {
               </div>
 
               {/* Vendor */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Truck className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Vendor / procurement</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Truck} step="Vendor" title="Vendor / procurement" />
+                <div className="grid md:grid-cols-2 gap-5 mt-5">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Users className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Preferred vendor
                     </label>
                     <input
@@ -1736,7 +1781,7 @@ export default function InventoryPage() {
                       value={formData.supplier}
                       onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
                       placeholder="Vendor or contract holder"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                   <motion.div
@@ -1744,8 +1789,7 @@ export default function InventoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.65 }}
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Phone className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Vendor contact
                     </label>
                     <input
@@ -1753,18 +1797,15 @@ export default function InventoryPage() {
                       value={formData.supplierContact}
                       onChange={(e) => setFormData({ ...formData, supplierContact: e.target.value })}
                       placeholder="Phone, email, or portal"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
                   </motion.div>
                 </div>
               </div>
 
               {/* Condition & maintenance */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <Gauge className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Condition & maintenance</h3>
-                </div>
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={Gauge} step="Condition" title="Condition & maintenance" />
                 <div className="grid grid-cols-2 gap-4 sm:gap-6">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -1772,14 +1813,13 @@ export default function InventoryPage() {
                     transition={{ delay: 1.35 }}
                     className="min-w-0"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Gauge className="w-4 h-4 text-brand-green shrink-0" />
-                      <span className="truncate">Condition</span>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Condition
                     </label>
                     <select
                       value={formData.condition}
                       onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="new">New</option>
                       <option value="excellent">Excellent</option>
@@ -1795,14 +1835,13 @@ export default function InventoryPage() {
                     transition={{ delay: 1.38 }}
                     className="min-w-0"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <Shield className="w-4 h-4 text-brand-green shrink-0" />
-                      <span className="truncate">Status</span>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Status
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -1815,8 +1854,7 @@ export default function InventoryPage() {
                     transition={{ delay: 1.4 }}
                     className="col-span-2"
                   >
-                    <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                      <FileText className="w-4 h-4 text-brand-green" />
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                       Maintenance notes
                     </label>
                     <textarea
@@ -1824,18 +1862,15 @@ export default function InventoryPage() {
                       onChange={(e) => setFormData({ ...formData, maintenanceNotes: e.target.value })}
                       rows={3}
                       placeholder="Service history, issues found, repairs needed, or maintenance reminders"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                     />
                   </motion.div>
                 </div>
               </div>
 
               {/* Notes Section */}
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <FileText className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Additional Notes</h3>
-                </div>
+              <div className="pt-6 border-t border-slate-100">
+                <PropertyFormSectionHeader icon={FileText} step="Additional" title="Additional Notes" />
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1846,266 +1881,47 @@ export default function InventoryPage() {
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={4}
                     placeholder="Warranty, service notes, custodian, or other context…"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                    className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-none"
                   />
                 </motion.div>
               </div>
 
-              {/* Photo Section */}
-              <div className="mb-0">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-200">
-                  <ImageIcon className="w-5 h-5 text-brand-green" />
-                  <h3 className="text-lg font-semibold text-primary-900">Photo (optional)</h3>
-                </div>
-                {!editingItem && isCoarsePointer ? (
-                  <div className="grid items-start gap-6 md:grid-cols-2">
-                    <div className="flex w-full flex-col items-start">
-                      <label className="flex w-full items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                        <ImageIcon className="w-4 h-4 text-brand-green" />
-                        Preview
-                      </label>
-                      {photoPreview ? (
-                        <div className="flex w-full flex-col items-start">
-                          <div className="flex w-full justify-start">
-                            <div className="relative h-32 w-44 max-w-full shrink-0 overflow-hidden rounded-xl border-2 border-slate-200 bg-white">
-                              <button
-                                type="button"
-                                className="absolute inset-0 z-0 cursor-zoom-in bg-transparent p-0"
-                                onClick={() =>
-                                  setPhotoLightbox({
-                                    url: photoPreview,
-                                    alt:
-                                      formData.itemName?.trim() || 'Equipment photo preview',
-                                  })
-                                }
-                                aria-label="View photo full size"
-                              />
-                              <img
-                                src={photoPreview}
-                                alt=""
-                                className="pointer-events-none relative z-[1] block h-full w-full object-contain object-[left_top]"
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setPhotoPreview(null)
-                                  setSelectedPhotoFile(null)
-                                  if (newItemPhotoInputRef.current)
-                                    newItemPhotoInputRef.current.value = ''
-                                }}
-                                className="absolute right-1.5 top-1.5 z-[2] rounded-full bg-danger-600 p-1 text-white transition-colors hover:bg-danger-700"
-                                aria-label="Remove photo"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPhotoLightbox({
-                                url: photoPreview,
-                                alt:
-                                  formData.itemName?.trim() || 'Equipment photo preview',
-                              })
-                            }
-                            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green transition-colors hover:text-brand-green-dark hover:underline"
-                          >
-                            <ZoomIn className="h-4 w-4 shrink-0" aria-hidden />
-                            View large
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex h-32 w-44 max-w-full shrink-0 items-center justify-center self-start rounded-xl border-2 border-dashed border-slate-300 bg-slate-50">
-                          <p className="text-sm text-slate-500">No photo yet</p>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="mb-3 text-sm text-primary-600">
-                        Tap the area below to open the camera. The image uploads when you save this item.
-                      </p>
-                      <input
-                        ref={newItemPhotoInputRef}
-                        id="inventory-new-photo-capture"
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="sr-only"
-                        onChange={handlePhotoSelect}
-                      />
-                      <label
-                        htmlFor="inventory-new-photo-capture"
-                        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 transition-colors hover:border-brand-green hover:bg-brand-green/5"
-                      >
-                        <ImageIcon className="mb-2 h-12 w-12 text-brand-green" />
-                        <span className="font-medium text-primary-900">Tap to take photo</span>
-                        <span className="mt-1 text-xs text-slate-500">Camera opens on this device</span>
-                      </label>
-                      {selectedPhotoFile && (
-                        <p className="mt-3 text-sm font-medium text-brand-green">Photo captured — save equipment to upload.</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid items-start gap-6 md:grid-cols-2">
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.15 }}
-                      className="flex w-full flex-col items-start"
-                    >
-                      <label className="flex w-full items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                        <ImageIcon className="w-4 h-4 text-brand-green" />
-                        Preview
-                      </label>
-                      {photoPreview ? (
-                        <div className="flex w-full flex-col items-start">
-                          <div className="flex w-full justify-start">
-                            <div className="relative h-32 w-44 max-w-full shrink-0 overflow-hidden rounded-xl border-2 border-slate-200 bg-white">
-                              <button
-                                type="button"
-                                className="absolute inset-0 z-0 cursor-zoom-in bg-transparent p-0"
-                                onClick={() =>
-                                  setPhotoLightbox({
-                                    url: photoPreview,
-                                    alt:
-                                      formData.itemName?.trim() || 'Equipment photo preview',
-                                  })
-                                }
-                                aria-label="View photo full size"
-                              />
-                              <img
-                                src={photoPreview}
-                                alt=""
-                                className="pointer-events-none relative z-[1] block h-full w-full object-contain object-[left_top]"
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setPhotoPreview(null)
-                                  setSelectedPhotoFile(null)
-                                }}
-                                className="absolute top-1.5 right-1.5 z-[2] p-1 bg-danger-600 text-white rounded-full hover:bg-danger-700 transition-colors"
-                                aria-label="Remove photo"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPhotoLightbox({
-                                url: photoPreview,
-                                alt:
-                                  formData.itemName?.trim() || 'Equipment photo preview',
-                              })
-                            }
-                            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-green transition-colors hover:text-brand-green-dark hover:underline"
-                          >
-                            <ZoomIn className="h-4 w-4 shrink-0" aria-hidden />
-                            View large
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex h-32 w-44 max-w-full shrink-0 flex-col items-center justify-center self-start rounded-xl border-2 border-dashed border-slate-300 bg-slate-50">
-                          <div className="text-center px-2">
-                            <ImageIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-                            <p className="text-sm text-slate-500">No photo selected</p>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.2 }}
-                    >
-                      <label className="flex items-center gap-2 text-sm font-semibold text-primary-700 mb-2">
-                        <Upload className="w-4 h-4 text-brand-green" />
-                        Upload Photo
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture={isCoarsePointer ? 'environment' : undefined}
-                        onChange={handlePhotoSelect}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-slate-50 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
-                      />
-                      {selectedPhotoFile && editingItem && (
-                        <motion.button
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          type="button"
-                          onClick={handlePhotoUpload}
-                          disabled={uploadingPhoto}
-                          className="mt-3 w-full px-4 py-2 bg-brand-green text-white rounded-xl font-semibold hover:bg-brand-green-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {uploadingPhoto ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-4 h-4" />
-                              Upload Photo Now
-                            </>
-                          )}
-                        </motion.button>
-                      )}
-                      {selectedPhotoFile && !editingItem && (
-                        <p className="mt-3 text-sm text-primary-600">
-                          Photo will upload automatically when you save this equipment.
-                        </p>
-                      )}
-                    </motion.div>
-                  </div>
-                )}
-              </div>
               </div>
 
-              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-white px-8 py-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-3">
+                <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false)
                     setEditingItem(null)
                     resetForm()
                   }}
-                  className="rounded-xl border-2 border-slate-300 px-6 py-2.5 font-semibold text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50"
+                  className="px-5 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-all"
                 >
                   Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+                <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-green to-brand-green-dark px-6 py-2.5 font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                  className="px-5 py-2.5 bg-brand-green text-white rounded-xl font-semibold text-sm hover:bg-brand-green-dark transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-green/20"
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Saving...
                     </>
                   ) : (
                     <>
-                      <Save className="h-5 w-5" />
-                      {editingItem ? 'Save changes' : 'Add equipment'}
+                      <Save className="w-4 h-4" />
+                      {editingItem ? 'Update Equipment' : 'Add Equipment'}
                     </>
                   )}
-                </motion.button>
+                </button>
               </div>
             </form>
-            </motion.div>
-          </motion.div>
-        </>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

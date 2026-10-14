@@ -127,3 +127,55 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { propertyId: string; inventoryId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userEmail = session.user.email.toLowerCase()
+    const inventoryItem = await prisma.inventory.findUnique({
+      where: { id: params.inventoryId },
+    })
+
+    if (!inventoryItem) {
+      return NextResponse.json({ error: 'Inventory item not found' }, { status: 404 })
+    }
+
+    const isUserAdmin = await isAdmin(userEmail)
+    if (!isUserAdmin) {
+      const property = await prisma.property.findUnique({
+        where: { email: userEmail },
+      })
+      if (!property || property.id !== params.propertyId || inventoryItem.propertyId !== params.propertyId) {
+        return NextResponse.json({ error: 'Forbidden - Cannot access other properties' }, { status: 403 })
+      }
+    }
+
+    if (inventoryItem.photoUrl) {
+      try {
+        await deleteFile(inventoryItem.photoUrl)
+      } catch (deleteError: any) {
+        console.error('Error deleting inventory photo:', deleteError)
+      }
+    }
+
+    await prisma.inventory.update({
+      where: { id: params.inventoryId },
+      data: { photoUrl: null },
+    })
+
+    return NextResponse.json({ success: true, message: 'Photo removed successfully' })
+  } catch (error: any) {
+    console.error('Error removing inventory photo:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to remove photo' },
+      { status: 500 }
+    )
+  }
+}
