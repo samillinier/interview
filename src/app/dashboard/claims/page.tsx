@@ -8,7 +8,6 @@ import Image from 'next/image'
 import { signOut } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import {
-  LayoutDashboard,
   Users,
   ShieldAlert,
   FileCheck,
@@ -264,7 +263,6 @@ export default function ClaimsPage() {
 
   const navItems = useMemo(() => {
     const base = [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/installers') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert },
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck },

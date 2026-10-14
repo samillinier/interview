@@ -651,7 +651,7 @@ export default function CarpetPadPage() {
                                   <Calendar className="w-4 h-4 text-brand-green" />
                                 </div>
                                 <div>
-                                  <p className="text-sm font-medium text-slate-700">{fmtDate(r.createdAt)}</p>
+                                  <p className="text-sm font-medium text-slate-700 whitespace-nowrap">{fmtDate(r.createdAt)}</p>
                                   <p className="text-[11px] text-slate-400">{r.createdByName || r.createdByEmail || '-'}</p>
                                 </div>
                               </div>

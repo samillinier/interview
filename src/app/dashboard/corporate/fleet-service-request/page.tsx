@@ -576,7 +576,7 @@ export default function FleetServiceRequestPage() {
                             onClick={() => setDetailId(r.id)}>
                             <td className="py-3.5 px-5">
                               <div>
-                                <p className="text-sm font-medium text-slate-700">{fmtDate(r.requestDate)}</p>
+                                <p className="text-sm font-medium text-slate-700 whitespace-nowrap">{fmtDate(r.requestDate)}</p>
                                 <p className="text-[11px] text-slate-400">{r.createdByName || r.createdByEmail || '-'}</p>
                               </div>
                             </td>

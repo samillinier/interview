@@ -11,7 +11,6 @@ import {
   Bell,
   Building2,
   ChevronDown,
-  LayoutDashboard,
   Menu,
   MessageSquare,
   Settings,
@@ -246,8 +245,7 @@ export function AdminMobileMenu({ pathname }: Props) {
       | ''
 
     const base: MobileNavItem[] = [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (p: string) => p.startsWith('/dashboard/installers') },
+      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (p: string) => p === '/dashboard' || p.startsWith('/dashboard/installers') },
       { href: '/dashboard/invoices', label: 'Invoices', icon: Receipt, match: (p: string) => p.startsWith('/dashboard/invoices') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },
       { href: '/dashboard/signature', label: 'Signature', icon: FileCheck, badge: signatureNotSignedCount },
@@ -372,8 +370,8 @@ export function AdminMobileMenu({ pathname }: Props) {
               <Image src={logo} alt="Logo" width={40} height={40} className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-primary-900 text-base truncate">PRM Dashboard</div>
-              <div className="text-xs text-primary-500 truncate">Admin Dashboard</div>
+              <div className="font-bold text-primary-900 text-base truncate">Admin</div>
+              <div className="text-xs text-primary-500 truncate">Navigation</div>
             </div>
           </div>
 

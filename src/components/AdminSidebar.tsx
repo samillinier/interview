@@ -295,8 +295,7 @@ export function AdminSidebar({ pathname }: Props) {
 
   const items = useMemo((): NavItem[] => {
     const base: NavItem[] = [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (path) => path === '/dashboard' },
-      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (path) => path.startsWith('/dashboard/installers') },
+      { href: '/dashboard', label: 'Subcontractors', icon: Users, match: (path) => path === '/dashboard' || path.startsWith('/dashboard/installers') },
       { href: '/dashboard/invoices', label: 'Invoices', icon: Receipt, match: (path) => path.startsWith('/dashboard/invoices') },
       { href: '/dashboard/jobs' as const, label: 'Jobs', icon: Hammer, match: (path: string) => path.startsWith('/dashboard/jobs') },
       { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldAlert, badge: pendingApprovalsCount },
@@ -417,7 +416,7 @@ export function AdminSidebar({ pathname }: Props) {
           <Image src={logo} alt="Logo" width={40} height={40} className="w-9 h-9 object-contain" />
           {sidebarOpen ? (
             <div className="min-w-0">
-              <h1 className="font-bold text-primary-900 text-sm truncate">PRM Dashboard</h1>
+              <h1 className="font-bold text-primary-900 text-sm truncate">Admin</h1>
               <p className="text-xs text-primary-500 truncate">{roleLabel}</p>
             </div>
           ) : null}

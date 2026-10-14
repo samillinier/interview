@@ -563,7 +563,7 @@ export default function PurchaseRequestPage() {
                                     <ShoppingBag className="w-4 h-4 text-brand-green" />
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium text-slate-700">{fmtDate(r.dateRequested)}</p>
+                                    <p className="text-sm font-medium text-slate-700 whitespace-nowrap">{fmtDate(r.dateRequested)}</p>
                                     <p className="text-[11px] text-slate-400">{r.createdByName || r.createdByEmail || '-'}</p>
                                   </div>
                                 </div>
@@ -574,7 +574,7 @@ export default function PurchaseRequestPage() {
                                   {r.priority || 'Standard'}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-5 text-slate-600">{fmtDate(r.neededByDate)}</td>
+                              <td className="py-3.5 px-5 text-slate-600 whitespace-nowrap">{fmtDate(r.neededByDate)}</td>
                               <td className="py-3.5 px-5">
                                 <span className={`inline-flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-semibold ${meta.className}`}>
                                   <StatusIcon className="w-3 h-3 flex-shrink-0" />{meta.label}

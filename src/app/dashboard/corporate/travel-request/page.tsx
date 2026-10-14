@@ -637,7 +637,7 @@ export default function TravelRequestPage() {
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium text-slate-700">{r.travelerName}</p>
-                                    <p className="text-[11px] text-slate-400">{fmtDate(r.dateOfRequest)}</p>
+                                    <p className="text-[11px] text-slate-400 whitespace-nowrap">{fmtDate(r.dateOfRequest)}</p>
                                   </div>
                                 </div>
                               </td>

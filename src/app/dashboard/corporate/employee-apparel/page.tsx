@@ -778,7 +778,7 @@ export default function EmployeeApparelPage() {
                                     <Shirt className="w-4 h-4 text-brand-green" />
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium text-slate-700">{fmtDate(o.orderDate)}</p>
+                                    <p className="text-sm font-medium text-slate-700 whitespace-nowrap">{fmtDate(o.orderDate)}</p>
                                     <p className="text-[11px] text-slate-400">{o.createdByName || o.createdByEmail || '-'}</p>
                                   </div>
                                 </div>
