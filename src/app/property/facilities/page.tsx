@@ -1003,19 +1003,19 @@ export default function FacilitiesPage() {
                         <td className="px-6 py-4 text-sm font-medium text-slate-900">
                           <div className="flex items-center gap-3">
                             {location.photoUrl ? (
-                              <div className="relative w-28 h-28 overflow-hidden flex-shrink-0 rounded-3xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100 p-2">
+                              <div className="relative w-28 h-28 overflow-hidden flex-shrink-0 rounded-2xl bg-slate-100">
                                 <Image
                                   src={location.photoUrl}
                                   alt={location.location || 'Location'}
                                   fill
                                   sizes="112px"
-                                  className="object-contain"
+                                  className="object-cover"
                                   loading="lazy"
                                   unoptimized
                                 />
                               </div>
                             ) : (
-                              <div className="w-28 h-28 flex items-center justify-center flex-shrink-0 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100 shadow-md ring-1 ring-slate-100">
+                              <div className="w-28 h-28 flex items-center justify-center flex-shrink-0 rounded-2xl bg-slate-100">
                                 <MapPin className="w-10 h-10 text-slate-400" />
                               </div>
                             )}
