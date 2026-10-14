@@ -408,11 +408,6 @@ export default function EmployeeApparelPage() {
                                   quality={85}
                                   className="object-contain p-3"
                                 />
-                                {product.badge && (
-                                  <span className="absolute top-2 left-2 z-10 inline-flex items-center justify-center rounded-full bg-brand-green px-3 py-1.5 text-[11px] font-bold leading-tight text-white shadow">
-                                    {product.badge}
-                                  </span>
-                                )}
                                 {qty > 0 && (
                                   <span className="absolute top-2 right-2 z-10 inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-brand-green px-2 text-xs font-bold text-white shadow">
                                     {qty}
@@ -590,9 +585,6 @@ export default function EmployeeApparelPage() {
                                 className={`object-contain p-5 transition-all duration-150 group-hover:scale-[1.03] ${colorName === c.name ? 'opacity-100' : 'opacity-0'}`}
                               />
                             ))}
-                            <span className="absolute top-3 left-3 z-10 rounded-full bg-brand-green text-white text-[11px] font-bold px-3 py-1">
-                              {product.sku}
-                            </span>
                             <span className="absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-opacity opacity-0 group-hover:opacity-100">
                               <ZoomIn className="h-4 w-4" />
                             </span>
@@ -622,11 +614,6 @@ export default function EmployeeApparelPage() {
                         {/* Details */}
                         <div className="flex flex-col justify-center">
                           <h3 className="pr-10 text-2xl font-black text-slate-900">{product.name}</h3>
-                          {product.badge && (
-                            <span className="mt-2 inline-flex items-center justify-center rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold leading-tight text-white shadow">
-                              {product.badge}
-                            </span>
-                          )}
                           <p className="mt-2 text-3xl font-black text-brand-green">
                             {formatCurrency(product.price)}
                             <span className="text-sm font-semibold text-slate-400 ml-2">each</span>
