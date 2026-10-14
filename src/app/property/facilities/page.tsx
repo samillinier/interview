@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { 
   X,
@@ -20,9 +20,11 @@ import {
   Home,
   Shield,
   Square,
-  Image as ImageIcon,
   Upload,
   Wifi,
+  Eye,
+  Download,
+  Pencil,
   Droplet,
   Globe,
   Zap,
@@ -110,6 +112,9 @@ export default function FacilitiesPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null)
+  const [parallaxY, setParallaxY] = useState(0)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [locationDocs, setLocationDocs] = useState<LocationDocument[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
   const [docsError, setDocsError] = useState('')
@@ -216,6 +221,19 @@ export default function FacilitiesPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, (session?.user as any)?.userType, session?.user?.email])
+
+  useEffect(() => {
+    if (!showAddModal) {
+      setParallaxY(0)
+      return
+    }
+    const el = scrollContainerRef.current
+    if (!el) return
+    const onScroll = () => setParallaxY(el.scrollTop)
+    el.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [showAddModal])
 
   const loadPropertyAndLocations = async () => {
     try {
@@ -619,6 +637,35 @@ export default function FacilitiesPage() {
       }
       reader.readAsDataURL(file)
     }
+    e.target.value = ''
+  }
+
+  const handleRemovePhoto = async () => {
+    setPhotoPreview(null)
+    setSelectedPhotoFile(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+
+    const locationPropertyId = getLocationPropertyId(editingLocation)
+    if (!locationPropertyId || !editingLocation?.id || !editingLocation.photoUrl) return
+
+    setUploadingPhoto(true)
+    setError('')
+    try {
+      const res = await fetch(
+        `/api/properties/${locationPropertyId}/locations/${editingLocation.id}/upload-photo`,
+        { method: 'DELETE' }
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to remove photo')
+      setEditingLocation({ ...editingLocation, photoUrl: undefined })
+      setLocations((prev) =>
+        prev.map((l) => (l.id === editingLocation.id ? { ...l, photoUrl: undefined } : l))
+      )
+    } catch (err: any) {
+      setError(err.message || 'Failed to remove photo')
+    } finally {
+      setUploadingPhoto(false)
+    }
   }
 
   const uploadSelectedPhotoForLocation = async (locationId: string) => {
@@ -761,6 +808,8 @@ export default function FacilitiesPage() {
     })
     setPhotoPreview(null)
     setSelectedPhotoFile(null)
+    setParallaxY(0)
+    if (photoInputRef.current) photoInputRef.current.value = ''
   }
 
   const handleLogout = async () => {
@@ -1052,7 +1101,10 @@ export default function FacilitiesPage() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className={`fixed top-0 right-0 bottom-0 z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'} bg-slate-50 overflow-y-auto`}>
+        <div
+          ref={scrollContainerRef}
+          className={`fixed top-0 right-0 bottom-0 z-40 ${sidebarOpen ? 'lg:left-64' : 'lg:left-20'} bg-slate-50 overflow-y-auto`}
+        >
           <div className="p-4 sm:p-6 lg:p-8 min-h-full">
             <div className="max-w-[1550px] mx-auto">
             <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden">
@@ -1079,21 +1131,104 @@ export default function FacilitiesPage() {
                 </button>
               </div>
 
-              {(photoPreview || editingLocation?.photoUrl) && (
-                <div className="px-6 pt-6">
-                  <div className="relative w-full h-52 md:h-64 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
-                    <Image
-                      src={photoPreview || editingLocation?.photoUrl || ''}
-                      alt={editingLocation?.location || editingLocation?.aliasLocation || 'Facility'}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 1024px"
-                      className="object-cover"
-                      loading="lazy"
-                      unoptimized
+              {(() => {
+                const heroSrc = photoPreview || editingLocation?.photoUrl || ''
+                return (
+                  <div className="relative group h-56 md:h-80 overflow-hidden bg-slate-200 [perspective:1200px]">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
                     />
+                    {heroSrc ? (
+                      <>
+                        <div
+                          className="absolute inset-x-0 will-change-transform"
+                          style={{
+                            top: '-28%',
+                            height: '156%',
+                            transform: `translate3d(0, ${parallaxY * 0.45}px, 0) scale(${1.12 + Math.min(parallaxY, 240) / 2400})`,
+                          }}
+                        >
+                          <img
+                            src={heroSrc}
+                            alt={formData.location || formData.aliasLocation || 'Facility'}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            draggable={false}
+                          />
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => window.open(heroSrc, '_blank', 'noopener,noreferrer')}
+                              className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement('a')
+                                link.href = heroSrc
+                                link.download = `${formData.location?.trim() || 'facility'}_photo.jpg`
+                                link.target = '_blank'
+                                document.body.appendChild(link)
+                                link.click()
+                                document.body.removeChild(link)
+                              }}
+                              className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              Download
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => photoInputRef.current?.click()}
+                              disabled={uploadingPhoto}
+                              className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-slate-900 transition-colors hover:bg-slate-100 disabled:opacity-50"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Change
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRemovePhoto()}
+                              disabled={uploadingPhoto}
+                              className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {uploadingPhoto ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={uploadingPhoto}
+                        className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        {uploadingPhoto ? (
+                          <Loader2 className="h-8 w-8 animate-spin text-brand-green" />
+                        ) : (
+                          <Upload className="h-8 w-8" />
+                        )}
+                        <span className="text-sm font-semibold">Add facility photo</span>
+                      </button>
+                    )}
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               <div className="p-6 space-y-8">
               {/* Basic Information Section */}
@@ -1727,76 +1862,6 @@ export default function FacilitiesPage() {
                       placeholder="(555) 123-4567"
                       className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
                     />
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Photo Section */}
-              <div className="pt-6 border-t border-slate-100">
-                <PropertyFormSectionHeader icon={ImageIcon} step="Photo" title="Photo" />
-                <div className="grid md:grid-cols-2 gap-5 mt-5">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.15 }}
-                  >
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Upload Photo
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoSelect}
-                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-green file:text-white hover:file:bg-brand-green-dark"
-                    />
-
-                    {selectedPhotoFile ? (
-                      <div className="mt-3 text-xs text-slate-500">
-                        Photo will be uploaded when you click{' '}
-                        <span className="font-semibold text-slate-700">
-                          {editingLocation ? 'Update Location' : 'Save Location'}
-                        </span>
-                        .
-                      </div>
-                    ) : (
-                      <div className="mt-3 text-xs text-slate-500">
-                        {editingLocation
-                          ? 'Choose a photo to update this facility.'
-                          : 'You can choose a photo now. It will upload right after the location is created.'}
-                      </div>
-                    )}
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 }}
-                  >
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Preview
-                    </label>
-                    {photoPreview ? (
-                      <div className="relative w-full h-48 rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50">
-                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPhotoPreview(null)
-                            setSelectedPhotoFile(null)
-                          }}
-                          className="absolute top-2 right-2 p-1 bg-danger-600 text-white rounded-full hover:bg-danger-700 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-full h-48 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
-                        <div className="text-center">
-                          <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-                          <p className="text-sm text-slate-500">No photo selected</p>
-                        </div>
-                      </div>
-                    )}
                   </motion.div>
                 </div>
               </div>
