@@ -18,9 +18,6 @@ import {
   RefreshCw,
   Clock,
   Navigation,
-  CarFront,
-  HardDrive,
-  Play,
   Pause,
   Activity,
   Shield,
@@ -32,14 +29,16 @@ import {
   Pencil,
   Check,
   X,
+  Search,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
-import { PropertyPageHeader } from '@/components/PropertyPageHeader'
+import { PropertyPageHeader, PropertyMetricCards } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { openDrivingDirections } from '@/lib/maps'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
 import type { TripHistoryRow } from '@/components/GpsTripHistory'
@@ -48,7 +47,7 @@ type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: 
 
 const GpsLiveMap = dynamic(() => import('@/components/GpsLiveMap').then((mod) => mod.GpsLiveMap), {
   ssr: false,
-  loading: () => <div className="h-full w-full min-h-[500px] bg-slate-100 animate-pulse rounded-b-2xl flex items-center justify-center"><Loader2 className="w-8 h-8 text-slate-300 animate-spin" /></div>,
+  loading: () => <div className="h-full w-full min-h-[500px] bg-slate-100 animate-pulse flex items-center justify-center"><Loader2 className="w-8 h-8 text-slate-300 animate-spin" /></div>,
 })
 
 const GpsTripHistory = dynamic(
@@ -94,6 +93,7 @@ export default function GPSPage() {
   const [playTick, setPlayTick] = useState(0)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
   const [locateTick, setLocateTick] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
   // Prefer role — isAdmin was missing from session for some logins
   const sessionRole = String((session?.user as any)?.role || '').toUpperCase()
   const sessionUserType = String((session?.user as any)?.userType || '').toUpperCase()
@@ -337,7 +337,7 @@ export default function GPSPage() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <LogoHeartbeatLoader />
       </div>
     )
@@ -345,14 +345,14 @@ export default function GPSPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center bg-white rounded-3xl shadow-xl p-8 max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-slate-900 mb-2">Unauthorized</h2>
           <p className="text-slate-500 mb-6">Please log in to access the GPS portal.</p>
           <button
             onClick={() => router.push('/property/login')}
-            className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green/90 transition-colors"
+            className="w-full px-6 py-3 bg-brand-green text-white rounded-xl font-medium hover:bg-brand-green-dark transition-colors"
           >
             Go to Login
           </button>
@@ -362,6 +362,17 @@ export default function GPSPage() {
   }
 
   const onlineCount = devices.filter((d) => d.status === 'online').length
+  const movingCount = devices.filter((d) => d.speed > 3 && d.status === 'online').length
+  const query = searchQuery.trim().toLowerCase()
+  const filteredDevices = query
+    ? devices.filter((d) =>
+        [d.vehicleName, d.vehiclePlate, d.deviceId, d.location]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query)
+      )
+    : devices
 
   return (
     <div className="min-h-screen bg-slate-50 flex" data-gps-version="2">
@@ -380,6 +391,8 @@ export default function GPSPage() {
           sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
         } w-full`}
       >
+        <div className={`p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 ${propertyMobileSafeLeftPad}`}>
+        <div className="max-w-[1550px] mx-auto space-y-8">
         <PropertyPageHeader
           variant="banner"
           title="GPS Fleet Tracking"
@@ -390,235 +403,170 @@ export default function GPSPage() {
             ...(devices.length - onlineCount > 0
               ? [{ icon: WifiOff, text: `${devices.length - onlineCount} offline` }]
               : []),
-            ...(devices.filter((d) => d.speed > 3 && d.status === 'online').length > 0
-              ? [{ icon: Gauge, text: `${devices.filter((d) => d.speed > 3 && d.status === 'online').length} moving` }]
-              : []),
+            ...(movingCount > 0 ? [{ icon: Gauge, text: `${movingCount} moving` }] : []),
+            ...(gpsConnected ? [{ icon: Activity, text: 'GPS connected' }] : [{ icon: WifiOff, text: 'GPS offline' }]),
           ]}
           actions={
             <>
-              <span className="text-xs text-white/70">
-                Last update: {lastRefresh.toLocaleTimeString()}
-              </span>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vehicles…"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-white/30 bg-white/15 text-sm font-medium text-white placeholder:text-white/60 focus:border-white focus:ring-2 focus:ring-white/30 outline-none"
+                />
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
               <button
+                type="button"
                 onClick={() => setIsLive(!isLive)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  isLive
-                    ? 'bg-white/90 text-brand-green hover:bg-white'
-                    : 'bg-white/15 text-white hover:bg-white/25'
-                }`}
+                className="flex items-center gap-2 px-5 py-3 bg-white text-brand-green rounded-xl font-semibold text-sm hover:bg-emerald-50 transition-all shadow-lg shadow-brand-green/20"
               >
-                {isLive ? (
-                  <>
-                    <Activity className="w-3.5 h-3.5" /> LIVE
-                  </>
-                ) : (
-                  <>
-                    <Pause className="w-3.5 h-3.5" /> Paused
-                  </>
-                )}
+                {isLive ? <Activity className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                {isLive ? 'LIVE' : 'Paused'}
               </button>
               <button
+                type="button"
                 onClick={syncDevices}
                 disabled={isSyncing}
-                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-3 rounded-xl border border-white/30 bg-white/15 text-white font-semibold text-sm hover:bg-white/25 transition-all disabled:opacity-50"
                 title="Sync GPS devices"
               >
-                {isSyncing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
+                {isSyncing ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                Sync
               </button>
             </>
           }
         />
 
-        <main className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-10">
-          {/* Status Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 mb-6">
-            <StatusCard
-              icon={Car}
-              label="Total Devices"
-              value={devices.length.toString()}
-            />
-            <StatusCard
-              icon={Signal}
-              label="Online"
-              value={onlineCount.toString()}
-            />
-            <StatusCard
-              icon={WifiOff}
-              label="Offline"
-              value={(devices.length - onlineCount).toString()}
-            />
-            <StatusCard
-              icon={Satellite}
-              label="Avg Satellites"
-              value={
-                devices.length > 0
-                  ? Math.round(
-                      devices.reduce((s, d) => s + d.satelliteCount, 0) / devices.length
-                    ).toString()
-                  : '0'
-              }
-            />
-            <StatusCard
-              icon={Gauge}
-              label="Moving"
-              value={devices.filter((d) => d.speed > 3 && d.status === 'online').length.toString()}
-            />
-            <StatusCard
-              icon={HardDrive}
-              label="GPS"
-              value={gpsConnected ? 'Connected' : 'Offline'}
-              compact
-            />
-          </div>
+        <main>
+          <PropertyMetricCards
+            cards={[
+              { label: 'Devices', value: devices.length, desc: 'Tracked GPS units', icon: Car },
+              { label: 'Online', value: onlineCount, desc: 'Reporting live', icon: Signal },
+              { label: 'Offline', value: devices.length - onlineCount, desc: 'Not currently reporting', icon: WifiOff },
+              { label: 'Moving', value: movingCount, desc: 'On the road now', icon: Gauge },
+            ]}
+          />
 
-          {/* Map + Device List */}
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Map */}
-            <div className="lg:flex-[2] min-h-0">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden h-full flex flex-col"
-              >
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 shrink-0">
-                  <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-                    <Navigation className="w-4 h-4 text-brand-green" />
-                    Live Map
-                  </h2>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => locateVehicle(undefined, { drive: false })}
-                      disabled={devices.length === 0}
-                      title="Center map on vehicle"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-brand-green/40 hover:text-brand-green disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <LocateFixed className="w-3.5 h-3.5" />
-                      Locate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => locateVehicle(undefined, { drive: true })}
-                      disabled={devices.length === 0}
-                      title="Open Apple/Google Maps directions to the vehicle"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-brand-green/30 bg-brand-green/5 text-brand-green hover:bg-brand-green/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      Drive there
-                    </button>
-                    <span className="text-xs text-slate-400">
-                      {devices.length} device{devices.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-md border border-slate-200/60 overflow-hidden"
+          >
+            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
+                  <Navigation className="w-4 h-4 text-brand-green" />
                 </div>
-                <div className="flex-1 min-h-[500px]">
-                  <GpsLiveMap
-                    devices={devices}
-                    selectedDevice={selectedDevice}
-                    onSelectDevice={setSelectedDevice}
-                    routePositions={mapPositions.length > 0 ? mapPositions : undefined}
-                    routeSegments={mapSegments.length > 0 ? mapSegments : undefined}
-                    locateTick={locateTick}
-                    selectedTrip={selectedTripInfo}
-                    playTick={playTick}
-                  />
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Live Map</h2>
+                  <p className="text-xs text-slate-400">
+                    Last update {lastRefresh.toLocaleTimeString()} · {filteredDevices.length} vehicle{filteredDevices.length === 1 ? '' : 's'}
+                  </p>
                 </div>
-              </motion.div>
-            </div>
-
-            {/* Device List */}
-            <div className="lg:flex-1 space-y-4">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden"
-              >
-                <div className="p-4 border-b border-slate-100">
-                  <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-                    <CarFront className="w-4 h-4 text-brand-green" />
-                    Vehicles & Devices
-                  </h2>
-                </div>
-                <div className="divide-y divide-slate-50 max-h-[468px] overflow-y-auto">
-                  {devices.map((device) => (
-                    <DeviceCard
-                      key={device.id}
-                      device={device}
-                      isSelected={selectedDevice?.id === device.id}
-                      onClick={() => setSelectedDevice(selectedDevice?.id === device.id ? null : device)}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-
-              {selectedDevice && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden"
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => locateVehicle(undefined, { drive: false })}
+                  disabled={devices.length === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:border-brand-green/40 hover:text-brand-green disabled:opacity-40"
                 >
-                  <DeviceTelemetry
-                    key={selectedDevice.id}
-                    device={selectedDevice}
-                    routePeriod={routePeriod}
-                    routeSegments={routeSegments}
-                    isLoadingRoute={isLoadingRoute}
-                    onSelectHistory={(period) => setRoutePeriod(period)}
-                    tripHistory={tripHistory}
-                    tripSummary={tripSummary}
-                    selectedTripId={selectedTripId}
-                    onSelectTrip={setSelectedTripId}
-                    onPlayTrip={(id) => {
-                      setSelectedTripId(id)
-                      setPlayTick((n) => n + 1)
-                    }}
-                    canRename={canRenameGps}
-                    onRename={(name) => renameDevice(selectedDevice, name)}
-                  />
-                </motion.div>
-              )}
+                  <LocateFixed className="w-3.5 h-3.5" />
+                  Locate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => locateVehicle(undefined, { drive: true })}
+                  disabled={devices.length === 0}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-brand-green text-white shadow-lg shadow-brand-green/20 hover:bg-brand-green-dark disabled:opacity-40"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  Drive there
+                </button>
+              </div>
             </div>
-          </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3">
+              <div className="lg:col-span-2 min-h-[520px] border-b border-slate-100 lg:border-b-0 lg:border-r">
+                <GpsLiveMap
+                  devices={filteredDevices}
+                  selectedDevice={selectedDevice}
+                  onSelectDevice={setSelectedDevice}
+                  routePositions={mapPositions.length > 0 ? mapPositions : undefined}
+                  routeSegments={mapSegments.length > 0 ? mapSegments : undefined}
+                  locateTick={locateTick}
+                  selectedTrip={selectedTripInfo}
+                  playTick={playTick}
+                />
+              </div>
+
+              <div className="flex flex-col min-h-0">
+                <div className="px-5 py-4 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-800">Vehicles & devices</h3>
+                  <p className="text-xs text-slate-400">
+                    {filteredDevices.length} shown{query ? ` for “${searchQuery}”` : ''}
+                  </p>
+                </div>
+                <div className="divide-y divide-slate-100 max-h-[280px] lg:max-h-[360px] overflow-y-auto">
+                  {filteredDevices.length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <p className="text-sm font-semibold text-slate-700">No matching vehicles</p>
+                      <p className="mt-1 text-xs text-slate-400">Try another search.</p>
+                    </div>
+                  ) : (
+                    filteredDevices.map((device) => (
+                      <DeviceCard
+                        key={device.id}
+                        device={device}
+                        isSelected={selectedDevice?.id === device.id}
+                        onClick={() => setSelectedDevice(selectedDevice?.id === device.id ? null : device)}
+                      />
+                    ))
+                  )}
+                </div>
+                {selectedDevice ? (
+                  <div className="border-t border-slate-100">
+                    <DeviceTelemetry
+                      key={selectedDevice.id}
+                      device={selectedDevice}
+                      routePeriod={routePeriod}
+                      routeSegments={routeSegments}
+                      isLoadingRoute={isLoadingRoute}
+                      onSelectHistory={(period) => setRoutePeriod(period)}
+                      tripHistory={tripHistory}
+                      tripSummary={tripSummary}
+                      selectedTripId={selectedTripId}
+                      onSelectTrip={setSelectedTripId}
+                      onPlayTrip={(id) => {
+                        setSelectedTripId(id)
+                        setPlayTick((n) => n + 1)
+                      }}
+                      canRename={canRenameGps}
+                      onRename={(name) => renameDevice(selectedDevice, name)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </motion.section>
         </main>
+        </div>
+        </div>
       </div>
     </div>
-  )
-}
-
-// Status Card sub-component
-function StatusCard({
-  icon: Icon,
-  label,
-  value,
-  compact,
-}: {
-  icon: typeof Car
-  label: string
-  value: string
-  compact?: boolean
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.06)] border border-slate-200/80 p-4 sm:p-5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition-all duration-200 hover:-translate-y-0.5"
-    >
-      <div className="h-1.5 w-full rounded-full bg-brand-green/90 mb-4" />
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-          <p className={`leading-none font-black tracking-tight text-slate-900 mb-0.5 ${compact ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl'}`}>{value}</p>
-        </div>
-        <div className="w-10 h-10 sm:w-11 sm:h-11 bg-brand-green/10 rounded-xl border border-brand-green/10 flex items-center justify-center shadow-sm flex-shrink-0">
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-brand-green" />
-        </div>
-      </div>
-    </motion.div>
   )
 }
 
