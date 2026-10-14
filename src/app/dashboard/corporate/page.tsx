@@ -181,12 +181,13 @@ export default function CorporatePage() {
   const [monthlyInspectionCount, setMonthlyInspectionCount] = useState(0)
   const [forkliftInspectionCount, setForkliftInspectionCount] = useState(0)
   const [carpetPadCount, setCarpetPadCount] = useState(0)
+  const [pendingEmployeeApparelCount, setPendingEmployeeApparelCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const loadCounts = async () => {
       try {
-        const [bolRes, ptRes, icRes, travelRes, osRes, prRes, bcRes, invoiceRes, fleetRes, inspectionRes, forkliftRes, carpetPadRes] = await Promise.all([
+        const [bolRes, ptRes, icRes, travelRes, osRes, prRes, bcRes, invoiceRes, fleetRes, inspectionRes, forkliftRes, carpetPadRes, apparelRes] = await Promise.all([
           fetch('/api/pad-orders?action=count', { cache: 'no-store' }),
           fetch('/api/pad-transfers?action=count', { cache: 'no-store' }),
           fetch('/api/inventory-cycles?action=count', { cache: 'no-store' }),
@@ -201,6 +202,7 @@ export default function CorporatePage() {
           fetch('/api/vehicle-inspections?action=count', { cache: 'no-store' }),
           fetch('/api/forklift-inspections?action=count', { cache: 'no-store' }),
           fetch('/api/carpet-pad-orders?action=count', { cache: 'no-store' }),
+          fetch('/api/employee-apparel?action=count', { cache: 'no-store' }),
         ])
         if (bolRes.ok) { const d = await bolRes.json(); setPendingBolCount(Number(d?.count ?? 0)) }
         if (ptRes.ok) { const d = await ptRes.json(); setPendingPadTransferCount(Number(d?.count ?? 0)) }
@@ -217,6 +219,7 @@ export default function CorporatePage() {
         if (inspectionRes.ok) { const d = await inspectionRes.json(); setMonthlyInspectionCount(Number(d?.count ?? 0)) }
         if (forkliftRes.ok) { const d = await forkliftRes.json(); setForkliftInspectionCount(Number(d?.count ?? 0)) }
         if (carpetPadRes.ok) { const d = await carpetPadRes.json(); setCarpetPadCount(Number(d?.count ?? 0)) }
+        if (apparelRes.ok) { const d = await apparelRes.json(); setPendingEmployeeApparelCount(Number(d?.count ?? 0)) }
       } catch {}
     }
     if (status === 'authenticated') loadCounts()
@@ -449,6 +452,7 @@ export default function CorporatePage() {
                             (card.title === 'Monthly Vehicle Inspection' && monthlyInspectionCount > 0) ||
                             (card.title === 'Weekly Forklift Inspection' && forkliftInspectionCount > 0) ||
                             (card.title === 'Carpet Pad' && carpetPadCount > 0) ||
+                            (card.title === 'Employee Apparel' && pendingEmployeeApparelCount > 0) ||
                             (card.title === 'Invoice' && invoiceCount > 0)) ? (
                               <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full bg-white text-brand-green text-xs font-bold">
                                 {card.title === 'BOL'
@@ -473,7 +477,9 @@ export default function CorporatePage() {
                                                   ? forkliftInspectionCount
                                                   : card.title === 'Carpet Pad'
                                                     ? carpetPadCount
-                                                    : invoiceCount}
+                                                    : card.title === 'Employee Apparel'
+                                                      ? pendingEmployeeApparelCount
+                                                      : invoiceCount}
                               </span>
                             ) : null}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
