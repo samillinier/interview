@@ -19,6 +19,13 @@ body {
   overflow-x: hidden;
 }
 
+/* Desktop density: at 100% Chrome zoom the rem-based UI read oversized. */
+@media (min-width: 768px) {
+  html {
+    font-size: 87.5%;
+  }
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
