@@ -764,13 +764,13 @@ export default function FleetPage() {
                     <button
                       type="button"
                       onClick={() => photoInputRef.current?.click()}
-                      className="relative group w-28 h-28 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 shadow-md"
+                      className="relative group w-52 h-36 rounded-2xl overflow-hidden border border-slate-200 bg-white"
                     >
                       {photoPreview || editingVehicle?.photoUrl ? (
                         <img
                           src={photoPreview || editingVehicle?.photoUrl || ''}
                           alt="Vehicle"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
