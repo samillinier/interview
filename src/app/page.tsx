@@ -182,8 +182,8 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <section className="bg-brand-green overflow-hidden flex-1 flex items-center justify-center px-4 py-10">
-        <div className="flex flex-col items-center justify-center gap-5 sm:gap-6 w-full max-w-2xl text-center">
+      <section className="bg-brand-green overflow-hidden flex items-center justify-center px-4 py-4 mt-auto">
+        <div className="flex flex-col items-center justify-center gap-2.5 sm:gap-3 w-full max-w-2xl text-center">
           <p className="text-white text-[10px] sm:text-xs font-medium leading-snug px-1 sm:whitespace-nowrap">
             Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
           </p>
@@ -200,7 +200,7 @@ export default function HomePage() {
                 alt="Download on the App Store"
                 width={180}
                 height={60}
-                className="h-9 w-auto sm:h-14"
+                className="h-8 w-auto sm:h-11"
               />
             </a>
             <a
@@ -215,7 +215,7 @@ export default function HomePage() {
                 alt="Get it on Google Play"
                 width={200}
                 height={60}
-                className="h-9 w-auto sm:h-14"
+                className="h-8 w-auto sm:h-11"
               />
             </a>
           </div>
