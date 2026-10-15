@@ -30,7 +30,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-screen pb-8 sm:pb-10">
+    <div className="flex flex-col min-h-screen">
       {/* Navigation */}
       <nav className="border-b border-primary-100">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
@@ -182,7 +182,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <section className="mt-auto bg-brand-green overflow-hidden px-4 py-8 sm:py-10">
+      <section className="mt-auto bg-brand-green overflow-hidden px-4 py-12 sm:py-14">
         <div className="flex flex-col items-center justify-center gap-4 sm:gap-5 w-full max-w-2xl mx-auto text-center">
           <p className="text-white text-[10px] sm:text-xs font-medium leading-snug px-1 sm:whitespace-nowrap">
             Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
