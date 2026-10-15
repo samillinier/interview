@@ -794,17 +794,8 @@ export default function InventoryPage() {
 
           {/* Filters */}
           {inventory.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
-                  <Armchair className="w-4 h-4 text-brand-green" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Equipment Records</h2>
-                  <p className="text-xs text-slate-400">{filteredInventory.length} shown</p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6 mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <form
                   className="flex-1 relative"
                   onSubmit={handleBarcodeFormSubmit}
@@ -826,7 +817,7 @@ export default function InventoryPage() {
                     onChange={handleBarcodeFieldInput}
                     autoFocus={inventory.length > 0 && !showAddModal && isCoarsePointer}
                     placeholder="Search equipment, SKU, barcode, serial, workroom, or custodian"
-                    className="w-full pl-10 sm:pl-12 pr-16 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
+                    className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
                     aria-label="Barcode or search"
                   />
                   {searchQuery ? (
@@ -836,17 +827,31 @@ export default function InventoryPage() {
                         setSearchQuery('')
                         searchInputRef.current?.focus()
                       }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                      className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      aria-label="Clear search"
                     >
-                      Clear
+                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   ) : null}
                 </form>
+                <div className="flex gap-2 sm:gap-3">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[120px]"
+                    aria-label="Filter by status"
+                  >
+                    <option value="all">All status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="discontinued">Retired</option>
+                  </select>
+                </div>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]"
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[160px]"
                     aria-label="Filter by equipment type"
                   >
                     <option value="all">All types</option>
@@ -855,17 +860,6 @@ export default function InventoryPage() {
                         {cat}
                       </option>
                     ))}
-                  </select>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]"
-                    aria-label="Filter by status"
-                  >
-                    <option value="all">All status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="discontinued">Retired</option>
                   </select>
                   <motion.button
                     type="button"
