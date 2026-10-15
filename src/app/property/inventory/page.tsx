@@ -17,9 +17,7 @@ import {
   Laptop,
   Truck,
   Package,
-  Tag,
   FileText,
-  BarChart3,
   DollarSign,
   Search,
   Upload,
@@ -796,7 +794,7 @@ export default function InventoryPage() {
 
           {/* Filters */}
           {inventory.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-5">
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-brand-green/10 flex items-center justify-center">
                   <Armchair className="w-4 h-4 text-brand-green" />
@@ -806,66 +804,49 @@ export default function InventoryPage() {
                   <p className="text-xs text-slate-400">{filteredInventory.length} shown</p>
                 </div>
               </div>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <div className="flex w-full flex-col gap-2 lg:max-w-xl">
-                  <form
-                    className="flex flex-col gap-2"
-                    onSubmit={handleBarcodeFormSubmit}
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <form
+                  className="flex-1 relative"
+                  onSubmit={handleBarcodeFormSubmit}
+                  autoComplete="off"
+                >
+                  <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
+                  <input
+                    ref={searchInputRef}
+                    name="barcode"
+                    id="property-inventory-barcode"
+                    type="text"
+                    inputMode="text"
+                    enterKeyHint="search"
                     autoComplete="off"
-                  >
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <div className="flex-1 relative">
-                        <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
-                        <input
-                          ref={searchInputRef}
-                          name="barcode"
-                          id="property-inventory-barcode"
-                          type="text"
-                          inputMode="text"
-                          enterKeyHint="search"
-                          autoComplete="off"
-                          autoCorrect="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
-                          value={searchQuery}
-                          onChange={handleBarcodeFieldInput}
-                          autoFocus={inventory.length > 0 && !showAddModal && isCoarsePointer}
-                          placeholder="Search equipment, SKU, barcode, serial, workroom, or custodian"
-                          className="w-full pl-10 sm:pl-12 pr-16 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
-                          aria-label="Barcode or search"
-                        />
-                        {searchQuery ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSearchQuery('')
-                              searchInputRef.current?.focus()
-                            }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
-                          >
-                            Clear
-                          </button>
-                        ) : null}
-                      </div>
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={focusSearchInput}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-green/20 bg-brand-green/10 px-4 py-2.5 text-sm font-semibold text-brand-green transition-colors hover:bg-brand-green/15"
-                      >
-                        <Search className="h-4 w-4" />
-                        Scan / Search
-                      </motion.button>
-                    </div>
-                  </form>
-                </div>
-                <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex">
-                  <Tag className="h-4 w-4 text-slate-500" />
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    value={searchQuery}
+                    onChange={handleBarcodeFieldInput}
+                    autoFocus={inventory.length > 0 && !showAddModal && isCoarsePointer}
+                    placeholder="Search equipment, SKU, barcode, serial, workroom, or custodian"
+                    className="w-full pl-10 sm:pl-12 pr-16 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
+                    aria-label="Barcode or search"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('')
+                        searchInputRef.current?.focus()
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </form>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="bg-transparent pr-6 text-sm font-medium text-slate-700 outline-none"
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]"
                     aria-label="Filter by equipment type"
                   >
                     <option value="all">All types</option>
@@ -875,13 +856,10 @@ export default function InventoryPage() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 lg:flex">
-                  <BarChart3 className="h-4 w-4 text-slate-500" />
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="bg-transparent pr-6 text-sm font-medium text-slate-700 outline-none"
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[150px]"
                     aria-label="Filter by status"
                   >
                     <option value="all">All status</option>
@@ -889,6 +867,16 @@ export default function InventoryPage() {
                     <option value="inactive">Inactive</option>
                     <option value="discontinued">Retired</option>
                   </select>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={focusSearchInput}
+                    className="flex-1 sm:flex-none px-4 sm:px-6 py-3 min-h-[44px] bg-gradient-to-r from-brand-green to-emerald-600 text-white rounded-xl hover:from-brand-green-dark hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-lg shadow-brand-green/30 hover:shadow-xl text-sm sm:text-base"
+                  >
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Scan / Search
+                  </motion.button>
                 </div>
               </div>
             </div>
