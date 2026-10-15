@@ -19,6 +19,7 @@ import {
   Package,
   FileText,
   DollarSign,
+  Hash,
   Search,
   Upload,
   ChevronRight,
@@ -1039,6 +1040,7 @@ export default function InventoryPage() {
                   <thead className="sticky top-0 z-[1] border-b border-slate-200/90 bg-slate-50/90 backdrop-blur-md">
                     <tr>
                       <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:px-6 sm:py-4">Equipment</th>
+                      <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Device code</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Workroom</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Usage</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Condition</th>
@@ -1048,7 +1050,7 @@ export default function InventoryPage() {
                   <tbody className="divide-y divide-slate-100/90">
                     {filteredInventory.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12">
+                        <td colSpan={6} className="px-6 py-12">
                           <div className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
                             <Search className="h-8 w-8 text-slate-300" />
                             <h4 className="mt-3 text-base font-semibold text-slate-900">No equipment matched your search</h4>
@@ -1100,11 +1102,6 @@ export default function InventoryPage() {
                               <span className="inline-flex shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium leading-none text-sky-900 ring-1 ring-sky-100/80">
                                 {item.category || 'Uncategorized'}
                               </span>
-                              {item.sku ? (
-                                <span className="shrink-0 font-mono text-[11px] leading-none text-slate-500">
-                                  SKU {item.sku}
-                                </span>
-                              ) : null}
                               <span className="inline-flex max-w-[10rem] shrink-0 items-center gap-1.5 text-xs leading-none text-slate-500">
                                 <Users className="h-3.5 w-3.5 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
                                 <span className="truncate">
@@ -1112,6 +1109,18 @@ export default function InventoryPage() {
                                 </span>
                               </span>
                             </div>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 align-middle">
+                            {item.sku || item.barcode || item.serialNumber ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 font-mono text-xs font-medium leading-none text-slate-700 ring-1 ring-slate-200/70">
+                                {item.sku || item.barcode || item.serialNumber}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs leading-none text-slate-400 ring-1 ring-slate-100">
+                                <Hash className="h-3 w-3 shrink-0 opacity-60" />
+                                Not set
+                              </span>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 align-middle text-sm">
                             {item.warehouse ? (
