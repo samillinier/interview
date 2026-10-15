@@ -30,7 +30,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen pb-8 sm:pb-10">
       {/* Navigation */}
       <nav className="border-b border-primary-100">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
