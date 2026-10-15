@@ -106,7 +106,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-20 pb-32 lg:pt-32 lg:pb-48 grid-pattern bg-white">
+      <section className="flex-1 pt-20 pb-16 lg:pt-32 lg:pb-24 grid-pattern bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-4xl mx-auto">
             <motion.h1
@@ -182,8 +182,8 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <section className="bg-brand-green overflow-hidden flex-1 flex items-end justify-center px-4 pb-8 pt-12">
-        <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 w-full max-w-2xl text-center">
+      <section className="mt-auto bg-brand-green overflow-hidden px-4 py-5 sm:py-6">
+        <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 w-full max-w-2xl mx-auto text-center">
           <p className="text-white text-[10px] sm:text-xs font-medium leading-snug px-1 sm:whitespace-nowrap">
             Apply once. Get verified. Get working. FIS FastTrack makes onboarding simple on mobile.
           </p>
@@ -200,7 +200,7 @@ export default function HomePage() {
                 alt="Download on the App Store"
                 width={180}
                 height={60}
-                className="h-9 w-auto sm:h-12"
+                className="h-9 w-auto sm:h-14"
               />
             </a>
             <a
@@ -215,7 +215,7 @@ export default function HomePage() {
                 alt="Get it on Google Play"
                 width={200}
                 height={60}
-                className="h-9 w-auto sm:h-12"
+                className="h-9 w-auto sm:h-14"
               />
             </a>
           </div>
