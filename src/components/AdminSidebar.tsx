@@ -416,8 +416,7 @@ export function AdminSidebar({ pathname }: Props) {
           <Image src={logo} alt="Logo" width={40} height={40} className="w-9 h-9 object-contain" />
           {sidebarOpen ? (
             <div className="min-w-0">
-              <h1 className="font-bold text-primary-900 text-sm truncate">Admin</h1>
-              <p className="text-xs text-primary-500 truncate">{roleLabel}</p>
+              <h1 className="font-bold text-primary-900 text-sm truncate">{roleLabel}</h1>
             </div>
           ) : null}
         </div>
