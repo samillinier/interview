@@ -1111,9 +1111,9 @@ export default function InventoryPage() {
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 align-middle">
-                            {item.sku || item.barcode || item.serialNumber ? (
+                            {getInventoryLabelBarcodeValue(item.id, item.warehouse) ? (
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 font-mono text-xs font-medium leading-none text-slate-700 ring-1 ring-slate-200/70">
-                                {item.sku || item.barcode || item.serialNumber}
+                                {getInventoryLabelBarcodeValue(item.id, item.warehouse)}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs leading-none text-slate-400 ring-1 ring-slate-100">
