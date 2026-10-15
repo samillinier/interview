@@ -814,8 +814,8 @@ export default function InventoryPage() {
                     autoComplete="off"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <div className="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
-                        <Search className="h-4 w-4 text-slate-500" />
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 sm:w-5 sm:h-5" />
                         <input
                           ref={searchInputRef}
                           name="barcode"
@@ -831,7 +831,7 @@ export default function InventoryPage() {
                           onChange={handleBarcodeFieldInput}
                           autoFocus={inventory.length > 0 && !showAddModal && isCoarsePointer}
                           placeholder="Search equipment, SKU, barcode, serial, workroom, or custodian"
-                          className="w-full bg-transparent text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
+                          className="w-full pl-10 sm:pl-12 pr-16 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white"
                           aria-label="Barcode or search"
                         />
                         {searchQuery ? (
@@ -841,7 +841,7 @@ export default function InventoryPage() {
                               setSearchQuery('')
                               searchInputRef.current?.focus()
                             }}
-                            className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700"
                           >
                             Clear
                           </button>
