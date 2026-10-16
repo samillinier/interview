@@ -107,6 +107,9 @@ export default function FleetPage() {
   const [vehicleDocFiles, setVehicleDocFiles] = useState<File[]>([])
   const [miscDocFiles, setMiscDocFiles] = useState<File[]>([])
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'car' | 'forklift'>('car')
+  const [inlineMileageId, setInlineMileageId] = useState<string | null>(null)
+  const [inlineMileageVal, setInlineMileageVal] = useState('')
+  const [savingMileageId, setSavingMileageId] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     category: '',
@@ -457,6 +460,46 @@ export default function FleetPage() {
   })
   const carCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'car').length
   const forkliftCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'forklift').length
+  const startInlineMileage = (vehicle: Vehicle) => {
+    setInlineMileageId(vehicle.id)
+    setInlineMileageVal(vehicle.mileageAsOfAugust2025?.toString() || '')
+  }
+
+  const saveInlineMileage = async (vehicle: Vehicle) => {
+    if (!property) return
+    const raw = inlineMileageVal.trim()
+    const num = raw === '' ? null : parseFloat(raw)
+    if (raw !== '' && (!Number.isFinite(num) || (num as number) < 0)) {
+      setError('Enter a valid mileage')
+      return
+    }
+    setSavingMileageId(vehicle.id)
+    try {
+      const res = await fetch(`/api/properties/${property.id}/vehicles/${vehicle.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mileageAsOfAugust2025: num,
+          mileageRecordedAt: raw === '' ? null : new Date().toISOString().split('T')[0],
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save mileage')
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.id === vehicle.id
+            ? { ...v, mileageAsOfAugust2025: num ?? undefined, mileageRecordedAt: raw === '' ? undefined : new Date().toISOString() }
+            : v
+        )
+      )
+      setSuccess('Mileage saved!')
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save mileage')
+    } finally {
+      setSavingMileageId(null)
+      setInlineMileageId(null)
+    }
+  }
+
   const totalMileage = vehicles.reduce((sum, v) => sum + (Number(v.mileageAsOfAugust2025) || 0), 0)
   const now = Date.now()
   const expiringTags = vehicles.filter((v) => {
@@ -718,22 +761,52 @@ export default function FleetPage() {
                             {vehicle.location || 'N/A'}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
-                          {vehicle.mileageAsOfAugust2025 ? (
-                            <div>
-                              <div className="flex items-center gap-1">
-                                <Gauge className="w-4 h-4 text-brand-green" />
-                                {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
-                              </div>
-                              {vehicle.mileageRecordedAt ? (
-                                <p className="text-[11px] text-slate-400 mt-0.5">
-                                  as of {new Date(vehicle.mileageRecordedAt).toLocaleDateString()}
-                                </p>
+                        <td className="px-6 py-4 text-sm text-slate-600" onClick={(e) => e.stopPropagation()}>
+                          {inlineMileageId === vehicle.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                autoFocus
+                                type="number"
+                                step="1"
+                                min="0"
+                                value={inlineMileageVal}
+                                onChange={(e) => setInlineMileageVal(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveInlineMileage(vehicle)
+                                  if (e.key === 'Escape') setInlineMileageId(null)
+                                }}
+                                onBlur={() => saveInlineMileage(vehicle)}
+                                placeholder="miles"
+                                className="w-28 px-2 py-1 border-2 border-brand-green rounded-lg text-sm focus:outline-none"
+                              />
+                              {savingMileageId === vehicle.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-brand-green" />
                               ) : null}
                             </div>
                           ) : (
-                            'N/A'
+                            <button
+                              type="button"
+                              onClick={() => startInlineMileage(vehicle)}
+                              className="group flex items-center gap-1.5 hover:text-brand-green transition-colors text-left"
+                              title="Click to enter mileage"
+                            >
+                              <Gauge className={`w-4 h-4 ${vehicle.mileageAsOfAugust2025 ? 'text-brand-green' : 'text-slate-300 group-hover:text-brand-green'}`} />
+                              {vehicle.mileageAsOfAugust2025 ? (
+                                <span className="font-medium text-slate-900 group-hover:text-brand-green">
+                                  {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 group-hover:text-brand-green underline decoration-dotted">
+                                  Add mileage
+                                </span>
+                              )}
+                            </button>
                           )}
+                          {vehicle.mileageRecordedAt && inlineMileageId !== vehicle.id ? (
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              as of {new Date(vehicle.mileageRecordedAt).toLocaleDateString()}
+                            </p>
+                          ) : null}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
