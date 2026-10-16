@@ -1337,6 +1337,8 @@ model Vehicle {
   tagRenewal            DateTime?
   transponderNumber     String?
   mileageAsOfAugust2025 Float?
+  mileageRecordedAt     DateTime?
+  notes                 String?
   photoUrl              String?
   category              String?
   Property              Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)

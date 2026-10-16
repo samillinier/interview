@@ -668,7 +668,7 @@ function DeviceCard({
             </p>
           )}
           <p className="text-[11px] text-slate-400 truncate mt-0.5">
-            {device.vehiclePlate ? `${device.vehiclePlate} · ` : ''}{device.deviceId}
+            {device.deviceId}
           </p>
         </div>
         <div className="flex flex-col items-end gap-0.5">
@@ -828,8 +828,19 @@ function DeviceTelemetry({
 
   return (
     <div className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className={'w-2 h-2 rounded-full ' + (
+      <div className="flex items-start gap-3 mb-3">
+        {device.vehiclePhotoUrl ? (
+          <div className="w-[5.75rem] h-[4.25rem] rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0">
+            <img
+              src={device.vehiclePhotoUrl}
+              alt={device.vehicleName || 'Vehicle'}
+              className="w-full h-full object-contain"
+            />
+          </div>
+        ) : null}
+        <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2">
+        <div className={'w-2 h-2 rounded-full shrink-0 ' + (
           device.status === 'online' ? 'bg-green-500' : 'bg-slate-300'
         )} />
         {editingName ? (
@@ -920,11 +931,13 @@ function DeviceTelemetry({
         )}
       </div>
       {renameError && (
-        <p className="mb-2 text-[10px] text-amber-600">{renameError}</p>
+        <p className="mt-1 text-[10px] text-amber-600">{renameError}</p>
       )}
       {resetError && (
-        <p className="mb-2 text-[10px] text-amber-600">{resetError}</p>
+        <p className="mt-1 text-[10px] text-amber-600">{resetError}</p>
       )}
+        </div>
+      </div>
 
       {/* When Trip History is open, hide vehicle details so the feed has room */}
       {!historyOpen && device.location && (

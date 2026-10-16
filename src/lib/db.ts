@@ -27,6 +27,7 @@ if (process.env.NODE_ENV === 'production') {
   const installerFields = models?.Installer?.fields
   const marketingFields = models?.MarketingLead?.fields
   const inventoryFields = models?.Inventory?.fields
+  const vehicleFields = models?.Vehicle?.fields
   const stale =
     existing &&
     (typeof (existing as unknown as { ltrUploadBatch?: unknown }).ltrUploadBatch === 'undefined' ||
@@ -39,6 +40,7 @@ if (process.env.NODE_ENV === 'production') {
       (installerFields != null && !('aiChatEnabled' in installerFields)) ||
       (marketingFields != null && !('emailOptInSentAt' in marketingFields)) ||
       (inventoryFields != null && !('phoneNumber' in inventoryFields)) ||
+      (vehicleFields != null && !('notes' in vehicleFields)) ||
       typeof (existing as unknown as { gpsTelemetryReset?: unknown }).gpsTelemetryReset === 'undefined')
   if (stale) {
     void existing.$disconnect().catch(() => {})

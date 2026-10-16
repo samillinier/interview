@@ -116,6 +116,8 @@ export async function POST(
       tagRenewal,
       transponderNumber,
       mileageAsOfAugust2025,
+      mileageRecordedAt,
+      notes,
     } = body
 
     const vehicle = await prisma.vehicle.create({
@@ -133,6 +135,8 @@ export async function POST(
         tagRenewal: tagRenewal ? new Date(tagRenewal) : null,
         transponderNumber,
         mileageAsOfAugust2025: mileageAsOfAugust2025 ? parseFloat(mileageAsOfAugust2025) : null,
+        mileageRecordedAt: mileageRecordedAt ? new Date(mileageRecordedAt) : null,
+        notes: typeof notes === 'string' ? notes.trim() || null : null,
       },
     })
 

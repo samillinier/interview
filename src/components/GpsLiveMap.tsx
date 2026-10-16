@@ -9,6 +9,7 @@ export interface VehicleDevice {
   vehicleId?: string | null
   vehicleName: string
   vehiclePlate: string
+  vehiclePhotoUrl?: string | null
   deviceId: string
   deviceModel: string
   status: 'online' | 'offline' | 'idle'

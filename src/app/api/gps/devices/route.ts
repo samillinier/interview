@@ -335,6 +335,7 @@ export async function GET(request: NextRequest) {
         vehicleYear: true,
         vehicleMake: true,
         vehicleModel: true,
+        photoUrl: true,
       },
     }).catch(() => [])
 
@@ -515,6 +516,7 @@ export async function GET(request: NextRequest) {
         // Admin custom name wins, then linked vehicle, then hardware/Ruhavik name
         vehicleName: customName || linkedVehicleName || device.deviceName,
         vehiclePlate: device.Vehicle?.plate ?? matchedVehicle?.plate ?? null,
+        vehiclePhotoUrl: device.Vehicle?.photoUrl ?? matchedVehicle?.photoUrl ?? null,
         deviceId: device.deviceId ?? device.id,
         deviceModel: device.deviceModel ?? 'Queclink GV500MAP',
         status,

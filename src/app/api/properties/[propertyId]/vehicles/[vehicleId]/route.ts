@@ -125,6 +125,8 @@ export async function PATCH(
       tagRenewal,
       transponderNumber,
       mileageAsOfAugust2025,
+      mileageRecordedAt,
+      notes,
     } = body
 
     const updatedVehicle = await prisma.vehicle.update({
@@ -142,6 +144,8 @@ export async function PATCH(
         ...(tagRenewal !== undefined && { tagRenewal: tagRenewal ? new Date(tagRenewal) : null }),
         ...(transponderNumber !== undefined && { transponderNumber }),
         ...(mileageAsOfAugust2025 !== undefined && { mileageAsOfAugust2025: mileageAsOfAugust2025 ? parseFloat(mileageAsOfAugust2025) : null }),
+        ...(mileageRecordedAt !== undefined && { mileageRecordedAt: mileageRecordedAt ? new Date(mileageRecordedAt) : null }),
+        ...(notes !== undefined && { notes: typeof notes === 'string' ? notes.trim() || null : null }),
       },
     })
 

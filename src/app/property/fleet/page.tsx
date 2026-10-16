@@ -27,6 +27,7 @@ import {
   Download,
   Pencil,
   Navigation,
+  FileText,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -60,6 +61,8 @@ interface Vehicle {
   tagRenewal?: string
   transponderNumber?: string
   mileageAsOfAugust2025?: number
+  mileageRecordedAt?: string
+  notes?: string
   photoUrl?: string
   createdAt: string
   updatedAt: string
@@ -118,6 +121,8 @@ export default function FleetPage() {
     tagRenewal: '',
     transponderNumber: '',
     mileageAsOfAugust2025: '',
+    mileageRecordedAt: '',
+    notes: '',
   })
 
   useEffect(() => {
@@ -251,6 +256,8 @@ export default function FleetPage() {
       tagRenewal: vehicle.tagRenewal ? new Date(vehicle.tagRenewal).toISOString().split('T')[0] : '',
       transponderNumber: vehicle.transponderNumber || '',
       mileageAsOfAugust2025: vehicle.mileageAsOfAugust2025?.toString() || '',
+      mileageRecordedAt: vehicle.mileageRecordedAt ? new Date(vehicle.mileageRecordedAt).toISOString().split('T')[0] : '',
+      notes: vehicle.notes || '',
     })
     setShowAddModal(true)
   }
@@ -437,6 +444,8 @@ export default function FleetPage() {
       tagRenewal: '',
       transponderNumber: '',
       mileageAsOfAugust2025: '',
+      mileageRecordedAt: '',
+      notes: '',
     })
     setPhotoPreview(null)
     setSelectedPhotoFile(null)
@@ -676,6 +685,11 @@ export default function FleetPage() {
                               <p className="text-xs text-slate-500 truncate">
                                 {vehicle.plate ? `Plate: ${vehicle.plate}` : vehicle.vin ? `VIN: ${vehicle.vin}` : 'No plate/VIN'}
                               </p>
+                              {vehicle.notes ? (
+                                <p className="text-xs text-slate-400 truncate mt-0.5" title={vehicle.notes}>
+                                  {vehicle.notes}
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                         </td>
@@ -706,9 +720,16 @@ export default function FleetPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600">
                           {vehicle.mileageAsOfAugust2025 ? (
-                            <div className="flex items-center gap-1">
-                              <Gauge className="w-4 h-4 text-brand-green" />
-                              {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
+                            <div>
+                              <div className="flex items-center gap-1">
+                                <Gauge className="w-4 h-4 text-brand-green" />
+                                {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
+                              </div>
+                              {vehicle.mileageRecordedAt ? (
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                  as of {new Date(vehicle.mileageRecordedAt).toLocaleDateString()}
+                                </p>
+                              ) : null}
                             </div>
                           ) : (
                             'N/A'
@@ -1157,15 +1178,50 @@ export default function FleetPage() {
                     transition={{ delay: 0.6 }}
                   >
                     <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                      Mileage (as of Aug 2025)
+                      Mileage
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       value={formData.mileageAsOfAugust2025}
                       onChange={(e) => setFormData({ ...formData, mileageAsOfAugust2025: e.target.value })}
-                      placeholder="0"
+                      placeholder="Dash or odometer miles"
                       className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.65 }}
+                  >
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Mileage as of
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.mileageRecordedAt}
+                      onChange={(e) => setFormData({ ...formData, mileageRecordedAt: e.target.value })}
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium"
+                    />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="md:col-span-2"
+                  >
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      <span className="inline-flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-slate-400" />
+                        Important information
+                      </span>
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows={4}
+                      placeholder="Anything you want to keep on this vehicle: tracker moved, check engine, oil change, tire size, spare keys, insurance, or notes from GPS…"
+                      className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white text-sm font-medium resize-y min-h-[96px]"
                     />
                   </motion.div>
                 </div>
