@@ -606,6 +606,9 @@ model Inventory {
   manufacturer      String?
   barcode           String?
   serialNumber      String?
+  phoneNumber       String?
+  imei              String?
+  imei2             String?
   lastRestocked     DateTime?
   notes             String?
   photoUrl          String?
@@ -620,6 +623,8 @@ model Inventory {
 
   @@index([barcode])
   @@index([category])
+  @@index([imei])
+  @@index([phoneNumber])
   @@index([propertyId])
   @@index([sku])
   @@index([status])

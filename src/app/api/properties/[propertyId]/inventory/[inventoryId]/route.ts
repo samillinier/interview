@@ -123,6 +123,9 @@ export async function PATCH(
       manufacturer,
       barcode,
       serialNumber,
+      phoneNumber,
+      imei,
+      imei2,
       purchaseDate,
       lastRestocked,
       warrantyDate,
@@ -159,6 +162,15 @@ export async function PATCH(
         ...(manufacturer !== undefined && { manufacturer }),
         ...(barcode !== undefined && { barcode }),
         ...(serialNumber !== undefined && { serialNumber }),
+        ...(phoneNumber !== undefined && {
+          phoneNumber: typeof phoneNumber === 'string' && phoneNumber.trim() ? phoneNumber.trim() : null,
+        }),
+        ...(imei !== undefined && {
+          imei: typeof imei === 'string' && imei.trim() ? imei.trim() : null,
+        }),
+        ...(imei2 !== undefined && {
+          imei2: typeof imei2 === 'string' && imei2.trim() ? imei2.trim() : null,
+        }),
         ...(purchaseDate !== undefined && {
           purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         }),
