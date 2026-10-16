@@ -26,6 +26,7 @@ import {
   Eye,
   Download,
   Pencil,
+  Navigation,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -36,6 +37,7 @@ import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { FleetBarcode } from '@/components/FleetBarcode'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+import { fleetVehicleGpsPath } from '@/lib/gpsFleetMatch'
 
 interface PropertyProfile {
   id: string
@@ -719,6 +721,18 @@ export default function FleetPage() {
                               whileTap={{ scale: 0.9 }}
                               onClick={(e) => {
                                 e.stopPropagation()
+                                router.push(fleetVehicleGpsPath(vehicle))
+                              }}
+                              className="p-2 text-brand-green hover:bg-brand-green/10 rounded-xl transition-all"
+                              title="Track this vehicle"
+                            >
+                              <Navigation className="w-4 h-4" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => {
+                                e.stopPropagation()
                                 handleEdit(vehicle)
                               }}
                               className="p-2 text-brand-green hover:bg-brand-green/10 rounded-xl transition-all"
@@ -899,6 +913,26 @@ export default function FleetPage() {
                         </span>
                       ) : null}
                     </div>
+                    {editingVehicle ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push(
+                            fleetVehicleGpsPath({
+                              id: editingVehicle.id,
+                              vin: formData.vin || editingVehicle.vin,
+                              plate: formData.plate || editingVehicle.plate,
+                              vehicleMake: formData.vehicleMake || editingVehicle.vehicleMake,
+                              vehicleModel: formData.vehicleModel || editingVehicle.vehicleModel,
+                            })
+                          )
+                        }
+                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-green text-white text-sm font-semibold hover:bg-brand-green-dark transition-colors"
+                      >
+                        <Navigation className="w-4 h-4" />
+                        Track this vehicle
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex-shrink-0">

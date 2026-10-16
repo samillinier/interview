@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import {
@@ -32,7 +32,7 @@ import {
   Search,
   RotateCcw,
 } from 'lucide-react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
@@ -43,6 +43,7 @@ import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { openDrivingDirections } from '@/lib/maps'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
 import type { TripHistoryRow } from '@/components/GpsTripHistory'
+import { findGpsDeviceForFleet } from '@/lib/gpsFleetMatch'
 
 type RoutePoint = { latitude: number; longitude: number; speed?: number; time?: string }
 
@@ -69,7 +70,9 @@ export default function GPSPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { sidebarOpen } = useSidebarOpen()
+  const focusedFromFleetRef = useRef(false)
 
   const [property, setProperty] = useState<PropertyProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -225,7 +228,12 @@ export default function GPSPage() {
       }
       const data = await res.json()
       console.log('[GPS page] devices count:', data.devices?.length, 'gpsConnected:', data.gpsConnected)
-      setDevices(data.devices || [])
+      const nextDevices: VehicleDevice[] = data.devices || []
+      setDevices(nextDevices)
+      setSelectedDevice((prev) => {
+        if (!prev) return prev
+        return nextDevices.find((d) => d.id === prev.id) || prev
+      })
       setGpsConnected(!!data.gpsConnected)
       setLastRefresh(new Date())
     } catch (e) {
@@ -335,6 +343,25 @@ export default function GPSPage() {
       })),
     }
   }, [selectedTripId, tripHistory])
+
+  // Open the matching tracker when arriving from Fleet → Track this vehicle
+  useEffect(() => {
+    if (focusedFromFleetRef.current || devices.length === 0) return
+    const vehicleId = searchParams.get('vehicle')
+    const vin = searchParams.get('vin')
+    const plate = searchParams.get('plate')
+    const name = searchParams.get('name')
+    if (!vehicleId && !vin && !plate && !name) return
+
+    const match = findGpsDeviceForFleet(devices, { vehicleId, vin, plate, name })
+    focusedFromFleetRef.current = true
+    if (match) {
+      setSelectedDevice(match)
+      setLocateTick((n) => n + 1)
+      return
+    }
+    setSearchQuery(plate || name || vin || '')
+  }, [devices, searchParams])
 
   // Initial load
   useEffect(() => {

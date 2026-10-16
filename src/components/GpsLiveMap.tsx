@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 
 export interface VehicleDevice {
   id: string
+  vehicleId?: string | null
   vehicleName: string
   vehiclePlate: string
   deviceId: string

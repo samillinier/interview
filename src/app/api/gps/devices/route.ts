@@ -5,6 +5,7 @@ import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
 import { reverseGeocode } from '@/lib/geocode'
 import { periodBounds } from '@/lib/gpsTime'
+import { fleetVehicleLabel, gpsMatchKey } from '@/lib/gpsFleetMatch'
 
 /**
  * GET /api/gps/devices
@@ -160,6 +161,7 @@ export async function GET(request: NextRequest) {
 
   try {
     let gpsDevices: any[] = []
+    let fleetPropertyId: string | undefined
 
     if (!isAdmin) {
       // True property user: get their own devices from DB
@@ -171,8 +173,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Property not found' }, { status: 404 })
       }
       gpsDevices = property.GpsDevice || []
+      fleetPropertyId = property.id
     }
-    // Admin users: devices are built directly from Ruhavik below, no DB needed
+    // Admin users: devices are built directly from Ruhavik below, then linked to fleet records
 
     const traccarReachable = await traccar.isReachable()
     console.log('[gps/devices] isReachable:', traccarReachable, 'provider: ruhavik')
@@ -248,6 +251,23 @@ export async function GET(request: NextRequest) {
           Vehicle: null,
         }
       })
+
+      const dbRows = await (prisma as any).gpsDevice.findMany({
+        include: { Vehicle: true },
+      }).catch(() => [])
+      const dbByDeviceId = new Map<string, any>()
+      for (const row of dbRows || []) {
+        if (row?.deviceId) dbByDeviceId.set(String(row.deviceId), row)
+      }
+      gpsDevices = gpsDevices.map((d) => {
+        const row = dbByDeviceId.get(String(d.deviceId))
+        if (!row) return d
+        return {
+          ...d,
+          vehicleId: row.vehicleId || d.vehicleId,
+          Vehicle: row.Vehicle || d.Vehicle,
+        }
+      })
     }
 
     const positionByDeviceId = new Map<number, traccar.TraccarPosition>()
@@ -303,6 +323,35 @@ export async function GET(request: NextRequest) {
     const summaryByDeviceId = new Map<number, traccar.TraccarReportSummary>()
     for (const s of allSummary) {
       summaryByDeviceId.set(s.deviceId, s)
+    }
+
+    const fleetVehicles = await prisma.vehicle.findMany({
+      ...(fleetPropertyId ? { where: { propertyId: fleetPropertyId } } : {}),
+      take: 500,
+      select: {
+        id: true,
+        vin: true,
+        plate: true,
+        vehicleYear: true,
+        vehicleMake: true,
+        vehicleModel: true,
+      },
+    }).catch(() => [])
+
+    const vehiclesByVin = new Map<string, (typeof fleetVehicles)[number]>()
+    const vehiclesByPlate = new Map<string, (typeof fleetVehicles)[number]>()
+    const vehiclesByName = new Map<string, (typeof fleetVehicles)[number][]>()
+    for (const vehicle of fleetVehicles) {
+      const vinKey = gpsMatchKey(vehicle.vin)
+      if (vinKey) vehiclesByVin.set(vinKey, vehicle)
+      const plateKey = gpsMatchKey(vehicle.plate)
+      if (plateKey) vehiclesByPlate.set(plateKey, vehicle)
+      const nameKey = gpsMatchKey(fleetVehicleLabel(vehicle))
+      if (nameKey) {
+        const list = vehiclesByName.get(nameKey) || []
+        list.push(vehicle)
+        vehiclesByName.set(nameKey, list)
+      }
     }
 
     // Enrich each device
@@ -411,6 +460,34 @@ export async function GET(request: NextRequest) {
         ? `${device.Vehicle.vehicleMake || ''} ${device.Vehicle.vehicleModel}`.trim()
         : ''
 
+      const vinKey = gpsMatchKey(obdii.vin)
+      const plateKey = gpsMatchKey(device.Vehicle?.plate)
+      const nameKey = gpsMatchKey(customName || linkedVehicleName || device.deviceName)
+      let matchedVehicle = device.Vehicle || null
+      let matchByVinOrPlate = false
+      // VIN wins so a tracker moved to a new truck follows the live OBD VIN
+      if (vinKey && vehiclesByVin.has(vinKey)) {
+        matchedVehicle = vehiclesByVin.get(vinKey) || null
+        matchByVinOrPlate = true
+      } else if (plateKey && vehiclesByPlate.has(plateKey)) {
+        matchedVehicle = vehiclesByPlate.get(plateKey) || null
+        matchByVinOrPlate = true
+      } else if (!matchedVehicle && nameKey) {
+        const named = vehiclesByName.get(nameKey)
+        if (named && named.length === 1) matchedVehicle = named[0]
+      }
+
+      const linkedVehicleId = device.vehicleId || matchedVehicle?.id || null
+      if (matchByVinOrPlate && matchedVehicle?.id && device.deviceId) {
+        ;(prisma as any).gpsDevice.updateMany({
+          where: {
+            deviceId: String(device.deviceId),
+            OR: [{ vehicleId: null }, { vehicleId: { not: matchedVehicle.id } }],
+          },
+          data: { vehicleId: matchedVehicle.id },
+        }).catch(() => {})
+      }
+
       // Prefer Ruhavik lifetime engine-hours counter over session motorhours
       if (
         trackerTotals?.totalEngineHours != null &&
@@ -434,9 +511,10 @@ export async function GET(request: NextRequest) {
 
       return {
         id: device.id,
+        vehicleId: linkedVehicleId,
         // Admin custom name wins, then linked vehicle, then hardware/Ruhavik name
         vehicleName: customName || linkedVehicleName || device.deviceName,
-        vehiclePlate: device.Vehicle?.plate ?? null,
+        vehiclePlate: device.Vehicle?.plate ?? matchedVehicle?.plate ?? null,
         deviceId: device.deviceId ?? device.id,
         deviceModel: device.deviceModel ?? 'Queclink GV500MAP',
         status,

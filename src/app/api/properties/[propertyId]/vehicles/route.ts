@@ -35,6 +35,7 @@ export async function GET(
       const vehicles = await prisma.vehicle.findMany({
         orderBy: { createdAt: 'desc' },
         take: 500,
+        include: { GpsDevice: { select: { id: true, deviceId: true } } },
       })
       return NextResponse.json({ vehicles })
     }
@@ -54,6 +55,7 @@ export async function GET(
     const vehicles = await prisma.vehicle.findMany({
       where: { propertyId: params.propertyId },
       orderBy: { createdAt: 'desc' },
+      include: { GpsDevice: { select: { id: true, deviceId: true } } },
     })
 
     return NextResponse.json({ vehicles })
