@@ -1132,69 +1132,6 @@ export default function FleetPage() {
                       ) : null}
                     </div>
 
-                    {/* Live data from GPS device */}
-                    {editingVehicle ? (() => {
-                      const gps = gpsByVehicle[editingVehicle.id]
-                      if (!gps) return null
-                      const dtcs = gps.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
-                      const hasDiagnostics = !!gps.milOn || dtcs.length > 0
-                      const obd = gps.obdOdometer != null ? Number(gps.obdOdometer) : NaN
-                      const dist = gps.gpsDistanceMi != null ? Number(gps.gpsDistanceMi) : NaN
-                      const liveMiles = Number.isFinite(obd) && obd > 0 ? obd : (Number.isFinite(dist) && dist > 0 ? dist : NaN)
-                      return (
-                        <div className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden max-w-2xl">
-                          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600 flex items-center gap-1.5">
-                              <Signal className="w-3.5 h-3.5 text-brand-green" />
-                              Live from GPS device
-                            </p>
-                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${gps.status === 'online' ? 'text-brand-green' : 'text-slate-400'}`}>
-                              <span className={`inline-block w-1.5 h-1.5 rounded-full ${gps.status === 'online' ? 'bg-brand-green' : 'bg-slate-300'}`} />
-                              {gps.status === 'online' ? 'Online' : 'Offline'}
-                            </span>
-                          </div>
-
-                          {hasDiagnostics ? (
-                            <div className="px-4 py-3 border-b border-amber-100 bg-amber-50/60">
-                              <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 mb-2 flex items-center gap-1.5">
-                                <Wrench className="w-3.5 h-3.5" />
-                                Diagnostics
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {gps.milOn ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
-                                    <AlertTriangle className="w-3.5 h-3.5" />
-                                    Check engine on
-                                  </span>
-                                ) : null}
-                                {dtcs.map((code: string, i: number) => (
-                                  <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-mono font-semibold">
-                                    <Wrench className="w-3.5 h-3.5" />
-                                    {code}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-100">
-                            <GpsStat icon={Gauge} label="Mileage" value={Number.isFinite(liveMiles) ? `${Math.round(liveMiles).toLocaleString()} mi` : '—'} />
-                            <GpsStat icon={Timer} label="Engine hours" value={gps.motorHours != null ? `${gps.motorHours} hrs` : '—'} />
-                            <GpsStat icon={Fuel} label="Fuel" value={gps.fuelLevel != null ? `${Math.round(gps.fuelLevel)}%` : '—'} />
-                            <GpsStat icon={Thermometer} label="Engine temp" value={gps.engineTemp != null ? `${gps.engineTemp}°C` : '—'} />
-                            <GpsStat icon={Battery} label="Battery" value={gps.batteryVoltage != null ? `${gps.batteryVoltage}V` : '—'} />
-                            <GpsStat icon={Activity} label="Speed" value={gps.speed != null ? `${Math.round(gps.speed)} mph` : '—'} />
-                          </div>
-
-                          <div className="px-4 py-2.5 text-[11px] text-slate-500 flex flex-col gap-1 bg-white">
-                            {gps.vin ? <p><span className="font-semibold text-slate-600">VIN:</span> {gps.vin}</p> : null}
-                            {gps.deviceName ? <p><span className="font-semibold text-slate-600">Device:</span> {gps.deviceName}{gps.deviceModel ? ` · ${gps.deviceModel}` : ''}</p> : null}
-                            {gps.lastSeen ? <p><span className="font-semibold text-slate-600">Last seen:</span> {new Date(gps.lastSeen).toLocaleString()}</p> : null}
-                          </div>
-                        </div>
-                      )
-                    })() : null}
-
                     {editingVehicle ? (
                       <button
                         type="button"
@@ -1228,6 +1165,69 @@ export default function FleetPage() {
                   )}
                 </div>
               </div>
+
+              {/* Live data from GPS device — full width */}
+              {editingVehicle ? (() => {
+                const gps = gpsByVehicle[editingVehicle.id]
+                if (!gps) return null
+                const dtcs = gps.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
+                const hasDiagnostics = !!gps.milOn || dtcs.length > 0
+                const obd = gps.obdOdometer != null ? Number(gps.obdOdometer) : NaN
+                const dist = gps.gpsDistanceMi != null ? Number(gps.gpsDistanceMi) : NaN
+                const liveMiles = Number.isFinite(obd) && obd > 0 ? obd : (Number.isFinite(dist) && dist > 0 ? dist : NaN)
+                return (
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden w-full">
+                    <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600 flex items-center gap-1.5">
+                        <Signal className="w-3.5 h-3.5 text-brand-green" />
+                        Live from GPS device
+                      </p>
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${gps.status === 'online' ? 'text-brand-green' : 'text-slate-400'}`}>
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${gps.status === 'online' ? 'bg-brand-green' : 'bg-slate-300'}`} />
+                        {gps.status === 'online' ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+
+                    {hasDiagnostics ? (
+                      <div className="px-4 py-3 border-b border-amber-100 bg-amber-50/60">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 mb-2 flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5" />
+                          Diagnostics
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {gps.milOn ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              Check engine on
+                            </span>
+                          ) : null}
+                          {dtcs.map((code: string, i: number) => (
+                            <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-mono font-semibold">
+                              <Wrench className="w-3.5 h-3.5" />
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-px bg-slate-100">
+                      <GpsStat icon={Gauge} label="Mileage" value={Number.isFinite(liveMiles) ? `${Math.round(liveMiles).toLocaleString()} mi` : '—'} />
+                      <GpsStat icon={Timer} label="Engine hours" value={gps.motorHours != null ? `${gps.motorHours} hrs` : '—'} />
+                      <GpsStat icon={Fuel} label="Fuel" value={gps.fuelLevel != null ? `${Math.round(gps.fuelLevel)}%` : '—'} />
+                      <GpsStat icon={Thermometer} label="Engine temp" value={gps.engineTemp != null ? `${gps.engineTemp}°C` : '—'} />
+                      <GpsStat icon={Battery} label="Battery" value={gps.batteryVoltage != null ? `${gps.batteryVoltage}V` : '—'} />
+                      <GpsStat icon={Activity} label="Speed" value={gps.speed != null ? `${Math.round(gps.speed)} mph` : '—'} />
+                    </div>
+
+                    <div className="px-4 py-2.5 text-[11px] text-slate-500 flex flex-col gap-1 bg-white">
+                      {gps.vin ? <p><span className="font-semibold text-slate-600">VIN:</span> {gps.vin}</p> : null}
+                      {gps.deviceName ? <p><span className="font-semibold text-slate-600">Device:</span> {gps.deviceName}{gps.deviceModel ? ` · ${gps.deviceModel}` : ''}</p> : null}
+                      {gps.lastSeen ? <p><span className="font-semibold text-slate-600">Last seen:</span> {new Date(gps.lastSeen).toLocaleString()}</p> : null}
+                    </div>
+                  </div>
+                )
+              })() : null}
 
               <div className="pt-6 border-t border-slate-100">
                 <PropertyFormSectionHeader icon={Car} step="Vehicle" title="Vehicle Information" />
