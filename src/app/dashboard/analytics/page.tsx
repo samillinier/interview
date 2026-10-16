@@ -2975,13 +2975,13 @@ export default function AnalyticsPage() {
                         {metrics.map(metric => {
                           const Icon = metric.icon
                           return (
-                            <div key={metric.label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                              <div className="w-9 h-9 bg-brand-green/10 rounded-lg flex items-center justify-center shrink-0">
-                                <Icon className="w-4 h-4 text-brand-green" />
+                            <div key={metric.label} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-5 py-4">
+                              <div className="w-11 h-11 bg-brand-green/10 rounded-xl flex items-center justify-center shrink-0">
+                                <Icon className="w-5 h-5 text-brand-green" />
                               </div>
                               <div className="min-w-0">
-                                <div className="text-xl font-black text-slate-900 leading-none">{metric.value}</div>
-                                <div className="mt-1 text-[11px] font-medium text-slate-500 leading-tight">{metric.label}</div>
+                                <div className="text-3xl font-black text-slate-900 leading-none">{metric.value}</div>
+                                <div className="mt-1.5 text-xs font-medium text-slate-500 leading-tight">{metric.label}</div>
                               </div>
                             </div>
                           )
