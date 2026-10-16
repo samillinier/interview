@@ -2949,7 +2949,7 @@ export default function AnalyticsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 }}
-                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 flex flex-col"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -2962,67 +2962,30 @@ export default function AnalyticsPage() {
                     const c = analytics.corporateAnalytics!
                     const metrics = [
                       { label: 'Purchase Req (week)', value: c.purchaseRequestsThisWeek, icon: ShoppingCart },
-                      { label: 'Purchase Req (total)', value: c.purchaseRequests.total, icon: ShoppingCart },
                       { label: 'Fleet Service Req', value: c.fleetService.total, icon: Wrench },
                       { label: 'Invoices (week)', value: c.invoicesThisWeek, icon: Receipt },
-                      { label: 'Invoices (total)', value: c.invoices, icon: Receipt },
                       { label: 'Forklift Inspections', value: c.forkliftInspections, icon: Forklift },
                       { label: 'Vehicle Inspections', value: c.vehicleInspections, icon: Car },
-                      { label: 'Travel Requests', value: c.travelRequests.total, icon: Plane },
-                      { label: 'Office Supplies', value: c.officeSupplies.total, icon: Package },
-                      { label: 'Apparel Orders', value: c.apparelOrders.total, icon: Shirt },
-                      { label: 'Business Cards', value: c.businessCards.total, icon: CreditCard },
-                      { label: 'Claims', value: c.claims.total, icon: ShieldAlert },
-                      { label: 'Active Licences', value: c.licences.active, icon: FileCheck },
-                      { label: 'Marketing Leads', value: c.marketingLeads.total, icon: Megaphone },
-                      { label: 'Inventory Cycles', value: c.inventoryCycles.total, icon: RefreshCw },
-                      { label: 'Pad Transfers', value: c.padTransfers.total, icon: Truck },
                       { label: 'BOL (Pad Orders)', value: c.padOrders.total, icon: FileText },
+                      { label: 'Pad Transfers', value: c.padTransfers.total, icon: Truck },
                       { label: 'Carpet Pad Orders', value: c.carpetPadOrders.total, icon: Layers },
                     ]
-                    const authRows = [
-                      { label: 'Carpet Pad Orders', ...c.carpetPadOrders },
-                      { label: 'Pad Orders (BOL)', ...c.padOrders },
-                      { label: 'Pad Transfers', ...c.padTransfers },
-                      { label: 'Inventory Cycles', ...c.inventoryCycles },
-                    ]
                     return (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-3">
-                          {metrics.map(metric => {
-                            const Icon = metric.icon
-                            return (
-                              <div key={metric.label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                                <div className="w-9 h-9 bg-brand-green/10 rounded-lg flex items-center justify-center shrink-0">
-                                  <Icon className="w-4 h-4 text-brand-green" />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-xl font-black text-slate-900 leading-none">{metric.value}</div>
-                                  <div className="mt-1 text-[11px] font-medium text-slate-500 leading-tight">{metric.label}</div>
-                                </div>
+                      <div className="grid grid-cols-2 grid-rows-4 gap-3 flex-1">
+                        {metrics.map(metric => {
+                          const Icon = metric.icon
+                          return (
+                            <div key={metric.label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                              <div className="w-9 h-9 bg-brand-green/10 rounded-lg flex items-center justify-center shrink-0">
+                                <Icon className="w-4 h-4 text-brand-green" />
                               </div>
-                            )
-                          })}
-                        </div>
-                        <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
-                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Authorization rate</p>
-                          <div className="space-y-3">
-                            {authRows.map(row => {
-                              const pct = row.total > 0 ? Math.round((row.authorized / row.total) * 100) : 0
-                              return (
-                                <div key={row.label}>
-                                  <div className="mb-1 flex items-center justify-between text-sm">
-                                    <span className="font-medium text-slate-700">{row.label}</span>
-                                    <span className="font-bold text-slate-900 tabular-nums">{row.authorized}/{row.total} · {pct}%</span>
-                                  </div>
-                                  <div className="w-full h-2 rounded-full bg-slate-100">
-                                    <div className="h-2 rounded-full bg-brand-green" style={{ width: `${Math.max(4, pct)}%` }} />
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
+                              <div className="min-w-0">
+                                <div className="text-xl font-black text-slate-900 leading-none">{metric.value}</div>
+                                <div className="mt-1 text-[11px] font-medium text-slate-500 leading-tight">{metric.label}</div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )
                   })()}
