@@ -30,7 +30,6 @@ import {
   FileText,
   AlertTriangle,
   Wrench,
-  Check,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -114,9 +113,6 @@ export default function FleetPage() {
   const [inlineMileageVal, setInlineMileageVal] = useState('')
   const [savingMileageId, setSavingMileageId] = useState<string | null>(null)
   const [gpsByVehicle, setGpsByVehicle] = useState<Record<string, { odometer?: number; obdOdometer?: number; gpsDistanceMi?: number | null; lastSeen?: string; milOn?: boolean; dtcCodes?: string[] }>>({})
-  const [inlineNotesId, setInlineNotesId] = useState<string | null>(null)
-  const [inlineNotesVal, setInlineNotesVal] = useState('')
-  const [savingNotesId, setSavingNotesId] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     category: '',
@@ -511,34 +507,6 @@ export default function FleetPage() {
 
   const hasGpsLink = (vehicle: Vehicle): boolean => Boolean(gpsByVehicle[vehicle.id])
 
-  const startInlineNotes = (vehicle: Vehicle) => {
-    setInlineNotesId(vehicle.id)
-    setInlineNotesVal(vehicle.notes || '')
-  }
-
-  const saveInlineNotes = async (vehicle: Vehicle) => {
-    if (!property) return
-    const trimmed = inlineNotesVal.trim()
-    setSavingNotesId(vehicle.id)
-    try {
-      const res = await fetch(`/api/properties/${property.id}/vehicles/${vehicle.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: trimmed }),
-      })
-      if (!res.ok) throw new Error('Failed to save notes')
-      setVehicles((prev) =>
-        prev.map((v) => (v.id === vehicle.id ? { ...v, notes: trimmed || undefined } : v))
-      )
-      setSuccess('Notes saved!')
-    } catch (e: any) {
-      setError(e?.message || 'Failed to save notes')
-    } finally {
-      setSavingNotesId(null)
-      setInlineNotesId(null)
-    }
-  }
-
   const saveInlineMileage = async (vehicle: Vehicle) => {
     if (!property) return
     const raw = inlineMileageVal.trim()
@@ -802,90 +770,6 @@ export default function FleetPage() {
                               <p className="text-xs text-slate-500 truncate">
                                 {vehicle.plate ? `Plate: ${vehicle.plate}` : vehicle.vin ? `VIN: ${vehicle.vin}` : 'No plate/VIN'}
                               </p>
-
-                              {/* GPS-diagnosed issues */}
-                              {(() => {
-                                const gps = gpsByVehicle[vehicle.id]
-                                const dtcs = gps?.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
-                                if (!gps?.milOn && dtcs.length === 0) return null
-                                return (
-                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                    {gps.milOn ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
-                                        <AlertTriangle className="w-3 h-3" />
-                                        Check engine
-                                      </span>
-                                    ) : null}
-                                    {dtcs.map((code: string, i: number) => (
-                                      <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[11px] font-mono font-semibold">
-                                        <Wrench className="w-3 h-3" />
-                                        {code}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )
-                              })()}
-
-                              {/* Important information — inline editable */}
-                              {inlineNotesId === vehicle.id ? (
-                                <div className="flex items-start gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
-                                  <textarea
-                                    autoFocus
-                                    value={inlineNotesVal}
-                                    onChange={(e) => setInlineNotesVal(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Escape') setInlineNotesId(null)
-                                    }}
-                                    rows={2}
-                                    placeholder="Repair needed, notes from GPS, anything to remember…"
-                                    className="flex-1 min-w-0 px-2 py-1 border-2 border-brand-green rounded-lg text-xs focus:outline-none resize-y"
-                                  />
-                                  <div className="flex flex-col gap-1">
-                                    <button
-                                      type="button"
-                                      disabled={savingNotesId === vehicle.id}
-                                      onClick={() => saveInlineNotes(vehicle)}
-                                      className="p-1.5 rounded-md text-brand-green hover:bg-brand-green/10 disabled:opacity-40"
-                                      title="Save note"
-                                    >
-                                      {savingNotesId === vehicle.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setInlineNotesId(null)}
-                                      className="p-1.5 rounded-md text-slate-400 hover:bg-slate-100"
-                                      title="Cancel"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : vehicle.notes ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); startInlineNotes(vehicle) }}
-                                  className="block text-left mt-1.5 group/note"
-                                  title="Click to edit"
-                                >
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-green uppercase tracking-wide">
-                                    <FileText className="w-3 h-3" />
-                                    Important info
-                                  </span>
-                                  <span className="block text-xs text-slate-600 mt-0.5 line-clamp-2 group-hover/note:text-brand-green">
-                                    {vehicle.notes}
-                                  </span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); startInlineNotes(vehicle) }}
-                                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-brand-green transition-colors"
-                                  title="Add important information"
-                                >
-                                  <FileText className="w-3 h-3" />
-                                  Add important info
-                                </button>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -1184,6 +1068,36 @@ export default function FleetPage() {
                         </span>
                       ) : null}
                     </div>
+
+                    {/* GPS diagnostics */}
+                    {editingVehicle ? (() => {
+                      const gps = gpsByVehicle[editingVehicle.id]
+                      const dtcs = gps?.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
+                      if (!gps?.milOn && dtcs.length === 0) return null
+                      return (
+                        <div className="mt-4 p-3 rounded-xl border border-amber-200 bg-amber-50/60 max-w-lg">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 mb-2 flex items-center gap-1.5">
+                            <Wrench className="w-3.5 h-3.5" />
+                            Diagnostics from GPS device
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {gps.milOn ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Check engine on
+                              </span>
+                            ) : null}
+                            {dtcs.map((code: string, i: number) => (
+                              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-mono font-semibold">
+                                <Wrench className="w-3.5 h-3.5" />
+                                {code}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })() : null}
+
                     {editingVehicle ? (
                       <button
                         type="button"
