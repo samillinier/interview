@@ -1195,7 +1195,7 @@ export default function AnalyticsPage() {
                 const chartWidth = 720
                 const chartHeight = 260
                 const paddingX = 28
-                const paddingTop = 20
+                const paddingTop = 46
                 const paddingBottom = 42
                 const baselineY = chartHeight - paddingBottom
                 const innerHeight = baselineY - paddingTop
@@ -1288,15 +1288,16 @@ export default function AnalyticsPage() {
 
                               return (
                                 <g key={`${point.month}-${index}`}>
-                                  {(isPeak || isLatest) && (
-                                    <circle
-                                      cx={point.x}
-                                      cy={point.y}
-                                      r={14}
-                                      fill={isPeak ? '#65a30d' : '#84cc16'}
-                                      fillOpacity="0.12"
-                                    />
-                                  )}
+                                  <text
+                                    x={point.x}
+                                    y={Math.max(20, point.y - 24)}
+                                    textAnchor="middle"
+                                    fill="#0f172a"
+                                    fontSize="15"
+                                    fontWeight="700"
+                                  >
+                                    {point.count}
+                                  </text>
                                   <circle
                                     cx={point.x}
                                     cy={point.y}
@@ -1306,14 +1307,13 @@ export default function AnalyticsPage() {
                                     strokeWidth="3"
                                   />
                                   {(isPeak || isLatest) && (
-                                    <text
-                                      x={point.x}
-                                      y={Math.max(20, point.y - 22)}
-                                      textAnchor="middle"
-                                      className="fill-slate-900 text-[15px] font-bold"
-                                    >
-                                      {point.count}
-                                    </text>
+                                    <circle
+                                      cx={point.x}
+                                      cy={point.y}
+                                      r={14}
+                                      fill={isPeak ? '#65a30d' : '#84cc16'}
+                                      fillOpacity="0.12"
+                                    />
                                   )}
                                 </g>
                               )
