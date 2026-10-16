@@ -639,7 +639,7 @@ function DeviceCard({
       <div className="flex items-center gap-3">
         <div className="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
           <div
-            className="absolute inset-0 rounded-lg bg-white shadow-sm"
+            className="absolute inset-0 rounded-full bg-white shadow-sm"
             style={{
               border: `2px solid ${
                 device.status === 'online'
@@ -653,7 +653,7 @@ function DeviceCard({
           <img
             src={device.vehiclePhotoUrl || '/vehicle-marker.png'}
             alt={device.vehicleName || ''}
-            className="relative z-[1] w-11 h-11 object-contain"
+            className="relative z-[1] w-10 h-10 object-cover rounded-full"
           />
         </div>
         <div className="flex-1 min-w-0">
