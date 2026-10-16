@@ -54,6 +54,7 @@ interface CallRecord {
   reasonDescription?: string
   recording?: { id: string; contentUri: string }
   transport?: string
+  workroom?: string | null
 }
 
 interface CallLogResponse {
@@ -127,6 +128,7 @@ export default function RingCentralPage() {
   const [directionFilter, setDirectionFilter] = useState<"all" | "Inbound" | "Outbound">("all")
   const [missedFilter, setMissedFilter] = useState(false)
   const [callTypeFilter, setCallTypeFilter] = useState<"all" | "missed" | "inbound" | "outbound">("all")
+  const [workroomFilter, setWorkroomFilter] = useState("")
   const [searchPhone, setSearchPhone] = useState("")
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
@@ -280,6 +282,16 @@ export default function RingCentralPage() {
     ? rawRecords.filter(r => r.result === "Missed")
     : rawRecords
 
+  // Derive available workrooms from the current records (for the filter dropdown)
+  const workroomOptions = Array.from(
+    new Set(rawRecords.map(r => r.workroom).filter((w): w is string => !!w && w.trim().length > 0))
+  ).sort((a, b) => a.localeCompare(b))
+
+  // Apply workroom filter client-side
+  if (workroomFilter) {
+    displayRecords = displayRecords.filter(r => r.workroom === workroomFilter)
+  }
+
   // Per-page counts — simple and always works
   let inbound = 0, outbound = 0, missed = 0
   for (const r of rawRecords) {
@@ -332,7 +344,7 @@ export default function RingCentralPage() {
               >
                 <Filter className="w-4 h-4" />
                 Filters
-                {(missedFilter || directionFilter !== "all" || searchPhone) && (
+                {(missedFilter || directionFilter !== "all" || searchPhone || workroomFilter) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-white" />
                 )}
               </button>
@@ -408,7 +420,7 @@ export default function RingCentralPage() {
                 className="overflow-hidden mb-6"
               >
                 <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Date From</label>
                       <input type="date" value={dateFrom}
@@ -444,6 +456,17 @@ export default function RingCentralPage() {
                         onChange={(e) => { setSearchPhone(e.target.value); setPage(1) }}
                         placeholder="Filter by number..."
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Workroom</label>
+                      <select value={workroomFilter}
+                        onChange={(e) => { setWorkroomFilter(e.target.value); setPage(1) }}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none text-sm bg-white">
+                        <option value="">All Workrooms</option>
+                        {workroomOptions.map(w => (
+                          <option key={w} value={w}>{w}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
@@ -541,6 +564,11 @@ export default function RingCentralPage() {
                             <td className="px-4 py-3 text-sm text-slate-700 font-mono">
                               {formatPhone(call.to?.phoneNumber)}
                               {call.to?.name && <div className="text-xs text-slate-400">{call.to.name}</div>}
+                              {call.workroom && (
+                                <span className="mt-1 inline-flex px-1.5 py-0.5 rounded bg-brand-green/10 text-brand-green-dark text-[10px] font-semibold font-sans">
+                                  {call.workroom}
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
                               {formatDuration(call.duration)}

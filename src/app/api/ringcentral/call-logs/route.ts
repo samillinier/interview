@@ -1,7 +1,55 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getCallLogs, type GetCallLogsParams } from "@/lib/ringCentral"
+import { getCallLogs, type GetCallLogsParams, type RCCallLogRecord } from "@/lib/ringCentral"
+import prisma from "@/lib/db"
+
+function normalizePhone(value?: string): string {
+  if (!value) return ""
+  return value.replace(/\D/g, "")
+}
+
+/**
+ * Build a lookup of phone-number/name -> workroom from the synced contact
+ * directory, then annotate each call record with its detected workroom.
+ */
+async function attachWorkrooms(records: RCCallLogRecord[]) {
+  const contacts = await prisma.contact.findMany({
+    where: { workroom: { not: null } },
+    select: { name: true, phone: true, workroom: true },
+  })
+
+  const phoneMap = new Map<string, string>()
+  const nameMap = new Map<string, string>()
+  for (const c of contacts) {
+    const wr = (c.workroom || "").trim()
+    if (!wr) continue
+    if (c.phone) {
+      const digits = normalizePhone(c.phone)
+      if (digits && !phoneMap.has(digits)) phoneMap.set(digits, wr)
+    }
+    if (c.name) {
+      const key = c.name.trim().toLowerCase()
+      if (key && !nameMap.has(key)) nameMap.set(key, wr)
+    }
+  }
+
+  return records.map((rec) => {
+    const fromPhone = normalizePhone(rec.from?.phoneNumber)
+    const toPhone = normalizePhone(rec.to?.phoneNumber)
+    const fromName = rec.from?.name?.trim().toLowerCase() || ""
+    const toName = rec.to?.name?.trim().toLowerCase() || ""
+
+    const workroom =
+      phoneMap.get(fromPhone) ||
+      phoneMap.get(toPhone) ||
+      nameMap.get(fromName) ||
+      nameMap.get(toName) ||
+      null
+
+    return { ...rec, workroom }
+  })
+}
 
 export const dynamic = "force-dynamic"
 
@@ -42,7 +90,15 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await getCallLogs(params)
-    return NextResponse.json(data)
+
+    // Annotate records with a workroom when the synced directory can resolve one.
+    try {
+      const records = await attachWorkrooms(data.records || [])
+      return NextResponse.json({ ...data, records })
+    } catch (attachError: any) {
+      console.error("RingCentral workroom attach error:", attachError)
+      return NextResponse.json(data)
+    }
   } catch (error: any) {
     console.error("RingCentral call logs error:", error)
     const message = error?.message || "Failed to fetch call logs"
