@@ -637,9 +637,9 @@ function DeviceCard({
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className="relative w-9 h-9 flex-shrink-0 flex items-center justify-center">
+        <div className="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
           <div
-            className="absolute inset-0 rounded-full bg-white shadow-sm"
+            className="absolute inset-0 rounded-lg bg-white shadow-sm"
             style={{
               border: `2px solid ${
                 device.status === 'online'
@@ -651,9 +651,9 @@ function DeviceCard({
             }}
           />
           <img
-            src="/vehicle-marker.png"
-            alt=""
-            className="relative z-[1] w-7 h-7 object-contain"
+            src={device.vehiclePhotoUrl || '/vehicle-marker.png'}
+            alt={device.vehicleName || ''}
+            className="relative z-[1] w-11 h-11 object-contain"
           />
         </div>
         <div className="flex-1 min-w-0">
@@ -828,18 +828,7 @@ function DeviceTelemetry({
 
   return (
     <div className="p-4">
-      <div className="flex items-start gap-3 mb-3">
-        {device.vehiclePhotoUrl ? (
-          <div className="w-[5.75rem] h-[4.25rem] rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0">
-            <img
-              src={device.vehiclePhotoUrl}
-              alt={device.vehicleName || 'Vehicle'}
-              className="w-full h-full object-contain"
-            />
-          </div>
-        ) : null}
-        <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-3">
         <div className={'w-2 h-2 rounded-full shrink-0 ' + (
           device.status === 'online' ? 'bg-green-500' : 'bg-slate-300'
         )} />
@@ -931,13 +920,11 @@ function DeviceTelemetry({
         )}
       </div>
       {renameError && (
-        <p className="mt-1 text-[10px] text-amber-600">{renameError}</p>
+        <p className="mb-2 text-[10px] text-amber-600">{renameError}</p>
       )}
       {resetError && (
-        <p className="mt-1 text-[10px] text-amber-600">{resetError}</p>
+        <p className="mb-2 text-[10px] text-amber-600">{resetError}</p>
       )}
-        </div>
-      </div>
 
       {/* When Trip History is open, hide vehicle details so the feed has room */}
       {!historyOpen && device.location && (
