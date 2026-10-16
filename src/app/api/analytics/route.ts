@@ -768,6 +768,181 @@ export async function GET(request: NextRequest) {
       count: monthBucket[i] || 0,
     }))
 
+    // ========== CORPORATE ANALYTICS ==========
+    const [
+      claims,
+      travelRequests,
+      purchaseRequests,
+      officeSupplyOrders,
+      apparelOrders,
+      businessCardOrders,
+      fleetServiceRequests,
+      vehicleInspectionCount,
+      forkliftInspectionCount,
+      carpetPadOrders,
+      padOrders,
+      padTransfers,
+      inventoryCycles,
+      licences,
+      invoiceCount,
+    ] = await Promise.all([
+      prisma.claim.findMany({ select: { status: true, amount: true, workroom: true, category: true } }),
+      prisma.travelRequest.findMany({ select: { status: true, chargeWorkroom: true } }),
+      prisma.purchaseRequest.findMany({ select: { status: true } }),
+      prisma.officeSupplyOrder.findMany({ select: { status: true } }),
+      prisma.apparelOrder.findMany({ select: { status: true } }),
+      prisma.businessCardOrder.findMany({ select: { status: true } }),
+      prisma.fleetServiceRequest.findMany({ select: { status: true } }),
+      prisma.vehicleInspection.count(),
+      prisma.forkliftInspection.count(),
+      prisma.carpetPadOrder.findMany({ select: { authorized: true } }),
+      prisma.padOrder.findMany({ select: { authorized: true } }),
+      prisma.padTransfer.findMany({ select: { authorized: true } }),
+      prisma.inventoryCycle.findMany({ select: { authorized: true } }),
+      prisma.licence.findMany({ select: { isActive: true, county: true } }),
+      prisma.installerInvoice.count(),
+    ])
+
+    // Generic status summarizer for corporate request-style tools.
+    const summarizeStatus = (rows: Array<{ status?: string | null }>) => {
+      const pending = rows.filter(r => ['pending', 'open', 'new', 'submitted'].includes((r.status || 'pending').toLowerCase())).length
+      const approved = rows.filter(r => ['approved', 'reviewed', 'completed', 'closed', 'resolved', 'accepted'].includes((r.status || '').toLowerCase())).length
+      const denied = rows.filter(r => ['denied', 'rejected', 'cancelled', 'declined'].includes((r.status || '').toLowerCase())).length
+      return { total: rows.length, pending, approved, denied }
+    }
+
+    const workroomTally = (rows: Array<{ workroom?: string | null; chargeWorkroom?: string | null }>) => {
+      const counts: Record<string, number> = {}
+      rows.forEach(r => {
+        const key = ((r.workroom ?? r.chargeWorkroom) || '').trim()
+        if (key) counts[key] = (counts[key] || 0) + 1
+      })
+      return Object.entries(counts)
+        .map(([workroom, count]) => ({ workroom, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+    }
+
+    const claimsByCategory: Record<string, number> = {}
+    claims.forEach(c => {
+      const key = (c.category || 'Uncategorized').trim()
+      if (key) claimsByCategory[key] = (claimsByCategory[key] || 0) + 1
+    })
+    const claimsByCategoryRows = Object.entries(claimsByCategory)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+
+    const authorizedTally = (rows: Array<{ authorized: boolean }>) => ({
+      total: rows.length,
+      authorized: rows.filter(r => r.authorized === true).length,
+      unauthorized: rows.filter(r => r.authorized !== true).length,
+    })
+
+    const toNumber = (v: unknown): number => {
+      if (v == null) return 0
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+      if (typeof v === 'string') {
+        const n = Number(v.replace(/[^0-9.-]/g, ''))
+        return Number.isFinite(n) ? n : 0
+      }
+      if (typeof (v as any)?.toNumber === 'function') return (v as any).toNumber() || 0
+      const n = Number(v)
+      return Number.isFinite(n) ? n : 0
+    }
+
+    const corporateAnalytics = {
+      claims: {
+        total: claims.length,
+        open: claims.filter(c => ['open', 'in_review'].includes((c.status || 'open').toLowerCase())).length,
+        closed: claims.filter(c => (c.status || '').toLowerCase() === 'closed').length,
+        denied: claims.filter(c => (c.status || '').toLowerCase() === 'denied').length,
+        totalAmount: claims.reduce((sum, c) => sum + toNumber(c.amount), 0),
+        byWorkroom: workroomTally(claims),
+        byCategory: claimsByCategoryRows,
+      },
+      travelRequests: summarizeStatus(travelRequests),
+      purchaseRequests: summarizeStatus(purchaseRequests),
+      officeSupplies: summarizeStatus(officeSupplyOrders),
+      apparelOrders: summarizeStatus(apparelOrders),
+      businessCards: summarizeStatus(businessCardOrders),
+      fleetService: { total: fleetServiceRequests.length, open: fleetServiceRequests.filter(r => (r.status || 'open').toLowerCase() === 'open').length, completed: fleetServiceRequests.filter(r => (r.status || '').toLowerCase() === 'completed').length },
+      vehicleInspections: vehicleInspectionCount,
+      forkliftInspections: forkliftInspectionCount,
+      carpetPadOrders: authorizedTally(carpetPadOrders),
+      padOrders: authorizedTally(padOrders),
+      padTransfers: authorizedTally(padTransfers),
+      inventoryCycles: authorizedTally(inventoryCycles),
+      licences: {
+        total: licences.length,
+        active: licences.filter(l => l.isActive === true).length,
+        inactive: licences.filter(l => l.isActive !== true).length,
+      },
+      invoices: invoiceCount,
+    }
+
+    // ========== PROPERTY PORTAL ANALYTICS ==========
+    const [
+      propertyCount,
+      inventoryRows,
+      locationCount,
+      vehicleRows,
+      gpsDeviceRows,
+      safetyWalkCount,
+    ] = await Promise.all([
+      prisma.property.count(),
+      prisma.inventory.findMany({ select: { status: true, category: true, usagePlacement: true, cost: true, quantity: true } }),
+      prisma.location.count(),
+      prisma.vehicle.findMany({ select: { category: true } }),
+      prisma.gpsDevice.findMany({ select: { status: true } }),
+      prisma.propertySafetyWalk.count(),
+    ])
+
+    const inventoryByCategory: Record<string, number> = {}
+    inventoryRows.forEach(i => {
+      const key = (i.category || 'Uncategorized').trim()
+      if (key) inventoryByCategory[key] = (inventoryByCategory[key] || 0) + 1
+    })
+    const inventoryCategoryRows = Object.entries(inventoryByCategory)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+
+    const propertyAnalytics = {
+      totalProperties: propertyCount,
+      inventory: {
+        total: inventoryRows.length,
+        active: inventoryRows.filter(i => i.status === 'active').length,
+        retired: inventoryRows.filter(i => ['discontinued', 'retired', 'inactive'].includes((i.status || '').toLowerCase())).length,
+        inUse: inventoryRows.filter(i => i.usagePlacement === 'in_use').length,
+        inStorage: inventoryRows.filter(i => i.usagePlacement === 'in_storage').length,
+        checkedOut: inventoryRows.filter(i => i.usagePlacement === 'checked_out').length,
+        totalValue: inventoryRows.reduce((sum, i) => sum + (Number(i.cost) || 0) * (Number(i.quantity) || 0), 0),
+        byCategory: inventoryCategoryRows,
+      },
+      locations: locationCount,
+      vehicles: {
+        total: vehicleRows.length,
+        byCategory: (() => {
+          const counts: Record<string, number> = {}
+          vehicleRows.forEach(v => {
+            const key = (v.category || 'Uncategorized').trim()
+            if (key) counts[key] = (counts[key] || 0) + 1
+          })
+          return Object.entries(counts)
+            .map(([category, count]) => ({ category, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 6)
+        })(),
+      },
+      gpsDevices: {
+        total: gpsDeviceRows.length,
+        online: gpsDeviceRows.filter(d => (d.status || '').toLowerCase() === 'online').length,
+        offline: gpsDeviceRows.filter(d => (d.status || '').toLowerCase() !== 'online').length,
+      },
+      safetyWalks: safetyWalkCount,
+    }
+
     return NextResponse.json(
       {
       totalInstallers,
@@ -809,6 +984,8 @@ export async function GET(request: NextRequest) {
       backgroundAnalytics,
       registrationByWeekday,
       registrationByCalendarMonth,
+      corporateAnalytics,
+      propertyAnalytics,
     },
       { headers: noStoreHeaders }
     )

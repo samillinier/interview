@@ -39,6 +39,16 @@ import {
   ClipboardList,
   ClipboardCheck,
   Megaphone,
+  Plane,
+  ShoppingCart,
+  Package,
+  Shirt,
+  Forklift,
+  Layers,
+  Boxes,
+  Truck,
+  Receipt,
+  Navigation,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
@@ -233,6 +243,48 @@ interface AnalyticsData {
   }
   registrationByWeekday?: { day: string; count: number }[]
   registrationByCalendarMonth?: { month: string; count: number }[]
+  corporateAnalytics?: {
+    claims: {
+      total: number
+      open: number
+      closed: number
+      denied: number
+      totalAmount: number
+      byWorkroom: { workroom: string; count: number }[]
+      byCategory: { category: string; count: number }[]
+    }
+    travelRequests: { total: number; pending: number; approved: number; denied: number }
+    purchaseRequests: { total: number; pending: number; approved: number; denied: number }
+    officeSupplies: { total: number; pending: number; approved: number; denied: number }
+    apparelOrders: { total: number; pending: number; approved: number; denied: number }
+    businessCards: { total: number; pending: number; approved: number; denied: number }
+    fleetService: { total: number; open: number; completed: number }
+    vehicleInspections: number
+    forkliftInspections: number
+    carpetPadOrders: { total: number; authorized: number; unauthorized: number }
+    padOrders: { total: number; authorized: number; unauthorized: number }
+    padTransfers: { total: number; authorized: number; unauthorized: number }
+    inventoryCycles: { total: number; authorized: number; unauthorized: number }
+    licences: { total: number; active: number; inactive: number }
+    invoices: number
+  }
+  propertyAnalytics?: {
+    totalProperties: number
+    inventory: {
+      total: number
+      active: number
+      retired: number
+      inUse: number
+      inStorage: number
+      checkedOut: number
+      totalValue: number
+      byCategory: { category: string; count: number }[]
+    }
+    locations: number
+    vehicles: { total: number; byCategory: { category: string; count: number }[] }
+    gpsDevices: { total: number; online: number; offline: number }
+    safetyWalks: number
+  }
 }
 
 function SectionHeader({
@@ -622,6 +674,8 @@ export default function AnalyticsPage() {
               <a href="#engagement" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Engagement</a>
               <a href="#account" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Account</a>
               <a href="#quality" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Quality</a>
+              <a href="#corporate" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Corporate</a>
+              <a href="#property" className="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-700">Property</a>
             </div>
           </div>
 
@@ -2408,6 +2462,400 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                   </div>
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {/* Corporate Operations */}
+          {analytics.corporateAnalytics && (
+            <div id="corporate" className="scroll-mt-24 mt-10">
+              <SectionHeader
+                title="Corporate Operations"
+                subtitle="Order volume, claim activity, fleet upkeep, and compliance across all corporate tools."
+                icon={<Building2 className="w-5 h-5" />}
+              />
+
+              {/* Request volume cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                {(() => {
+                  const c = analytics.corporateAnalytics
+                  const cards = [
+                    { label: 'Claims', total: c.claims.total, icon: ShieldAlert, hint: `${c.claims.open} open` },
+                    { label: 'Travel Requests', total: c.travelRequests.total, icon: Plane, hint: `${c.travelRequests.pending} pending` },
+                    { label: 'Purchase Requests', total: c.purchaseRequests.total, icon: ShoppingCart, hint: `${c.purchaseRequests.pending} pending` },
+                    { label: 'Office Supplies', total: c.officeSupplies.total, icon: Package, hint: `${c.officeSupplies.pending} pending` },
+                    { label: 'Apparel Orders', total: c.apparelOrders.total, icon: Shirt, hint: `${c.apparelOrders.pending} pending` },
+                    { label: 'Business Cards', total: c.businessCards.total, icon: CreditCard, hint: `${c.businessCards.pending} pending` },
+                    { label: 'Fleet Service', total: c.fleetService.total, icon: Car, hint: `${c.fleetService.open} open` },
+                    { label: 'Licences', total: c.licences.total, icon: FileCheck, hint: `${c.licences.active} active` },
+                  ]
+                  return cards.map((card, i) => {
+                    const Icon = card.icon
+                    return (
+                      <motion.div
+                        key={card.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-3xl leading-none font-black tracking-tight text-slate-900">{card.total}</h3>
+                            <p className="mt-2 text-sm font-semibold text-slate-700">{card.label}</p>
+                            <p className="mt-1 text-xs text-slate-500">{card.hint}</p>
+                          </div>
+                          <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center shrink-0">
+                            <Icon className="w-5 h-5 text-brand-green" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  })
+                })()}
+              </div>
+
+              {/* Claims overview + authorized operations */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Claims Overview</h2>
+                      <p className="mt-1 text-sm text-slate-500">Volume, exposure, and top categories.</p>
+                    </div>
+                    <AlertTriangle className="w-5 h-5 text-slate-400" />
+                  </div>
+                  {(() => {
+                    const cl = analytics.corporateAnalytics.claims
+                    const statusRows = [
+                      { label: 'Open / In review', value: cl.open, color: 'bg-amber-400' },
+                      { label: 'Closed', value: cl.closed, color: 'bg-brand-green' },
+                      { label: 'Denied', value: cl.denied, color: 'bg-red-400' },
+                    ]
+                    const maxStatus = Math.max(1, ...statusRows.map(r => r.value))
+                    const maxCat = Math.max(1, ...cl.byCategory.map(r => r.count))
+                    return (
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Total claims</div>
+                            <div className="mt-1 text-2xl font-black text-slate-900">{cl.total}</div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total exposure</div>
+                            <div className="mt-1 text-2xl font-black text-slate-900">
+                              {cl.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          {statusRows.map(r => (
+                            <div key={r.label}>
+                              <div className="mb-1 flex items-center justify-between text-sm">
+                                <span className="font-medium text-slate-700">{r.label}</span>
+                                <span className="font-bold text-slate-900">{r.value}</span>
+                              </div>
+                              <div className="w-full h-2 rounded-full bg-slate-100">
+                                <div className={`h-2 rounded-full ${r.color}`} style={{ width: `${Math.max(4, (r.value / maxStatus) * 100)}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {cl.byCategory.length > 0 && (
+                          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
+                            <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
+                              <span>Claims by category</span>
+                              <span>Max {maxCat}</span>
+                            </div>
+                            <div className="space-y-2">
+                              {cl.byCategory.slice(0, 5).map(r => (
+                                <div key={r.category} className="flex items-center gap-3">
+                                  <span className="w-32 shrink-0 truncate text-xs font-medium text-slate-700">{r.category}</span>
+                                  <div className="flex-1">
+                                    <div className="w-full h-1.5 rounded-full bg-slate-200">
+                                      <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${(r.count / maxCat) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                  <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Operations & Inspections</h2>
+                      <p className="mt-1 text-sm text-slate-500">Authorization status and maintenance activity.</p>
+                    </div>
+                    <ClipboardCheck className="w-5 h-5 text-slate-400" />
+                  </div>
+                  {(() => {
+                    const c = analytics.corporateAnalytics
+                    const ops = [
+                      { label: 'Carpet Pad Orders', ...c.carpetPadOrders, icon: Layers },
+                      { label: 'Pad Orders', ...c.padOrders, icon: Boxes },
+                      { label: 'Pad Transfers', ...c.padTransfers, icon: Truck },
+                      { label: 'Inventory Cycles', ...c.inventoryCycles, icon: RefreshCw },
+                    ]
+                    const inspections = [
+                      { label: 'Vehicle Inspections', value: c.vehicleInspections, icon: Car },
+                      { label: 'Forklift Inspections', value: c.forkliftInspections, icon: Forklift },
+                      { label: 'Installer Invoices', value: c.invoices, icon: Receipt },
+                    ]
+                    return (
+                      <div className="space-y-5">
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Authorized operations</p>
+                          <div className="space-y-3">
+                            {ops.map(op => {
+                              const Icon = op.icon
+                              const pct = op.total > 0 ? Math.round((op.authorized / op.total) * 100) : 0
+                              return (
+                                <div key={op.label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                                  <div className="w-9 h-9 bg-brand-green/10 rounded-lg flex items-center justify-center shrink-0">
+                                    <Icon className="w-4 h-4 text-brand-green" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="truncate text-sm font-semibold text-slate-800">{op.label}</span>
+                                      <span className="text-sm font-bold text-slate-900 tabular-nums">{op.authorized}/{op.total}</span>
+                                    </div>
+                                    <div className="mt-1.5 w-full h-1.5 rounded-full bg-slate-200">
+                                      <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                  <span className="text-xs font-semibold text-brand-green-dark tabular-nums w-10 text-right">{pct}%</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Maintenance & documents</p>
+                          <div className="grid grid-cols-3 gap-3">
+                            {inspections.map(item => {
+                              const Icon = item.icon
+                              return (
+                                <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3 text-center">
+                                  <Icon className="mx-auto mb-2 w-5 h-5 text-brand-green" />
+                                  <div className="text-xl font-black text-slate-900">{item.value}</div>
+                                  <div className="text-[11px] font-medium text-slate-500 leading-tight">{item.label}</div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {/* Property Portal */}
+          {analytics.propertyAnalytics && (
+            <div id="property" className="scroll-mt-24 mt-10">
+              <SectionHeader
+                title="Property Portal"
+                subtitle="Assets, facilities, fleet, and GPS health across every property account."
+                icon={<Building2 className="w-5 h-5" />}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                {(() => {
+                  const p = analytics.propertyAnalytics
+                  const cards = [
+                    { label: 'Property Accounts', value: p.totalProperties, icon: Building2, hint: 'Registered portals' },
+                    { label: 'Equipment Items', value: p.inventory.total, icon: Boxes, hint: `${p.inventory.active} active` },
+                    { label: 'Facility Locations', value: p.locations, icon: MapPin, hint: 'Tracked sites' },
+                    { label: 'Fleet Vehicles', value: p.vehicles.total, icon: Truck, hint: 'Across properties' },
+                    { label: 'GPS Devices', value: p.gpsDevices.total, icon: Navigation, hint: `${p.gpsDevices.online} online` },
+                    { label: 'Safety Walks', value: p.safetyWalks, icon: ClipboardCheck, hint: 'Completed inspections' },
+                  ]
+                  return cards.map((card, i) => {
+                    const Icon = card.icon
+                    return (
+                      <motion.div
+                        key={card.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-3xl leading-none font-black tracking-tight text-slate-900">{card.value}</h3>
+                            <p className="mt-2 text-sm font-semibold text-slate-700">{card.label}</p>
+                            <p className="mt-1 text-xs text-slate-500">{card.hint}</p>
+                          </div>
+                          <div className="w-10 h-10 bg-brand-green/10 rounded-xl flex items-center justify-center shrink-0">
+                            <Icon className="w-5 h-5 text-brand-green" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  })
+                })()}
+              </div>
+
+              {/* Inventory + GPS breakdown */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Equipment Breakdown</h2>
+                      <p className="mt-1 text-sm text-slate-500">Usage placement and top categories.</p>
+                    </div>
+                    <Boxes className="w-5 h-5 text-slate-400" />
+                  </div>
+                  {(() => {
+                    const inv = analytics.propertyAnalytics.inventory
+                    const placement = [
+                      { label: 'In use', value: inv.inUse, color: 'bg-brand-green' },
+                      { label: 'In storage', value: inv.inStorage, color: 'bg-lime-400' },
+                      { label: 'Checked out', value: inv.checkedOut, color: 'bg-sky-400' },
+                      { label: 'Retired', value: inv.retired, color: 'bg-slate-400' },
+                    ]
+                    const maxPlacement = Math.max(1, ...placement.map(r => r.value))
+                    const maxCat = Math.max(1, ...inv.byCategory.map(r => r.count))
+                    return (
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Estimated asset value</div>
+                          <div className="mt-1 text-2xl font-black text-slate-900">
+                            {inv.totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+                          </div>
+                          <div className="text-sm text-slate-500">{inv.total} items tracked</div>
+                        </div>
+                        <div className="space-y-3">
+                          {placement.map(r => (
+                            <div key={r.label}>
+                              <div className="mb-1 flex items-center justify-between text-sm">
+                                <span className="font-medium text-slate-700">{r.label}</span>
+                                <span className="font-bold text-slate-900">{r.value}</span>
+                              </div>
+                              <div className="w-full h-2 rounded-full bg-slate-100">
+                                <div className={`h-2 rounded-full ${r.color}`} style={{ width: `${Math.max(4, (r.value / maxPlacement) * 100)}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {inv.byCategory.length > 0 && (
+                          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
+                            <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-500">
+                              <span>Top categories</span>
+                              <span>Max {maxCat}</span>
+                            </div>
+                            <div className="space-y-2">
+                              {inv.byCategory.slice(0, 5).map(r => (
+                                <div key={r.category} className="flex items-center gap-3">
+                                  <span className="w-32 shrink-0 truncate text-xs font-medium text-slate-700">{r.category}</span>
+                                  <div className="flex-1">
+                                    <div className="w-full h-1.5 rounded-full bg-slate-200">
+                                      <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${(r.count / maxCat) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                  <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">GPS & Fleet Health</h2>
+                      <p className="mt-1 text-sm text-slate-500">Device connectivity and vehicle categories.</p>
+                    </div>
+                    <Navigation className="w-5 h-5 text-slate-400" />
+                  </div>
+                  {(() => {
+                    const p = analytics.propertyAnalytics
+                    const online = p.gpsDevices.online
+                    const offline = p.gpsDevices.offline
+                    const total = p.gpsDevices.total
+                    const onlinePct = total > 0 ? Math.round((online / total) * 100) : 0
+                    const maxVeh = Math.max(1, ...p.vehicles.byCategory.map(r => r.count))
+                    return (
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-brand-green/5 p-5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">GPS connectivity</div>
+                              <div className="mt-2 text-4xl font-black tracking-tight text-slate-900">{onlinePct}%</div>
+                              <div className="mt-2 text-sm text-slate-500">{online} of {total} devices online</div>
+                            </div>
+                            <div className="relative h-28 w-28 shrink-0 rounded-full" style={{ background: `conic-gradient(#65a30d 0% ${onlinePct}%, #e2e8f0 ${onlinePct}% 100%)` }}>
+                              <div className="absolute inset-[18%] rounded-full bg-white flex items-center justify-center">
+                                <Navigation className="w-6 h-6 text-brand-green" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center">
+                              <div className="text-lg font-black text-emerald-700">{online}</div>
+                              <div className="text-[11px] font-medium text-emerald-600">Online</div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                              <div className="text-lg font-black text-slate-700">{offline}</div>
+                              <div className="text-[11px] font-medium text-slate-500">Offline</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Vehicles by category</p>
+                          {p.vehicles.byCategory.length > 0 ? (
+                            <div className="space-y-2">
+                              {p.vehicles.byCategory.map(r => (
+                                <div key={r.category} className="flex items-center gap-3">
+                                  <span className="w-28 shrink-0 truncate text-xs font-medium text-slate-700">{r.category}</span>
+                                  <div className="flex-1">
+                                    <div className="w-full h-1.5 rounded-full bg-slate-200">
+                                      <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${(r.count / maxVeh) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                  <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-400">No vehicle categories recorded.</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </motion.div>
               </div>
             </div>
