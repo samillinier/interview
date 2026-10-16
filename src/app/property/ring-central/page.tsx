@@ -401,11 +401,11 @@ export default function RingCentralPage() {
                   count={outbound}
                 />
               </div>
-              <div className="flex-1 min-w-[160px] sm:ml-auto">
+              <div className="sm:ml-auto">
                 <select
                   value={workroomFilter}
                   onChange={(e) => { setWorkroomFilter(e.target.value); setPage(1) }}
-                  className="w-full px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium"
+                  className="w-full sm:w-auto px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium min-w-[160px]"
                 >
                   <option value="all">All Workrooms</option>
                   {availableWorkrooms.map((opt) => (
