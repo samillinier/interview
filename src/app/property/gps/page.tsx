@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import {
@@ -66,7 +66,7 @@ interface PropertyProfile {
 
 const POLL_INTERVAL_MS = 30000 // 30 seconds between GPS position polls
 
-export default function GPSPage() {
+function GPSPageInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
@@ -1285,6 +1285,20 @@ function DeviceTelemetry({
         )
       })()}
     </div>
+  )
+}
+
+export default function GPSPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <LogoHeartbeatLoader />
+        </div>
+      }
+    >
+      <GPSPageInner />
+    </Suspense>
   )
 }
 
