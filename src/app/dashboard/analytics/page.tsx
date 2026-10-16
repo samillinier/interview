@@ -267,6 +267,9 @@ interface AnalyticsData {
     inventoryCycles: { total: number; authorized: number; unauthorized: number }
     licences: { total: number; active: number; inactive: number }
     invoices: number
+    marketingLeads: { total: number; byStatus: { status: string; count: number }[] }
+    bolByWorkroom: { workroom: string; count: number }[]
+    travelRequestsByWorkroom: { workroom: string; count: number }[]
   }
   propertyAnalytics?: {
     totalProperties: number
@@ -279,11 +282,27 @@ interface AnalyticsData {
       checkedOut: number
       totalValue: number
       byCategory: { category: string; count: number }[]
+      byCondition: { condition: string; count: number }[]
+      byWarehouse: { warehouse: string; count: number }[]
+      warrantyExpiring30Days: number
+      warrantyExpiring90Days: number
+      warrantyExpired: number
     }
     locations: number
     vehicles: { total: number; byCategory: { category: string; count: number }[] }
     gpsDevices: { total: number; online: number; offline: number }
-    safetyWalks: number
+    safetyWalks: {
+      total: number
+      withAnalytics: number
+      completionPercent: number
+      totalItems: number
+      checkedItems: number
+      uncheckedItems: number
+      actionItems: number
+      actionPlanCount: number
+      averageDurationMinutes: number
+      byWorkroom: { workroom: string; count: number }[]
+    }
   }
 }
 
@@ -2666,6 +2685,116 @@ export default function AnalyticsPage() {
                   })()}
                 </motion.div>
               </div>
+
+              {/* BOL, travel & marketing leads */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">BOL & Travel by Workroom</h2>
+                      <p className="mt-1 text-sm text-slate-500">Order volume and travel requests by location.</p>
+                    </div>
+                    <Truck className="w-5 h-5 text-slate-400" />
+                  </div>
+                  {(() => {
+                    const c = analytics.corporateAnalytics
+                    const maxBol = Math.max(1, ...c.bolByWorkroom.map(r => r.count))
+                    const maxTr = Math.max(1, ...c.travelRequestsByWorkroom.map(r => r.count))
+                    return (
+                      <div className="space-y-5">
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">BOL orders (Pad Orders)</p>
+                          {c.bolByWorkroom.length > 0 ? (
+                            <div className="space-y-2">
+                              {c.bolByWorkroom.slice(0, 6).map(r => (
+                                <div key={r.workroom} className="flex items-center gap-3">
+                                  <span className="w-28 shrink-0 truncate text-xs font-medium text-slate-700">{r.workroom}</span>
+                                  <div className="flex-1">
+                                    <div className="w-full h-1.5 rounded-full bg-slate-200">
+                                      <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${(r.count / maxBol) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                  <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-400">No BOL orders recorded.</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Travel requests</p>
+                          {c.travelRequestsByWorkroom.length > 0 ? (
+                            <div className="space-y-2">
+                              {c.travelRequestsByWorkroom.slice(0, 6).map(r => (
+                                <div key={r.workroom} className="flex items-center gap-3">
+                                  <span className="w-28 shrink-0 truncate text-xs font-medium text-slate-700">{r.workroom}</span>
+                                  <div className="flex-1">
+                                    <div className="w-full h-1.5 rounded-full bg-slate-200">
+                                      <div className="h-1.5 rounded-full bg-sky-400" style={{ width: `${(r.count / maxTr) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                  <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-400">No travel requests recorded.</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Marketing Leads</h2>
+                      <p className="mt-1 text-sm text-slate-500">Lead volume and outreach status.</p>
+                    </div>
+                    <Megaphone className="w-5 h-5 text-slate-400" />
+                  </div>
+                  {(() => {
+                    const ml = analytics.corporateAnalytics.marketingLeads
+                    const maxLead = Math.max(1, ...ml.byStatus.map(r => r.count))
+                    return (
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-brand-green/15 bg-brand-green/5 px-4 py-3">
+                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-green/80">Total leads</div>
+                          <div className="mt-1 text-2xl font-black text-slate-900">{ml.total}</div>
+                        </div>
+                        {ml.byStatus.length > 0 ? (
+                          <div className="space-y-3">
+                            {ml.byStatus.slice(0, 7).map(r => (
+                              <div key={r.status}>
+                                <div className="mb-1 flex items-center justify-between text-sm">
+                                  <span className="font-medium text-slate-700 capitalize">{r.status.replace(/_/g, ' ')}</span>
+                                  <span className="font-bold text-slate-900">{r.count}</span>
+                                </div>
+                                <div className="w-full h-2 rounded-full bg-slate-100">
+                                  <div className="h-2 rounded-full bg-brand-green" style={{ width: `${Math.max(4, (r.count / maxLead) * 100)}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-400">No marketing leads recorded.</p>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </motion.div>
+              </div>
             </div>
           )}
 
@@ -2687,7 +2816,7 @@ export default function AnalyticsPage() {
                     { label: 'Facility Locations', value: p.locations, icon: MapPin, hint: 'Tracked sites' },
                     { label: 'Fleet Vehicles', value: p.vehicles.total, icon: Truck, hint: 'Across properties' },
                     { label: 'GPS Devices', value: p.gpsDevices.total, icon: Navigation, hint: `${p.gpsDevices.online} online` },
-                    { label: 'Safety Walks', value: p.safetyWalks, icon: ClipboardCheck, hint: 'Completed inspections' },
+                    { label: 'Safety Walks', value: p.safetyWalks.total, icon: ClipboardCheck, hint: `${p.safetyWalks.completionPercent}% completion` },
                   ]
                   return cards.map((card, i) => {
                     const Icon = card.icon
@@ -2760,6 +2889,33 @@ export default function AnalyticsPage() {
                               </div>
                             </div>
                           ))}
+                        </div>
+                        {inv.byCondition.length > 0 && (
+                          <div>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">By condition</p>
+                            <div className="flex flex-wrap gap-2">
+                              {inv.byCondition.map(r => (
+                                <span key={r.condition} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 capitalize">
+                                  {r.condition}
+                                  <span className="font-bold text-brand-green-dark">{r.count}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-amber-700">{inv.warrantyExpired}</div>
+                            <div className="text-[11px] font-medium text-amber-600 leading-tight">Warranty expired</div>
+                          </div>
+                          <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-orange-700">{inv.warrantyExpiring30Days}</div>
+                            <div className="text-[11px] font-medium text-orange-600 leading-tight">Expiring 30d</div>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-slate-700">{inv.warrantyExpiring90Days}</div>
+                            <div className="text-[11px] font-medium text-slate-500 leading-tight">Expiring 90d</div>
+                          </div>
                         </div>
                         {inv.byCategory.length > 0 && (
                           <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-white to-brand-green/5 p-4">
@@ -2858,6 +3014,90 @@ export default function AnalyticsPage() {
                   })()}
                 </motion.div>
               </div>
+
+              {/* Safety walk */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Safety Walk Overview</h2>
+                    <p className="mt-1 text-sm text-slate-500">Inspection completion and open action items.</p>
+                  </div>
+                  <ClipboardCheck className="w-5 h-5 text-slate-400" />
+                </div>
+                {(() => {
+                  const sw = analytics.propertyAnalytics.safetyWalks
+                  const completion = sw.completionPercent
+                  const maxWr = Math.max(1, ...sw.byWorkroom.map(r => r.count))
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-brand-green/5 p-5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Overall completion</div>
+                              <div className="mt-2 text-4xl font-black tracking-tight text-slate-900">{completion}%</div>
+                              <div className="mt-2 text-sm text-slate-500">{sw.checkedItems} of {sw.totalItems} items checked</div>
+                            </div>
+                            <div className="relative h-28 w-28 shrink-0 rounded-full" style={{ background: `conic-gradient(#65a30d 0% ${completion}%, #e2e8f0 ${completion}% 100%)` }}>
+                              <div className="absolute inset-[18%] rounded-full bg-white flex items-center justify-center">
+                                <ClipboardCheck className="w-6 h-6 text-brand-green" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-slate-900">{sw.total}</div>
+                            <div className="text-[11px] font-medium text-slate-500 leading-tight">Walks</div>
+                          </div>
+                          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-rose-700">{sw.uncheckedItems}</div>
+                            <div className="text-[11px] font-medium text-rose-600 leading-tight">Open items</div>
+                          </div>
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-amber-700">{sw.actionItems}</div>
+                            <div className="text-[11px] font-medium text-amber-600 leading-tight">Action items</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-slate-900">{sw.actionPlanCount}</div>
+                            <div className="text-[11px] font-medium text-slate-500 leading-tight">With action plan</div>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                            <div className="text-lg font-black text-slate-900">{sw.averageDurationMinutes}m</div>
+                            <div className="text-[11px] font-medium text-slate-500 leading-tight">Avg duration</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Walks by workroom</p>
+                        {sw.byWorkroom.length > 0 ? (
+                          <div className="space-y-2">
+                            {sw.byWorkroom.slice(0, 8).map(r => (
+                              <div key={r.workroom} className="flex items-center gap-3">
+                                <span className="w-28 shrink-0 truncate text-xs font-medium text-slate-700">{r.workroom}</span>
+                                <div className="flex-1">
+                                  <div className="w-full h-1.5 rounded-full bg-slate-200">
+                                    <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${(r.count / maxWr) * 100}%` }} />
+                                  </div>
+                                </div>
+                                <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-400">No safety walks recorded.</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </motion.div>
             </div>
           )}
 

@@ -785,6 +785,9 @@ export async function GET(request: NextRequest) {
       inventoryCycles,
       licences,
       invoiceCount,
+      marketingLeads,
+      padOrderByWorkroom,
+      travelRequestsByWorkroom,
     ] = await Promise.all([
       prisma.claim.findMany({ select: { status: true, amount: true, workroom: true, category: true } }),
       prisma.travelRequest.findMany({ select: { status: true, chargeWorkroom: true } }),
@@ -796,11 +799,14 @@ export async function GET(request: NextRequest) {
       prisma.vehicleInspection.count(),
       prisma.forkliftInspection.count(),
       prisma.carpetPadOrder.findMany({ select: { authorized: true } }),
-      prisma.padOrder.findMany({ select: { authorized: true } }),
+      prisma.padOrder.findMany({ select: { authorized: true, workroom: true, dateReceived: true } }),
       prisma.padTransfer.findMany({ select: { authorized: true } }),
       prisma.inventoryCycle.findMany({ select: { authorized: true } }),
       prisma.licence.findMany({ select: { isActive: true, county: true } }),
       prisma.installerInvoice.count(),
+      prisma.marketingLead.findMany({ select: { outreachStatus: true } }),
+      prisma.padOrder.groupBy({ by: ['workroom'], _count: { id: true } }),
+      prisma.travelRequest.groupBy({ by: ['chargeWorkroom'], _count: { id: true } }),
     ])
 
     // Generic status summarizer for corporate request-style tools.
@@ -879,6 +885,28 @@ export async function GET(request: NextRequest) {
         inactive: licences.filter(l => l.isActive !== true).length,
       },
       invoices: invoiceCount,
+      marketingLeads: {
+        total: marketingLeads.length,
+        byStatus: (() => {
+          const counts: Record<string, number> = {}
+          marketingLeads.forEach(m => {
+            const key = (m.outreachStatus || 'pending').trim()
+            if (key) counts[key] = (counts[key] || 0) + 1
+          })
+          return Object.entries(counts)
+            .map(([status, count]) => ({ status, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8)
+        })(),
+      },
+      bolByWorkroom: padOrderByWorkroom
+        .map((row) => ({ workroom: row.workroom, count: row._count?.id ?? 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8),
+      travelRequestsByWorkroom: travelRequestsByWorkroom
+        .map((row) => ({ workroom: row.chargeWorkroom, count: row._count?.id ?? 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8),
     }
 
     // ========== PROPERTY PORTAL ANALYTICS ==========
@@ -888,14 +916,14 @@ export async function GET(request: NextRequest) {
       locationCount,
       vehicleRows,
       gpsDeviceRows,
-      safetyWalkCount,
+      safetyWalkRows,
     ] = await Promise.all([
       prisma.property.count(),
-      prisma.inventory.findMany({ select: { status: true, category: true, usagePlacement: true, cost: true, quantity: true } }),
+      prisma.inventory.findMany({ select: { status: true, category: true, usagePlacement: true, cost: true, quantity: true, condition: true, warehouse: true, warrantyDate: true } }),
       prisma.location.count(),
       prisma.vehicle.findMany({ select: { category: true } }),
       prisma.gpsDevice.findMany({ select: { status: true } }),
-      prisma.propertySafetyWalk.count(),
+      prisma.propertySafetyWalk.findMany({ select: { workroom: true, analytics: true, inspectionDate: true } }),
     ])
 
     const inventoryByCategory: Record<string, number> = {}
@@ -908,6 +936,76 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 8)
 
+    const inventoryByCondition: Record<string, number> = {}
+    inventoryRows.forEach(i => {
+      const key = (i.condition || 'good').trim()
+      if (key) inventoryByCondition[key] = (inventoryByCondition[key] || 0) + 1
+    })
+    const inventoryConditionRows = Object.entries(inventoryByCondition)
+      .map(([condition, count]) => ({ condition, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6)
+
+    const inventoryByWarehouse: Record<string, number> = {}
+    inventoryRows.forEach(i => {
+      const key = (i.warehouse || '').trim()
+      if (key) inventoryByWarehouse[key] = (inventoryByWarehouse[key] || 0) + 1
+    })
+    const inventoryWarehouseRows = Object.entries(inventoryByWarehouse)
+      .map(([warehouse, count]) => ({ warehouse, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+
+    // Warranty expiring windows
+    const warrantyExpiring30Days = inventoryRows.filter(i => {
+      if (!i.warrantyDate) return false
+      const d = new Date(i.warrantyDate)
+      return d > now && d <= thirtyDaysFromNow
+    }).length
+    const warrantyExpiring90Days = inventoryRows.filter(i => {
+      if (!i.warrantyDate) return false
+      const d = new Date(i.warrantyDate)
+      return d > now && d <= ninetyDaysFromNow
+    }).length
+    const warrantyExpired = inventoryRows.filter(i => {
+      if (!i.warrantyDate) return false
+      return new Date(i.warrantyDate) <= now
+    }).length
+
+    // Safety walk aggregation from stored per-submission analytics JSON
+    const safetyWalkByWorkroom: Record<string, number> = {}
+    let safetyTotalItems = 0
+    let safetyCheckedItems = 0
+    let safetyActionItems = 0
+    let safetyActionPlanCount = 0
+    let safetyDurationSum = 0
+    let safetyDurationCount = 0
+    let safetyWalkWithAnalytics = 0
+    safetyWalkRows.forEach(w => {
+      const key = (w.workroom || 'Unspecified').trim()
+      if (key) safetyWalkByWorkroom[key] = (safetyWalkByWorkroom[key] || 0) + 1
+      const a = (w.analytics as any) || null
+      if (a && typeof a === 'object') {
+        safetyWalkWithAnalytics++
+        if (typeof a.totalItems === 'number') safetyTotalItems += a.totalItems
+        if (typeof a.checkedItems === 'number') safetyCheckedItems += a.checkedItems
+        if (typeof a.actionItemCount === 'number') safetyActionItems += a.actionItemCount
+        if (typeof a.actionPlanLength === 'number' && a.actionPlanLength > 0) safetyActionPlanCount++
+        if (typeof a.durationMinutes === 'number') {
+          safetyDurationSum += a.durationMinutes
+          safetyDurationCount++
+        }
+      }
+    })
+    const safetyWalkRowsByWorkroom = Object.entries(safetyWalkByWorkroom)
+      .map(([workroom, count]) => ({ workroom, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+    const safetyCompletionPercent = safetyTotalItems > 0
+      ? Math.round((safetyCheckedItems / safetyTotalItems) * 100)
+      : 0
+    const safetyUncheckedItems = Math.max(safetyTotalItems - safetyCheckedItems, 0)
+
     const propertyAnalytics = {
       totalProperties: propertyCount,
       inventory: {
@@ -919,6 +1017,11 @@ export async function GET(request: NextRequest) {
         checkedOut: inventoryRows.filter(i => i.usagePlacement === 'checked_out').length,
         totalValue: inventoryRows.reduce((sum, i) => sum + (Number(i.cost) || 0) * (Number(i.quantity) || 0), 0),
         byCategory: inventoryCategoryRows,
+        byCondition: inventoryConditionRows,
+        byWarehouse: inventoryWarehouseRows,
+        warrantyExpiring30Days,
+        warrantyExpiring90Days,
+        warrantyExpired,
       },
       locations: locationCount,
       vehicles: {
@@ -940,7 +1043,18 @@ export async function GET(request: NextRequest) {
         online: gpsDeviceRows.filter(d => (d.status || '').toLowerCase() === 'online').length,
         offline: gpsDeviceRows.filter(d => (d.status || '').toLowerCase() !== 'online').length,
       },
-      safetyWalks: safetyWalkCount,
+      safetyWalks: {
+        total: safetyWalkRows.length,
+        withAnalytics: safetyWalkWithAnalytics,
+        completionPercent: safetyCompletionPercent,
+        totalItems: safetyTotalItems,
+        checkedItems: safetyCheckedItems,
+        uncheckedItems: safetyUncheckedItems,
+        actionItems: safetyActionItems,
+        actionPlanCount: safetyActionPlanCount,
+        averageDurationMinutes: safetyDurationCount > 0 ? Math.round(safetyDurationSum / safetyDurationCount) : 0,
+        byWorkroom: safetyWalkRowsByWorkroom,
+      },
     }
 
     return NextResponse.json(
