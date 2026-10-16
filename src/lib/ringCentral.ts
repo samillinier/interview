@@ -293,6 +293,66 @@ export async function getTokenInfo(): Promise<any> {
   return JSON.parse(payload)
 }
 
+// ── Workroom mapping (extension / phone → workroom) ─────────
+
+function normalizeDigits(s: string): string {
+  return s.replace(/\D/g, "")
+}
+
+let cachedWorkroomMap: { map: Map<string, string>; expires_at: number } | null = null
+
+/**
+ * Build a map of extension number and phone number → workroom by reading the
+ * company directory once and caching it in-memory for a short window. Each
+ * directory entry's site name is resolved to a canonical workroom name.
+ */
+export async function getWorkroomMap(): Promise<Map<string, string>> {
+  const now = Date.now()
+  if (cachedWorkroomMap && cachedWorkroomMap.expires_at > now) return cachedWorkroomMap.map
+
+  const map = new Map<string, string>()
+  try {
+    const entries = await getCompanyDirectory()
+    const { detectWorkroom } = await import("./contacts")
+    for (const e of entries) {
+      const workroom = detectWorkroom(e) || (e.site?.name ? e.site.name.trim() : "")
+      if (!workroom) continue
+      if (e.extensionNumber) map.set(String(e.extensionNumber).trim(), workroom)
+      const phones = Array.isArray(e.phoneNumbers) ? e.phoneNumbers : []
+      for (const p of phones) {
+        if (p?.phoneNumber) map.set(normalizeDigits(p.phoneNumber), workroom)
+      }
+    }
+  } catch {
+    // Directory may not be readable; fall back to an empty map.
+  }
+
+  cachedWorkroomMap = { map, expires_at: now + 10 * 60 * 1000 }
+  return map
+}
+
+/** Resolve the workroom for a single call record using to/from extension and phone. */
+export function resolveCallWorkroom(
+  record: RCCallLogRecord,
+  map: Map<string, string>
+): string | null {
+  const candidates: (string | undefined)[] = [
+    record.to?.extensionNumber,
+    record.from?.extensionNumber,
+    record.to?.phoneNumber,
+    record.from?.phoneNumber,
+  ]
+  for (const raw of candidates) {
+    if (!raw) continue
+    const key = normalizeDigits(raw)
+    if (!key) continue
+    // Try the full number first, then the extension digits alone.
+    const hit = map.get(key) || map.get(String(Number(key) || key))
+    if (hit) return hit
+  }
+  return null
+}
+
 /** Fetch content for a call recording (returns base64 data). */
 export async function getCallRecording(recordingId: string): Promise<RCCallRecordingContent> {
   const token = await getAccessToken()

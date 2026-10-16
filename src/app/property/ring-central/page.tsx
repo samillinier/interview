@@ -48,8 +48,8 @@ interface CallRecord {
   direction: "Inbound" | "Outbound"
   action: string
   result: string
-  to: { phoneNumber?: string; name?: string }
-  from: { phoneNumber?: string; name?: string }
+  to: { phoneNumber?: string; name?: string; extensionNumber?: string }
+  from: { phoneNumber?: string; name?: string; extensionNumber?: string }
   reason?: string
   reasonDescription?: string
   recording?: { id: string; contentUri: string }
@@ -128,7 +128,8 @@ export default function RingCentralPage() {
   const [directionFilter, setDirectionFilter] = useState<"all" | "Inbound" | "Outbound">("all")
   const [missedFilter, setMissedFilter] = useState(false)
   const [callTypeFilter, setCallTypeFilter] = useState<"all" | "missed" | "inbound" | "outbound">("all")
-  const [workroomFilter, setWorkroomFilter] = useState("")
+  const [workroomFilter, setWorkroomFilter] = useState("all")
+  const [availableWorkrooms, setAvailableWorkrooms] = useState<string[]>([])
   const [searchPhone, setSearchPhone] = useState("")
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
@@ -172,6 +173,7 @@ export default function RingCentralPage() {
       }
       const data: CallLogResponse = await res.json()
       setCallData(data)
+      setAvailableWorkrooms((data as any).workrooms || [])
     } catch (err: any) {
       setCallsError(err.message || 'Failed to load call logs')
       setCallData(null)
@@ -282,14 +284,11 @@ export default function RingCentralPage() {
     ? rawRecords.filter(r => r.result === "Missed")
     : rawRecords
 
-  // Derive available workrooms from the current records (for the filter dropdown)
-  const workroomOptions = Array.from(
-    new Set(rawRecords.map(r => r.workroom).filter((w): w is string => !!w && w.trim().length > 0))
-  ).sort((a, b) => a.localeCompare(b))
-
-  // Apply workroom filter client-side
-  if (workroomFilter) {
-    displayRecords = displayRecords.filter(r => r.workroom === workroomFilter)
+  // Apply workroom filter client-side on top of missed/direction.
+  if (workroomFilter !== "all") {
+    displayRecords = displayRecords.filter(
+      r => ((r as any).workroom || "").toLowerCase() === workroomFilter.toLowerCase()
+    )
   }
 
   // Per-page counts — simple and always works
@@ -344,7 +343,7 @@ export default function RingCentralPage() {
               >
                 <Filter className="w-4 h-4" />
                 Filters
-                {(missedFilter || directionFilter !== "all" || searchPhone || workroomFilter) && (
+                {(missedFilter || directionFilter !== "all" || searchPhone) && (
                   <span className="w-1.5 h-1.5 rounded-full bg-white" />
                 )}
               </button>
@@ -369,36 +368,54 @@ export default function RingCentralPage() {
             ]}
           />
 
-          {/* Quick-filter call type buttons — Installer-style pill bar */}
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            <CallTypePill
-              active={callTypeFilter === "all"}
-              onClick={() => handleCallTypeChange("all")}
-              icon={PhoneCall}
-              label="All Calls"
-              count={totalRecords}
-            />
-            <CallTypePill
-              active={callTypeFilter === "missed"}
-              onClick={() => handleCallTypeChange("missed")}
-              icon={PhoneMissed}
-              label="Missed"
-              count={missed}
-            />
-            <CallTypePill
-              active={callTypeFilter === "inbound"}
-              onClick={() => handleCallTypeChange("inbound")}
-              icon={PhoneIncoming}
-              label="Inbound"
-              count={inbound}
-            />
-            <CallTypePill
-              active={callTypeFilter === "outbound"}
-              onClick={() => handleCallTypeChange("outbound")}
-              icon={PhoneOutgoing}
-              label="Outbound"
-              count={outbound}
-            />
+          {/* Quick-filter call type buttons + workroom filter */}
+          <div className="bg-white rounded-2xl shadow-md border border-slate-200/60 p-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <CallTypePill
+                  active={callTypeFilter === "all"}
+                  onClick={() => handleCallTypeChange("all")}
+                  icon={PhoneCall}
+                  label="All Calls"
+                  count={totalRecords}
+                />
+                <CallTypePill
+                  active={callTypeFilter === "missed"}
+                  onClick={() => handleCallTypeChange("missed")}
+                  icon={PhoneMissed}
+                  label="Missed"
+                  count={missed}
+                />
+                <CallTypePill
+                  active={callTypeFilter === "inbound"}
+                  onClick={() => handleCallTypeChange("inbound")}
+                  icon={PhoneIncoming}
+                  label="Inbound"
+                  count={inbound}
+                />
+                <CallTypePill
+                  active={callTypeFilter === "outbound"}
+                  onClick={() => handleCallTypeChange("outbound")}
+                  icon={PhoneOutgoing}
+                  label="Outbound"
+                  count={outbound}
+                />
+              </div>
+              <div className="flex-1 min-w-[160px] sm:ml-auto">
+                <select
+                  value={workroomFilter}
+                  onChange={(e) => { setWorkroomFilter(e.target.value); setPage(1) }}
+                  className="w-full px-3 sm:px-4 py-3 text-sm sm:text-base border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all bg-slate-50/50 hover:bg-white font-medium"
+                >
+                  <option value="all">All Workrooms</option>
+                  {availableWorkrooms.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Error */}
@@ -420,7 +437,7 @@ export default function RingCentralPage() {
                 className="overflow-hidden mb-6"
               >
                 <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Date From</label>
                       <input type="date" value={dateFrom}
@@ -456,17 +473,6 @@ export default function RingCentralPage() {
                         onChange={(e) => { setSearchPhone(e.target.value); setPage(1) }}
                         placeholder="Filter by number..."
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Workroom</label>
-                      <select value={workroomFilter}
-                        onChange={(e) => { setWorkroomFilter(e.target.value); setPage(1) }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:ring-1 focus:ring-brand-green outline-none text-sm bg-white">
-                        <option value="">All Workrooms</option>
-                        {workroomOptions.map(w => (
-                          <option key={w} value={w}>{w}</option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
@@ -531,6 +537,7 @@ export default function RingCentralPage() {
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">From</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">To</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Workroom</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Result</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Recording</th>
                       </tr>
@@ -564,14 +571,18 @@ export default function RingCentralPage() {
                             <td className="px-4 py-3 text-sm text-slate-700 font-mono">
                               {formatPhone(call.to?.phoneNumber)}
                               {call.to?.name && <div className="text-xs text-slate-400">{call.to.name}</div>}
-                              {call.workroom && (
-                                <span className="mt-1 inline-flex px-1.5 py-0.5 rounded bg-brand-green/10 text-brand-green-dark text-[10px] font-semibold font-sans">
-                                  {call.workroom}
-                                </span>
-                              )}
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
                               {formatDuration(call.duration)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {call.workroom ? (
+                                <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green-dark">
+                                  {call.workroom}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-300">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
