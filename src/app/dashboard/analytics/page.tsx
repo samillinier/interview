@@ -1289,14 +1289,13 @@ export default function AnalyticsPage() {
                               return (
                                 <g key={`${point.month}-${index}`}>
                                   {(isPeak || isLatest) && (
-                                    <text
-                                      x={point.x}
-                                      y={Math.max(18, point.y - 16)}
-                                      textAnchor="middle"
-                                      className="fill-slate-900 text-[14px] font-bold"
-                                    >
-                                      {point.count}
-                                    </text>
+                                    <circle
+                                      cx={point.x}
+                                      cy={point.y}
+                                      r={14}
+                                      fill={isPeak ? '#65a30d' : '#84cc16'}
+                                      fillOpacity="0.12"
+                                    />
                                   )}
                                   <circle
                                     cx={point.x}
@@ -1307,13 +1306,14 @@ export default function AnalyticsPage() {
                                     strokeWidth="3"
                                   />
                                   {(isPeak || isLatest) && (
-                                    <circle
-                                      cx={point.x}
-                                      cy={point.y}
-                                      r={14}
-                                      fill={isPeak ? '#65a30d' : '#84cc16'}
-                                      fillOpacity="0.12"
-                                    />
+                                    <text
+                                      x={point.x}
+                                      y={Math.max(20, point.y - 22)}
+                                      textAnchor="middle"
+                                      className="fill-slate-900 text-[15px] font-bold"
+                                    >
+                                      {point.count}
+                                    </text>
                                   )}
                                 </g>
                               )
