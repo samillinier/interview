@@ -770,6 +770,29 @@ export default function FleetPage() {
                               <p className="text-xs text-slate-500 truncate">
                                 {vehicle.plate ? `Plate: ${vehicle.plate}` : vehicle.vin ? `VIN: ${vehicle.vin}` : 'No plate/VIN'}
                               </p>
+
+                              {/* GPS-diagnosed issues */}
+                              {(() => {
+                                const gps = gpsByVehicle[vehicle.id]
+                                const dtcs = gps?.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
+                                if (!gps?.milOn && dtcs.length === 0) return null
+                                return (
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    {gps.milOn ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">
+                                        <AlertTriangle className="w-3 h-3" />
+                                        Check engine
+                                      </span>
+                                    ) : null}
+                                    {dtcs.map((code: string, i: number) => (
+                                      <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[11px] font-mono font-semibold">
+                                        <Wrench className="w-3 h-3" />
+                                        {code}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
                             </div>
                           </div>
                         </td>
