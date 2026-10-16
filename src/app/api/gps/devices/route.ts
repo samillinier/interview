@@ -62,6 +62,85 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+/**
+ * POST /api/gps/devices
+ * Body: { deviceId: string, action: 'resetTelemetry' }
+ * Snapshots current tracker lifetime hours/miles so the UI starts from zero
+ * after the GPS box is moved to a new vehicle.
+ */
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const userType = ((session?.user as any)?.userType || '').toUpperCase()
+  const role = String((session?.user as any)?.role || '').toUpperCase()
+  const isAdmin =
+    (session?.user as any)?.isAdmin === true ||
+    role === 'ADMIN' ||
+    role === 'SUPER_ADMIN' ||
+    userType === 'ADMIN' ||
+    userType === 'SUPER_ADMIN'
+
+  if (!session || !isAdmin) {
+    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  }
+
+  try {
+    const body = await request.json()
+    const deviceId = String(body?.deviceId || '').trim()
+    const action = String(body?.action || '').trim()
+
+    if (action !== 'resetTelemetry') {
+      return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    }
+    if (!deviceId) {
+      return NextResponse.json({ error: 'deviceId required' }, { status: 400 })
+    }
+
+    const ruhavikDevices = await traccar.getDevices().catch(() => [])
+    const unit = ruhavikDevices.find(
+      (d) => d.uniqueId === deviceId || ('tc-' + d.id) === deviceId || String(d.id) === deviceId
+    )
+    const totals = unit?.id
+      ? await traccar.getTrackerLifetimeTotals(unit.id).catch(() => ({ totalEngineHours: 0, totalMileageKm: 0 }))
+      : { totalEngineHours: 0, totalMileageKm: 0 }
+
+    const reset = await (prisma as any).gpsTelemetryReset.upsert({
+      where: { deviceKey: deviceId },
+      create: {
+        deviceKey: deviceId,
+        engineHours: totals.totalEngineHours || 0,
+        mileageKm: totals.totalMileageKm || 0,
+        resetAt: new Date(),
+      },
+      update: {
+        engineHours: totals.totalEngineHours || 0,
+        mileageKm: totals.totalMileageKm || 0,
+        resetAt: new Date(),
+      },
+    })
+
+    await (prisma as any).gpsDevice.updateMany({
+      where: { OR: [{ deviceId }, { deviceId: unit?.uniqueId || '' }] },
+      data: {
+        fuelLevel: null,
+        engineTemp: null,
+        batteryVoltage: null,
+        odometer: 0,
+      },
+    }).catch(() => {})
+
+    return NextResponse.json({
+      success: true,
+      deviceId,
+      resetAt: reset.resetAt,
+      engineHours: reset.engineHours,
+      mileageKm: reset.mileageKm,
+    })
+  } catch (error) {
+    console.error('Failed to reset GPS telemetry:', error)
+    return NextResponse.json({ error: 'Failed to reset GPS telemetry' }, { status: 500 })
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
   const userType = ((session?.user as any)?.userType || '').toUpperCase()
@@ -121,6 +200,16 @@ export async function GET(request: NextRequest) {
     const aliasByKey = new Map<string, string>()
     for (const a of aliases || []) {
       if (a?.deviceKey && a?.name) aliasByKey.set(String(a.deviceKey), String(a.name))
+    }
+
+    const telemetryResets = await (prisma as any).gpsTelemetryReset.findMany().catch(() => [])
+    const resetByKey = new Map<string, { engineHours: number; mileageKm: number }>()
+    for (const row of telemetryResets || []) {
+      if (!row?.deviceKey) continue
+      resetByKey.set(String(row.deviceKey), {
+        engineHours: Number(row.engineHours) || 0,
+        mileageKm: Number(row.mileageKm) || 0,
+      })
     }
 
     // Admin users: build device entries directly from Ruhavik live data
@@ -302,7 +391,7 @@ export async function GET(request: NextRequest) {
       // Today's summary
       const tcSummary = tcId ? summaryByDeviceId.get(tcId) : undefined
       const trackerTotals = tcId ? totalsByDeviceId.get(tcId) : undefined
-      const trackerMileageMi =
+      let trackerMileageMi =
         trackerTotals?.totalMileageKm != null && trackerTotals.totalMileageKm > 0
           ? Math.round(trackerTotals.totalMileageKm * 0.621371)
           : undefined
@@ -329,6 +418,18 @@ export async function GET(request: NextRequest) {
         (obdii.motorHours == null || trackerTotals.totalEngineHours >= obdii.motorHours)
       ) {
         obdii.motorHours = trackerTotals.totalEngineHours
+      }
+
+      const reset =
+        resetByKey.get(deviceKey) ||
+        (device.deviceId ? resetByKey.get(String(device.deviceId)) : undefined)
+      if (reset) {
+        if (obdii.motorHours != null) {
+          obdii.motorHours = Math.max(0, Math.round((obdii.motorHours - reset.engineHours) * 1000) / 1000)
+        }
+        if (trackerMileageMi != null && reset.mileageKm > 0) {
+          trackerMileageMi = Math.max(0, trackerMileageMi - Math.round(reset.mileageKm * 0.621371))
+        }
       }
 
       return {

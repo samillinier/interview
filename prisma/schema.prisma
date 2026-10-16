@@ -1374,6 +1374,18 @@ model GpsDeviceAlias {
   @@index([deviceKey])
 }
 
+model GpsTelemetryReset {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deviceKey    String   @unique
+  engineHours  Float    @default(0)
+  mileageKm    Float    @default(0)
+  resetAt      DateTime @default(now())
+
+  @@index([deviceKey])
+}
+
 model GpsDevice {
   id            String        @id @default(cuid())
   createdAt     DateTime      @default(now())

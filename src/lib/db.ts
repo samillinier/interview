@@ -38,7 +38,8 @@ if (process.env.NODE_ENV === 'production') {
       (websiteFields != null && !('aiEnabled' in websiteFields)) ||
       (installerFields != null && !('aiChatEnabled' in installerFields)) ||
       (marketingFields != null && !('emailOptInSentAt' in marketingFields)) ||
-      (inventoryFields != null && !('phoneNumber' in inventoryFields)))
+      (inventoryFields != null && !('phoneNumber' in inventoryFields)) ||
+      typeof (existing as unknown as { gpsTelemetryReset?: unknown }).gpsTelemetryReset === 'undefined')
   if (stale) {
     void existing.$disconnect().catch(() => {})
     globalForPrisma.prisma = undefined

@@ -30,6 +30,7 @@ import {
   Check,
   X,
   Search,
+  RotateCcw,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -143,6 +144,24 @@ export default function GPSPage() {
     setSelectedDevice((prev) =>
       prev && prev.id === device.id ? { ...prev, vehicleName: trimmed } : prev
     )
+    return true
+  }
+
+  async function resetDeviceTelemetry(device: VehicleDevice) {
+    const ok = window.confirm(
+      'Reset motor hours and mileage for this GPS unit? Use this after moving the tracker to a new vehicle. Live readings (VIN, fuel, RPM) will still come from the truck currently plugged in.'
+    )
+    if (!ok) return false
+    const res = await fetch('/api/gps/devices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: device.deviceId, action: 'resetTelemetry' }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to reset telemetry')
+    }
+    await fetchDevices()
     return true
   }
 
@@ -556,6 +575,8 @@ export default function GPSPage() {
                       }}
                       canRename={canRenameGps}
                       onRename={(name) => renameDevice(selectedDevice, name)}
+                      canReset={canRenameGps}
+                      onReset={() => resetDeviceTelemetry(selectedDevice)}
                     />
                   </div>
                 ) : null}
@@ -670,6 +691,8 @@ function DeviceTelemetry({
   onPlayTrip,
   canRename,
   onRename,
+  canReset,
+  onReset,
 }: {
   device: VehicleDevice
   routePeriod: string | null
@@ -683,6 +706,8 @@ function DeviceTelemetry({
   onPlayTrip?: (id: string) => void
   canRename?: boolean
   onRename?: (name: string) => Promise<boolean>
+  canReset?: boolean
+  onReset?: () => Promise<boolean>
 }) {
   const todayStr = (() => {
     const d = new Date()
@@ -699,6 +724,8 @@ function DeviceTelemetry({
   const [nameDraft, setNameDraft] = useState(device.vehicleName || '')
   const [renameError, setRenameError] = useState<string | null>(null)
   const [isSavingName, setIsSavingName] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   useEffect(() => {
     setNameDraft(device.vehicleName || '')
@@ -824,25 +851,52 @@ function DeviceTelemetry({
             <h3 className="font-semibold text-slate-900 text-sm flex-1 min-w-0 truncate">
               {device.vehicleName || 'Unnamed Vehicle'}
             </h3>
-            {canRename && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNameDraft(device.vehicleName || '')
-                  setEditingName(true)
-                }}
-                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-600 hover:text-brand-green hover:border-brand-green/40 transition-colors shrink-0"
-                title="Rename GPS device"
-              >
-                <Pencil className="w-3 h-3" />
-                Rename
-              </button>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canReset && onReset && (
+                <button
+                  type="button"
+                  disabled={isResetting}
+                  onClick={async () => {
+                    setResetError(null)
+                    setIsResetting(true)
+                    try {
+                      await onReset()
+                    } catch (e: any) {
+                      setResetError(e?.message || 'Failed to reset')
+                    } finally {
+                      setIsResetting(false)
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-600 hover:text-brand-green hover:border-brand-green/40 transition-colors disabled:opacity-50"
+                  title="Reset motor hours and mileage after moving this tracker to a new vehicle"
+                >
+                  {isResetting ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                  Reset
+                </button>
+              )}
+              {canRename && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNameDraft(device.vehicleName || '')
+                    setEditingName(true)
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 bg-white text-slate-600 hover:text-brand-green hover:border-brand-green/40 transition-colors"
+                  title="Rename GPS device"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Rename
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
       {renameError && (
         <p className="mb-2 text-[10px] text-amber-600">{renameError}</p>
+      )}
+      {resetError && (
+        <p className="mb-2 text-[10px] text-amber-600">{resetError}</p>
       )}
 
       {/* When Trip History is open, hide vehicle details so the feed has room */}
