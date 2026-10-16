@@ -255,6 +255,7 @@ interface AnalyticsData {
     }
     travelRequests: { total: number; pending: number; approved: number; denied: number }
     purchaseRequests: { total: number; pending: number; approved: number; denied: number }
+    purchaseRequestsThisWeek: number
     officeSupplies: { total: number; pending: number; approved: number; denied: number }
     apparelOrders: { total: number; pending: number; approved: number; denied: number }
     businessCards: { total: number; pending: number; approved: number; denied: number }
@@ -267,16 +268,7 @@ interface AnalyticsData {
     inventoryCycles: { total: number; authorized: number; unauthorized: number }
     licences: { total: number; active: number; inactive: number }
     invoices: number
-    weeklyActivity: {
-      purchaseRequestsThisWeek: number
-      fleetServiceThisWeek: number
-      invoicesThisWeek: number
-      bolThisWeek: number
-      padTransfersThisWeek: number
-      carpetPadsThisWeek: number
-      forkliftInspectionsThisMonth: number
-      vehicleInspectionsThisMonth: number
-    }
+    invoicesThisWeek: number
     marketingLeads: { total: number; byStatus: { status: string; count: number }[] }
     bolByWorkroom: { workroom: string; count: number }[]
     travelRequestsByWorkroom: { workroom: string; count: number }[]
@@ -2545,52 +2537,6 @@ export default function AnalyticsPage() {
                 })()}
               </div>
 
-              {/* Weekly & monthly activity */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 mb-6"
-              >
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">Weekly & Monthly Activity</h2>
-                    <p className="mt-1 text-sm text-slate-500">Recent volume across corporate tools — this week vs this month.</p>
-                  </div>
-                  <Activity className="w-5 h-5 text-slate-400" />
-                </div>
-                {(() => {
-                  const w = analytics.corporateAnalytics.weeklyActivity
-                  const tiles = [
-                    { label: 'Purchase Requests', sub: 'This week', value: w.purchaseRequestsThisWeek, icon: ShoppingCart, tone: 'bg-brand-green/10 text-brand-green' },
-                    { label: 'Fleet Service', sub: 'This week', value: w.fleetServiceThisWeek, icon: Car, tone: 'bg-sky-100 text-sky-600' },
-                    { label: 'Invoices', sub: 'This week', value: w.invoicesThisWeek, icon: Receipt, tone: 'bg-amber-100 text-amber-600' },
-                    { label: 'BOL Orders', sub: 'This week', value: w.bolThisWeek, icon: Truck, tone: 'bg-lime-100 text-lime-600' },
-                    { label: 'Pad Transfers', sub: 'This week', value: w.padTransfersThisWeek, icon: RefreshCw, tone: 'bg-violet-100 text-violet-600' },
-                    { label: 'Carpet Pads', sub: 'This week', value: w.carpetPadsThisWeek, icon: Layers, tone: 'bg-rose-100 text-rose-600' },
-                    { label: 'Forklift Inspections', sub: 'This month', value: w.forkliftInspectionsThisMonth, icon: Forklift, tone: 'bg-orange-100 text-orange-600' },
-                    { label: 'Vehicle Inspections', sub: 'This month', value: w.vehicleInspectionsThisMonth, icon: ClipboardCheck, tone: 'bg-emerald-100 text-emerald-600' },
-                  ]
-                  return (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {tiles.map(tile => {
-                        const Icon = tile.icon
-                        return (
-                          <div key={tile.label} className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-4">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${tile.tone}`}>
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div className="mt-3 text-2xl font-black text-slate-900 tabular-nums">{tile.value}</div>
-                            <div className="mt-0.5 text-sm font-semibold text-slate-700">{tile.label}</div>
-                            <div className="text-[11px] font-medium text-slate-400">{tile.sub}</div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })()}
-              </motion.div>
-
               {/* Claims overview + authorized operations */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <motion.div
@@ -3007,63 +2953,39 @@ export default function AnalyticsPage() {
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">GPS & Fleet Health</h2>
-                      <p className="mt-1 text-sm text-slate-500">Device connectivity and vehicle categories.</p>
+                      <h2 className="text-xl font-bold text-slate-900">Corporate Operations</h2>
+                      <p className="mt-1 text-sm text-slate-500">Requests, inspections, and order activity.</p>
                     </div>
-                    <Navigation className="w-5 h-5 text-slate-400" />
+                    <Activity className="w-5 h-5 text-slate-400" />
                   </div>
                   {(() => {
-                    const p = analytics.propertyAnalytics
-                    const online = p.gpsDevices.online
-                    const offline = p.gpsDevices.offline
-                    const total = p.gpsDevices.total
-                    const onlinePct = total > 0 ? Math.round((online / total) * 100) : 0
-                    const maxVeh = Math.max(1, ...p.vehicles.byCategory.map(r => r.count))
+                    const c = analytics.corporateAnalytics!
+                    const metrics = [
+                      { label: 'Purchase Req (week)', value: c.purchaseRequestsThisWeek, icon: ShoppingCart },
+                      { label: 'Fleet Service Req', value: c.fleetService.total, icon: Wrench },
+                      { label: 'Invoices (week)', value: c.invoicesThisWeek, icon: Receipt },
+                      { label: 'Forklift Inspections', value: c.forkliftInspections, icon: Forklift },
+                      { label: 'Vehicle Inspections', value: c.vehicleInspections, icon: Car },
+                      { label: 'BOL (Pad Orders)', value: c.padOrders.total, icon: FileText },
+                      { label: 'Pad Transfers', value: c.padTransfers.total, icon: Truck },
+                      { label: 'Carpet Pad Orders', value: c.carpetPadOrders.total, icon: Layers },
+                    ]
                     return (
-                      <div className="space-y-5">
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-                            <div className="text-lg font-black text-slate-900">{total}</div>
-                            <div className="text-[11px] font-medium text-slate-500 leading-tight">Devices</div>
-                          </div>
-                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center">
-                            <div className="text-lg font-black text-emerald-700">{online}</div>
-                            <div className="text-[11px] font-medium text-emerald-600 leading-tight">Online</div>
-                          </div>
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-                            <div className="text-lg font-black text-slate-700">{offline}</div>
-                            <div className="text-[11px] font-medium text-slate-500 leading-tight">Offline</div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="mb-1 flex items-center justify-between text-sm">
-                            <span className="font-medium text-slate-700">GPS connectivity</span>
-                            <span className="font-bold text-slate-900">{onlinePct}%</span>
-                          </div>
-                          <div className="w-full h-2 rounded-full bg-slate-100">
-                            <div className="h-2 rounded-full bg-brand-green" style={{ width: `${onlinePct}%` }} />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Vehicles by category</p>
-                          {p.vehicles.byCategory.length > 0 ? (
-                            <div className="space-y-2">
-                              {p.vehicles.byCategory.map(r => (
-                                <div key={r.category} className="flex items-center gap-3">
-                                  <span className="w-28 shrink-0 truncate text-xs font-medium text-slate-700">{r.category}</span>
-                                  <div className="flex-1">
-                                    <div className="w-full h-1.5 rounded-full bg-slate-200">
-                                      <div className="h-1.5 rounded-full bg-brand-green" style={{ width: `${(r.count / maxVeh) * 100}%` }} />
-                                    </div>
-                                  </div>
-                                  <span className="w-8 text-right text-xs font-semibold text-slate-900 tabular-nums">{r.count}</span>
-                                </div>
-                              ))}
+                      <div className="grid grid-cols-2 gap-3">
+                        {metrics.map(metric => {
+                          const Icon = metric.icon
+                          return (
+                            <div key={metric.label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                              <div className="w-9 h-9 bg-brand-green/10 rounded-lg flex items-center justify-center shrink-0">
+                                <Icon className="w-4 h-4 text-brand-green" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xl font-black text-slate-900 leading-none">{metric.value}</div>
+                                <div className="mt-1 text-[11px] font-medium text-slate-500 leading-tight">{metric.label}</div>
+                              </div>
                             </div>
-                          ) : (
-                            <p className="text-sm text-slate-400">No vehicle categories recorded.</p>
-                          )}
-                        </div>
+                          )
+                        })}
                       </div>
                     )
                   })()}
