@@ -769,6 +769,12 @@ export async function GET(request: NextRequest) {
     }))
 
     // ========== CORPORATE ANALYTICS ==========
+    const startOfWeek = new Date(now)
+    const daysSinceMonday = (now.getDay() + 6) % 7
+    startOfWeek.setDate(now.getDate() - daysSinceMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
     const [
       claims,
       travelRequests,
@@ -777,33 +783,33 @@ export async function GET(request: NextRequest) {
       apparelOrders,
       businessCardOrders,
       fleetServiceRequests,
-      vehicleInspectionCount,
-      forkliftInspectionCount,
+      vehicleInspections,
+      forkliftInspections,
       carpetPadOrders,
       padOrders,
       padTransfers,
       inventoryCycles,
       licences,
-      invoiceCount,
+      invoices,
       marketingLeads,
       padOrderByWorkroom,
       travelRequestsByWorkroom,
     ] = await Promise.all([
       prisma.claim.findMany({ select: { status: true, amount: true, workroom: true, category: true } }),
       prisma.travelRequest.findMany({ select: { status: true, chargeWorkroom: true } }),
-      prisma.purchaseRequest.findMany({ select: { status: true } }),
+      prisma.purchaseRequest.findMany({ select: { status: true, dateRequested: true } }),
       prisma.officeSupplyOrder.findMany({ select: { status: true } }),
       prisma.apparelOrder.findMany({ select: { status: true } }),
       prisma.businessCardOrder.findMany({ select: { status: true } }),
-      prisma.fleetServiceRequest.findMany({ select: { status: true } }),
-      prisma.vehicleInspection.count(),
-      prisma.forkliftInspection.count(),
-      prisma.carpetPadOrder.findMany({ select: { authorized: true } }),
+      prisma.fleetServiceRequest.findMany({ select: { status: true, requestDate: true } }),
+      prisma.vehicleInspection.findMany({ select: { inspectionDate: true } }),
+      prisma.forkliftInspection.findMany({ select: { inspectionDate: true } }),
+      prisma.carpetPadOrder.findMany({ select: { authorized: true, createdAt: true } }),
       prisma.padOrder.findMany({ select: { authorized: true, workroom: true, dateReceived: true } }),
-      prisma.padTransfer.findMany({ select: { authorized: true } }),
+      prisma.padTransfer.findMany({ select: { authorized: true, dateRequested: true } }),
       prisma.inventoryCycle.findMany({ select: { authorized: true } }),
       prisma.licence.findMany({ select: { isActive: true, county: true } }),
-      prisma.installerInvoice.count(),
+      prisma.installerInvoice.findMany({ select: { createdAt: true } }),
       prisma.marketingLead.findMany({ select: { outreachStatus: true } }),
       prisma.padOrder.groupBy({ by: ['workroom'], _count: { id: true } }),
       prisma.travelRequest.groupBy({ by: ['chargeWorkroom'], _count: { id: true } }),
@@ -873,8 +879,8 @@ export async function GET(request: NextRequest) {
       apparelOrders: summarizeStatus(apparelOrders),
       businessCards: summarizeStatus(businessCardOrders),
       fleetService: { total: fleetServiceRequests.length, open: fleetServiceRequests.filter(r => (r.status || 'open').toLowerCase() === 'open').length, completed: fleetServiceRequests.filter(r => (r.status || '').toLowerCase() === 'completed').length },
-      vehicleInspections: vehicleInspectionCount,
-      forkliftInspections: forkliftInspectionCount,
+      vehicleInspections: vehicleInspections.length,
+      forkliftInspections: forkliftInspections.length,
       carpetPadOrders: authorizedTally(carpetPadOrders),
       padOrders: authorizedTally(padOrders),
       padTransfers: authorizedTally(padTransfers),
@@ -884,7 +890,17 @@ export async function GET(request: NextRequest) {
         active: licences.filter(l => l.isActive === true).length,
         inactive: licences.filter(l => l.isActive !== true).length,
       },
-      invoices: invoiceCount,
+      invoices: invoices.length,
+      weeklyActivity: {
+        purchaseRequestsThisWeek: purchaseRequests.filter(r => r.dateRequested && new Date(r.dateRequested) >= startOfWeek).length,
+        fleetServiceThisWeek: fleetServiceRequests.filter(r => r.requestDate && new Date(r.requestDate) >= startOfWeek).length,
+        invoicesThisWeek: invoices.filter(r => r.createdAt && new Date(r.createdAt) >= startOfWeek).length,
+        bolThisWeek: padOrders.filter(r => r.dateReceived && new Date(r.dateReceived) >= startOfWeek).length,
+        padTransfersThisWeek: padTransfers.filter(r => r.dateRequested && new Date(r.dateRequested) >= startOfWeek).length,
+        carpetPadsThisWeek: carpetPadOrders.filter(r => r.createdAt && new Date(r.createdAt) >= startOfWeek).length,
+        forkliftInspectionsThisMonth: forkliftInspections.filter(r => r.inspectionDate && new Date(r.inspectionDate) >= startOfMonth).length,
+        vehicleInspectionsThisMonth: vehicleInspections.filter(r => r.inspectionDate && new Date(r.inspectionDate) >= startOfMonth).length,
+      },
       marketingLeads: {
         total: marketingLeads.length,
         byStatus: (() => {
