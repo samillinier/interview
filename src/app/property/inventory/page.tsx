@@ -22,7 +22,6 @@ import {
   Hash,
   Search,
   Upload,
-  Phone,
   ChevronRight,
   Armchair,
   Archive,
@@ -99,18 +98,6 @@ const OFFICE_EQUIPMENT_CATEGORY_HINTS = [
   'Kitchen / break room',
   'Safety & facilities',
 ]
-
-function formatEquipmentPhone(phone?: string | null): string {
-  if (!phone) return ''
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
-  }
-  return phone
-}
 
 function formatUsagePlacement(value?: string | null) {
   const labels: Record<string, string> = {
@@ -1054,12 +1041,6 @@ export default function InventoryPage() {
                                 {item.responsiblePerson?.trim() || 'No custodian'}
                               </span>
                             </span>
-                            {item.phoneNumber ? (
-                              <span className="inline-flex min-w-0 shrink-0 items-center gap-1 text-[11px] font-medium text-slate-600">
-                                <Phone className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
-                                {formatEquipmentPhone(item.phoneNumber)}
-                              </span>
-                            ) : null}
                           </div>
                         </div>
                       </motion.button>
@@ -1075,7 +1056,6 @@ export default function InventoryPage() {
                     <tr>
                       <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:px-6 sm:py-4">Equipment</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Device code</th>
-                      <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Phone / IMEI</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Workroom</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Usage</th>
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:py-4">Condition</th>
@@ -1085,7 +1065,7 @@ export default function InventoryPage() {
                   <tbody className="divide-y divide-slate-100/90">
                     {filteredInventory.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-12">
+                        <td colSpan={6} className="px-6 py-12">
                           <div className="mx-auto flex max-w-md flex-col items-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-8 text-center">
                             <Search className="h-8 w-8 text-slate-300" />
                             <h4 className="mt-3 text-base font-semibold text-slate-900">No equipment matched your search</h4>
@@ -1155,26 +1135,6 @@ export default function InventoryPage() {
                                 <Hash className="h-3 w-3 shrink-0 opacity-60" />
                                 Not set
                               </span>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 align-middle">
-                            {item.phoneNumber || item.imei ? (
-                              <div className="space-y-0.5">
-                                {item.phoneNumber ? (
-                                  <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-800">
-                                    <Phone className="h-3.5 w-3.5 text-slate-400" />
-                                    {formatEquipmentPhone(item.phoneNumber)}
-                                  </div>
-                                ) : null}
-                                {item.imei ? (
-                                  <div className="font-mono text-[11px] text-slate-500">
-                                    IMEI {item.imei}
-                                    {item.imei2 ? <span className="text-slate-400"> · {item.imei2}</span> : null}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-slate-400">—</span>
                             )}
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 align-middle text-sm">
