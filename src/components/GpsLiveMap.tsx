@@ -46,6 +46,7 @@ export interface VehicleDevice {
     milMileageMi?: number
     dtcClearedMileageMi?: number
     obdConnected?: boolean
+    odometer?: number
     throttlePercent?: number
     engineLoadPercent?: number
     idleDurationSec?: number

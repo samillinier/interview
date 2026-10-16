@@ -110,6 +110,7 @@ export default function FleetPage() {
   const [inlineMileageId, setInlineMileageId] = useState<string | null>(null)
   const [inlineMileageVal, setInlineMileageVal] = useState('')
   const [savingMileageId, setSavingMileageId] = useState<string | null>(null)
+  const [gpsByVehicle, setGpsByVehicle] = useState<Record<string, { odometer?: number; obdOdometer?: number; lastSeen?: string }>>({})
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     category: '',
@@ -181,6 +182,27 @@ export default function FleetPage() {
               }))
             : []
           setVehicles(normalizedVehicles)
+        }
+
+        // Load live GPS odometers for auto mileage
+        try {
+          const gpsRes = await fetch(`/api/gps/devices?_t=${Date.now()}`, { cache: 'no-store' })
+          if (gpsRes.ok) {
+            const gpsData = await gpsRes.json()
+            const map: Record<string, { odometer?: number; obdOdometer?: number; lastSeen?: string }> = {}
+            for (const d of (gpsData.devices || [])) {
+              if (d?.vehicleId) {
+                map[d.vehicleId] = {
+                  odometer: d.odometer,
+                  obdOdometer: d.obdii?.odometer,
+                  lastSeen: d.lastSeen,
+                }
+              }
+            }
+            setGpsByVehicle(map)
+          }
+        } catch {
+          // GPS optional — mileage falls back to manual
         }
       }
     } catch (err: any) {
@@ -462,7 +484,16 @@ export default function FleetPage() {
   const forkliftCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'forklift').length
   const startInlineMileage = (vehicle: Vehicle) => {
     setInlineMileageId(vehicle.id)
-    setInlineMileageVal(vehicle.mileageAsOfAugust2025?.toString() || '')
+    const live = gpsByVehicle[vehicle.id]?.obdOdometer
+    setInlineMileageVal(
+      (live && live > 0 ? live : vehicle.mileageAsOfAugust2025)?.toString() || ''
+    )
+  }
+
+  const liveMileageFor = (vehicle: Vehicle): number | null => {
+    const obd = Number(gpsByVehicle[vehicle.id]?.obdOdometer)
+    if (Number.isFinite(obd) && obd > 0) return Math.round(obd)
+    return null
   }
 
   const saveInlineMileage = async (vehicle: Vehicle) => {
@@ -783,25 +814,49 @@ export default function FleetPage() {
                                 <Loader2 className="w-4 h-4 animate-spin text-brand-green" />
                               ) : null}
                             </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => startInlineMileage(vehicle)}
-                              className="group flex items-center gap-1.5 hover:text-brand-green transition-colors text-left"
-                              title="Click to enter mileage"
-                            >
-                              <Gauge className={`w-4 h-4 ${vehicle.mileageAsOfAugust2025 ? 'text-brand-green' : 'text-slate-300 group-hover:text-brand-green'}`} />
-                              {vehicle.mileageAsOfAugust2025 ? (
-                                <span className="font-medium text-slate-900 group-hover:text-brand-green">
-                                  {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 group-hover:text-brand-green underline decoration-dotted">
-                                  Add mileage
-                                </span>
-                              )}
-                            </button>
-                          )}
+                          ) : (() => {
+                            const live = liveMileageFor(vehicle)
+                            if (live != null) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => startInlineMileage(vehicle)}
+                                  className="group text-left"
+                                  title="Live from GPS OBD — click to override"
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    <Gauge className="w-4 h-4 text-brand-green" />
+                                    <span className="font-semibold text-slate-900 group-hover:text-brand-green">
+                                      {live.toLocaleString()} mi
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-green" />
+                                    live from GPS
+                                  </p>
+                                </button>
+                              )
+                            }
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => startInlineMileage(vehicle)}
+                                className="group flex items-center gap-1.5 hover:text-brand-green transition-colors text-left"
+                                title="Click to enter mileage"
+                              >
+                                <Gauge className={`w-4 h-4 ${vehicle.mileageAsOfAugust2025 ? 'text-brand-green' : 'text-slate-300 group-hover:text-brand-green'}`} />
+                                {vehicle.mileageAsOfAugust2025 ? (
+                                  <span className="font-medium text-slate-900 group-hover:text-brand-green">
+                                    {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 group-hover:text-brand-green underline decoration-dotted">
+                                    Add mileage
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })()}
                           {vehicle.mileageRecordedAt && inlineMileageId !== vehicle.id ? (
                             <p className="text-[11px] text-slate-400 mt-0.5">
                               as of {new Date(vehicle.mileageRecordedAt).toLocaleDateString()}

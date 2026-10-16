@@ -557,6 +557,7 @@ export async function GET(request: NextRequest) {
           milMileageMi: obdii.milMileageMi,
           dtcClearedMileageMi: obdii.dtcClearedMileageMi,
           obdConnected: obdii.obdConnected,
+          odometer: obdii.odometer,
           throttlePercent: obdii.throttlePercent,
           engineLoadPercent: obdii.engineLoadPercent,
           idleDurationSec: obdii.idleDurationSec,
