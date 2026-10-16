@@ -23,6 +23,7 @@ export interface VehicleDevice {
   engineTemp?: number
   batteryVoltage?: number
   odometer?: number
+  gpsDistanceMi?: number | null
   satelliteCount: number
   signalStrength: number
   location?: string | null

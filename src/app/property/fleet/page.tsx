@@ -110,7 +110,7 @@ export default function FleetPage() {
   const [inlineMileageId, setInlineMileageId] = useState<string | null>(null)
   const [inlineMileageVal, setInlineMileageVal] = useState('')
   const [savingMileageId, setSavingMileageId] = useState<string | null>(null)
-  const [gpsByVehicle, setGpsByVehicle] = useState<Record<string, { odometer?: number; obdOdometer?: number; lastSeen?: string }>>({})
+  const [gpsByVehicle, setGpsByVehicle] = useState<Record<string, { odometer?: number; obdOdometer?: number; gpsDistanceMi?: number | null; lastSeen?: string }>>({})
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     category: '',
@@ -189,12 +189,13 @@ export default function FleetPage() {
           const gpsRes = await fetch(`/api/gps/devices?_t=${Date.now()}`, { cache: 'no-store' })
           if (gpsRes.ok) {
             const gpsData = await gpsRes.json()
-            const map: Record<string, { odometer?: number; obdOdometer?: number; lastSeen?: string }> = {}
+            const map: Record<string, { odometer?: number; obdOdometer?: number; gpsDistanceMi?: number | null; lastSeen?: string }> = {}
             for (const d of (gpsData.devices || [])) {
               if (d?.vehicleId) {
                 map[d.vehicleId] = {
                   odometer: d.odometer,
                   obdOdometer: d.obdii?.odometer,
+                  gpsDistanceMi: d.gpsDistanceMi,
                   lastSeen: d.lastSeen,
                 }
               }
@@ -484,17 +485,23 @@ export default function FleetPage() {
   const forkliftCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'forklift').length
   const startInlineMileage = (vehicle: Vehicle) => {
     setInlineMileageId(vehicle.id)
-    const live = gpsByVehicle[vehicle.id]?.obdOdometer
+    const live = liveMileageFor(vehicle)
     setInlineMileageVal(
-      (live && live > 0 ? live : vehicle.mileageAsOfAugust2025)?.toString() || ''
+      (live != null && live > 0 ? live : vehicle.mileageAsOfAugust2025)?.toString() || ''
     )
   }
 
   const liveMileageFor = (vehicle: Vehicle): number | null => {
-    const obd = Number(gpsByVehicle[vehicle.id]?.obdOdometer)
+    const gps = gpsByVehicle[vehicle.id]
+    if (!gps) return null
+    const obd = Number(gps.obdOdometer)
     if (Number.isFinite(obd) && obd > 0) return Math.round(obd)
-    return null
+    const dist = Number(gps.gpsDistanceMi)
+    if (Number.isFinite(dist) && dist > 0) return Math.round(dist)
+    return 0
   }
+
+  const hasGpsLink = (vehicle: Vehicle): boolean => Boolean(gpsByVehicle[vehicle.id])
 
   const saveInlineMileage = async (vehicle: Vehicle) => {
     if (!property) return
@@ -822,7 +829,7 @@ export default function FleetPage() {
                                   type="button"
                                   onClick={() => startInlineMileage(vehicle)}
                                   className="group text-left"
-                                  title="Live from GPS OBD — click to override"
+                                  title="GPS distance — click to enter the dash odometer instead"
                                 >
                                   <div className="flex items-center gap-1.5">
                                     <Gauge className="w-4 h-4 text-brand-green" />
@@ -832,7 +839,7 @@ export default function FleetPage() {
                                   </div>
                                   <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
                                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-green" />
-                                    live from GPS
+                                    GPS distance
                                   </p>
                                 </button>
                               )

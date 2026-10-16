@@ -530,6 +530,7 @@ export async function GET(request: NextRequest) {
         engineTemp: obdii.engineTemp ?? device.engineTemp ?? undefined,
         batteryVoltage: obdii.batteryVoltage ?? device.batteryVoltage ?? undefined,
         odometer: trackerMileageMi ?? obdii.odometer ?? summaryOdometer ?? device.odometer ?? 0,
+        gpsDistanceMi: trackerMileageMi ?? null,
         satelliteCount: livePos?.accuracy != null ? Math.round(20 - Math.min(livePos.accuracy, 20)) : 0,
         signalStrength:
           obdii.gsmSignalDbm != null
