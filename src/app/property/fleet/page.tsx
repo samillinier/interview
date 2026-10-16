@@ -30,6 +30,12 @@ import {
   FileText,
   AlertTriangle,
   Wrench,
+  Signal,
+  Timer,
+  Fuel,
+  Thermometer,
+  Battery,
+  Activity,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -70,6 +76,25 @@ interface Vehicle {
   updatedAt: string
 }
 
+interface GpsVehicleInfo {
+  odometer?: number
+  obdOdometer?: number
+  gpsDistanceMi?: number | null
+  lastSeen?: string
+  milOn?: boolean
+  dtcCodes?: string[]
+  motorHours?: number
+  fuelLevel?: number | null
+  engineTemp?: number | null
+  batteryVoltage?: number | null
+  speed?: number
+  ignition?: boolean
+  vin?: string
+  status?: string
+  deviceName?: string
+  deviceModel?: string
+}
+
 type VehicleDocumentCategory = 'vehicle' | 'misc'
 interface VehicleDocument {
   id: string
@@ -84,6 +109,18 @@ const normalizeVehicleCategory = (value?: string | null): '' | 'car' | 'forklift
   if (v === 'cat') return 'car'
   if (v === 'car' || v === 'forklift') return v
   return ''
+}
+
+function GpsStat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="px-3 py-2.5 bg-white">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
+        <Icon className="w-3 h-3" />
+        {label}
+      </p>
+      <p className="text-sm font-semibold text-slate-800 mt-0.5">{value}</p>
+    </div>
+  )
 }
 
 export default function FleetPage() {
@@ -112,7 +149,7 @@ export default function FleetPage() {
   const [inlineMileageId, setInlineMileageId] = useState<string | null>(null)
   const [inlineMileageVal, setInlineMileageVal] = useState('')
   const [savingMileageId, setSavingMileageId] = useState<string | null>(null)
-  const [gpsByVehicle, setGpsByVehicle] = useState<Record<string, { odometer?: number; obdOdometer?: number; gpsDistanceMi?: number | null; lastSeen?: string; milOn?: boolean; dtcCodes?: string[] }>>({})
+  const [gpsByVehicle, setGpsByVehicle] = useState<Record<string, GpsVehicleInfo>>({})
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     category: '',
@@ -191,7 +228,7 @@ export default function FleetPage() {
           const gpsRes = await fetch(`/api/gps/devices?_t=${Date.now()}`, { cache: 'no-store' })
           if (gpsRes.ok) {
             const gpsData = await gpsRes.json()
-            const map: Record<string, { odometer?: number; obdOdometer?: number; gpsDistanceMi?: number | null; lastSeen?: string; milOn?: boolean; dtcCodes?: string[] }> = {}
+            const map: Record<string, GpsVehicleInfo> = {}
             for (const d of (gpsData.devices || [])) {
               if (d?.vehicleId) {
                 map[d.vehicleId] = {
@@ -201,6 +238,16 @@ export default function FleetPage() {
                   lastSeen: d.lastSeen,
                   milOn: d.obdii?.milOn,
                   dtcCodes: d.obdii?.dtcCodes,
+                  motorHours: d.obdii?.motorHours,
+                  fuelLevel: d.fuelLevel ?? d.obdii?.fuelLevel,
+                  engineTemp: d.engineTemp,
+                  batteryVoltage: d.batteryVoltage,
+                  speed: d.speed,
+                  ignition: d.ignition,
+                  vin: d.obdii?.vin,
+                  status: d.status,
+                  deviceName: d.vehicleName,
+                  deviceModel: d.deviceModel,
                 }
               }
             }
@@ -487,25 +534,28 @@ export default function FleetPage() {
   })
   const carCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'car').length
   const forkliftCount = vehicles.filter((v) => normalizeVehicleCategory(v.category) === 'forklift').length
+  const currentMileage = (vehicle: Vehicle): { value: number; source: 'obd' | 'gps' | 'manual'; asOf: string | null } | null => {
+    const gps = gpsByVehicle[vehicle.id]
+    const obd = gps?.obdOdometer != null ? Number(gps.obdOdometer) : NaN
+    const dist = gps?.gpsDistanceMi != null ? Number(gps.gpsDistanceMi) : NaN
+    if (Number.isFinite(obd) && obd > 0) {
+      return { value: Math.round(obd), source: 'obd', asOf: gps?.lastSeen ?? null }
+    }
+    if (Number.isFinite(dist) && dist > 0) {
+      return { value: Math.round(dist), source: 'gps', asOf: gps?.lastSeen ?? null }
+    }
+    const manual = Number(vehicle.mileageAsOfAugust2025)
+    if (Number.isFinite(manual) && manual > 0) {
+      return { value: Math.round(manual), source: 'manual', asOf: vehicle.mileageRecordedAt ? new Date(vehicle.mileageRecordedAt).toISOString() : null }
+    }
+    return null
+  }
+
   const startInlineMileage = (vehicle: Vehicle) => {
     setInlineMileageId(vehicle.id)
-    const live = liveMileageFor(vehicle)
-    setInlineMileageVal(
-      (live != null && live > 0 ? live : vehicle.mileageAsOfAugust2025)?.toString() || ''
-    )
+    const m = currentMileage(vehicle)
+    setInlineMileageVal(m ? String(m.value) : '')
   }
-
-  const liveMileageFor = (vehicle: Vehicle): number | null => {
-    const gps = gpsByVehicle[vehicle.id]
-    if (!gps) return null
-    const obd = Number(gps.obdOdometer)
-    if (Number.isFinite(obd) && obd > 0) return Math.round(obd)
-    const dist = Number(gps.gpsDistanceMi)
-    if (Number.isFinite(dist) && dist > 0) return Math.round(dist)
-    return 0
-  }
-
-  const hasGpsLink = (vehicle: Vehicle): boolean => Boolean(gpsByVehicle[vehicle.id])
 
   const saveInlineMileage = async (vehicle: Vehicle) => {
     if (!property) return
@@ -844,25 +894,19 @@ export default function FleetPage() {
                               ) : null}
                             </div>
                           ) : (() => {
-                            const live = liveMileageFor(vehicle)
-                            if (live != null) {
+                            const m = currentMileage(vehicle)
+                            if (!m) {
                               return (
                                 <button
                                   type="button"
                                   onClick={() => startInlineMileage(vehicle)}
-                                  className="group text-left"
-                                  title="GPS distance — click to enter the dash odometer instead"
+                                  className="group flex items-center gap-1.5 hover:text-brand-green transition-colors text-left"
+                                  title="Click to enter mileage"
                                 >
-                                  <div className="flex items-center gap-1.5">
-                                    <Gauge className="w-4 h-4 text-brand-green" />
-                                    <span className="font-semibold text-slate-900 group-hover:text-brand-green">
-                                      {live.toLocaleString()} mi
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
-                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-green" />
-                                    GPS distance
-                                  </p>
+                                  <Gauge className="w-4 h-4 text-slate-300 group-hover:text-brand-green" />
+                                  <span className="text-slate-400 group-hover:text-brand-green underline decoration-dotted">
+                                    Add mileage
+                                  </span>
                                 </button>
                               )
                             }
@@ -870,27 +914,23 @@ export default function FleetPage() {
                               <button
                                 type="button"
                                 onClick={() => startInlineMileage(vehicle)}
-                                className="group flex items-center gap-1.5 hover:text-brand-green transition-colors text-left"
-                                title="Click to enter mileage"
+                                className="group text-left"
+                                title="Current mileage — click to enter the dash odometer instead"
                               >
-                                <Gauge className={`w-4 h-4 ${vehicle.mileageAsOfAugust2025 ? 'text-brand-green' : 'text-slate-300 group-hover:text-brand-green'}`} />
-                                {vehicle.mileageAsOfAugust2025 ? (
-                                  <span className="font-medium text-slate-900 group-hover:text-brand-green">
-                                    {vehicle.mileageAsOfAugust2025.toLocaleString()} mi
+                                <div className="flex items-center gap-1.5">
+                                  <Gauge className="w-4 h-4 text-brand-green" />
+                                  <span className="font-semibold text-slate-900 group-hover:text-brand-green">
+                                    {m.value.toLocaleString()} mi
                                   </span>
-                                ) : (
-                                  <span className="text-slate-400 group-hover:text-brand-green underline decoration-dotted">
-                                    Add mileage
-                                  </span>
-                                )}
+                                </div>
+                                <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand-green" />
+                                  {m.source === 'obd' ? 'OBD odometer' : m.source === 'gps' ? 'GPS distance' : 'Manual'}
+                                  {m.asOf ? ` · as of ${new Date(m.asOf).toLocaleDateString()}` : ''}
+                                </p>
                               </button>
                             )
                           })()}
-                          {vehicle.mileageRecordedAt && inlineMileageId !== vehicle.id ? (
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              as of {new Date(vehicle.mileageRecordedAt).toLocaleDateString()}
-                            </p>
-                          ) : null}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
@@ -1092,30 +1132,64 @@ export default function FleetPage() {
                       ) : null}
                     </div>
 
-                    {/* GPS diagnostics */}
+                    {/* Live data from GPS device */}
                     {editingVehicle ? (() => {
                       const gps = gpsByVehicle[editingVehicle.id]
-                      const dtcs = gps?.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
-                      if (!gps?.milOn && dtcs.length === 0) return null
+                      if (!gps) return null
+                      const dtcs = gps.dtcCodes && gps.dtcCodes.length > 0 ? gps.dtcCodes : []
+                      const hasDiagnostics = !!gps.milOn || dtcs.length > 0
+                      const obd = gps.obdOdometer != null ? Number(gps.obdOdometer) : NaN
+                      const dist = gps.gpsDistanceMi != null ? Number(gps.gpsDistanceMi) : NaN
+                      const liveMiles = Number.isFinite(obd) && obd > 0 ? obd : (Number.isFinite(dist) && dist > 0 ? dist : NaN)
                       return (
-                        <div className="mt-4 p-3 rounded-xl border border-amber-200 bg-amber-50/60 max-w-lg">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 mb-2 flex items-center gap-1.5">
-                            <Wrench className="w-3.5 h-3.5" />
-                            Diagnostics from GPS device
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {gps.milOn ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                Check engine on
-                              </span>
-                            ) : null}
-                            {dtcs.map((code: string, i: number) => (
-                              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-mono font-semibold">
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden max-w-2xl">
+                          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600 flex items-center gap-1.5">
+                              <Signal className="w-3.5 h-3.5 text-brand-green" />
+                              Live from GPS device
+                            </p>
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${gps.status === 'online' ? 'text-brand-green' : 'text-slate-400'}`}>
+                              <span className={`inline-block w-1.5 h-1.5 rounded-full ${gps.status === 'online' ? 'bg-brand-green' : 'bg-slate-300'}`} />
+                              {gps.status === 'online' ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
+
+                          {hasDiagnostics ? (
+                            <div className="px-4 py-3 border-b border-amber-100 bg-amber-50/60">
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 mb-2 flex items-center gap-1.5">
                                 <Wrench className="w-3.5 h-3.5" />
-                                {code}
-                              </span>
-                            ))}
+                                Diagnostics
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {gps.milOn ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    Check engine on
+                                  </span>
+                                ) : null}
+                                {dtcs.map((code: string, i: number) => (
+                                  <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-mono font-semibold">
+                                    <Wrench className="w-3.5 h-3.5" />
+                                    {code}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-100">
+                            <GpsStat icon={Gauge} label="Mileage" value={Number.isFinite(liveMiles) ? `${Math.round(liveMiles).toLocaleString()} mi` : '—'} />
+                            <GpsStat icon={Timer} label="Engine hours" value={gps.motorHours != null ? `${gps.motorHours} hrs` : '—'} />
+                            <GpsStat icon={Fuel} label="Fuel" value={gps.fuelLevel != null ? `${Math.round(gps.fuelLevel)}%` : '—'} />
+                            <GpsStat icon={Thermometer} label="Engine temp" value={gps.engineTemp != null ? `${gps.engineTemp}°C` : '—'} />
+                            <GpsStat icon={Battery} label="Battery" value={gps.batteryVoltage != null ? `${gps.batteryVoltage}V` : '—'} />
+                            <GpsStat icon={Activity} label="Speed" value={gps.speed != null ? `${Math.round(gps.speed)} mph` : '—'} />
+                          </div>
+
+                          <div className="px-4 py-2.5 text-[11px] text-slate-500 flex flex-col gap-1 bg-white">
+                            {gps.vin ? <p><span className="font-semibold text-slate-600">VIN:</span> {gps.vin}</p> : null}
+                            {gps.deviceName ? <p><span className="font-semibold text-slate-600">Device:</span> {gps.deviceName}{gps.deviceModel ? ` · ${gps.deviceModel}` : ''}</p> : null}
+                            {gps.lastSeen ? <p><span className="font-semibold text-slate-600">Last seen:</span> {new Date(gps.lastSeen).toLocaleString()}</p> : null}
                           </div>
                         </div>
                       )
