@@ -4,14 +4,51 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024'])
+const RETRYABLE_MESSAGE = /can't reach database|server has closed the connection|connection terminated|connection reset|too many connections|timed out fetching a new connection|administrator command/i
+
+function isRetryableDbError(error: unknown): boolean {
+  const err = error as { code?: string; message?: string }
+  if (err?.code && RETRYABLE_CODES.has(err.code)) return true
+  return typeof err?.message === 'string' && RETRYABLE_MESSAGE.test(err.message)
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function newClient() {
-  return new PrismaClient({
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === 'production' ? ['warn', 'error'] : [],
     // Neon serverless Postgres: keep connections short-lived.
     // PgBouncer handles pooling; Prisma should not hold idle connections.
     // Requires DATABASE_URL to include ?pgbouncer=true&connection_limit=1
     // in Vercel environment variables.
   })
+
+  // Neon scale-to-zero kills idle sockets. Retry a few times so a sleep/wake
+  // looks like a short pause instead of "database disconnected".
+  return client.$extends({
+    name: 'neon-reconnect',
+    query: {
+      async $allOperations({ args, query }) {
+        const maxAttempts = 4
+        let lastError: unknown
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            return await query(args)
+          } catch (error) {
+            lastError = error
+            if (attempt === maxAttempts || !isRetryableDbError(error)) throw error
+            await client.$disconnect().catch(() => {})
+            await sleep(400 * 2 ** (attempt - 1))
+            await client.$connect().catch(() => {})
+          }
+        }
+        throw lastError
+      },
+    },
+  }) as unknown as PrismaClient
 }
 
 let prisma: PrismaClient
