@@ -73,11 +73,12 @@ Email: svudaru@fiscorponline.com
 Phone: O: (813) 867-4712 Ext: 441
 Documents can also be uploaded in the Subcontractor Portal.
 
-SCHEDULING AND MEASUREMENT CONTACT (required whenever someone asks about scheduling, schedule, appointment, measuring, measurement, measure job, site measure, or similar):
+SCHEDULING AND MEASUREMENT CONTACT — Adriana ONLY for measure appointments:
 Name: Adriana Vansickle
 Phone: (813) 867-7028
 Email: avansickle@fiscorponline.com
-Do not invent other scheduling or measurement contacts. Direct those questions to Adriana with her phone and email.
+Use Adriana ONLY when the person is booking, rescheduling, or asking when a site measurement appointment is.
+Do NOT send Adriana: installation questions, who brings materials (FIS vs Lowe's), moving furniture or bunk beds, what a measure tech said about the job, dealbreakers, job problems, or any other topic. Those go to the workroom General Manager. Ask which workroom if it is not named. Do not invent other contacts.
 
 FIS FastTrack is the official FIS subcontractor app. Recommend it when talking about the portal, uploading documents, onboarding, or when someone asks about an app, phone, or mobile. It is faster, sleeker, and easier to use than the website.
 iPhone: https://apps.apple.com/us/app/fis-fasttrack/id6793172089
@@ -186,7 +187,7 @@ Business Tax Receipt (Occupational License), issued by the city or county where 
 Digital photo for the ID badge meeting the stated photo requirements.
 LEAD certification proof, when applicable, plus LEAD Firm certificate requirements.
 General Liability insurance documentation meeting stated limits.
-Auto Liability insurance documentation meeting stated limits, subject to the stated carpet/tile/vinyl/hard-surface exemptions.
+Commercial Auto Liability is currently WAIVED. Do not require an auto certificate. Do not tell contractors they must get commercial auto insurance.
 Workers' Compensation exemption certificate if the owner works solo.
 Workers' Compensation liability coverage if the company has helpers.
 Background authorization and front-facing badge photo for each helper, plus workers' compensation coverage for helpers.
@@ -301,19 +302,10 @@ Authorized representative signature is required on the certificate.
 COI sample image: https://job.floorinteriorservices.com/forms/coi-sample.jpg
 COI Tutorial (YouTube): https://www.youtube.com/watch?v=kTkwof0Rx6A&t=3s
 17. AUTO LIABILITY INSURANCE
-The supplied sample Auto Liability requirements state:
-Coverage
-Minimum
-Combined Single Limit
-$300,000
-OR Bodily Injury — Per Person
-$100,000
-Bodily Injury — Per Accident
-$300,000
-Property Damage
-$50,000
-Special exemption/timing rule supplied by FIS: There is a 60-day exemption for Commercial Auto Liability for Carpet Subcontractors Only. There is a 30-day exemption for Commercial Auto Liability for Tile, Vinyl, and Hard Surface Subcontractors.
-AI answer rule: Do not generalize the 60-day carpet exemption to other flooring types.
+CURRENT POLICY: Commercial Auto Liability is WAIVED. Contractors do not currently need commercial auto / vehicle insurance to onboard or work with FIS.
+AI answer rule: If asked about commercial auto, auto insurance, car insurance, or vehicle insurance, say it is currently waived and not required. Do not tell them they must buy it. Do not quote the old $300,000 limits as a current requirement. Do not mention the old 30-day or 60-day auto exemptions as if coverage is still required. General Liability is still required.
+If they already have an auto certificate they may still upload it, but it is optional.
+Historical sample-COI numbers (NOT required while waived): Combined Single Limit $300,000 OR split limits $100,000 / $300,000 / $50,000. Only mention these if they specifically ask what the old or sample limits were.
 18. WORKERS' COMPENSATION (WC)
 If the contractor works solo, a Workers' Compensation Exemption Certificate is required to cover the business owner.
 If the contractor has helpers, Workers' Compensation Liability is required to cover the helpers.
@@ -359,7 +351,7 @@ Can I receive work before I am fully onboarded?
 The supplied process states that work orders are considered after approval and that price sheets are sent only after full onboarding approval. Do not promise work before onboarding is complete.
 23. DOCUMENT FAQ
 What documents do I need?
-Active SunBiz/company-status proof; Independent Contractor Information Form; W-9; Background Authorization and Release; voided company check or banking information form; Business Tax Receipt; compliant ID photo; applicable LEAD documentation; General Liability; Auto Liability subject to stated exemptions; and Workers' Compensation exemption or coverage as applicable.
+Active SunBiz/company-status proof; Independent Contractor Information Form; W-9; Background Authorization and Release; voided company check or banking information form; Business Tax Receipt; compliant ID photo; applicable LEAD documentation; General Liability; and Workers' Compensation exemption or coverage as applicable. Commercial Auto Liability is currently waived and is not required.
 Can I send documents separately?
 The supplied instruction says to return all forms signed and dated and send them back in PDF form in one email to compliance@floorinteriorservices.com. Documents can also be uploaded in the Subcontractor Portal. Fillable W-9, Background, and Banking forms are in the portal Agreements section.
 How do I fill out the W-9?
@@ -398,9 +390,9 @@ $1,000,000.
 What is the GL products/completed operations aggregate?
 $2,000,000.
 What Auto Liability limit is required?
-$300,000 combined single limit OR split limits of $100,000 bodily injury per person / $300,000 bodily injury per accident / $50,000 property damage.
+None right now. Commercial Auto Liability is currently waived. Do not require auto insurance. If they ask about the old sample numbers, those were $300,000 combined single limit OR $100,000 / $300,000 / $50,000, but they are not required while the waiver is in place.
 What auto boxes should be marked on the COI?
-The sample marks Any Auto, Hired Autos, and Non-Owned Autos.
+Not required while auto is waived. The sample COI still shows Any Auto, Hired Autos, and Non-Owned Autos, but contractors do not need to provide auto coverage now.
 Does the COI need additional insured wording?
 Yes. Use the Description of Operations additional insured / waiver of subrogation / 30-day cancellation statement supplied in the COI sample.
 How recent must the COI be?
@@ -423,7 +415,7 @@ Use the EPA certification resource: https://www.epa.gov/lead/getcertified
 26. TIMING RULES — IMPORTANT
 Prescreen interview: approximately 5–10 minutes.
 Owner background check after documents are compliant: approximately 3 days to 1 week.
-Commercial Auto Liability exemption: 60 days for Carpet Subcontractors Only; 30 days for Tile, Vinyl, and Hard Surface Subcontractors.
+Commercial Auto Liability: currently waived for all flooring types. Not required. Do not apply the old 30-day/60-day auto exemption as a current requirement.
 LEAD certification timing: 30 labor days after the first pay period to sign up for a class, with payment receipt required; a separate note states a 30-day exemption beginning the day the contractor receives the first payment.
 Workers' Comp exemption for helpers: 30-day exemption stated; owner still must provide a Workers' Comp Exemption Certificate.
 These are stated process rules/timeframes, not guarantees of approval or job assignment timing.
@@ -559,6 +551,6 @@ Bank Form PDF: https://job.floorinteriorservices.com/forms/bank-form.pdf
 Background Form PDF: https://job.floorinteriorservices.com/forms/background-form.pdf
 COI sample: https://job.floorinteriorservices.com/forms/coi-sample.jpg
 Compliance contact: compliance@floorinteriorservices.com
-Scheduling / measurement contact: Adriana Vansickle — (813) 867-7028 — avansickle@fiscorponline.com
+Measurement-appointment contact only: Adriana Vansickle — (813) 867-7028 — avansickle@fiscorponline.com. All other job questions go to the workroom General Manager.
 END OF KNOWLEDGE BASE. This document reflects the information supplied for this FIS AI assistant knowledge base. If a future FIS policy, form, insurance requirement, portal instruction, or onboarding procedure conflicts with this document, the current official FIS instruction should be treated as controlling.
 `.trim()
