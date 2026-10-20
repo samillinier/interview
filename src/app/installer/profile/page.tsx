@@ -29,6 +29,8 @@ import {
   Banknote,
   Plus,
   Trash2,
+  UserCheck,
+  UserX,
   Users,
   CreditCard,
   FileText,
@@ -1410,6 +1412,41 @@ export default function InstallerProfilePage() {
       setError('Failed to save staff member. Please try again.')
     } finally {
       setIsSavingStaff(false)
+    }
+  }
+
+  const handleToggleStaffActive = async (staff: any) => {
+    if (!installer) return
+    const name = `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'this team member'
+    const nextStatus = staff.status === 'deactivated' ? 'active' : 'deactivated'
+    const ok = window.confirm(
+      nextStatus === 'deactivated'
+        ? `Deactivate ${name}? They will stay on the team but marked inactive.`
+        : `Reactivate ${name}?`
+    )
+    if (!ok) return
+
+    try {
+      const token = localStorage.getItem('installerToken')
+      const response = await fetch(`/api/installers/${installer.id}/staff/${staff.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        await fetchStaffMembers()
+        setSuccess(nextStatus === 'deactivated' ? `${name} deactivated` : `${name} reactivated`)
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError(data.error || 'Failed to update team member')
+      }
+    } catch (err: any) {
+      console.error('Error updating staff status:', err)
+      setError('Failed to update team member. Please try again.')
     }
   }
 
@@ -3468,7 +3505,7 @@ export default function InstallerProfilePage() {
                     key={staff.id}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all"
+                    className={`bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-all ${staff.status === 'deactivated' ? 'opacity-70' : ''}`}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3 flex-1">
@@ -3507,11 +3544,13 @@ export default function InstallerProfilePage() {
                             </h3>
                             {staff.status && (
                               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                staff.status === 'active' 
-                                  ? 'bg-green-100 text-green-700' 
-                                  : 'bg-red-100 text-red-700'
+                                staff.status === 'active'
+                                  ? 'bg-green-100 text-green-700'
+                                  : staff.status === 'deactivated'
+                                    ? 'bg-slate-200 text-slate-700'
+                                    : 'bg-red-100 text-red-700'
                               }`}>
-                                {staff.status === 'active' ? 'Active' : 'Expired'}
+                                {staff.status === 'active' ? 'Active' : staff.status === 'deactivated' ? 'Deactivated' : 'Expired'}
                               </span>
                             )}
                           </div>
@@ -3527,6 +3566,17 @@ export default function InstallerProfilePage() {
                           title="Edit"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStaffActive(staff)}
+                          className={`p-2 rounded-lg transition-all ${
+                            staff.status === 'deactivated'
+                              ? 'text-slate-400 hover:text-brand-green hover:bg-brand-green/10'
+                              : 'text-slate-400 hover:text-amber-700 hover:bg-amber-50'
+                          }`}
+                          title={staff.status === 'deactivated' ? 'Reactivate' : 'Deactivate'}
+                        >
+                          {staff.status === 'deactivated' ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => handleDeleteStaff(staff.id, `${staff.firstName} ${staff.lastName}`)}
@@ -6311,6 +6361,7 @@ export default function InstallerProfilePage() {
                       className="w-full px-3 py-2 sm:px-4 sm:py-2.5 border border-slate-300 rounded-lg focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 outline-none transition-all bg-white text-slate-900"
                     >
                       <option value="active">Active</option>
+                      <option value="deactivated">Deactivated</option>
                       <option value="expired">Expired</option>
                     </select>
                   </div>

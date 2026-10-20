@@ -163,9 +163,9 @@ export async function POST(
     }
 
     // Validate status if provided
-    if (status && !['active', 'expired'].includes(status)) {
+    if (status && !['active', 'expired', 'deactivated'].includes(status)) {
       return NextResponse.json(
-        { error: 'Status must be either "active" or "expired"' },
+        { error: 'Status must be "active", "expired", or "deactivated"' },
         { status: 400 }
       )
     }

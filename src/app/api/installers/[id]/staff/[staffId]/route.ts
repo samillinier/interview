@@ -120,9 +120,9 @@ export async function PATCH(
     }
 
     // Validate status if provided
-    if (status !== undefined && !['active', 'expired'].includes(status)) {
+    if (status !== undefined && !['active', 'expired', 'deactivated'].includes(status)) {
       return NextResponse.json(
-        { error: 'Status must be either "active" or "expired"' },
+        { error: 'Status must be "active", "expired", or "deactivated"' },
         { status: 400 }
       )
     }
