@@ -635,6 +635,8 @@ export default function InstallerProfileViewPage() {
   const [btrParseErrorByDocId, setBtrParseErrorByDocId] = useState<Record<string, string>>({})
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
   const [staffMembers, setStaffMembers] = useState<any[]>([])
+  const [staffStatusConfirm, setStaffStatusConfirm] = useState<any | null>(null)
+  const [isUpdatingStaffStatus, setIsUpdatingStaffStatus] = useState(false)
   const [failedImageLoads, setFailedImageLoads] = useState<Set<string>>(new Set())
   const [historicalData, setHistoricalData] = useState<any[]>([])
   const [expandedHistory, setExpandedHistory] = useState<{ [key: string]: boolean }>({})
@@ -2716,16 +2718,16 @@ export default function InstallerProfileViewPage() {
     setShowStaffModal(true)
   }
 
-  const handleToggleStaffActive = async (staff: any) => {
+  const handleToggleStaffActive = (staff: any) => {
+    setStaffStatusConfirm(staff)
+  }
+
+  const confirmStaffStatusChange = async () => {
+    if (!staffStatusConfirm) return
+    const staff = staffStatusConfirm
     const name = `${staff.firstName || ''} ${staff.lastName || ''}`.trim() || 'this team member'
     const nextStatus = staff.status === 'deactivated' ? 'active' : 'deactivated'
-    const ok = window.confirm(
-      nextStatus === 'deactivated'
-        ? `Deactivate ${name}? They will stay on the team but marked inactive.`
-        : `Reactivate ${name}?`
-    )
-    if (!ok) return
-
+    setIsUpdatingStaffStatus(true)
     try {
       const response = await fetch(`/api/installers/${installerId}/staff/${staff.id}`, {
         method: 'PATCH',
@@ -2739,6 +2741,7 @@ export default function InstallerProfileViewPage() {
           const staffData = await staffResponse.json()
           setStaffMembers(staffData.staffMembers || [])
         }
+        setStaffStatusConfirm(null)
         setSuccess(nextStatus === 'deactivated' ? `${name} deactivated` : `${name} reactivated`)
         setTimeout(() => setSuccess(''), 3000)
       } else {
@@ -2747,6 +2750,8 @@ export default function InstallerProfileViewPage() {
     } catch (err: any) {
       console.error('Error updating staff status:', err)
       setError('Failed to update team member. Please try again.')
+    } finally {
+      setIsUpdatingStaffStatus(false)
     }
   }
 
@@ -11377,6 +11382,82 @@ export default function InstallerProfileViewPage() {
                     {editingStaff ? 'Update' : 'Add'} Member
                   </>
                 )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {staffStatusConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+          >
+            {staffStatusConfirm.status === 'deactivated' ? (
+              <div className="px-6 py-5 border-b border-slate-100 bg-brand-green/5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-brand-green/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <UserCheck className="w-6 h-6 text-brand-green" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">Reactivate team member</h3>
+                    <p className="text-sm text-slate-600 mt-0.5">They will show as Active again</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="px-6 py-5 border-b border-amber-100 bg-amber-50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <UserX className="w-6 h-6 text-amber-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">Deactivate team member</h3>
+                    <p className="text-sm text-slate-600 mt-0.5">They stay on the team, marked inactive</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="px-6 py-5">
+              <p className="text-slate-700 leading-relaxed">
+                {staffStatusConfirm.status === 'deactivated' ? 'Reactivate' : 'Deactivate'}{' '}
+                <span className="font-semibold text-slate-900">
+                  {`${staffStatusConfirm.firstName || ''} ${staffStatusConfirm.lastName || ''}`.trim() || 'this team member'}
+                </span>
+                {staffStatusConfirm.status === 'deactivated'
+                  ? '?'
+                  : '? They will remain listed, but no longer marked Active.'}
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setStaffStatusConfirm(null)}
+                disabled={isUpdatingStaffStatus}
+                className="px-5 py-2.5 border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmStaffStatusChange}
+                disabled={isUpdatingStaffStatus}
+                className={`px-5 py-2.5 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2 ${
+                  staffStatusConfirm.status === 'deactivated'
+                    ? 'bg-brand-green hover:bg-brand-green-dark'
+                    : 'bg-amber-600 hover:bg-amber-700'
+                }`}
+              >
+                {isUpdatingStaffStatus ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : staffStatusConfirm.status === 'deactivated' ? (
+                  <UserCheck className="w-4 h-4" />
+                ) : (
+                  <UserX className="w-4 h-4" />
+                )}
+                {staffStatusConfirm.status === 'deactivated' ? 'Reactivate' : 'Deactivate'}
               </button>
             </div>
           </motion.div>
