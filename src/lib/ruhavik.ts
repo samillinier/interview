@@ -702,148 +702,217 @@ function normalizeDtcCodes(raw: unknown): string[] {
   return parts.filter((c): c is string => Boolean(c))
 }
 
+/** Per-field unix seconds copied from Ruhavik telemetry onto position attributes. */
+const TELEMETRY_TS_ATTR = '__ts'
+
+/** RPM / coolant / OBD speed / pedal — meaningless after a few hours parked. */
+const STALE_INSTANT_SEC = 6 * 3600
+/** Fuel / ignition / power / economy — last-known is useful, but not weeks later. */
+const STALE_GAUGE_SEC = 7 * 24 * 3600
+
+function telemetryTsMap(attrs: Record<string, unknown>): Record<string, number> {
+  const raw = attrs[TELEMETRY_TS_ATTR]
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const n = Number(v)
+    if (!Number.isFinite(n)) continue
+    out[k] = n > 1e12 ? n / 1000 : n
+  }
+  return out
+}
+
+function readNumber(raw: unknown): number | undefined {
+  if (raw === null || raw === undefined || raw === '') return undefined
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : undefined
+}
+
+function readString(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const s = raw.trim()
+  return s ? s : undefined
+}
+
+function readBoolish(raw: unknown): boolean | undefined {
+  if (typeof raw === 'boolean') return raw
+  if (raw === 1 || raw === 0) return raw === 1
+  if (typeof raw === 'string') {
+    const s = raw.trim().toLowerCase()
+    if (s === 'on' || s === 'true' || s === '1' || s === 'charging') return true
+    if (s === 'off' || s === 'false' || s === '0') return false
+  }
+  return undefined
+}
+
+/**
+ * Prefer the newest Ruhavik sample among aliases. Last-known CAN values
+ * (e.g. can.fuel.level from months ago) must not beat a live fuel.level.
+ * When timestamps are missing, first present key wins (non-CAN listed first).
+ */
+function pickByFreshness<T>(
+  attrs: Record<string, unknown>,
+  keys: string[],
+  read: (raw: unknown) => T | undefined,
+  maxAgeSec?: number
+): T | undefined {
+  const tsMap = telemetryTsMap(attrs)
+  let best: T | undefined
+  let bestTs = -1
+  for (const key of keys) {
+    const parsed = read(attrs[key])
+    if (parsed === undefined) continue
+    const t = tsMap[key]
+    if (best === undefined) {
+      best = parsed
+      bestTs = t ?? 0
+      continue
+    }
+    if (t != null && t > bestTs) {
+      best = parsed
+      bestTs = t
+    }
+  }
+  if (best === undefined) return undefined
+  if (maxAgeSec != null && bestTs > 0 && Date.now() / 1000 - bestTs > maxAgeSec) {
+    return undefined
+  }
+  return best
+}
+
 export function extractObdiiData(attrs: Record<string, unknown> | undefined): ObdiiPayload {
   if (!attrs) return {}
   const payload: ObdiiPayload = {}
 
-  const val = (key: string): number | undefined => {
-    const v = attrs[key]
-    if (v === null || v === undefined) return undefined
-    const n = Number(v)
-    return isNaN(n) ? undefined : n
-  }
-
-  // Ruhavik/flespi param names (engine.rpm, fuel.level, …) plus legacy Traccar aliases
-  const rpm =
-    val('engine.rpm') ??
-    val('can.engine.rpm') ??
-    val('rpm') ??
-    val('obdRpm')
+  const rpm = pickByFreshness(
+    attrs,
+    ['engine.rpm', 'can.engine.rpm', 'rpm', 'obdRpm'],
+    readNumber,
+    STALE_INSTANT_SEC
+  )
   if (rpm !== undefined) payload.rpm = Math.round(rpm)
 
-  const fuel =
-    val('can.fuel.level') ??
-    val('fuel.level') ??
-    val('fuel') ??
-    val('obdFuel') ??
-    val('fuelLevel')
+  const fuel = pickByFreshness(
+    attrs,
+    ['fuel.level', 'can.fuel.level', 'fuel', 'obdFuel', 'fuelLevel'],
+    readNumber,
+    STALE_GAUGE_SEC
+  )
   if (fuel !== undefined) payload.fuelLevel = Math.round(fuel)
 
-  const tempRaw =
-    val('engine.coolant.temperature') ??
-    val('can.engine.coolant.temperature') ??
-    val('coolant.temperature') ??
-    val('coolantTemp') ??
-    val('obdCoolantTemp') ??
-    val('engineTemp')
+  const tempRaw = pickByFreshness(
+    attrs,
+    [
+      'engine.coolant.temperature',
+      'can.engine.coolant.temperature',
+      'coolant.temperature',
+      'coolantTemp',
+      'obdCoolantTemp',
+      'engineTemp',
+    ],
+    readNumber,
+    STALE_INSTANT_SEC
+  )
   if (tempRaw !== undefined) {
     // Ruhavik usually sends °C; values above ~140 are already °F
     const f = tempRaw > 140 ? tempRaw : tempRaw * (9 / 5) + 32
     payload.engineTemp = Math.round(f)
   }
 
-  const battery =
-    val('external.powersource.voltage') ??
-    val('backup.battery.voltage') ??
-    val('battery') ??
-    val('power') ??
-    val('obdBattery')
+  // Vehicle 12V and tracker backup are different sensors — do not merge by age.
+  const battery = pickByFreshness(
+    attrs,
+    ['external.powersource.voltage', 'battery', 'power', 'obdBattery'],
+    readNumber,
+    STALE_GAUGE_SEC
+  )
   if (battery !== undefined) payload.batteryVoltage = Math.round(battery * 10) / 10
 
-  const odo = val('vehicle.mileage') ?? val('odometer') ?? val('obdOdometer')
+  const odo = pickByFreshness(attrs, ['vehicle.mileage', 'odometer', 'obdOdometer'], readNumber)
   if (odo !== undefined && odo > 0) {
     // vehicle.mileage from Ruhavik is typically km
     payload.odometer = Math.round(odo > 100000 ? odo * 0.000621371 : odo * 0.621371)
   }
 
-  const vin = attrs['vehicle.vin'] ?? attrs['vin'] ?? attrs['obdVin']
-  if (typeof vin === 'string' && vin.length > 0) payload.vin = vin
+  const vin = pickByFreshness(attrs, ['vehicle.vin', 'vin', 'obdVin'], readString)
+  if (vin) payload.vin = vin
 
-  const dtcRaw =
-    attrs['can.dtc'] ??
-    attrs['dtc.codes'] ??
-    attrs['dtc'] ??
-    attrs['obdDtc'] ??
-    attrs['dtcs']
+  const dtcRaw = pickByFreshness(
+    attrs,
+    ['dtc.codes', 'can.dtc', 'dtc', 'obdDtc', 'dtcs'],
+    (raw) => (raw == null || raw === '' ? undefined : raw)
+  )
   const dtcCodes = normalizeDtcCodes(dtcRaw)
   if (dtcCodes.length > 0) payload.dtcCodes = dtcCodes
 
-  const obdSpeed =
-    val('can.vehicle.speed') ??
-    val('vehicle.speed') ??
-    val('obd.speed') ??
-    val('obdSpeed')
+  const obdSpeed = pickByFreshness(
+    attrs,
+    ['vehicle.speed', 'can.vehicle.speed', 'obd.speed', 'obdSpeed'],
+    readNumber,
+    STALE_INSTANT_SEC
+  )
   if (obdSpeed !== undefined) payload.obdSpeed = convertSpeedToMph(obdSpeed)
 
-  if (attrs['motion'] === true || attrs['motion'] === 'true' || attrs['movement.status'] === true) {
-    payload.motionDetected = true
-  }
+  const moving = pickByFreshness(
+    attrs,
+    ['movement.status', 'motion'],
+    readBoolish,
+    STALE_GAUGE_SEC
+  )
+  if (moving === true) payload.motionDetected = true
+
   // vehicle.mileage is often 0 when the ECU doesn't expose odometer — treat as missing
-  const totalMeters = val('totalDistance')
-  const mileageKm = val('vehicle.mileage')
+  const totalMeters = pickByFreshness(attrs, ['totalDistance'], readNumber)
+  const mileageKm = pickByFreshness(attrs, ['vehicle.mileage'], readNumber)
   if (totalMeters != null && totalMeters > 0) {
     payload.totalDistance = Math.round(totalMeters * 0.000621371)
   } else if (mileageKm != null && mileageKm > 0) {
     payload.totalDistance = Math.round(mileageKm * 0.621371)
   }
 
-  const vehicleStateRaw = attrs['vehicle.state'] ?? attrs['vehicleState']
-  if (typeof vehicleStateRaw === 'string' && vehicleStateRaw.trim()) {
-    payload.vehicleState = vehicleStateRaw.trim()
-  }
+  const vehicleStateRaw = pickByFreshness(attrs, ['vehicle.state', 'vehicleState'], readString)
+  if (vehicleStateRaw) payload.vehicleState = vehicleStateRaw
 
-  const ignRaw =
-    attrs['engine.ignition.status'] ??
-    attrs['ignition.status'] ??
-    attrs['ignition']
-  if (typeof ignRaw === 'boolean') {
-    payload.ignitionOn = ignRaw
-  } else if (typeof ignRaw === 'string') {
-    const s = ignRaw.trim().toLowerCase()
-    if (s === 'on' || s === 'true' || s === '1') payload.ignitionOn = true
-    else if (s === 'off' || s === 'false' || s === '0') payload.ignitionOn = false
-  } else if (ignRaw === 1 || ignRaw === 0) {
-    payload.ignitionOn = ignRaw === 1
-  }
+  const ign = pickByFreshness(
+    attrs,
+    ['engine.ignition.status', 'ignition.status', 'ignition'],
+    readBoolish,
+    STALE_GAUGE_SEC
+  )
+  if (ign !== undefined) payload.ignitionOn = ign
 
-  const extPower =
-    attrs['external.powersource.status'] ??
-    attrs['external.power.status'] ??
-    attrs['externalPower']
-  if (typeof extPower === 'boolean') {
-    payload.externalPowerConnected = extPower
-  } else if (typeof extPower === 'string') {
-    const s = extPower.trim().toLowerCase()
-    if (s === 'true' || s === '1' || s === 'on') payload.externalPowerConnected = true
-    else if (s === 'false' || s === '0' || s === 'off') payload.externalPowerConnected = false
-  } else if (extPower === 1 || extPower === 0) {
-    payload.externalPowerConnected = extPower === 1
-  }
+  const extPower = pickByFreshness(
+    attrs,
+    ['external.powersource.status', 'external.power.status', 'externalPower'],
+    readBoolish,
+    STALE_GAUGE_SEC
+  )
+  if (extPower !== undefined) payload.externalPowerConnected = extPower
 
-  const backupV = val('backup.battery.voltage')
+  const backupV = pickByFreshness(attrs, ['backup.battery.voltage'], readNumber, STALE_GAUGE_SEC)
   if (backupV !== undefined) {
     payload.backupBatteryVoltage = Math.round(backupV * 1000) / 1000
   }
 
-  const chargingRaw = attrs['battery.charging.status'] ?? attrs['battery.charging']
-  if (typeof chargingRaw === 'boolean') {
-    payload.batteryCharging = chargingRaw
-  } else if (typeof chargingRaw === 'string') {
-    const s = chargingRaw.trim().toLowerCase()
-    if (s === 'true' || s === '1' || s === 'on' || s === 'charging') payload.batteryCharging = true
-    else if (s === 'false' || s === '0' || s === 'off') payload.batteryCharging = false
-  } else if (chargingRaw === 1 || chargingRaw === 0) {
-    payload.batteryCharging = chargingRaw === 1
-  }
+  const charging = pickByFreshness(
+    attrs,
+    ['battery.charging.status', 'battery.charging'],
+    readBoolish,
+    STALE_GAUGE_SEC
+  )
+  if (charging !== undefined) payload.batteryCharging = charging
 
-  const motorHours = val('engine.motorhours') ?? val('motorhours') ?? val('engine.hours')
-  if (motorHours !== undefined && Number.isFinite(motorHours) && motorHours >= 0) {
+  const motorHours = pickByFreshness(
+    attrs,
+    ['engine.motorhours', 'motorhours', 'engine.hours'],
+    readNumber
+  )
+  if (motorHours !== undefined && motorHours >= 0) {
     payload.motorHours = Math.round(motorHours * 1000) / 1000
   }
 
   const gsm =
-    val('gsm.signal.dbm') ??
-    val('gsm.signal.level') ??
+    pickByFreshness(attrs, ['gsm.signal.dbm', 'gsm.signal.level'], readNumber, STALE_GAUGE_SEC) ??
     (typeof (attrs.network as { rssi?: number } | undefined)?.rssi === 'number'
       ? (attrs.network as { rssi: number }).rssi
       : undefined)
@@ -851,63 +920,72 @@ export function extractObdiiData(attrs: Record<string, unknown> | undefined): Ob
     payload.gsmSignalDbm = Math.round(gsm)
   }
 
-  const boolish = (raw: unknown): boolean | undefined => {
-    if (typeof raw === 'boolean') return raw
-    if (raw === 1 || raw === 0) return raw === 1
-    if (typeof raw === 'string') {
-      const s = raw.trim().toLowerCase()
-      if (s === 'true' || s === '1' || s === 'on') return true
-      if (s === 'false' || s === '0' || s === 'off') return false
-    }
-    return undefined
-  }
-
-  const mil = boolish(attrs['can.mil.status'] ?? attrs['mil.status'] ?? attrs['mil'])
+  const mil = pickByFreshness(attrs, ['mil.status', 'can.mil.status', 'mil'], readBoolish)
   if (mil !== undefined) payload.milOn = mil
 
-  const milKm = val('can.mil.mileage') ?? val('mil.mileage')
+  const milKm = pickByFreshness(attrs, ['mil.mileage', 'can.mil.mileage'], readNumber)
   if (milKm !== undefined && milKm >= 0) {
-    // Ruhavik reports km
     payload.milMileageMi = Math.round(milKm * 0.621371)
   }
 
-  const clearedKm =
-    val('can.dtc.cleared.mileage') ??
-    val('dtc.cleared.mileage') ??
-    val('distance.since.dtc.cleared')
+  const clearedKm = pickByFreshness(
+    attrs,
+    ['dtc.cleared.mileage', 'can.dtc.cleared.mileage', 'distance.since.dtc.cleared'],
+    readNumber
+  )
   if (clearedKm !== undefined && clearedKm >= 0) {
     payload.dtcClearedMileageMi = Math.round(clearedKm * 0.621371)
   }
 
-  const obdConn = boolish(attrs['obd.connected.status'] ?? attrs['obd.connected'] ?? attrs['obdConnected'])
+  const obdConn = pickByFreshness(
+    attrs,
+    ['obd.connected.status', 'obd.connected', 'obdConnected'],
+    readBoolish,
+    STALE_GAUGE_SEC
+  )
   if (obdConn !== undefined) payload.obdConnected = obdConn
 
-  const throttle = val('can.throttle.pedal.level') ?? val('throttle.pedal.level') ?? val('throttle')
+  const throttle = pickByFreshness(
+    attrs,
+    ['throttle.pedal.level', 'can.throttle.pedal.level', 'throttle'],
+    readNumber,
+    STALE_INSTANT_SEC
+  )
   if (throttle !== undefined) payload.throttlePercent = Math.round(throttle)
 
-  const load = val('can.engine.load.level') ?? val('engine.load.level') ?? val('engine.load')
+  const load = pickByFreshness(
+    attrs,
+    ['engine.load.level', 'can.engine.load.level', 'engine.load'],
+    readNumber,
+    STALE_INSTANT_SEC
+  )
   if (load !== undefined) payload.engineLoadPercent = Math.round(load)
 
-  const idleSec = val('idle.status.duration') ?? val('idle.duration')
-  if (idleSec !== undefined && Number.isFinite(idleSec) && idleSec >= 0) {
+  const idleSec = pickByFreshness(
+    attrs,
+    ['idle.status.duration', 'idle.duration'],
+    readNumber,
+    STALE_GAUGE_SEC
+  )
+  if (idleSec !== undefined && idleSec >= 0) {
     payload.idleDurationSec = Math.round(idleSec)
   }
-  const idleSt = boolish(attrs['idle.status'] ?? attrs['idle'])
+  const idleSt = pickByFreshness(attrs, ['idle.status', 'idle'], readBoolish, STALE_GAUGE_SEC)
   if (idleSt !== undefined) payload.idleStatus = idleSt
 
-  // e.g. 18, "18", or "18 litres/100km"
-  const consumptionRaw =
-    attrs['can.fuel.consumption.distance'] ??
-    attrs['fuel.consumption.distance'] ??
-    attrs['fuel.rate']
-  if (consumptionRaw != null && consumptionRaw !== '') {
-    const n =
-      typeof consumptionRaw === 'number'
-        ? consumptionRaw
-        : Number(String(consumptionRaw).replace(/[^\d.]/g, ''))
-    if (Number.isFinite(n) && n > 0 && n < 100) {
-      payload.fuelConsumptionLPer100km = Math.round(n * 10) / 10
-    }
+  const consumption = pickByFreshness(
+    attrs,
+    ['fuel.consumption.distance', 'can.fuel.consumption.distance', 'fuel.rate'],
+    (raw) => {
+      if (raw == null || raw === '') return undefined
+      const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/[^\d.]/g, ''))
+      if (!Number.isFinite(n) || n <= 0 || n >= 100) return undefined
+      return n
+    },
+    STALE_GAUGE_SEC
+  )
+  if (consumption !== undefined) {
+    payload.fuelConsumptionLPer100km = Math.round(consumption * 10) / 10
   }
 
   return payload
@@ -1140,11 +1218,26 @@ function telemetryToPosition(unitId: number, tele: TelemetryMap): TraccarPositio
   const signalDbm = teleValue<number>(tele, 'gsm.signal.dbm')
 
   const attrs: Record<string, unknown> = {}
+  const tsMap: Record<string, number> = {}
   for (const [k, entry] of Object.entries(tele)) {
-    if (entry?.value !== undefined) attrs[k] = entry.value
+    if (entry?.value === undefined) continue
+    attrs[k] = entry.value
+    const sec = toUnixSec(entry.ts)
+    if (sec != null) tsMap[k] = sec
   }
-  if (moving !== undefined) attrs.motion = moving
-  if (ignition !== undefined) attrs.ignition = ignition
+  if (moving !== undefined) {
+    attrs.motion = moving
+    const moveTs = toUnixSec(teleTs(tele, 'movement.status'))
+    if (moveTs != null) tsMap.motion = moveTs
+  }
+  if (ignition !== undefined) {
+    attrs.ignition = ignition
+    const ignTs = toUnixSec(
+      teleTs(tele, 'engine.ignition.status') ?? teleTs(tele, 'ignition.status')
+    )
+    if (ignTs != null) tsMap.ignition = ignTs
+  }
+  if (Object.keys(tsMap).length > 0) attrs[TELEMETRY_TS_ATTR] = tsMap
 
   const fixIso = unixToIso(fixTs)
   const serverIso = unixToIso(activityTs)
