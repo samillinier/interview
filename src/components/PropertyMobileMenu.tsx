@@ -16,7 +16,6 @@ import {
   Building2,
   Car,
   Armchair,
-  Settings,
   PhoneCall,
 } from 'lucide-react'
 
@@ -43,7 +42,6 @@ export function PropertyMobileMenu({ pathname, notificationCount = 0, onLogout }
       { href: '/property/gps', label: 'GPS', icon: MapPin },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall },
-      { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
     []
   )

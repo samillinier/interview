@@ -14,7 +14,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PhoneCall,
-  Settings,
   Shield,
   User,
 } from 'lucide-react'
@@ -48,7 +47,6 @@ export function PropertySidebar({
       { href: '/property/gps', label: 'GPS', icon: MapPin },
       { href: '/property/inventory', label: 'Equipment', icon: Armchair },
       { href: '/property/ring-central', label: 'RingCentral', icon: PhoneCall },
-      { href: '/property/settings', label: 'Settings', icon: Settings },
     ],
     []
   )

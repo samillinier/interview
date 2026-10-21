@@ -16,7 +16,6 @@ import {
   Phone,
   Users,
   Shield,
-  Hash,
   CreditCard,
   Gauge,
   Package,
@@ -602,7 +601,6 @@ export default function FleetPage() {
     if (!v.tagRenewal) return false
     return new Date(v.tagRenewal).getTime() < now
   }).length
-  const missingPlates = vehicles.filter((v) => !String(v.plate || '').trim()).length
   const gpsTracked = vehicles.filter((v) => Boolean(gpsByVehicle[v.id])).length
   const checkEngine = vehicles.filter((v) => gpsByVehicle[v.id]?.milOn).length
 
@@ -723,11 +721,7 @@ export default function FleetPage() {
               cards={[
                 { label: 'Vehicles', value: vehicles.length, desc: 'All fleet records', icon: Car },
                 { label: 'GPS Tracked', value: gpsTracked, desc: 'Linked to a live tracker', icon: Navigation },
-                { label: 'Expiring Tags', value: expiringTags, desc: 'Plates in the next 60 days', icon: Tag },
                 { label: 'Expired Tags', value: expiredTags, desc: 'Renewal date already passed', icon: AlertTriangle },
-                { label: 'Cars', value: carCount, desc: 'Passenger vehicles', icon: Car },
-                { label: 'Forklifts', value: forkliftCount, desc: 'Warehouse equipment', icon: Package },
-                { label: 'Missing Plates', value: missingPlates, desc: 'No plate on file', icon: Hash },
                 { label: 'Check Engine', value: checkEngine, desc: 'MIL on from live GPS', icon: AlertTriangle },
               ]}
             />
