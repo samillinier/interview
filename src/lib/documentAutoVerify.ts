@@ -103,7 +103,9 @@ function namesLikelyMatch(a: string | null | undefined, b: string | null | undef
   const bTok = new Set(right.split(' ').filter((t) => t.length > 2))
   if (aTok.size === 0 || bTok.size === 0) return false
   let overlap = 0
-  for (const t of aTok) if (bTok.has(t)) overlap += 1
+  Array.from(aTok).forEach((t) => {
+    if (bTok.has(t)) overlap += 1
+  })
   return overlap / Math.min(aTok.size, bTok.size) >= 0.6
 }
 
