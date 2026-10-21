@@ -6,6 +6,7 @@ import * as traccar from '@/lib/ruhavik'
 import { reverseGeocode } from '@/lib/geocode'
 import { periodBounds } from '@/lib/gpsTime'
 import { fleetVehicleLabel, gpsMatchKey } from '@/lib/gpsFleetMatch'
+import { gpsSessionAccess } from '@/lib/gps-access'
 
 /**
  * GET /api/gps/devices
@@ -144,16 +145,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
-  const userType = ((session?.user as any)?.userType || '').toUpperCase()
-  const role = String((session?.user as any)?.role || '').toUpperCase()
-  const isAdmin =
-    (session?.user as any)?.isAdmin === true ||
-    role === 'ADMIN' ||
-    role === 'SUPER_ADMIN' ||
-    userType === 'ADMIN' ||
-    userType === 'SUPER_ADMIN'
-  const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN']
-  if (!session || !allowedTypes.includes(userType)) {
+  const { ok, isStaff: isAdmin } = gpsSessionAccess(session)
+  if (!session || !ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

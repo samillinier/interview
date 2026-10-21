@@ -364,7 +364,7 @@ export function AdminSidebar({ pathname }: Props) {
       }
       portalNav.push(corporateItem)
     }
-    if (normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR' && normalizedRole !== 'ACCOUNTING') {
+    if (normalizedRole !== 'MANAGER' && normalizedRole !== 'MODERATOR') {
       portalNav.push({
         href: '/property/dashboard',
         label: 'Property Portal',

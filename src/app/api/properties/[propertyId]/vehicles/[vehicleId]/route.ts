@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isAdmin } from '@/lib/property-access'
+import { fleetVehicleAuditLabel, writePropertyAuditLog } from '@/lib/audit'
 
 function normalizeVehicleCategory(input: unknown): string | null {
   if (input === undefined || input === null) return null
@@ -149,6 +150,26 @@ export async function PATCH(
       },
     })
 
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.vehicle.update',
+      targetType: 'vehicle',
+      targetId: updatedVehicle.id,
+      targetLabel: fleetVehicleAuditLabel(updatedVehicle),
+      before: {
+        plate: vehicle.plate,
+        make: vehicle.vehicleMake,
+        model: vehicle.vehicleModel,
+        mileage: vehicle.mileageAsOfAugust2025,
+      },
+      after: {
+        plate: updatedVehicle.plate,
+        make: updatedVehicle.vehicleMake,
+        model: updatedVehicle.vehicleModel,
+        mileage: updatedVehicle.mileageAsOfAugust2025,
+      },
+    })
+
     return NextResponse.json(updatedVehicle)
   } catch (error: any) {
     console.error('Error updating vehicle:', error)
@@ -204,6 +225,15 @@ export async function DELETE(
 
     await prisma.vehicle.delete({
       where: { id: params.vehicleId },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.vehicle.delete',
+      targetType: 'vehicle',
+      targetId: vehicle.id,
+      targetLabel: fleetVehicleAuditLabel(vehicle),
+      before: { plate: vehicle.plate, make: vehicle.vehicleMake, model: vehicle.vehicleModel },
     })
 
     return NextResponse.json({ message: 'Vehicle deleted successfully' })

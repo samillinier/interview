@@ -177,11 +177,11 @@ function GPSPageInner() {
     if (status === 'authenticated') {
       const userType = ((session?.user as any)?.userType || '').toUpperCase()
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      if (role === 'ACCOUNTING') {
-        router.push('/dashboard')
+      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ACCOUNTING']
+      if (role === 'ACCOUNTING' || role === 'MANAGER' || role === 'ADMIN' || role === 'SUPER_ADMIN') {
+        loadPropertyProfile()
         return
       }
-      const allowedTypes = ['PROPERTY', 'SUPER_ADMIN', 'ADMIN', 'MANAGER']
       if (!allowedTypes.includes(userType)) {
         router.push('/property/login')
         return

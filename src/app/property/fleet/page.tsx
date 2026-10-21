@@ -177,7 +177,7 @@ export default function FleetPage() {
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
 
       if (!userType) {
         loadPropertyAndVehicles()
@@ -592,13 +592,19 @@ export default function FleetPage() {
     }
   }
 
-  const totalMileage = vehicles.reduce((sum, v) => sum + (Number(v.mileageAsOfAugust2025) || 0), 0)
   const now = Date.now()
   const expiringTags = vehicles.filter((v) => {
     if (!v.tagRenewal) return false
     const t = new Date(v.tagRenewal).getTime()
     return t >= now && t <= now + 60 * 24 * 60 * 60 * 1000
   }).length
+  const expiredTags = vehicles.filter((v) => {
+    if (!v.tagRenewal) return false
+    return new Date(v.tagRenewal).getTime() < now
+  }).length
+  const missingPlates = vehicles.filter((v) => !String(v.plate || '').trim()).length
+  const gpsTracked = vehicles.filter((v) => Boolean(gpsByVehicle[v.id])).length
+  const checkEngine = vehicles.filter((v) => gpsByVehicle[v.id]?.milOn).length
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/property/login' })
@@ -658,6 +664,8 @@ export default function FleetPage() {
             ...(carCount > 0 ? [{ icon: Car, text: `${carCount} car${carCount === 1 ? '' : 's'}` }] : []),
             ...(forkliftCount > 0 ? [{ icon: Package, text: `${forkliftCount} forklift${forkliftCount === 1 ? '' : 's'}` }] : []),
             ...(expiringTags > 0 ? [{ icon: Tag, text: `${expiringTags} tag${expiringTags === 1 ? '' : 's'} expiring` }] : []),
+            ...(expiredTags > 0 ? [{ icon: AlertTriangle, text: `${expiredTags} expired tag${expiredTags === 1 ? '' : 's'}` }] : []),
+            ...(checkEngine > 0 ? [{ icon: AlertTriangle, text: `${checkEngine} check engine` }] : []),
           ]}
           actions={
             <>
@@ -714,11 +722,13 @@ export default function FleetPage() {
             <PropertyMetricCards
               cards={[
                 { label: 'Vehicles', value: vehicles.length, desc: 'All fleet records', icon: Car },
+                { label: 'GPS Tracked', value: gpsTracked, desc: 'Linked to a live tracker', icon: Navigation },
+                { label: 'Expiring Tags', value: expiringTags, desc: 'Plates in the next 60 days', icon: Tag },
+                { label: 'Expired Tags', value: expiredTags, desc: 'Renewal date already passed', icon: AlertTriangle },
                 { label: 'Cars', value: carCount, desc: 'Passenger vehicles', icon: Car },
                 { label: 'Forklifts', value: forkliftCount, desc: 'Warehouse equipment', icon: Package },
-                ...(totalMileage > 0
-                  ? [{ label: 'Total Mileage', value: totalMileage.toLocaleString(), desc: 'Combined miles on file', icon: Gauge }]
-                  : [{ label: 'Expiring Tags', value: expiringTags, desc: 'Plates in the next 60 days', icon: Tag }]),
+                { label: 'Missing Plates', value: missingPlates, desc: 'No plate on file', icon: Hash },
+                { label: 'Check Engine', value: checkEngine, desc: 'MIL on from live GPS', icon: AlertTriangle },
               ]}
             />
           ) : null}

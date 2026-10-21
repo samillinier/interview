@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isAdmin } from '@/lib/property-access'
+import { writePropertyAuditLog } from '@/lib/audit'
 
 // GET - Get a specific inventory item
 export async function GET(
@@ -200,6 +201,16 @@ export async function PATCH(
       },
     })
 
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.inventory.update',
+      targetType: 'inventory',
+      targetId: updatedInventoryItem.id,
+      targetLabel: updatedInventoryItem.itemName || updatedInventoryItem.sku || 'Equipment',
+      before: { name: inventoryItem.itemName, quantity: inventoryItem.quantity, status: inventoryItem.status },
+      after: { name: updatedInventoryItem.itemName, quantity: updatedInventoryItem.quantity, status: updatedInventoryItem.status },
+    })
+
     return NextResponse.json(updatedInventoryItem)
   } catch (error: any) {
     console.error('Error updating inventory item:', error)
@@ -255,6 +266,15 @@ export async function DELETE(
 
     await prisma.inventory.delete({
       where: { id: params.inventoryId },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.inventory.delete',
+      targetType: 'inventory',
+      targetId: inventoryItem.id,
+      targetLabel: inventoryItem.itemName || inventoryItem.sku || 'Equipment',
+      before: { name: inventoryItem.itemName, quantity: inventoryItem.quantity, status: inventoryItem.status },
     })
 
     return NextResponse.json({ message: 'Inventory item deleted successfully' })

@@ -297,13 +297,21 @@ export function AdminMobileMenu({ pathname }: Props) {
       )
     }
     if (role === 'ACCOUNTING') {
-      return withCorporate.filter(
-        (it) =>
-          it.href !== '/dashboard/approvals' &&
-          it.href !== '/dashboard/signature' &&
-          it.href !== '/dashboard/ltr' &&
-          it.href !== '/dashboard/settings',
-      )
+      return [
+        ...withCorporate.filter(
+          (it) =>
+            it.href !== '/dashboard/approvals' &&
+            it.href !== '/dashboard/signature' &&
+            it.href !== '/dashboard/ltr' &&
+            it.href !== '/dashboard/settings',
+        ),
+        {
+          href: '/property/dashboard',
+          label: 'Property Portal',
+          icon: Building2,
+          match: (p: string) => p.startsWith('/property'),
+        },
+      ]
     }
     if (role === 'MODERATOR') {
       return withCorporate.filter(

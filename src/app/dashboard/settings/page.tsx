@@ -1188,6 +1188,12 @@ export default function SettingsPage() {
               <option value="installer.credentials_update">Subcontractor login updated</option>
               <option value="admin.role_change">Admin role changed</option>
               <option value="admin.create">Admin created</option>
+              <option value="property.user.create">Property user added</option>
+              <option value="property.user.update">Property user changed</option>
+              <option value="property.user.delete">Property user deleted</option>
+              <option value="property.vehicle.create">Vehicle added</option>
+              <option value="property.vehicle.update">Vehicle changed</option>
+              <option value="property.vehicle.delete">Vehicle deleted</option>
             </select>
             <select
               value={auditRange}

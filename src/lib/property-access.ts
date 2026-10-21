@@ -6,6 +6,7 @@
  */
 
 import prisma from './db'
+import { isPropertyPortalStaffRole } from './adminRoles'
 
 export const SUPER_ADMIN_EMAIL = 'sbiru@fiscorponline.com'
 
@@ -72,7 +73,7 @@ export async function isAdminOrManager(userEmail: string | null | undefined): Pr
     })
     const role = normalizeAdminRole(admin?.role)
     
-    return admin?.isActive === true && (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER')
+    return admin?.isActive === true && isPropertyPortalStaffRole(role)
   } catch (error) {
     console.error('Error checking admin/manager status:', error)
     return false
@@ -116,7 +117,7 @@ export async function findLocationForPropertyRequest(
   })
 }
 
-export async function getAdminRole(userEmail: string | null | undefined): Promise<'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | null> {
+export async function getAdminRole(userEmail: string | null | undefined): Promise<'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING' | null> {
   if (!userEmail) return null
   
   try {
@@ -125,7 +126,7 @@ export async function getAdminRole(userEmail: string | null | undefined): Promis
     })
     
     if (!admin?.isActive) return null
-    return normalizeAdminRole(admin.role) as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN'
+    return normalizeAdminRole(admin.role) as 'ADMIN' | 'MODERATOR' | 'MANAGER' | 'SUPER_ADMIN' | 'ACCOUNTING'
   } catch (error) {
     console.error('Error getting admin role:', error)
     return null

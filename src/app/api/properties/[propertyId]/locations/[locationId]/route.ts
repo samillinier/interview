@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { isAdmin } from '@/lib/property-access'
+import { writePropertyAuditLog } from '@/lib/audit'
 
 // GET - Get a specific location
 export async function GET(
@@ -171,6 +172,16 @@ export async function PATCH(
       data: updateData,
     })
 
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.location.update',
+      targetType: 'location',
+      targetId: updatedLocation.id,
+      targetLabel: updatedLocation.location || updatedLocation.aliasLocation || 'Location',
+      before: { name: location.location, status: location.status },
+      after: { name: updatedLocation.location, status: updatedLocation.status },
+    })
+
     return NextResponse.json(updatedLocation)
   } catch (error: any) {
     console.error('Error updating location:', error)
@@ -242,6 +253,15 @@ export async function DELETE(
 
     await prisma.location.delete({
       where: { id: params.locationId },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.location.delete',
+      targetType: 'location',
+      targetId: location.id,
+      targetLabel: location.location || location.aliasLocation || 'Location',
+      before: { name: location.location, status: location.status },
     })
 
     return NextResponse.json({ success: true })

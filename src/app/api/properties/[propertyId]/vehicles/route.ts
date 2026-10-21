@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { isAdmin } from '@/lib/property-access'
+import { isAdmin, isAdminOrManager } from '@/lib/property-access'
+import { fleetVehicleAuditLabel, writePropertyAuditLog } from '@/lib/audit'
 
 function normalizeVehicleCategory(input: unknown): string | null {
   if (input === undefined || input === null) return null
@@ -30,8 +31,8 @@ export async function GET(
 
     const userEmail = session.user.email.toLowerCase()
     
-    // Admins can see all vehicles
-    if (await isAdmin(userEmail)) {
+    // Admins and portal staff (manager / accounting) can see all vehicles
+    if (await isAdminOrManager(userEmail)) {
       const vehicles = await prisma.vehicle.findMany({
         orderBy: { createdAt: 'desc' },
         take: 500,
@@ -138,6 +139,15 @@ export async function POST(
         mileageRecordedAt: mileageRecordedAt ? new Date(mileageRecordedAt) : null,
         notes: typeof notes === 'string' ? notes.trim() || null : null,
       },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.vehicle.create',
+      targetType: 'vehicle',
+      targetId: vehicle.id,
+      targetLabel: fleetVehicleAuditLabel(vehicle),
+      after: { plate: vehicle.plate, make: vehicle.vehicleMake, model: vehicle.vehicleModel },
     })
 
     return NextResponse.json(vehicle, { status: 201 })

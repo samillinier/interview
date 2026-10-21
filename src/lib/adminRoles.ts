@@ -25,3 +25,14 @@ export function isDashboardStaffRole(role: unknown): boolean {
     normalized === 'MODERATOR'
   )
 }
+
+/** Staff who can open the Property Portal (not Moderator). */
+export function isPropertyPortalStaffRole(role: unknown): boolean {
+  const normalized = normalizeAdminRole(role)
+  return (
+    normalized === 'ADMIN' ||
+    normalized === 'SUPER_ADMIN' ||
+    normalized === 'MANAGER' ||
+    normalized === 'ACCOUNTING'
+  )
+}

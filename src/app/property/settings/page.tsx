@@ -17,6 +17,7 @@ import {
   User,
   Shield,
   Building2,
+  ClipboardList,
 } from 'lucide-react'
 import { PropertyMobileMenu } from '@/components/PropertyMobileMenu'
 import { PropertySidebar } from '@/components/PropertySidebar'
@@ -24,6 +25,49 @@ import { PropertyPageHeader } from '@/components/PropertyPageHeader'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
+
+function propertyActivityLabel(action: string) {
+  const labels: Record<string, string> = {
+    'property.user.create': 'User added',
+    'property.user.update': 'User changed',
+    'property.user.delete': 'User deleted',
+    'property.vehicle.create': 'Vehicle added',
+    'property.vehicle.update': 'Vehicle changed',
+    'property.vehicle.delete': 'Vehicle deleted',
+    'property.location.create': 'Facility added',
+    'property.location.update': 'Facility changed',
+    'property.location.delete': 'Facility deleted',
+    'property.inventory.create': 'Equipment added',
+    'property.inventory.update': 'Equipment changed',
+    'property.inventory.delete': 'Equipment deleted',
+  }
+  return labels[action] || action
+}
+
+function propertyActivityDetails(log: { action?: string; before?: any; after?: any }) {
+  const before = log.before || {}
+  const after = log.after || {}
+  if (log.action === 'property.user.update' && before.status !== after.status) {
+    return `${before.status || '—'} → ${after.status || '—'}`
+  }
+  if (log.action === 'property.vehicle.update') {
+    const parts: string[] = []
+    if (before.plate !== after.plate) parts.push(`Plate ${before.plate || '—'} → ${after.plate || '—'}`)
+    if (before.mileage !== after.mileage) parts.push(`Mileage ${before.mileage ?? '—'} → ${after.mileage ?? '—'}`)
+    return parts.join(' · ')
+  }
+  if (log.action === 'property.location.update' && before.status !== after.status) {
+    return `${before.status || '—'} → ${after.status || '—'}`
+  }
+  if (log.action === 'property.inventory.update') {
+    const parts: string[] = []
+    if (before.quantity !== after.quantity) parts.push(`Qty ${before.quantity ?? '—'} → ${after.quantity ?? '—'}`)
+    if (before.status !== after.status) parts.push(`${before.status || '—'} → ${after.status || '—'}`)
+    return parts.join(' · ')
+  }
+  if (after.email) return String(after.email)
+  return ''
+}
 
 interface PropertyUser {
   id: string
@@ -62,6 +106,11 @@ export default function PropertySettingsPage() {
     companyName: '',
     companyAddress: '',
   })
+  const [activityLogs, setActivityLogs] = useState<any[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityError, setActivityError] = useState('')
+  const [activityAction, setActivityAction] = useState('all')
+  const [activityRange, setActivityRange] = useState<'day' | 'week' | 'month' | 'year'>('week')
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/property/login' })
@@ -72,8 +121,34 @@ export default function PropertySettingsPage() {
       router.push('/property/login')
     } else if (status === 'authenticated') {
       fetchProperties()
+      fetchActivity()
     }
   }, [status, router])
+
+  const fetchActivity = async (opts?: { action?: string; range?: 'day' | 'week' | 'month' | 'year' }) => {
+    try {
+      setActivityLoading(true)
+      setActivityError('')
+      const action = opts?.action ?? (activityAction === 'all' ? '' : activityAction)
+      const range = opts?.range ?? activityRange
+      const params = new URLSearchParams()
+      if (action) params.set('action', action)
+      params.set('range', range)
+      const res = await fetch(`/api/properties/activity?${params.toString()}`, { cache: 'no-store' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        setActivityLogs([])
+        setActivityError(data?.error || 'Failed to load activity')
+        return
+      }
+      setActivityLogs(Array.isArray(data?.logs) ? data.logs : [])
+    } catch {
+      setActivityLogs([])
+      setActivityError('Failed to load activity')
+    } finally {
+      setActivityLoading(false)
+    }
+  }
 
   const fetchProperties = async () => {
     try {
@@ -162,6 +237,7 @@ export default function PropertySettingsPage() {
       setNewProperty({ email: '', firstName: '', lastName: '', phone: '', companyName: '', companyAddress: '' })
       setShowAddModal(false)
       await fetchProperties()
+      await fetchActivity()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       console.error('Error adding property:', err)
@@ -210,6 +286,7 @@ export default function PropertySettingsPage() {
       setSuccess(result.message || 'Property user removed successfully!')
       setDeleteConfirm({ show: false, propertyId: null, propertyEmail: '' })
       await fetchProperties()
+      await fetchActivity()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       console.error('Error deleting property:', err)
@@ -386,6 +463,7 @@ export default function PropertySettingsPage() {
                             throw new Error(data?.error || 'Failed to update status')
                           }
                           await fetchProperties()
+                          await fetchActivity()
                         } catch (err: any) {
                           setError(err?.message || 'Failed to update status')
                         }
@@ -415,6 +493,126 @@ export default function PropertySettingsPage() {
               ))}
             </div>
           )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 md:p-8"
+        >
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-brand-green/10 rounded-xl flex items-center justify-center">
+                <ClipboardList className="w-6 h-6 text-brand-green" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Recent activity</h2>
+                <p className="text-sm text-slate-500">
+                  Added, changed, and deleted property users, vehicles, facilities, and equipment.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchActivity()}
+              className="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-3 mb-4">
+            <select
+              value={activityAction}
+              onChange={(e) => {
+                const v = e.target.value
+                setActivityAction(v)
+                fetchActivity({ action: v === 'all' ? '' : v })
+              }}
+              className="px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50"
+              aria-label="Activity type"
+            >
+              <option value="all">All actions</option>
+              <option value="property.user.create">User added</option>
+              <option value="property.user.update">User changed</option>
+              <option value="property.user.delete">User deleted</option>
+              <option value="property.vehicle.create">Vehicle added</option>
+              <option value="property.vehicle.update">Vehicle changed</option>
+              <option value="property.vehicle.delete">Vehicle deleted</option>
+              <option value="property.location.create">Facility added</option>
+              <option value="property.location.update">Facility changed</option>
+              <option value="property.location.delete">Facility deleted</option>
+              <option value="property.inventory.create">Equipment added</option>
+              <option value="property.inventory.update">Equipment changed</option>
+              <option value="property.inventory.delete">Equipment deleted</option>
+            </select>
+            <select
+              value={activityRange}
+              onChange={(e) => {
+                const v = e.target.value as 'day' | 'week' | 'month' | 'year'
+                setActivityRange(v)
+                fetchActivity({ range: v })
+              }}
+              className="px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50"
+              aria-label="Activity period"
+            >
+              <option value="day">Today</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="year">This year</option>
+            </select>
+          </div>
+
+          {activityError && (
+            <div className="mb-4 p-3 rounded-xl border border-danger-200 bg-danger-50 text-danger-700 text-sm font-medium">
+              {activityError}
+            </div>
+          )}
+
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="min-w-[720px] w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr className="text-left text-slate-600">
+                  <th className="py-3 px-4 font-semibold">When</th>
+                  <th className="py-3 px-4 font-semibold">Who</th>
+                  <th className="py-3 px-4 font-semibold">Action</th>
+                  <th className="py-3 px-4 font-semibold">Item</th>
+                  <th className="py-3 px-4 font-semibold">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {activityLoading ? (
+                  <tr>
+                    <td className="py-5 px-4 text-slate-500" colSpan={5}>
+                      Loading…
+                    </td>
+                  </tr>
+                ) : activityLogs.length === 0 ? (
+                  <tr>
+                    <td className="py-5 px-4 text-slate-500" colSpan={5}>
+                      No activity yet. Adds, changes, and deletes will show here.
+                    </td>
+                  </tr>
+                ) : (
+                  activityLogs.map((log) => {
+                    const actionLabel = propertyActivityLabel(log.action)
+                    const details = propertyActivityDetails(log)
+                    return (
+                      <tr key={log.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-4 text-slate-700 whitespace-nowrap">
+                          {log.createdAt ? new Date(log.createdAt).toLocaleString() : ''}
+                        </td>
+                        <td className="py-3 px-4 text-slate-700">{log.adminEmail}</td>
+                        <td className="py-3 px-4 text-slate-800 font-medium">{actionLabel}</td>
+                        <td className="py-3 px-4 text-slate-700">{log.targetLabel || log.targetId}</td>
+                        <td className="py-3 px-4 text-slate-500">{details}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
         </main>
       </div>

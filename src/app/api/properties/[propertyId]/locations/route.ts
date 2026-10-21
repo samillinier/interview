@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { isAdmin } from '@/lib/property-access'
+import { isAdmin, isAdminOrManager } from '@/lib/property-access'
+import { writePropertyAuditLog } from '@/lib/audit'
 
 // GET - Get all locations for a property
 export async function GET(
@@ -23,8 +24,8 @@ export async function GET(
     const userEmail = session.user.email.toLowerCase()
     console.log('🔍 GET /api/properties/[propertyId]/locations - User:', userEmail, 'PropertyId:', params.propertyId)
     
-    // Admins can see all locations
-    const isUserAdmin = await isAdmin(userEmail)
+    // Admins and portal staff (manager / accounting) can see all locations
+    const isUserAdmin = await isAdminOrManager(userEmail)
     if (isUserAdmin) {
       console.log('✅ User is admin, fetching all locations')
       const locations = await prisma.location.findMany({
@@ -168,6 +169,15 @@ export async function POST(
         propaneProvider,
         securityLock,
       },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.location.create',
+      targetType: 'location',
+      targetId: newLocation.id,
+      targetLabel: newLocation.location || newLocation.aliasLocation || 'Location',
+      after: { address: newLocation.propertyAddress, status: newLocation.status },
     })
 
     return NextResponse.json(newLocation, { status: 201 })

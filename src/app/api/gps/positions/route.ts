@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import * as traccar from '@/lib/ruhavik'
+import { gpsSessionAccess } from '@/lib/gps-access'
 
 /**
  * GET /api/gps/positions
@@ -12,10 +13,9 @@ import * as traccar from '@/lib/ruhavik'
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
-  const userType = ((session?.user as any)?.userType || '').toUpperCase()
-  const isAdmin = (session?.user as any)?.isAdmin === true
+  const { ok, isStaff: isAdmin } = gpsSessionAccess(session)
 
-  if (!session || !['PROPERTY', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
+  if (!session || !ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

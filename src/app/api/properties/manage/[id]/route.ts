@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { cookies } from 'next/headers'
+import { writePropertyAuditLog } from '@/lib/audit'
 
 // Helper to get session in App Router
 async function getSession(request: NextRequest) {
@@ -68,6 +69,11 @@ export async function PATCH(
     const body = await request.json()
     const { status } = body
 
+    const existing = await prisma.property.findUnique({
+      where: { id: params.id },
+      select: { id: true, email: true, firstName: true, lastName: true, status: true },
+    })
+
     // Update property
     const updatedProperty = await prisma.property.update({
       where: { id: params.id },
@@ -85,6 +91,16 @@ export async function PATCH(
         companyName: true,
         companyAddress: true,
       },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.user.update',
+      targetType: 'property_user',
+      targetId: updatedProperty.id,
+      targetLabel: `${updatedProperty.firstName || ''} ${updatedProperty.lastName || ''}`.trim() || updatedProperty.email,
+      before: existing ? { status: existing.status, email: existing.email } : undefined,
+      after: { status: updatedProperty.status, email: updatedProperty.email },
     })
 
     return NextResponse.json({ 
@@ -163,6 +179,15 @@ export async function DELETE(
     // Delete property (cascade will delete related locations, vehicles, inventory)
     await prisma.property.delete({
       where: { id: params.id },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.user.delete',
+      targetType: 'property_user',
+      targetId: property.id,
+      targetLabel: `${property.firstName || ''} ${property.lastName || ''}`.trim() || property.email,
+      before: { email: property.email, status: property.status },
     })
 
     return NextResponse.json({ 

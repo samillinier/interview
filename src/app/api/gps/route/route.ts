@@ -10,6 +10,7 @@ import {
   loadGpsPositions,
   saveGpsPositions,
 } from '@/lib/gpsHistoryStore'
+import { gpsSessionAccess } from '@/lib/gps-access'
 
 /**
  * GET /api/gps/route?deviceId=GV500MAP&period=today|yesterday|week
@@ -21,10 +22,9 @@ import {
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
-  const userType = ((session?.user as any)?.userType || '').toUpperCase()
-  const isAdmin = (session?.user as any)?.isAdmin === true
+  const { ok, isStaff: isAdmin } = gpsSessionAccess(session)
 
-  if (!session || !['PROPERTY', 'SUPER_ADMIN', 'ADMIN'].includes(userType)) {
+  if (!session || !ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

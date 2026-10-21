@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
 import { cookies } from 'next/headers'
+import { writePropertyAuditLog } from '@/lib/audit'
 
 // Helper to get session in App Router
 async function getSession(request: NextRequest) {
@@ -184,6 +185,15 @@ export async function POST(request: NextRequest) {
         companyName: true,
         companyAddress: true,
       },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.user.create',
+      targetType: 'property_user',
+      targetId: newProperty.id,
+      targetLabel: `${newProperty.firstName || ''} ${newProperty.lastName || ''}`.trim() || newProperty.email,
+      after: { email: newProperty.email, status: newProperty.status },
     })
 
     return NextResponse.json({ 

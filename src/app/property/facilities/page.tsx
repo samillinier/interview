@@ -205,7 +205,7 @@ export default function FacilitiesPage() {
     if (status === 'authenticated') {
       const userType = (session?.user as any)?.userType
       const role = String((session?.user as any)?.role || '').toUpperCase()
-      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER'
+      const isAdminRole = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'MANAGER' || role === 'ACCOUNTING'
 
       if (!userType) {
         loadPropertyAndLocations()

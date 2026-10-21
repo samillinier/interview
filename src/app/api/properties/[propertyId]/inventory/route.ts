@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/db'
-import { isAdmin } from '@/lib/property-access'
+import { isAdmin, isAdminOrManager } from '@/lib/property-access'
+import { writePropertyAuditLog } from '@/lib/audit'
 
 // GET - Get all inventory items for a property
 export async function GET(
@@ -21,8 +22,8 @@ export async function GET(
 
     const userEmail = session.user.email.toLowerCase()
     
-    // Admins can see all inventory
-    if (await isAdmin(userEmail)) {
+    // Admins and portal staff (manager / accounting) can see all inventory
+    if (await isAdminOrManager(userEmail)) {
       const inventory = await prisma.inventory.findMany({
         orderBy: { createdAt: 'desc' },
         take: 500,
@@ -178,6 +179,15 @@ export async function POST(
         notes,
         responsiblePerson: responsiblePerson?.trim() || null,
       },
+    })
+
+    await writePropertyAuditLog({
+      actorEmail: userEmail,
+      action: 'property.inventory.create',
+      targetType: 'inventory',
+      targetId: inventoryItem.id,
+      targetLabel: inventoryItem.itemName || inventoryItem.sku || 'Equipment',
+      after: { quantity: inventoryItem.quantity, status: inventoryItem.status },
     })
 
     return NextResponse.json(inventoryItem, { status: 201 })
