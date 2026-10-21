@@ -8,6 +8,18 @@ export function isManagerLikeRole(role: unknown): boolean {
   return normalized === 'MANAGER' || normalized === 'ACCOUNTING'
 }
 
+/** Managers and Accounting only see corporate requests they created. */
+export function applyOwnCorporateScope(
+  where: Record<string, unknown>,
+  role: unknown,
+  email?: string | null
+) {
+  if (isManagerLikeRole(role) && email) {
+    where.createdByEmail = email.toLowerCase()
+  }
+  return where
+}
+
 /** Full admin portal access — Admin and Super Admin only. */
 export function isAdminEquivalentRole(role: unknown): boolean {
   const normalized = normalizeAdminRole(role)

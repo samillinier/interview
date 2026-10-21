@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { notifyCorporateAuthorizer, notifyRequesterDecision } from '@/lib/corporate-authorization-email'
+import { applyOwnCorporateScopeFromSession } from '@/lib/corporate-scope'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
 
@@ -24,9 +25,7 @@ export async function GET(request: NextRequest) {
     if (action === 'count') {
       const role = String((session.user as any)?.role || '').toUpperCase()
       const where: any = { status: 'pending' }
-      if (role === 'MANAGER') {
-        where.createdByEmail = session.user.email?.toLowerCase() || ''
-      }
+      await applyOwnCorporateScopeFromSession(where, session)
       const count = await prisma.travelRequest.count({ where })
       return NextResponse.json({ success: true, count })
     }
@@ -44,9 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Managers only see their own requests; reviewers see everything.
-    if (role === 'MANAGER') {
-      where.createdByEmail = session.user.email?.toLowerCase() || ''
-    }
+    await applyOwnCorporateScopeFromSession(where, session)
 
     const requests = await prisma.travelRequest.findMany({
       where,

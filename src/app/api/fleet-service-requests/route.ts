@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
+import { applyOwnCorporateScopeFromSession } from '@/lib/corporate-scope'
 
 const CORPORATE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR', 'ACCOUNTING'])
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
@@ -30,7 +31,9 @@ export async function GET(request: NextRequest) {
 
     // Badge count: open (not yet completed) service requests needing attention.
     if (action === 'count') {
-      const count = await prisma.fleetServiceRequest.count({ where: { status: 'open' } })
+      const where: Record<string, unknown> = { status: 'open' }
+      await applyOwnCorporateScopeFromSession(where, session)
+      const count = await prisma.fleetServiceRequest.count({ where })
       return NextResponse.json({ success: true, count })
     }
 
@@ -50,9 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Managers only see their own requests; reviewers see everything.
     const role = roleOf(session)
-    if (role === 'MANAGER') {
-      where.createdByEmail = session.user.email?.toLowerCase() || ''
-    }
+    await applyOwnCorporateScopeFromSession(where, session)
 
     const requests = await prisma.fleetServiceRequest.findMany({
       where,

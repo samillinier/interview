@@ -34,6 +34,7 @@ import { AdminSidebar } from '@/components/AdminSidebar'
 import { AdminMobileMenu } from '@/components/AdminMobileMenu'
 import { allWorkrooms } from '@/lib/workroomMapping'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
+import { isManagerLikeRole } from '@/lib/adminRoles'
 
 interface TravelRequest {
   id: string
@@ -202,13 +203,21 @@ export default function TravelRequestPage() {
       if (search) params.set('search', search)
       const res = await fetch('/api/travel-requests?' + params.toString())
       const data = await res.json()
-      if (data.success) setRequests(data.requests || [])
+      if (data.success) {
+        const rows = data.requests || []
+        const email = session?.user?.email?.toLowerCase() || ''
+        setRequests(
+          isManagerLikeRole(normalizedRole) && email
+            ? rows.filter((r: TravelRequest) => (r.createdByEmail || '').toLowerCase() === email)
+            : rows
+        )
+      }
     } catch (err) {
       console.error('Error fetching travel requests:', err)
     } finally {
       setIsLoading(false)
     }
-  }, [filterStatus, filterWorkroom, search])
+  }, [filterStatus, filterWorkroom, search, session?.user?.email, normalizedRole])
 
   useEffect(() => {
     if (canAccess) fetchRequests()

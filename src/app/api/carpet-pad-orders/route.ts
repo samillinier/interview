@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
 import { notifyCarpetPadVendorOrder } from '@/lib/carpet-pad-order-email'
+import { applyOwnCorporateScopeFromSession } from '@/lib/corporate-scope'
 
 const CORPORATE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MODERATOR', 'ACCOUNTING'])
 const MODIFY_ROLES = new Set(['ADMIN', 'MODERATOR', 'SUPER_ADMIN'])
@@ -31,9 +32,9 @@ export async function GET(request: NextRequest) {
 
     // Badge count: pending (not yet authorized) orders.
     if (action === 'count') {
-      const count = await prisma.carpetPadOrder.count({
-        where: { authorized: false },
-      })
+      const where: Record<string, unknown> = { authorized: false }
+      await applyOwnCorporateScopeFromSession(where, session)
+      const count = await prisma.carpetPadOrder.count({ where })
       return NextResponse.json({ success: true, count })
     }
 
@@ -54,9 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Managers only see their own orders; reviewers see everything.
     const role = roleOf(session)
-    if (role === 'MANAGER') {
-      where.createdByEmail = session.user.email?.toLowerCase() || ''
-    }
+    await applyOwnCorporateScopeFromSession(where, session)
 
     const orders = await prisma.carpetPadOrder.findMany({
       where,

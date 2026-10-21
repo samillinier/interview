@@ -6,6 +6,7 @@ import { Resend } from 'resend'
 import { companyDisplayName } from '@/lib/publicAppUrl'
 import { emailLogoCidSrc, withEmailLogo } from '@/lib/email-brand'
 import { notifyCorporateAuthorizer, notifyRequesterDecision } from '@/lib/corporate-authorization-email'
+import { applyOwnCorporateScopeFromSession } from '@/lib/corporate-scope'
 
 const REVIEWER_ROLES = new Set(['SUPER_ADMIN'])
 
@@ -114,9 +115,7 @@ export async function GET(request: NextRequest) {
     if (action === 'count') {
       const role = String((session.user as any)?.role || '').toUpperCase()
       const where: any = { status: 'pending' }
-      if (role === 'MANAGER') {
-        where.createdByEmail = session.user.email?.toLowerCase() || ''
-      }
+      await applyOwnCorporateScopeFromSession(where, session)
       const count = await prisma.businessCardOrder.count({ where })
       return NextResponse.json({ success: true, count })
     }
@@ -136,9 +135,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    if (role === 'MANAGER') {
-      where.createdByEmail = session.user.email?.toLowerCase() || ''
-    }
+    await applyOwnCorporateScopeFromSession(where, session)
 
     const orders = await prisma.businessCardOrder.findMany({
       where,

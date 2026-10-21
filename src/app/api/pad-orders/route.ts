@@ -3,6 +3,7 @@ import prisma from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { notifyCorporateAuthorizer } from '@/lib/corporate-authorization-email'
+import { applyOwnCorporateScopeFromSession } from '@/lib/corporate-scope'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -15,7 +16,10 @@ export async function GET(request: NextRequest) {
 
     // Count-only mode for badge notifications
     if (action === 'count') {
-      const count = await prisma.padOrder.count({ where: { authorized: false } })
+      const role = String((session.user as any)?.role || '').toUpperCase()
+      const where: Record<string, unknown> = { authorized: false }
+      await applyOwnCorporateScopeFromSession(where, session)
+      const count = await prisma.padOrder.count({ where })
       return NextResponse.json({ success: true, count })
     }
 
@@ -33,11 +37,9 @@ export async function GET(request: NextRequest) {
       if (endDate) where.dateReceived.lte = new Date(endDate)
     }
 
-    // Managers only see their own orders; reviewers see everything.
+    // Managers and Accounting only see their own orders; reviewers see everything.
     const role = String((session.user as any)?.role || '').toUpperCase()
-    if (role === 'MANAGER') {
-      where.createdByEmail = session.user.email?.toLowerCase() || ''
-    }
+    await applyOwnCorporateScopeFromSession(where, session)
 
     const [orders, total] = await Promise.all([
       prisma.padOrder.findMany({
