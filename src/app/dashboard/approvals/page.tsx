@@ -34,6 +34,8 @@ import {
   Megaphone,
   Upload,
   Copy,
+  ScanSearch,
+  Loader2,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import logo from '@/images/freepik_br_649d627d-2016-4108-ab09-0d2a0ad903d9.png'
@@ -74,6 +76,32 @@ type ApprovalGroup = {
   sections: string[]
   changedKeys: string[]
   actions: string[] // e.g. create_staff
+}
+
+type AutoVerifyCheck = {
+  id: string
+  label: string
+  status: 'pass' | 'warn' | 'fail'
+  detail: string
+}
+
+type AutoVerifyResult = {
+  verdict: 'match' | 'review' | 'mismatch'
+  summary: string
+  claimedTypeLabel: string
+  detectedTypeLabel: string | null
+  namedInsured: string | null
+  expiryDate: string | null
+  coverages: string[]
+  certificateHolder: string | null
+  checks: AutoVerifyCheck[]
+  notes: string | null
+}
+
+type AutoVerifyState = {
+  status: 'idle' | 'loading' | 'done' | 'error'
+  result?: AutoVerifyResult
+  error?: string
 }
 
 type PdfEditorPage = {
@@ -1330,6 +1358,7 @@ export default function ApprovalsPage() {
     reason: string
     file: File | null
   }>({ open: false, id: '', label: '', documentName: '', documentUrl: '', reason: '', file: null })
+  const [autoVerifyById, setAutoVerifyById] = useState<Record<string, AutoVerifyState>>({})
 
   const [agreementModal, setAgreementModal] = useState<{
     open: boolean
@@ -1589,6 +1618,30 @@ export default function ApprovalsPage() {
       return () => clearInterval(interval)
     }
   }, [status, canViewApprovals])
+
+  const handleAutoVerify = async (id: string) => {
+    setAutoVerifyById((prev) => ({ ...prev, [id]: { status: 'loading' } }))
+    try {
+      const res = await fetch(`/api/admin/change-requests/${id}/auto-verify`, { method: 'POST' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        setAutoVerifyById((prev) => ({
+          ...prev,
+          [id]: { status: 'error', error: data?.error || `Auto verify failed (${res.status})` },
+        }))
+        return
+      }
+      setAutoVerifyById((prev) => ({
+        ...prev,
+        [id]: { status: 'done', result: data?.result },
+      }))
+    } catch (e: any) {
+      setAutoVerifyById((prev) => ({
+        ...prev,
+        [id]: { status: 'error', error: e?.message || 'Auto verify failed' },
+      }))
+    }
+  }
 
   const handleApprove = async (id: string) => {
     setApproving((p) => ({ ...p, [id]: true }))
@@ -2258,10 +2311,30 @@ export default function ApprovalsPage() {
                             'verify_document' &&
                           (() => {
                             const req = requestsById.get(g.requestIds[0])
+                            const requestId = String(req?.id || g.requestIds[0] || '')
                             const p = (req?.payload || {}) as any
                             const name = String(p.documentName || 'Attachment')
                             const docType = p.documentType ? String(p.documentType) : ''
                             const url = p.documentUrl ? String(p.documentUrl) : ''
+                            const autoVerify = autoVerifyById[requestId]
+                            const verdictClass =
+                              autoVerify?.result?.verdict === 'match'
+                                ? 'border-emerald-200 bg-emerald-50'
+                                : autoVerify?.result?.verdict === 'mismatch'
+                                  ? 'border-red-200 bg-red-50'
+                                  : 'border-slate-200 bg-white'
+                            const verdictTextClass =
+                              autoVerify?.result?.verdict === 'match'
+                                ? 'text-emerald-800'
+                                : autoVerify?.result?.verdict === 'mismatch'
+                                  ? 'text-red-800'
+                                  : 'text-slate-800'
+                            const verdictLabel =
+                              autoVerify?.result?.verdict === 'match'
+                                ? 'Looks correct'
+                                : autoVerify?.result?.verdict === 'mismatch'
+                                  ? 'Does not look right'
+                                  : 'Needs a look'
                             return (
                               <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2281,18 +2354,79 @@ export default function ApprovalsPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  {url ? (
-                                    <a
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-amber-300 bg-white text-sm font-semibold text-amber-900 hover:bg-amber-100/80 transition-colors"
+                                  <div className="shrink-0 flex flex-col sm:items-end gap-2">
+                                    {url ? (
+                                      <a
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-amber-300 bg-white text-sm font-semibold text-amber-900 hover:bg-amber-100/80 transition-colors"
+                                      >
+                                        Open file
+                                        <ExternalLink className="w-4 h-4" />
+                                      </a>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAutoVerify(requestId)}
+                                      disabled={!url || autoVerify?.status === 'loading'}
+                                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors disabled:opacity-50"
                                     >
-                                      Open file
-                                      <ExternalLink className="w-4 h-4" />
-                                    </a>
-                                  ) : null}
+                                      {autoVerify?.status === 'loading' ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <ScanSearch className="w-4 h-4" />
+                                      )}
+                                      {autoVerify?.status === 'loading' ? 'Checking…' : 'Auto Verify'}
+                                    </button>
+                                  </div>
                                 </div>
+                                <p className="text-[11px] text-amber-950/70 mt-2">
+                                  Extra check only — it does not approve or reject. Use it to save time before you decide.
+                                </p>
+                                {autoVerify?.status === 'error' ? (
+                                  <div className="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-700">
+                                    {autoVerify.error || 'Auto verify failed'}
+                                  </div>
+                                ) : null}
+                                {autoVerify?.status === 'done' && autoVerify.result ? (
+                                  <div className={`mt-3 rounded-xl border px-3 py-3 ${verdictClass}`}>
+                                    <div className={`text-sm font-bold ${verdictTextClass}`}>{verdictLabel}</div>
+                                    <p className="text-xs text-slate-700 mt-1 leading-relaxed">{autoVerify.result.summary}</p>
+                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                                      {autoVerify.result.detectedTypeLabel ? (
+                                        <span>Detected: {autoVerify.result.detectedTypeLabel}</span>
+                                      ) : null}
+                                      {autoVerify.result.namedInsured ? (
+                                        <span>Named: {autoVerify.result.namedInsured}</span>
+                                      ) : null}
+                                      {autoVerify.result.expiryDate ? (
+                                        <span>Expires: {autoVerify.result.expiryDate}</span>
+                                      ) : null}
+                                    </div>
+                                    <ul className="mt-2 space-y-1">
+                                      {autoVerify.result.checks.map((check) => (
+                                        <li key={check.id} className="text-xs text-slate-700 leading-relaxed">
+                                          <span
+                                            className={
+                                              check.status === 'pass'
+                                                ? 'font-semibold text-emerald-700'
+                                                : check.status === 'fail'
+                                                  ? 'font-semibold text-red-700'
+                                                  : 'font-semibold text-amber-700'
+                                            }
+                                          >
+                                            {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : 'Check'} · {check.label}.
+                                          </span>{' '}
+                                          {check.detail}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    {autoVerify.result.notes ? (
+                                      <p className="text-xs text-slate-500 mt-2">{autoVerify.result.notes}</p>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
                             )
                           })()}
