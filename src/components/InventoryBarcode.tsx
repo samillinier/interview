@@ -74,15 +74,25 @@ export function workroomSlugForBarcode(workroom: string): string {
   return compact.slice(0, 5)
 }
 
+function normalizeAssetIdForBarcode(assetId?: string | null) {
+  if (!assetId) return ''
+  return assetId.trim().replace(/\s+/g, '').toUpperCase()
+}
+
 /**
- * Barcode and human-readable line: base asset code plus optional `-WORKROOM`
+ * Barcode and human-readable line.
+ * Uses Asset / internal ID when set so the printed code matches the form.
+ * Otherwise: base asset code from the record id plus optional `-WORKROOM`
  * (e.g. `C83T-0001-LTR1-TAMPA`). Workroom suffix is capped at five characters.
  * Scanners return this full string.
  */
 export function getInventoryLabelBarcodeValue(
   inventoryId: string,
-  workroom?: string | null
+  workroom?: string | null,
+  assetId?: string | null
 ) {
+  const asset = normalizeAssetIdForBarcode(assetId)
+  if (asset) return asset
   const base = getInventoryBarcodeEncodeValue(inventoryId)
   if (!base) return ''
   const slug = workroom?.trim() ? workroomSlugForBarcode(workroom) : ''
@@ -97,6 +107,8 @@ export function getInventoryBarcodePayload(inventoryId: string) {
 
 type Props = {
   inventoryId: string
+  /** Asset / internal ID — encoded on the label when present so it matches the form. */
+  assetId?: string | null
   /** Appended to the asset code in the barcode as `-WORKROOM` (e.g. `...-TAMPA`). */
   workroom?: string | null
   compact?: boolean
@@ -111,6 +123,7 @@ type Props = {
  */
 export function InventoryBarcode({
   inventoryId,
+  assetId,
   workroom,
   compact = false,
   className = '',
@@ -142,9 +155,9 @@ export function InventoryBarcode({
       svg.style.height = ''
       svg.style.display = ''
     }
-  }, [isMobile, compact, inventoryId, workroom])
+  }, [isMobile, compact, inventoryId, assetId, workroom])
 
-  const labelValue = getInventoryLabelBarcodeValue(inventoryId, workroom)
+  const labelValue = getInventoryLabelBarcodeValue(inventoryId, workroom, assetId)
 
   const logoAbsoluteUrl =
     typeof window !== 'undefined'

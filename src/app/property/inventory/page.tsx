@@ -365,11 +365,18 @@ export default function InventoryPage() {
         : `/api/properties/${property.id}/inventory`
       
       const method = editingItem ? 'PATCH' : 'POST'
+      const sku =
+        formData.sku.trim() ||
+        getInventoryLabelBarcodeValue(
+          editingItem?.id ?? draftLabelId ?? '',
+          formData.warehouse,
+          formData.sku
+        )
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, sku }),
       })
 
       const data = await response.json()
@@ -687,6 +694,7 @@ export default function InventoryPage() {
         item.id,
         getInventoryBarcodeEncodeValue(item.id),
         getInventoryLabelBarcodeValue(item.id, item.warehouse),
+        getInventoryLabelBarcodeValue(item.id, item.warehouse, item.sku),
         getInventoryBarcodePayload(item.id),
       ]
       const normalizedValues = searchableValues
@@ -1126,9 +1134,9 @@ export default function InventoryPage() {
                             </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 align-middle">
-                            {getInventoryLabelBarcodeValue(item.id, item.warehouse) ? (
+                            {getInventoryLabelBarcodeValue(item.id, item.warehouse, item.sku) ? (
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 font-mono text-xs font-medium leading-none text-slate-700 ring-1 ring-slate-200/70">
-                                {getInventoryLabelBarcodeValue(item.id, item.warehouse)}
+                                {getInventoryLabelBarcodeValue(item.id, item.warehouse, item.sku)}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs leading-none text-slate-400 ring-1 ring-slate-100">
@@ -1396,6 +1404,7 @@ export default function InventoryPage() {
                   {labelPreviewId ? (
                     <InventoryBarcode
                       inventoryId={labelPreviewId}
+                      assetId={formData.sku}
                       alignEnd
                       workroom={formData.warehouse?.trim() || undefined}
                     />
