@@ -1167,7 +1167,7 @@ export default function SettingsPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') fetchAuditLogs({ q: (e.target as HTMLInputElement).value })
                 }}
-                placeholder="Search: subcontractor name/email/id or admin email…"
+                placeholder="Search: name, email, vehicle, location, or admin…"
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
               />
             </div>
@@ -1232,7 +1232,7 @@ export default function SettingsPage() {
                   <th className="py-3 px-4 font-semibold">When</th>
                   <th className="py-3 px-4 font-semibold">Admin</th>
                   <th className="py-3 px-4 font-semibold">Action</th>
-                  <th className="py-3 px-4 font-semibold">Subcontractor</th>
+                  <th className="py-3 px-4 font-semibold">Subject</th>
                   <th className="py-3 px-4 font-semibold">Details</th>
                 </tr>
               </thead>
