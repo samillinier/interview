@@ -555,6 +555,48 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   }
 }
 
+/** A scanned/print-to-PDF has little to no selectable text. Anything under this
+ *  is treated as an image-only PDF and routed through vision instead of text. */
+const PDF_MIN_TEXT_CHARS = 200
+
+/** Render the first page of a PDF to a PNG buffer so the vision model can read it. */
+async function renderPdfFirstPageToPng(buf: Buffer): Promise<Buffer | null> {
+  try {
+    const mod: any = await import('pdf-to-img')
+    const pdfFn = mod?.pdf
+    if (typeof pdfFn !== 'function') return null
+    const document = await pdfFn(buf, { scale: 2 })
+    const page = await document.getPage(1)
+    const png = Buffer.isBuffer(page) ? page : Buffer.from(page)
+    try {
+      if (typeof document.destroy === 'function') await document.destroy()
+    } catch {
+      /* ignore */
+    }
+    return png && png.length > 0 ? png : null
+  } catch (e) {
+    console.error('Auto-verify PDF render failed:', e)
+    return null
+  }
+}
+
+/** Upload a rendered page PNG to Vercel Blob so OpenAI can fetch it as an image URL. */
+async function uploadRenderedPdfToBlob(png: Buffer): Promise<string | null> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN
+  if (!token) return null
+  try {
+    const blobModule: any = await import('@vercel/blob')
+    const put = blobModule?.put
+    if (typeof put !== 'function') return null
+    const name = `renders/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.png`
+    const blob = await put(name, png, { access: 'public', contentType: 'image/png', token })
+    return blob?.url || null
+  } catch (e) {
+    console.error('Auto-verify PDF render upload failed:', e)
+    return null
+  }
+}
+
 async function readAcordDateBox(imageUrl: string): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey || apiKey === 'sk-your-openai-api-key-here' || !imageUrl) return null
@@ -1140,6 +1182,7 @@ export async function autoVerifyInstallerDocument(args: {
   const isImage = ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 
   let text = ''
+  let renderedImageUrl: string | null = null
   let fileError: string | null = null
   if (url) {
     if (ext === 'pdf' || !ext) {
@@ -1149,6 +1192,12 @@ export async function autoVerifyInstallerDocument(args: {
           const buf = Buffer.from(await res.arrayBuffer())
           if (ext === 'pdf' || (res.headers.get('content-type') || '').includes('pdf')) {
             text = await extractPdfText(buf)
+            // Scanned / print-to-PDF files have no text layer. Render page 1 to an
+            // image and read it with vision so fields are not hallucinated.
+            if (text.length < PDF_MIN_TEXT_CHARS) {
+              const png = await renderPdfFirstPageToPng(buf)
+              if (png) renderedImageUrl = await uploadRenderedPdfToBlob(png)
+            }
           }
         } else {
           fileError = `Could not open the file (HTTP ${res.status}). It may have been deleted or replaced.`
@@ -1199,12 +1248,13 @@ export async function autoVerifyInstallerDocument(args: {
     }
   }
 
-  const canUseAi = text.length >= 40 || isImage
+  const imageUrlForAi = isImage ? url : renderedImageUrl
+  const canUseAi = text.length >= 40 || isImage || Boolean(renderedImageUrl)
   const [ai, dateBox] = await Promise.all([
     canUseAi
       ? analyzeWithOpenAI({
           text,
-          imageUrl: isImage ? url : null,
+          imageUrl: imageUrlForAi,
           claimedType,
           companyName,
           personName,

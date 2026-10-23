@@ -5,7 +5,17 @@ const nextConfig = {
   experimental: {
     // pdf-parse v1 is server-only (btrExpiry); avoid bundling its embedded PDF.js
     // firebase-admin is server-only and should not be bundled into the serverless function
-    serverComponentsExternalPackages: ['pdf-parse', 'firebase-admin', 'playwright-core', '@sparticuz/chromium'],
+    // pdf-to-img + pdfjs-dist + @napi-rs/canvas rasterize scanned PDFs for Auto Verify
+    // (native canvas binary + pdfjs data files must stay external to the serverless bundle)
+    serverComponentsExternalPackages: [
+      'pdf-parse',
+      'firebase-admin',
+      'playwright-core',
+      '@sparticuz/chromium',
+      'pdf-to-img',
+      'pdfjs-dist',
+      '@napi-rs/canvas',
+    ],
     optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns'],
     serverActions: {
       bodySizeLimit: '10mb',
@@ -19,6 +29,16 @@ const nextConfig = {
       '/api/admin/marketing/search': [
         './node_modules/@sparticuz/chromium/**',
         './node_modules/playwright-core/**',
+      ],
+      '/api/admin/change-requests/[id]/auto-verify': [
+        './node_modules/@napi-rs/**',
+        './node_modules/pdfjs-dist/standard_fonts/**',
+        './node_modules/pdfjs-dist/cmaps/**',
+      ],
+      '/api/installers/[id]/documents/auto-verify': [
+        './node_modules/@napi-rs/**',
+        './node_modules/pdfjs-dist/standard_fonts/**',
+        './node_modules/pdfjs-dist/cmaps/**',
       ],
     },
   },
