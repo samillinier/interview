@@ -85,6 +85,13 @@ type AutoVerifyState = {
   error?: string
 }
 
+function formatCoiDate(iso?: string | null) {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return iso
+  return `${Number(m[2])}/${Number(m[3])}/${m[1]}`
+}
+
 type PdfEditorPage = {
   pageNumber: number
   width: number
@@ -1340,7 +1347,21 @@ export default function ApprovalsPage() {
     file: File | null
   }>({ open: false, id: '', label: '', documentName: '', documentUrl: '', reason: '', file: null })
   const [autoVerifyById, setAutoVerifyById] = useState<Record<string, AutoVerifyState>>({})
-  const autoVerifyStartedRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    setAutoVerifyById((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const r of requests) {
+        const p = (r.payload || {}) as any
+        if (p.action !== 'verify_document' || !p.autoVerifyResult) continue
+        if (next[r.id]?.status === 'loading' || next[r.id]?.status === 'done') continue
+        next[r.id] = { status: 'done', result: p.autoVerifyResult }
+        changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [requests])
 
   const [agreementModal, setAgreementModal] = useState<{
     open: boolean
@@ -1624,31 +1645,6 @@ export default function ApprovalsPage() {
       }))
     }
   }
-
-  useEffect(() => {
-    setAutoVerifyById((prev) => {
-      let changed = false
-      const next = { ...prev }
-      for (const r of requests) {
-        const p = (r.payload || {}) as any
-        if (p.action !== 'verify_document' || !p.autoVerifyResult) continue
-        if (next[r.id]?.status === 'loading' || next[r.id]?.status === 'done') continue
-        next[r.id] = { status: 'done', result: p.autoVerifyResult }
-        autoVerifyStartedRef.current.add(r.id)
-        changed = true
-      }
-      return changed ? next : prev
-    })
-
-    for (const r of requests) {
-      const p = (r.payload || {}) as any
-      if (p.action !== 'verify_document' || !p.documentUrl) continue
-      if (autoVerifyStartedRef.current.has(r.id)) continue
-      autoVerifyStartedRef.current.add(r.id)
-      void handleAutoVerify(r.id)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests])
 
   const handleApprove = async (id: string) => {
     setApproving((p) => ({ ...p, [id]: true }))
@@ -2384,16 +2380,12 @@ export default function ApprovalsPage() {
                                       ) : (
                                         <ScanSearch className="w-4 h-4" />
                                       )}
-                                      {autoVerify?.status === 'loading'
-                                        ? 'Checking…'
-                                        : autoVerify?.status === 'done'
-                                          ? 'Re-check'
-                                          : 'Auto Verify'}
+                                      {autoVerify?.status === 'loading' ? 'Checking…' : 'Auto Verify'}
                                     </button>
                                   </div>
                                 </div>
                                 <p className="text-[11px] text-amber-950/70 mt-2">
-                                  Runs the FIS ACORD sample checklist automatically. Commercial auto is waived. This still does not approve or reject.
+                                  Click Auto Verify to check this file against the FIS ACORD sample. Commercial auto is waived. This still does not approve or reject.
                                 </p>
                                 {autoVerify?.status === 'error' ? (
                                   <div className="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-700">
@@ -2412,10 +2404,10 @@ export default function ApprovalsPage() {
                                         <span>Named: {autoVerify.result.namedInsured}</span>
                                       ) : null}
                                       {autoVerify.result.issueDate ? (
-                                        <span>Issued: {autoVerify.result.issueDate}</span>
+                                        <span>Issued: {formatCoiDate(autoVerify.result.issueDate)}</span>
                                       ) : null}
                                       {autoVerify.result.expiryDate ? (
-                                        <span>Expires: {autoVerify.result.expiryDate}</span>
+                                        <span>Expires: {formatCoiDate(autoVerify.result.expiryDate)}</span>
                                       ) : null}
                                       {autoVerify.result.autoWaived ? (
                                         <span>Auto liability: waived</span>
