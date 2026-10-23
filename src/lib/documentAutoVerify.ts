@@ -970,25 +970,31 @@ function buildResult(args: {
   if (treatAsCoi) {
     const auto = args.ai?.auto || emptyBox()
     const autoPresent = auto.present === true || claimedType === 'auto_insurance'
-    const boxed = {
-      'Any Auto': auto.anyAuto === true || hay.includes('any auto'),
-      'Hired Autos': auto.hiredAutos === true || hay.includes('hired auto'),
-      'Scheduled Autos': auto.scheduledAutos === true || hay.includes('scheduled auto'),
-      'Non-Owned Autos': auto.nonOwnedAutos === true || /non[-\s]?owned auto/.test(hay),
+    const anyAuto = auto.anyAuto === true || hay.includes('any auto')
+    const hired = auto.hiredAutos === true || hay.includes('hired auto')
+    const scheduled = auto.scheduledAutos === true || hay.includes('scheduled auto')
+    const nonOwned = auto.nonOwnedAutos === true || /non[-\s]?owned auto/.test(hay)
+
+    // "Any Auto" is the broadest coverage — it includes hired, scheduled, and
+    // non-owned autos, so those boxes are not circled separately on the form.
+    const missingBoxes: string[] = []
+    if (!anyAuto) {
+      if (!scheduled) missingBoxes.push('Scheduled Autos')
+      if (!hired) missingBoxes.push('Hired Autos')
+      if (!nonOwned) missingBoxes.push('Non-Owned Autos')
     }
-    const missingBoxes = Object.entries(boxed)
-      .filter(([, ok]) => !ok)
-      .map(([label]) => label)
 
     if (autoPresent) {
       checks.push({
         id: 'auto-boxes',
-        label: 'Auto boxes',
-        status: missingBoxes.length === 0 ? 'pass' : 'warn',
+        label: 'Auto coverage',
+        status: missingBoxes.length === 0 ? 'pass' : 'fail',
         detail:
           missingBoxes.length === 0
-            ? 'Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked.'
-            : `Auto boxes could not be fully confirmed: ${missingBoxes.join(', ')}. Commercial auto is waived, so confirm the circles visually if needed.`,
+            ? anyAuto
+              ? 'Any Auto is marked, which covers hired, scheduled, and non-owned autos.'
+              : 'Hired, Scheduled, and Non-Owned autos are marked.'
+            : `Missing auto boxes: ${missingBoxes.join(', ')}.`,
       })
       const cslOk = moneyAtLeast(auto.combinedSingleLimit, AUTO_CSL_MIN)
       const splitOk =
