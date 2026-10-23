@@ -564,7 +564,10 @@ async function renderPdfFirstPageToPng(buf: Buffer): Promise<Buffer | null> {
   try {
     const mod: any = await import('pdf-to-img')
     const pdfFn = mod?.pdf
-    if (typeof pdfFn !== 'function') return null
+    if (typeof pdfFn !== 'function') {
+      console.error('[auto-verify] pdf-to-img did not export a "pdf" function')
+      return null
+    }
     const document = await pdfFn(buf, { scale: 2 })
     const page = await document.getPage(1)
     const png = Buffer.isBuffer(page) ? page : Buffer.from(page)
@@ -573,9 +576,13 @@ async function renderPdfFirstPageToPng(buf: Buffer): Promise<Buffer | null> {
     } catch {
       /* ignore */
     }
-    return png && png.length > 0 ? png : null
+    if (!png || png.length === 0) {
+      console.error('[auto-verify] pdf-to-img returned an empty page buffer')
+      return null
+    }
+    return png
   } catch (e) {
-    console.error('Auto-verify PDF render failed:', e)
+    console.error('[auto-verify] PDF render failed:', (e as Error)?.message || e, (e as Error)?.stack || '')
     return null
   }
 }
@@ -592,7 +599,7 @@ async function uploadRenderedPdfToBlob(png: Buffer): Promise<string | null> {
     const blob = await put(name, png, { access: 'public', contentType: 'image/png', token })
     return blob?.url || null
   } catch (e) {
-    console.error('Auto-verify PDF render upload failed:', e)
+    console.error('[auto-verify] PDF render upload failed:', (e as Error)?.message || e)
     return null
   }
 }
@@ -1196,7 +1203,12 @@ export async function autoVerifyInstallerDocument(args: {
             // image and read it with vision so fields are not hallucinated.
             if (text.length < PDF_MIN_TEXT_CHARS) {
               const png = await renderPdfFirstPageToPng(buf)
-              if (png) renderedImageUrl = await uploadRenderedPdfToBlob(png)
+              if (png) {
+                renderedImageUrl = await uploadRenderedPdfToBlob(png)
+                console.log(`[auto-verify] rendered scanned PDF (text ${text.length} chars) -> image ${renderedImageUrl ? 'uploaded' : 'UPLOAD FAILED'}`)
+              } else {
+                console.error(`[auto-verify] scanned PDF (text ${text.length} chars) could not be rendered`)
+              }
             }
           }
         } else {
