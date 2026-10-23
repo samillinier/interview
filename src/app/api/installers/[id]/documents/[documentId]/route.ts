@@ -179,6 +179,15 @@ export async function DELETE(
       where: { id: documentId },
     })
 
+    // Clean up any pending change requests that referenced this document so the
+    // Approvals queue does not keep stale entries pointing at a deleted file.
+    await prisma.installerChangeRequest.deleteMany({
+      where: {
+        status: 'pending',
+        payload: { path: ['documentId'], equals: documentId },
+      },
+    })
+
     return NextResponse.json({ success: true, message: 'Document deleted successfully' })
   } catch (error: any) {
     console.error('Error deleting document:', error)

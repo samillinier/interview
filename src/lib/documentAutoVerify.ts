@@ -1131,17 +1131,62 @@ export async function autoVerifyInstallerDocument(args: {
   const isImage = ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 
   let text = ''
-  if (url && (ext === 'pdf' || !ext)) {
-    try {
-      const res = await fetch(url)
-      if (res.ok) {
-        const buf = Buffer.from(await res.arrayBuffer())
-        if (ext === 'pdf' || (res.headers.get('content-type') || '').includes('pdf')) {
-          text = await extractPdfText(buf)
+  let fileError: string | null = null
+  if (url) {
+    if (ext === 'pdf' || !ext) {
+      try {
+        const res = await fetch(url)
+        if (res.ok) {
+          const buf = Buffer.from(await res.arrayBuffer())
+          if (ext === 'pdf' || (res.headers.get('content-type') || '').includes('pdf')) {
+            text = await extractPdfText(buf)
+          }
+        } else {
+          fileError = `Could not open the file (HTTP ${res.status}). It may have been deleted or replaced.`
         }
+      } catch (e) {
+        console.error('Auto-verify fetch failed:', e)
+        fileError = 'Could not reach the file. It may have been deleted or replaced.'
       }
-    } catch (e) {
-      console.error('Auto-verify fetch failed:', e)
+    } else if (isImage) {
+      try {
+        let res = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+        if (res.status === 405 || res.status === 501) {
+          res = await fetch(url, { method: 'GET', cache: 'no-store' })
+        }
+        if (!res.ok) {
+          fileError = `Could not open the file (HTTP ${res.status}). It may have been deleted or replaced.`
+        }
+      } catch (e) {
+        fileError = 'Could not reach the file. It may have been deleted or replaced.'
+      }
+    }
+  }
+
+  if (fileError) {
+    return {
+      verdict: 'review',
+      summary: 'This file could not be opened — it may have been deleted or replaced. Ask the installer to re-upload it.',
+      claimedType,
+      claimedTypeLabel: typeLabel(claimedType),
+      detectedType: null,
+      detectedTypeLabel: null,
+      namedInsured: null,
+      expiryDate: null,
+      effectiveDate: null,
+      issueDate: null,
+      coverages: [],
+      certificateHolder: null,
+      autoWaived: true,
+      checks: [
+        {
+          id: 'readable',
+          label: 'File readable',
+          status: 'warn',
+          detail: fileError,
+        },
+      ],
+      notes: null,
     }
   }
 
