@@ -141,10 +141,120 @@ function detectTypeFromText(text: string): { type: string; label: string; score:
 
 function pickIsoDate(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
-  const m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) return null
-  const d = new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00.000Z`)
-  return Number.isNaN(d.getTime()) ? null : `${m[1]}-${m[2]}-${m[3]}`
+  const s = raw.trim()
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) {
+    const d = new Date(`${iso[1]}-${iso[2]}-${iso[3]}T00:00:00.000Z`)
+    return Number.isNaN(d.getTime()) ? null : `${iso[1]}-${iso[2]}-${iso[3]}`
+  }
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (us) return mdyToIso(us[1], us[2], us[3])
+  return null
+}
+
+function mdyToIso(mm: string, dd: string, yyyy: string): string | null {
+  const month = Number(mm)
+  const day = Number(dd)
+  const year = Number(yyyy)
+  if (!Number.isFinite(month) || !Number.isFinite(day) || !Number.isFinite(year)) return null
+  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return null
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+/** ACORD PDFs print DATE as MM/DD/YYYY. Do not treat 10/23/2026 as 2023-10-23. */
+function extractUsDates(text: string): string[] {
+  const seen = new Set<string>()
+  const add = (iso: string | null) => {
+    if (!iso || seen.has(iso)) return
+    seen.add(iso)
+  }
+  const jammed = text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})(\d{1,2})\/(\d{1,2})\/(\d{4})/g)
+  for (const m of jammed) {
+    add(mdyToIso(m[1], m[2], m[3]))
+    add(mdyToIso(m[4], m[5], m[6]))
+  }
+  const singles = text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g)
+  for (const m of singles) add(mdyToIso(m[1], m[2], m[3]))
+  return Array.from(seen).sort()
+}
+
+function pickAcordDates(
+  text: string,
+  aiIssue: string | null,
+  aiEffective: string | null,
+  aiExpiry: string | null
+) {
+  const dates = extractUsDates(text)
+  const today = new Date().toISOString().slice(0, 10)
+  const notFuture = dates.filter((d) => d <= today)
+  const issueFromText = notFuture.length ? notFuture[notFuture.length - 1] : null
+  const expiryFromText = dates.length ? dates[dates.length - 1] : null
+  const effectiveFromText =
+    dates.find((d) => expiryFromText && d < expiryFromText && d !== issueFromText) || aiEffective
+
+  const issue = issueFromText || aiIssue
+  let expiry = aiExpiry
+  if (expiryFromText && (!expiry || dates.includes(expiryFromText))) expiry = expiryFromText
+  if (aiExpiry && dates.includes(aiExpiry)) expiry = aiExpiry
+
+  return {
+    issueDate: issue,
+    effectiveDate: effectiveFromText || aiEffective,
+    expiryDate: expiry,
+  }
+}
+
+/** Next/ACORD text often dumps GL limits as 1,000,000 / 100,000 / 5,000 / 2,000,000 / 2,000,000. */
+function extractGlLimitsFromText(text: string): Partial<CoverageBox> {
+  const nums = Array.from(text.matchAll(/(\d{1,3}(?:,\d{3}){1,3}(?:\.\d{2})?)/g)).map((m) =>
+    Number(m[1].replace(/,/g, ''))
+  )
+  for (let i = 0; i < nums.length - 3; i++) {
+    const occ = nums[i]
+    const rented = nums[i + 1]
+    const med = nums[i + 2]
+    if (occ < 500_000 || occ > 10_000_000) continue
+    if (rented < 25_000 || rented > 1_000_000) continue
+    if (med < 1_000 || med > 50_000) continue
+    const a = nums[i + 3]
+    const b = nums[i + 4]
+    const c = nums[i + 5]
+    let personalAdInjury: number | null = null
+    let generalAggregate: number | null = null
+    let productsCompletedOps: number | null = null
+    if (a >= 2_000_000 && b >= 2_000_000) {
+      generalAggregate = a
+      productsCompletedOps = b
+      personalAdInjury =
+        nums.slice(i + 3).find((n) => n >= 1_000_000 && n < 2_000_000) ?? null
+    } else if (a >= 1_000_000 && b >= 2_000_000 && c >= 2_000_000) {
+      personalAdInjury = a
+      generalAggregate = b
+      productsCompletedOps = c
+    }
+    return {
+      eachOccurrence: occ,
+      damageToRented: rented,
+      medicalExpense: med,
+      personalAdInjury,
+      generalAggregate,
+      productsCompletedOps,
+    }
+  }
+  return {}
+}
+
+function fillGlLimits(gl: CoverageBox, text: string): CoverageBox {
+  const found = extractGlLimitsFromText(text)
+  return {
+    ...gl,
+    eachOccurrence: gl.eachOccurrence ?? found.eachOccurrence ?? null,
+    damageToRented: gl.damageToRented ?? found.damageToRented ?? null,
+    medicalExpense: gl.medicalExpense ?? found.medicalExpense ?? null,
+    personalAdInjury: gl.personalAdInjury ?? found.personalAdInjury ?? null,
+    generalAggregate: gl.generalAggregate ?? found.generalAggregate ?? null,
+    productsCompletedOps: gl.productsCompletedOps ?? found.productsCompletedOps ?? null,
+  }
 }
 
 function asBool(raw: unknown): boolean | null {
@@ -299,7 +409,10 @@ async function extractPdfText(buf: Buffer): Promise<string> {
     const pdfParseFn = mod?.default ?? (mod as unknown as (data: Buffer) => Promise<{ text?: string }>)
     if (typeof pdfParseFn !== 'function') return ''
     const parsed = await pdfParseFn(buf).catch(() => null)
-    return String(parsed?.text || '').replace(/\s+/g, ' ').trim()
+    return String(parsed?.text || '')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
   } catch (e) {
     console.error('Auto-verify pdf-parse failed:', e)
     return ''
@@ -445,12 +558,20 @@ function buildResult(args: {
   const claimedType = args.claimedType || ''
   const hay = args.text.toLowerCase()
   const heuristic = args.text ? detectTypeFromText(args.text) : null
-  const detectedType = args.ai?.detectedType || heuristic?.type || null
+  let detectedType = args.ai?.detectedType || heuristic?.type || null
+  const looksLikeGlCoi =
+    hay.includes('certificate of liability insurance') && hay.includes('commercial general liability')
+  if (looksLikeGlCoi && (detectedType === 'employers_liability' || detectedType === 'workers_comp')) {
+    detectedType = 'liability_insurance'
+  }
   const detectedTypeLabel =
-    args.ai?.detectedTypeLabel || (detectedType ? typeLabel(detectedType) : heuristic?.label) || null
+    detectedType === 'liability_insurance'
+      ? typeLabel('liability_insurance')
+      : args.ai?.detectedTypeLabel || (detectedType ? typeLabel(detectedType) : heuristic?.label) || null
   const namedInsured = args.ai?.namedInsured || null
-  const expiryDate = args.ai?.expiryDate || null
-  const issueDate = args.ai?.issueDate || null
+  const acordDates = pickAcordDates(args.text, args.ai?.issueDate || null, args.ai?.effectiveDate || null, args.ai?.expiryDate || null)
+  const expiryDate = acordDates.expiryDate
+  const issueDate = acordDates.issueDate
   const holder = args.ai?.certificateHolder || null
   const holderAddress = args.ai?.certificateHolderAddress || null
   const checks: AutoVerifyCheck[] = []
@@ -484,7 +605,9 @@ function buildResult(args: {
       id: 'type',
       label: 'Document type',
       status: 'warn',
-      detail: `Uploaded as Additional Documents. Auto-verify thinks it is ${detectedTypeLabel}.`,
+      detail: looksLikeGlCoi
+        ? 'Uploaded as Additional Documents. This is a General Liability ACORD 25, not an employers-liability-only form.'
+        : `Uploaded as Additional Documents. Auto-verify thinks it is ${detectedTypeLabel}.`,
     })
   } else {
     checks.push({
@@ -572,7 +695,7 @@ function buildResult(args: {
 
   const checkGl = treatAsCoi && claimedType !== 'auto_insurance' && claimedType !== 'workers_comp'
   if (checkGl) {
-    const gl = args.ai?.gl || emptyBox()
+    const gl = fillGlLimits(args.ai?.gl || emptyBox(), args.text)
     const cglOk = gl.commercialCgl === true || hay.includes('commercial general liability')
     const occurrenceOk = gl.occurrence === true || hayHas(hay, 'occurrence')
     const claimsMade = gl.claimsMade === true
@@ -782,7 +905,7 @@ function buildResult(args: {
     detectedTypeLabel,
     namedInsured,
     expiryDate,
-    effectiveDate: args.ai?.effectiveDate || null,
+    effectiveDate: acordDates.effectiveDate,
     issueDate,
     coverages: args.ai?.coverages || [],
     certificateHolder: holder,
