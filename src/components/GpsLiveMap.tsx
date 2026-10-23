@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { deviceIsMoving } from '@/lib/gpsMoving'
 
 export interface VehicleDevice {
   id: string
@@ -18,6 +19,8 @@ export interface VehicleDevice {
   longitude: number
   speed: number
   heading: number
+  /** True when Ruhavik reports motion or GPS speed is above a crawl. */
+  moving?: boolean
   ignition: boolean
   fuelLevel?: number
   engineTemp?: number
@@ -921,7 +924,7 @@ export function GpsLiveMap({
         selectedDeviceRef.current && currentIds.has(selectedDeviceRef.current.id)
           ? selectedDeviceRef.current
           : devices[0]
-      const moving = focus != null && Number(focus.speed) >= 3
+      const moving = focus != null && deviceIsMoving(focus)
       if (focus && moving) {
         userLockedViewRef.current = false
         programmaticMoveRef.current = true

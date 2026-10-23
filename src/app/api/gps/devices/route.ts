@@ -399,8 +399,10 @@ export async function GET(request: NextRequest) {
       const recentlyActive =
         lastSeen != null && Date.now() - new Date(lastSeen).getTime() < ACTIVE_MS
 
-      // online = connected in Ruhavik; UI uses speed to show LIVE vs Online
+      // online = connected in Ruhavik; UI uses speed/motion to show LIVE vs Online
       const status: 'online' | 'offline' = recentlyActive ? 'online' : 'offline'
+      // Queclink often reports position.speed = 0 at lights while movement.status is true.
+      const moving = status === 'online' && (speed > 3 || motionFlag === true)
 
       // OBDII data from position attributes
       const obdii = traccar.extractObdiiData(livePos?.attributes as Record<string, unknown> | undefined)
@@ -518,6 +520,7 @@ export async function GET(request: NextRequest) {
         longitude: lng,
         speed,
         heading,
+        moving,
         ignition: obdii.ignitionOn ?? speed > 3,
         fuelLevel: obdii.fuelLevel ?? undefined,
         engineTemp: obdii.engineTemp ?? undefined,

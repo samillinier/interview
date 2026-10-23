@@ -42,6 +42,7 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { propertyMobileSafeLeftPad } from '@/lib/propertyMobileLayout'
 import { openDrivingDirections } from '@/lib/maps'
 import type { VehicleDevice } from '@/components/GpsLiveMap'
+import { deviceIsMoving } from '@/lib/gpsMoving'
 import type { TripHistoryRow } from '@/components/GpsTripHistory'
 import { findGpsDeviceForFleet } from '@/lib/gpsFleetMatch'
 
@@ -408,7 +409,7 @@ function GPSPageInner() {
   }
 
   const onlineCount = devices.filter((d) => d.status === 'online').length
-  const movingCount = devices.filter((d) => d.speed > 3 && d.status === 'online').length
+  const movingCount = devices.filter((d) => deviceIsMoving(d)).length
   const query = searchQuery.trim().toLowerCase()
   const filteredDevices = query
     ? devices.filter((d) =>
@@ -680,13 +681,17 @@ function DeviceCard({
             }`}
           >
             {device.status === 'online'
-              ? device.speed > 3
+              ? deviceIsMoving(device)
                 ? 'LIVE'
                 : 'Online'
               : 'Offline'}
           </span>
           <span className="text-xs text-slate-400">
-            {device.speed > 0 ? `${device.speed.toFixed(0)} mph` : ''}
+            {device.speed > 0
+              ? `${device.speed.toFixed(0)} mph`
+              : deviceIsMoving(device)
+                ? 'On the road'
+                : ''}
           </span>
         </div>
       </div>
