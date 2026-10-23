@@ -971,28 +971,16 @@ function buildResult(args: {
     const auto = args.ai?.auto || emptyBox()
     const autoPresent = auto.present === true || claimedType === 'auto_insurance'
     const anyAuto = auto.anyAuto === true || hay.includes('any auto')
-    const hired = auto.hiredAutos === true || hay.includes('hired auto')
-    const scheduled = auto.scheduledAutos === true || hay.includes('scheduled auto')
-    const nonOwned = auto.nonOwnedAutos === true || /non[-\s]?owned auto/.test(hay)
 
     // Commercial auto is waived, so the auto section is always a soft warning
     // (yellow), never a hard fail. We still surface the limit minimums.
     if (autoPresent) {
-      checks.push({
-        id: 'auto-boxes',
-        label: 'Auto coverage',
-        status: 'warn',
-        detail: anyAuto
-          ? 'Any Auto is circled. Auto is waived, but the limit is checked below.'
-          : 'Auto is marked but Any Auto is not circled. Auto is waived.',
-      })
-
       if (anyAuto) {
         const csl = auto.combinedSingleLimit
         const ok = moneyAtLeast(csl, AUTO_CSL_MIN)
         checks.push({
           id: 'auto-limits',
-          label: 'Auto limit',
+          label: 'Auto limit (waived)',
           status: ok ? 'pass' : 'warn',
           detail: ok
             ? `Combined Single Limit ${formatMoney(csl as number)} meets $300,000.`
@@ -1008,7 +996,7 @@ function buildResult(args: {
         if (!moneyAtLeast(pd, AUTO_SPLIT.property)) problems.push(`property damage ${pd == null ? 'missing' : formatMoney(pd)} (min $50,000)`)
         checks.push({
           id: 'auto-limits',
-          label: 'Auto limits',
+          label: 'Auto limits (waived)',
           status: problems.length === 0 ? 'pass' : 'warn',
           detail:
             problems.length === 0
