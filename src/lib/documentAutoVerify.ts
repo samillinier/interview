@@ -631,7 +631,7 @@ async function analyzeWithOpenAI(args: {
 
   const content: Array<Record<string, unknown>> = [{ type: 'text', text: userText }]
   if (args.imageUrl) {
-    content.push({ type: 'image_url', image_url: { url: args.imageUrl } })
+    content.push({ type: 'image_url', image_url: { url: args.imageUrl, detail: 'high' } })
   }
 
   try {
@@ -642,7 +642,7 @@ async function analyzeWithOpenAI(args: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: args.imageUrl ? 'gpt-4o' : 'gpt-4o-mini',
         temperature: 0,
         max_tokens: 900,
         messages: [
