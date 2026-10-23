@@ -790,7 +790,7 @@ function buildResult(args: {
     detail: readable
       ? args.text.length >= 40
         ? 'Pulled text from the file.'
-        : 'Read with AI from the image/scan.'
+        : 'Auto Verify read the file.'
       : 'Could not read enough text. Open the file to confirm it is not a blank scan.',
   })
 
