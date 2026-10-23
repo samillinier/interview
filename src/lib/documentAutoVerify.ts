@@ -949,25 +949,15 @@ function buildResult(args: {
     const cglOk = gl.commercialCgl === true || hay.includes('commercial general liability')
     const occurrenceOk = gl.occurrence === true || hayHas(hay, 'occurrence')
     const claimsMade = gl.claimsMade === true
-    const policyAgg =
-      gl.aggregatePerPolicy === true ||
-      /aggregate[^\.]{0,40}applies per[:\s]*policy/.test(hay) ||
-      /applies per[:\s]*policy/.test(hay)
-    const projectOrLoc = gl.aggregatePerProject === true || gl.aggregatePerLocation === true
-
-    const glBoxMiss: string[] = []
-    if (!cglOk) glBoxMiss.push('Commercial General Liability')
-    if (claimsMade || !occurrenceOk) glBoxMiss.push('Occurrence (not claims-made)')
-    if (!policyAgg || projectOrLoc) glBoxMiss.push('Gen\'l aggregate applies per Policy')
 
     checks.push({
       id: 'gl-boxes',
-      label: 'GL boxes',
-      status: glBoxMiss.length === 0 ? 'pass' : claimsMade || !cglOk || !occurrenceOk ? 'fail' : 'warn',
+      label: 'GL coverage',
+      status: cglOk && occurrenceOk && !claimsMade ? 'pass' : 'fail',
       detail:
-        glBoxMiss.length === 0
-          ? 'Commercial General Liability, Occurrence, and aggregate per Policy are marked. Claims-made, Project, and Loc are off.'
-          : `The sample requires Commercial General Liability, Occurrence (not claims-made), and Gen'l Aggregate Limit Applies Per POLICY. Missing or wrong: ${glBoxMiss.join(', ')}.`,
+        cglOk && occurrenceOk && !claimsMade
+          ? 'Commercial General Liability and Occurrence are marked.'
+          : 'Missing Commercial General Liability or Occurrence.',
     })
     pushLimit(checks, 'gl-occ', 'GL each occurrence', gl.eachOccurrence, GL_MIN.eachOccurrence)
     pushLimit(checks, 'gl-rent', 'Damage to rented premises', gl.damageToRented, GL_MIN.damageToRented)
