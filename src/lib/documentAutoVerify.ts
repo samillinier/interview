@@ -143,13 +143,20 @@ function pad2(n: number) {
   return String(n).padStart(2, '0')
 }
 
+const US_DATE_RE = /\b(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})\b/g
+const JAMMED_DATES_RE = /(\d{1,2})\/(\d{1,2})\/(\d{4})(\d{1,2})\/(\d{1,2})\/(\d{4})/g
+
 function pickIsoDate(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
   const s = raw.trim()
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (iso) return mdyToIso(iso[2], iso[3], iso[1])
-  const us = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/)
+  const us = s.match(/^(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})$/)
   if (us) return mdyToIso(us[1], us[2], us[3])
+  const embedded = Array.from(s.matchAll(new RegExp(US_DATE_RE.source, 'g')))[0]
+  if (embedded) return mdyToIso(embedded[1], embedded[2], embedded[3])
+  const embeddedIso = s.match(/(\d{4})-(\d{2})-(\d{2})/)
+  if (embeddedIso) return mdyToIso(embeddedIso[2], embeddedIso[3], embeddedIso[1])
   return null
 }
 
@@ -213,9 +220,7 @@ type PolicyPair = { eff: string; exp: string }
 function extractAcordPrintedDates(text: string) {
   const policyPairs: PolicyPair[] = []
   const jammedRanges: Array<{ start: number; end: number }> = []
-  Array.from(
-    text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g)
-  ).forEach((m) => {
+  Array.from(text.matchAll(new RegExp(JAMMED_DATES_RE.source, 'g'))).forEach((m) => {
     const eff = mdyToIso(m[1], m[2], m[3])
     const exp = mdyToIso(m[4], m[5], m[6])
     if (eff && exp && m.index != null) {
@@ -225,7 +230,7 @@ function extractAcordPrintedDates(text: string) {
   })
 
   const singles: string[] = []
-  Array.from(text.matchAll(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g)).forEach((m) => {
+  Array.from(text.matchAll(new RegExp(US_DATE_RE.source, 'g'))).forEach((m) => {
     if (m.index == null) return
     if (jammedRanges.some((r) => m.index! >= r.start && m.index! < r.end)) return
     const iso = mdyToIso(m[1], m[2], m[3])
@@ -244,56 +249,75 @@ function extractAcordPrintedDates(text: string) {
     }
   }
 
-  let labeledIssue: string | null = null
+  const pairDates = new Set(policyPairs.flatMap((p) => [p.eff, p.exp]))
+  const standalone = singles.filter((d) => !pairDates.has(d))
+
+  const labeled: string[] = []
   const label = text.match(/DATE\s*\(\s*MM\s*\/\s*DD\s*\/\s*YYYY\s*\)/i)
   if (label && label.index != null) {
     const from = label.index + label[0].length
     const window = text.slice(from, from + 1200)
-    const first = Array.from(window.matchAll(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g)).find((m) => {
-      if (m.index == null) return false
+    Array.from(window.matchAll(new RegExp(US_DATE_RE.source, 'g'))).forEach((m) => {
+      if (m.index == null) return
       const abs = from + m.index
-      if (jammedRanges.some((r) => abs >= r.start && abs < r.end)) return false
-      return Boolean(mdyToIso(m[1], m[2], m[3]))
+      if (jammedRanges.some((r) => abs >= r.start && abs < r.end)) return
+      const iso = mdyToIso(m[1], m[2], m[3])
+      if (iso && !labeled.includes(iso)) labeled.push(iso)
     })
-    if (first) labeledIssue = mdyToIso(first[1], first[2], first[3])
   }
 
-  return { singles, policyPairs, labeledIssue }
+  return { singles, policyPairs, standalone, labeled }
+}
+
+function mostRecentOnOrBefore(dates: string[], latestAllowed: string) {
+  const ok = dates.filter((d) => d <= latestAllowed).sort()
+  return ok.length ? ok[ok.length - 1] : null
+}
+
+function fixAiDateYear(aiIso: string | null, context: string[]) {
+  if (!aiIso) return null
+  if (context.includes(aiIso)) return aiIso
+  if (looksLikeDayAsYearSwap(aiIso)) {
+    const swapped = context.find((d) => sameMonthDay(d, aiIso) && d !== aiIso)
+    if (swapped) return swapped
+    return null
+  }
+  const sameMd = context.filter((d) => sameMonthDay(d, aiIso) && d !== aiIso)
+  if (sameMd.length) return mostRecentOnOrBefore(sameMd, addDaysIso(utcTodayIso(), 1)) || sameMd[0]
+  const formYears = new Set(context.map((d) => d.slice(0, 4)))
+  if (formYears.size && !formYears.has(aiIso.slice(0, 4))) return null
+  return aiIso
 }
 
 function pickAcordDates(
   text: string,
   aiIssue: string | null,
   aiEffective: string | null,
-  aiExpiry: string | null
+  aiExpiry: string | null,
+  dateBox?: string | null
 ) {
-  const { singles, policyPairs, labeledIssue } = extractAcordPrintedDates(text)
+  const { singles, policyPairs, standalone, labeled } = extractAcordPrintedDates(text)
   const printed = [...singles].sort()
   const latestAllowed = addDaysIso(utcTodayIso(), 1)
   const policyExp = policyPairs.map((p) => p.exp).sort().at(-1) || null
   const policyEff = policyPairs.map((p) => p.eff).sort().at(0) || null
+  const context = [...printed, dateBox, aiEffective, aiExpiry].filter((d): d is string => Boolean(d))
 
-  const recentPrinted = printed.filter((d) => d <= latestAllowed)
+  const labeledIssue =
+    mostRecentOnOrBefore(
+      labeled.filter((d) => standalone.includes(d) || labeled.length === 1),
+      latestAllowed
+    ) || mostRecentOnOrBefore(labeled, latestAllowed)
+
   let issue =
-    labeledIssue && labeledIssue <= latestAllowed
-      ? labeledIssue
-      : recentPrinted.length
-        ? recentPrinted[recentPrinted.length - 1]
-        : null
+    (dateBox && dateBox <= latestAllowed ? dateBox : null) ||
+    labeledIssue ||
+    mostRecentOnOrBefore(standalone, latestAllowed) ||
+    mostRecentOnOrBefore(printed, latestAllowed)
 
-  if (issue && looksLikeDayAsYearSwap(issue) && labeledIssue && labeledIssue !== issue) {
-    issue = labeledIssue
-  }
-
-  if (!issue && aiIssue && printed.includes(aiIssue)) issue = aiIssue
-  if (aiIssue && looksLikeDayAsYearSwap(aiIssue)) {
-    const corrected =
-      printed.find((d) => sameMonthDay(d, aiIssue) && d !== aiIssue) ||
-      (labeledIssue && sameMonthDay(labeledIssue, aiIssue) ? labeledIssue : null)
-    if (corrected) issue = corrected
-    else if (issue === aiIssue) issue = null
-  }
-  if (!issue && aiIssue && !looksLikeDayAsYearSwap(aiIssue)) issue = aiIssue
+  const aiFixed = fixAiDateYear(aiIssue, context)
+  if (!issue && aiFixed && aiFixed <= latestAllowed) issue = aiFixed
+  if (issue && looksLikeDayAsYearSwap(issue) && dateBox) issue = dateBox
 
   let expiry = policyExp || (printed.length ? printed[printed.length - 1] : null)
   if (aiExpiry && (printed.includes(aiExpiry) || policyPairs.some((p) => p.exp === aiExpiry))) {
@@ -306,7 +330,7 @@ function pickAcordDates(
   if (aiEffective && (printed.includes(aiEffective) || policyPairs.some((p) => p.eff === aiEffective))) {
     effective = aiEffective
   } else if (!effective) {
-    effective = aiEffective
+    effective = fixAiDateYear(aiEffective, context)
   }
 
   return {
@@ -438,6 +462,7 @@ type ExtractedFields = {
   expiryDate: string | null
   effectiveDate: string | null
   issueDate: string | null
+  dateBoxPrinted: string | null
   coverages: string[]
   certificateHolder: string | null
   certificateHolderAddress: string | null
@@ -530,6 +555,59 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   }
 }
 
+async function readAcordDateBox(imageUrl: string): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey || apiKey === 'sk-your-openai-api-key-here' || !imageUrl) return null
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0,
+        max_tokens: 60,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Read the ACORD 25 DATE (MM/DD/YYYY) box. It is the small box in the TOP RIGHT, beside CERTIFICATE OF LIABILITY INSURANCE. It is not POLICY EFF and not POLICY EXP in the coverages grid. Reply with ONLY JSON {"date":"MM/DD/YYYY"} using the printed digits. 08/28/2026 means August 28, 2026. Never output 08/20/2022 or 2022-08-20 for 08/28/2026. Never use the day as the year.',
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Read only the top-right DATE (MM/DD/YYYY) box. Return {"date":"MM/DD/YYYY"}.' },
+              { type: 'image_url', image_url: { url: imageUrl } },
+            ],
+          },
+        ],
+      }),
+    })
+    if (!resp.ok) {
+      console.error('Auto-verify DATE box read failed:', resp.status, await resp.text().catch(() => ''))
+      return null
+    }
+    const json: any = await resp.json().catch(() => null)
+    const raw = String(json?.choices?.[0]?.message?.content || '').trim()
+    let dateStr = raw
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      try {
+        const obj = JSON.parse(jsonMatch[0])
+        if (typeof obj?.date === 'string' && obj.date.trim()) dateStr = obj.date.trim()
+      } catch {
+        /* keep raw */
+      }
+    }
+    return pickIsoDate(dateStr) || pickIsoDate(raw)
+  } catch (e) {
+    console.error('Auto-verify DATE box read failed:', e)
+    return null
+  }
+}
+
 async function analyzeWithOpenAI(args: {
   text: string
   imageUrl?: string | null
@@ -571,7 +649,7 @@ async function analyzeWithOpenAI(args: {
           {
             role: 'system',
             content:
-              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. Dates must be YYYY-MM-DD. The ACORD DATE box is printed MM/DD/YYYY: 10/23/2026 means October 23, 2026 which is 2026-10-23. NEVER convert 10/23/2026 to 2023-10-23. Never use the day number as the year. Policy EFF/EXP are separate from the top-right DATE. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. additionalInsured true only if Description of Operations lists FIS as additional insured (not merely certificate holder). signed true only if an authorized representative signature is visible.',
+              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. additionalInsured true only if Description of Operations lists FIS as additional insured (not merely certificate holder). signed true only if an authorized representative signature is visible.',
           },
           { role: 'user', content },
         ],
@@ -602,6 +680,7 @@ async function analyzeWithOpenAI(args: {
       expiryDate: pickIsoDate(obj.expiryDate),
       effectiveDate: pickIsoDate(obj.effectiveDate),
       issueDate: pickIsoDate(obj.issueDate),
+      dateBoxPrinted: pickIsoDate(obj.dateBoxPrinted || obj.dateBox || obj.issueDatePrinted),
       coverages: Array.isArray(obj.coverages)
         ? obj.coverages.map((c: unknown) => String(c || '').trim()).filter(Boolean).slice(0, 8)
         : [],
@@ -680,7 +759,13 @@ function buildResult(args: {
       ? typeLabel('liability_insurance')
       : args.ai?.detectedTypeLabel || (detectedType ? typeLabel(detectedType) : heuristic?.label) || null
   const namedInsured = args.ai?.namedInsured || null
-  const acordDates = pickAcordDates(args.text, args.ai?.issueDate || null, args.ai?.effectiveDate || null, args.ai?.expiryDate || null)
+  const acordDates = pickAcordDates(
+    args.text,
+    args.ai?.issueDate || null,
+    args.ai?.effectiveDate || null,
+    args.ai?.expiryDate || null,
+    args.ai?.dateBoxPrinted || null
+  )
   const expiryDate = acordDates.expiryDate
   const issueDate = acordDates.issueDate
   const holder = args.ai?.certificateHolder || null
@@ -1061,15 +1146,49 @@ export async function autoVerifyInstallerDocument(args: {
   }
 
   const canUseAi = text.length >= 40 || isImage
-  const ai = canUseAi
-    ? await analyzeWithOpenAI({
-        text,
-        imageUrl: isImage ? url : null,
-        claimedType,
-        companyName,
-        personName,
-      })
-    : null
+  const [ai, dateBox] = await Promise.all([
+    canUseAi
+      ? analyzeWithOpenAI({
+          text,
+          imageUrl: isImage ? url : null,
+          claimedType,
+          companyName,
+          personName,
+        })
+      : Promise.resolve(null),
+    isImage && url ? readAcordDateBox(url) : Promise.resolve(null),
+  ])
+  if (ai && dateBox) ai.dateBoxPrinted = dateBox
+  else if (dateBox && !ai) {
+    return buildResult({
+      claimedType,
+      companyName,
+      personName,
+      text,
+      ai: {
+        detectedType: null,
+        detectedTypeLabel: null,
+        namedInsured: null,
+        insuredAddress: null,
+        expiryDate: null,
+        effectiveDate: null,
+        issueDate: dateBox,
+        dateBoxPrinted: dateBox,
+        coverages: [],
+        certificateHolder: null,
+        certificateHolderAddress: null,
+        gl: emptyBox(),
+        auto: emptyBox(),
+        workersComp: emptyBox(),
+        additionalInsured: null,
+        primaryNoncontributory: null,
+        waiverOfSubrogation: null,
+        thirtyDayCancellation: null,
+        signed: null,
+        notes: null,
+      },
+    })
+  }
 
   return buildResult({ claimedType, companyName, personName, text, ai })
 }
