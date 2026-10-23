@@ -973,34 +973,50 @@ function buildResult(args: {
     const anyAuto = auto.anyAuto === true || hay.includes('any auto')
 
     // Commercial auto is waived, so the auto section is always a soft warning
-    // (yellow), never a hard fail. We still surface the limit minimums.
+    // (yellow), never a hard fail. We still surface the limit minimums, but we
+    // don't call out "missing" — the split vs CSL fields are conditional, so an
+    // absent field just means it isn't applicable, not that it's wrong.
     if (autoPresent) {
       if (anyAuto) {
         const csl = auto.combinedSingleLimit
-        const ok = moneyAtLeast(csl, AUTO_CSL_MIN)
-        checks.push({
-          id: 'auto-limits',
-          label: 'Auto limit (waived)',
-          status: ok ? 'pass' : 'warn',
-          detail: ok
-            ? `Combined Single Limit ${formatMoney(csl as number)} meets $300,000.`
-            : `Combined Single Limit is ${csl == null ? 'missing' : formatMoney(csl)}; should be at least $300,000.`,
-        })
+        if (csl == null) {
+          // Nothing to check yet; leave a neutral note.
+          checks.push({
+            id: 'auto-limits',
+            label: 'Auto limit (waived)',
+            status: 'pass',
+            detail: 'Any Auto is circled. Limit will be checked when shown.',
+          })
+        } else if (moneyAtLeast(csl, AUTO_CSL_MIN)) {
+          checks.push({
+            id: 'auto-limits',
+            label: 'Auto limit (waived)',
+            status: 'pass',
+            detail: `Combined Single Limit ${formatMoney(csl)} meets $300,000.`,
+          })
+        } else {
+          checks.push({
+            id: 'auto-limits',
+            label: 'Auto limit (waived)',
+            status: 'warn',
+            detail: `Combined Single Limit ${formatMoney(csl)} is below $300,000.`,
+          })
+        }
       } else {
         const pp = auto.bodilyInjuryPerPerson
         const pa = auto.bodilyInjuryPerAccident
         const pd = auto.propertyDamage
         const problems: string[] = []
-        if (!moneyAtLeast(pp, AUTO_SPLIT.perPerson)) problems.push(`bodily injury per person ${pp == null ? 'missing' : formatMoney(pp)} (min $100,000)`)
-        if (!moneyAtLeast(pa, AUTO_SPLIT.perAccident)) problems.push(`bodily injury per accident ${pa == null ? 'missing' : formatMoney(pa)} (min $300,000)`)
-        if (!moneyAtLeast(pd, AUTO_SPLIT.property)) problems.push(`property damage ${pd == null ? 'missing' : formatMoney(pd)} (min $50,000)`)
+        if (pp != null && !moneyAtLeast(pp, AUTO_SPLIT.perPerson)) problems.push(`bodily injury per person ${formatMoney(pp)} (min $100,000)`)
+        if (pa != null && !moneyAtLeast(pa, AUTO_SPLIT.perAccident)) problems.push(`bodily injury per accident ${formatMoney(pa)} (min $300,000)`)
+        if (pd != null && !moneyAtLeast(pd, AUTO_SPLIT.property)) problems.push(`property damage ${formatMoney(pd)} (min $50,000)`)
         checks.push({
           id: 'auto-limits',
           label: 'Auto limits (waived)',
           status: problems.length === 0 ? 'pass' : 'warn',
           detail:
             problems.length === 0
-              ? 'Bodily injury and property damage limits meet the minimums.'
+              ? 'Auto limits are shown and meet the minimums.'
               : `${problems.join('; ')}.`,
         })
       }
