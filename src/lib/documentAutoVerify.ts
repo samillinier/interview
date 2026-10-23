@@ -983,12 +983,12 @@ function buildResult(args: {
     if (autoPresent) {
       checks.push({
         id: 'auto-boxes',
-        label: 'Circled auto boxes',
-        status: missingBoxes.length === 0 ? 'pass' : 'fail',
+        label: 'Auto boxes',
+        status: missingBoxes.length === 0 ? 'pass' : 'warn',
         detail:
           missingBoxes.length === 0
-            ? 'Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked, matching the sample circles.'
-            : `The sample requires these auto boxes: Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos. Missing: ${missingBoxes.join(', ')}. All Owned Autos is not required.`,
+            ? 'Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked.'
+            : `Auto boxes could not be fully confirmed: ${missingBoxes.join(', ')}. Commercial auto is waived, so confirm the circles visually if needed.`,
       })
       const cslOk = moneyAtLeast(auto.combinedSingleLimit, AUTO_CSL_MIN)
       const splitOk =
