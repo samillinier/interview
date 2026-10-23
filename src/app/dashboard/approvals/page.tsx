@@ -44,6 +44,7 @@ import { AdminSidebar } from '@/components/AdminSidebar'
 import { useSidebarOpen } from '@/hooks/useSidebarOpen'
 import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { PdfMarkupEditor as SharedPdfMarkupEditor } from '@/components/PdfMarkupEditor'
+import type { AutoVerifyResult } from '@/lib/documentAutoVerifyTypes'
 
 type ChangeRequest = {
   id: string
@@ -76,26 +77,6 @@ type ApprovalGroup = {
   sections: string[]
   changedKeys: string[]
   actions: string[] // e.g. create_staff
-}
-
-type AutoVerifyCheck = {
-  id: string
-  label: string
-  status: 'pass' | 'warn' | 'fail'
-  detail: string
-}
-
-type AutoVerifyResult = {
-  verdict: 'match' | 'review' | 'mismatch'
-  summary: string
-  claimedTypeLabel: string
-  detectedTypeLabel: string | null
-  namedInsured: string | null
-  expiryDate: string | null
-  coverages: string[]
-  certificateHolder: string | null
-  checks: AutoVerifyCheck[]
-  notes: string | null
 }
 
 type AutoVerifyState = {
@@ -1359,6 +1340,7 @@ export default function ApprovalsPage() {
     file: File | null
   }>({ open: false, id: '', label: '', documentName: '', documentUrl: '', reason: '', file: null })
   const [autoVerifyById, setAutoVerifyById] = useState<Record<string, AutoVerifyState>>({})
+  const autoVerifyStartedRef = useRef<Set<string>>(new Set())
 
   const [agreementModal, setAgreementModal] = useState<{
     open: boolean
@@ -1642,6 +1624,31 @@ export default function ApprovalsPage() {
       }))
     }
   }
+
+  useEffect(() => {
+    setAutoVerifyById((prev) => {
+      let changed = false
+      const next = { ...prev }
+      for (const r of requests) {
+        const p = (r.payload || {}) as any
+        if (p.action !== 'verify_document' || !p.autoVerifyResult) continue
+        if (next[r.id]?.status === 'loading' || next[r.id]?.status === 'done') continue
+        next[r.id] = { status: 'done', result: p.autoVerifyResult }
+        autoVerifyStartedRef.current.add(r.id)
+        changed = true
+      }
+      return changed ? next : prev
+    })
+
+    for (const r of requests) {
+      const p = (r.payload || {}) as any
+      if (p.action !== 'verify_document' || !p.documentUrl) continue
+      if (autoVerifyStartedRef.current.has(r.id)) continue
+      autoVerifyStartedRef.current.add(r.id)
+      void handleAutoVerify(r.id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests])
 
   const handleApprove = async (id: string) => {
     setApproving((p) => ({ ...p, [id]: true }))
@@ -2377,12 +2384,16 @@ export default function ApprovalsPage() {
                                       ) : (
                                         <ScanSearch className="w-4 h-4" />
                                       )}
-                                      {autoVerify?.status === 'loading' ? 'Checking…' : 'Auto Verify'}
+                                      {autoVerify?.status === 'loading'
+                                        ? 'Checking…'
+                                        : autoVerify?.status === 'done'
+                                          ? 'Re-check'
+                                          : 'Auto Verify'}
                                     </button>
                                   </div>
                                 </div>
                                 <p className="text-[11px] text-amber-950/70 mt-2">
-                                  Extra check only — it does not approve or reject. Use it to save time before you decide.
+                                  Runs the FIS ACORD sample checklist automatically. Commercial auto is waived. This still does not approve or reject.
                                 </p>
                                 {autoVerify?.status === 'error' ? (
                                   <div className="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-700">
@@ -2400,8 +2411,17 @@ export default function ApprovalsPage() {
                                       {autoVerify.result.namedInsured ? (
                                         <span>Named: {autoVerify.result.namedInsured}</span>
                                       ) : null}
+                                      {autoVerify.result.issueDate ? (
+                                        <span>Issued: {autoVerify.result.issueDate}</span>
+                                      ) : null}
                                       {autoVerify.result.expiryDate ? (
                                         <span>Expires: {autoVerify.result.expiryDate}</span>
+                                      ) : null}
+                                      {autoVerify.result.autoWaived ? (
+                                        <span>Auto liability: waived</span>
+                                      ) : null}
+                                      {autoVerify.result.certificateHolder ? (
+                                        <span>Holder: {autoVerify.result.certificateHolder}</span>
                                       ) : null}
                                     </div>
                                     <ul className="mt-2 space-y-1">

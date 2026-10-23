@@ -23,7 +23,10 @@ import { LogoHeartbeatLoader } from '@/components/LogoHeartbeatLoader'
 import { IosProfileRoot } from '@/components/installer-profile/IosProfileChrome'
 import { IosProfileSection } from '@/components/installer-profile/IosProfileSection'
 import { InAppFileViewer, canPreviewInApp, isViewableImage } from '@/components/InAppFileViewer'
+import type { AutoVerifyResult } from '@/lib/documentAutoVerifyTypes'
 import './installer-attachments-mobile.css'
+
+const COI_CHECK_TYPES = new Set(['liability_insurance', 'auto_insurance', 'workers_comp', 'employers_liability'])
 
 // All document types now support multiple uploads
 const MULTI_DOCUMENT_TYPES = new Set() // Empty set - all types are multi now
@@ -72,14 +75,14 @@ const DOCUMENT_TYPES = [
   { 
     id: 'liability_insurance', 
     name: 'Liability Insurance',
-    description: 'Upload your general liability insurance certificate',
+    description: 'Upload an ACORD 25 that matches the FIS sample (limits, additional insured, and certificate holder). Auto is not required.',
     icon: Shield,
     required: true
   },
   { 
     id: 'auto_insurance', 
     name: 'Auto Insurance',
-    description: 'Upload your auto insurance certificate / policy',
+    description: 'Optional — commercial auto is currently waived. Upload only if you already have a certificate.',
     icon: Shield,
     required: false
   },
@@ -142,6 +145,9 @@ export default function AttachmentsPage() {
   const [btrAutofillErrorByDocId, setBtrAutofillErrorByDocId] = useState<Record<string, string>>({})
   const [btrManualExpiryByDocId, setBtrManualExpiryByDocId] = useState<Record<string, string>>({})
   const [btrManualSavingByDocId, setBtrManualSavingByDocId] = useState<Record<string, boolean>>({})
+  const [coiCheckByDocId, setCoiCheckByDocId] = useState<
+    Record<string, { status: 'loading' | 'done' | 'error'; result?: AutoVerifyResult; error?: string }>
+  >({})
 
   const mapApiDocumentToUi = (doc: any): Document => ({
     id: doc.id,
@@ -423,6 +429,44 @@ export default function AttachmentsPage() {
         const latest = await refreshDocuments(installer.id)
         if (type === 'business_registration') {
           await tryAutofillBtrExpiry(installer.id, latest)
+        }
+        if (COI_CHECK_TYPES.has(type) && data.document.id && data.document.url) {
+          const docId = String(data.document.id)
+          const token = localStorage.getItem('installerToken') || ''
+          setCoiCheckByDocId((prev) => ({ ...prev, [docId]: { status: 'loading' } }))
+          fetch(`/api/installers/${installer.id}/documents/auto-verify`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              url: data.document.url,
+              name: data.document.name || file.name,
+              type,
+              documentId: docId,
+            }),
+          })
+            .then(async (res) => {
+              const json = await res.json().catch(() => null)
+              if (!res.ok) {
+                setCoiCheckByDocId((prev) => ({
+                  ...prev,
+                  [docId]: { status: 'error', error: json?.error || 'Could not check this certificate' },
+                }))
+                return
+              }
+              setCoiCheckByDocId((prev) => ({
+                ...prev,
+                [docId]: { status: 'done', result: json?.result },
+              }))
+            })
+            .catch(() => {
+              setCoiCheckByDocId((prev) => ({
+                ...prev,
+                [docId]: { status: 'error', error: 'Could not check this certificate' },
+              }))
+            })
         }
         setSuccess(`${DOCUMENT_TYPES.find(dt => dt.id === type)?.name} uploaded successfully!`)
         setTimeout(() => setSuccess(''), 3000)
@@ -722,6 +766,54 @@ export default function AttachmentsPage() {
                               ) : null}
                                 {/* Verification Link is admin-only; hidden in installer portal */}
                               </div>
+                              {COI_CHECK_TYPES.has(doc.type) && coiCheckByDocId[doc.id]?.status === 'loading' ? (
+                                <p className="mt-3 text-xs text-slate-600 flex items-center gap-2">
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  Checking against the FIS insurance sample…
+                                </p>
+                              ) : null}
+                              {COI_CHECK_TYPES.has(doc.type) && coiCheckByDocId[doc.id]?.status === 'error' ? (
+                                <p className="mt-3 text-xs text-danger-700">
+                                  {coiCheckByDocId[doc.id]?.error || 'Could not check this certificate.'}
+                                </p>
+                              ) : null}
+                              {COI_CHECK_TYPES.has(doc.type) &&
+                              coiCheckByDocId[doc.id]?.status === 'done' &&
+                              coiCheckByDocId[doc.id]?.result ? (
+                                <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                  <p className="text-xs font-semibold text-slate-800">
+                                    {coiCheckByDocId[doc.id]!.result!.verdict === 'match'
+                                      ? 'Looks like it matches the FIS sample'
+                                      : coiCheckByDocId[doc.id]!.result!.verdict === 'mismatch'
+                                        ? 'This does not match the FIS sample yet'
+                                        : 'Needs a correction or a closer look'}
+                                  </p>
+                                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                                    {coiCheckByDocId[doc.id]!.result!.summary}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 mt-1">
+                                    Commercial auto is waived and not required.
+                                  </p>
+                                  <ul className="mt-2 space-y-1">
+                                    {coiCheckByDocId[doc.id]!.result!.checks.map((check) => (
+                                      <li key={check.id} className="text-[11px] text-slate-700 leading-snug">
+                                        <span
+                                          className={
+                                            check.status === 'pass'
+                                              ? 'font-semibold text-brand-green'
+                                              : check.status === 'fail'
+                                                ? 'font-semibold text-danger-700'
+                                                : 'font-semibold text-amber-700'
+                                          }
+                                        >
+                                          {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fix' : 'Check'} · {check.label}.
+                                        </span>{' '}
+                                        {check.detail}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
                               {doc.type === 'business_registration' && !doc.expiryDate ? (
                                 <div className="mt-3 flex flex-wrap items-center gap-2">
                                   <label className="text-xs font-semibold text-slate-600">Expiry date</label>

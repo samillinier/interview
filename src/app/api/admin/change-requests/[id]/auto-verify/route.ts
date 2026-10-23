@@ -62,6 +62,21 @@ export async function POST(
       lastName: changeRequest.Installer?.lastName,
     })
 
+    try {
+      await prisma.installerChangeRequest.update({
+        where: { id: changeRequest.id },
+        data: {
+          payload: {
+            ...payload,
+            autoVerifyResult: result,
+            autoVerifiedAt: new Date().toISOString(),
+          },
+        },
+      })
+    } catch (persistError) {
+      console.error('Failed to store auto-verify result:', persistError)
+    }
+
     return NextResponse.json({ result })
   } catch (error: any) {
     console.error('Auto-verify attachment failed:', error)
