@@ -168,13 +168,15 @@ function extractUsDates(text: string): string[] {
     if (!iso || seen.has(iso)) return
     seen.add(iso)
   }
-  const jammed = text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})(\d{1,2})\/(\d{1,2})\/(\d{4})/g)
-  for (const m of jammed) {
+  const jammed = Array.from(
+    text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})(\d{1,2})\/(\d{1,2})\/(\d{4})/g)
+  )
+  jammed.forEach((m) => {
     add(mdyToIso(m[1], m[2], m[3]))
     add(mdyToIso(m[4], m[5], m[6]))
-  }
-  const singles = text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g)
-  for (const m of singles) add(mdyToIso(m[1], m[2], m[3]))
+  })
+  const singles = Array.from(text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g))
+  singles.forEach((m) => add(mdyToIso(m[1], m[2], m[3])))
   return Array.from(seen).sort()
 }
 
