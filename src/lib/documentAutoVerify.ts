@@ -666,6 +666,15 @@ async function analyzeWithOpenAI(args: {
     const obj = JSON.parse(match[0])
     const detectedType =
       typeof obj.detectedType === 'string' && obj.detectedType !== 'other' ? String(obj.detectedType) : null
+    // The model sometimes nests the coverage boxes under `coverages` (e.g. coverages.gl)
+    // instead of returning top-level gl/auto/workersComp. Accept both shapes.
+    const coveragesObj =
+      obj.coverages && typeof obj.coverages === 'object' && !Array.isArray(obj.coverages)
+        ? (obj.coverages as Record<string, unknown>)
+        : null
+    const glRaw = obj.gl ?? coveragesObj?.gl
+    const autoRaw = obj.auto ?? coveragesObj?.auto
+    const workersCompRaw = obj.workersComp ?? coveragesObj?.workersComp
     return {
       detectedType,
       detectedTypeLabel:
@@ -692,9 +701,9 @@ async function analyzeWithOpenAI(args: {
         typeof obj.certificateHolderAddress === 'string' && obj.certificateHolderAddress.trim()
           ? obj.certificateHolderAddress.trim()
           : null,
-      gl: readBox(obj.gl),
-      auto: readBox(obj.auto),
-      workersComp: readBox(obj.workersComp),
+      gl: readBox(glRaw),
+      auto: readBox(autoRaw),
+      workersComp: readBox(workersCompRaw),
       additionalInsured: asBool(obj.additionalInsured),
       primaryNoncontributory: asBool(obj.primaryNoncontributory),
       waiverOfSubrogation: asBool(obj.waiverOfSubrogation),
