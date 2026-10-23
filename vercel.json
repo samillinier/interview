@@ -7,6 +7,14 @@
     "src/app/api/admin/marketing/search/route.ts": {
       "memory": 1024,
       "maxDuration": 120
+    },
+    "src/app/api/admin/change-requests/[id]/auto-verify/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "src/app/api/installers/[id]/documents/auto-verify/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
     }
   },
   "crons": [

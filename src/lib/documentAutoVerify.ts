@@ -587,6 +587,53 @@ async function renderPdfFirstPageToPng(buf: Buffer): Promise<Buffer | null> {
   }
 }
 
+/** Fallback renderer using headless Chromium (already used by marketing search) for when
+ *  the native canvas binary cannot load in the serverless runtime. */
+async function renderPdfFirstPageToPngWithChromium(buf: Buffer): Promise<Buffer | null> {
+  try {
+    const { chromium: pwChromium } = await import('playwright-core')
+    const serverless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+    let executablePath: string | undefined
+    let args: string[] = ['--no-sandbox', '--disable-dev-shm-usage']
+
+    if (serverless) {
+      const chromiumMod: any = await import('@sparticuz/chromium')
+      const chromium = chromiumMod.default ?? chromiumMod
+      if (typeof chromium.setGraphicsMode === 'function') chromium.setGraphicsMode(false)
+      executablePath = await chromium.executablePath()
+      const libDir = String(executablePath || '').replace(/\/[^/]+$/, '')
+      if (libDir) {
+        process.env.LD_LIBRARY_PATH = [libDir, process.env.LD_LIBRARY_PATH || ''].filter(Boolean).join(':')
+      }
+      args = chromium.args || args
+    } else {
+      const { existsSync } = await import('fs')
+      executablePath = [
+        process.env.CHROME_PATH,
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium',
+      ].find((p) => Boolean(p && existsSync(p)))
+    }
+
+    const browser = await pwChromium.launch({ headless: true, executablePath, args })
+    try {
+      const page = await browser.newPage()
+      await page.setViewportSize({ width: 2400, height: 3100 })
+      const b64 = buf.toString('base64')
+      await page.goto(`data:application/pdf;base64,${b64}`, { waitUntil: 'load', timeout: 30000 })
+      await new Promise((r) => setTimeout(r, 2500))
+      const shot = await page.screenshot({ type: 'png', fullPage: true })
+      return shot && shot.length > 0 ? shot : null
+    } finally {
+      await browser.close().catch(() => {})
+    }
+  } catch (e) {
+    console.error('[auto-verify] Chromium PDF render failed:', (e as Error)?.message || e)
+    return null
+  }
+}
+
 /** Upload a rendered page PNG to Vercel Blob so OpenAI can fetch it as an image URL. */
 async function uploadRenderedPdfToBlob(png: Buffer): Promise<string | null> {
   const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_BLOB_READ_WRITE_TOKEN
@@ -1202,12 +1249,16 @@ export async function autoVerifyInstallerDocument(args: {
             // Scanned / print-to-PDF files have no text layer. Render page 1 to an
             // image and read it with vision so fields are not hallucinated.
             if (text.length < PDF_MIN_TEXT_CHARS) {
-              const png = await renderPdfFirstPageToPng(buf)
+              let png = await renderPdfFirstPageToPng(buf)
+              if (!png) {
+                console.log(`[auto-verify] native canvas render failed (text ${text.length} chars); falling back to Chromium`)
+                png = await renderPdfFirstPageToPngWithChromium(buf)
+              }
               if (png) {
                 renderedImageUrl = await uploadRenderedPdfToBlob(png)
-                console.log(`[auto-verify] rendered scanned PDF (text ${text.length} chars) -> image ${renderedImageUrl ? 'uploaded' : 'UPLOAD FAILED'}`)
+                console.log(`[auto-verify] rendered scanned PDF -> image ${renderedImageUrl ? 'uploaded' : 'UPLOAD FAILED'}`)
               } else {
-                console.error(`[auto-verify] scanned PDF (text ${text.length} chars) could not be rendered`)
+                console.error(`[auto-verify] scanned PDF (text ${text.length} chars) could not be rendered by native or Chromium`)
               }
             }
           }
