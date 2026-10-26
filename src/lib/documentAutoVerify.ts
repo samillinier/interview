@@ -555,10 +555,6 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   }
 }
 
-/** A scanned/print-to-PDF has little to no selectable text. Anything under this
- *  is treated as an image-only PDF and routed through vision instead of text. */
-const PDF_MIN_TEXT_CHARS = 200
-
 /** Render the first page of a PDF to a PNG buffer so the vision model can read it. */
 async function renderPdfFirstPageToPng(buf: Buffer): Promise<Buffer | null> {
   try {
@@ -700,6 +696,84 @@ async function readAcordDateBox(imageUrl: string): Promise<string | null> {
     return pickIsoDate(dateStr) || pickIsoDate(raw)
   } catch (e) {
     console.error('Auto-verify DATE box read failed:', e)
+    return null
+  }
+}
+
+/** Zoomed-in signature check: crop the bottom strip of the page (where the
+ *  AUTHORIZED REPRESENTATIVE signature block sits on an ACORD 25) and ask the
+ *  vision model to focus ONLY on whether a signature is present. This is far
+ *  more reliable than folding it into the big 30-field read. */
+async function detectSignatureInImage(imageUrl: string): Promise<boolean | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey || apiKey === 'sk-your-openai-api-key-here' || !imageUrl) return null
+  try {
+    const res = await fetch(imageUrl)
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    const { createCanvas, loadImage } = await import('@napi-rs/canvas')
+    const img = await loadImage(buf)
+    const w = img.width
+    const h = img.height
+    if (!w || !h) return null
+    // Signature block is in the bottom ~22% of the form.
+    const cropY = Math.max(0, Math.floor(h * 0.78))
+    const cropH = h - cropY
+    if (cropH < 30 || w < 60) return null
+    const canvas = createCanvas(w, cropH)
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(img, 0, cropY, w, cropH, 0, 0, w, cropH)
+    const cropPng = canvas.toBuffer('image/png')
+    const cropUrl = await uploadRenderedPdfToBlob(cropPng)
+    if (!cropUrl) return null
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0,
+        max_tokens: 30,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are looking at the BOTTOM strip of an ACORD 25 certificate, which holds the AUTHORIZED REPRESENTATIVE signature block. Reply with ONLY JSON: {"signed": true} if there is ANY handwritten signature, ink, scribble, initials, or mark on or above the signature line; otherwise {"signed": false}.',
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Is there a signature here? Return {"signed": true} or {"signed": false}.' },
+              { type: 'image_url', image_url: { url: cropUrl, detail: 'high' } },
+            ],
+          },
+        ],
+      }),
+    })
+    if (!resp.ok) {
+      console.error('Auto-verify signature check failed:', resp.status, await resp.text().catch(() => ''))
+      return null
+    }
+    const json: any = await resp.json().catch(() => null)
+    const raw = String(json?.choices?.[0]?.message?.content || '').trim()
+    const m = raw.match(/\{[\s\S]*\}/)
+    if (m) {
+      try {
+        const obj = JSON.parse(m[0])
+        const v = asBool(obj?.signed)
+        if (v !== null) return v
+      } catch {
+        /* fall through */
+      }
+    }
+    if (/\btrue\b/i.test(raw)) return true
+    if (/\bfalse\b/i.test(raw)) return false
+    return null
+  } catch (e) {
+    console.error('Auto-verify signature check failed:', (e as Error)?.message || e)
     return null
   }
 }
@@ -1253,20 +1327,19 @@ export async function autoVerifyInstallerDocument(args: {
           const buf = Buffer.from(await res.arrayBuffer())
           if (ext === 'pdf' || (res.headers.get('content-type') || '').includes('pdf')) {
             text = await extractPdfText(buf)
-            // Scanned / print-to-PDF files have no text layer. Render page 1 to an
-            // image and read it with vision so fields are not hallucinated.
-            if (text.length < PDF_MIN_TEXT_CHARS) {
-              let png = await renderPdfFirstPageToPng(buf)
-              if (!png) {
-                console.log(`[auto-verify] native canvas render failed (text ${text.length} chars); falling back to Chromium`)
-                png = await renderPdfFirstPageToPngWithChromium(buf)
-              }
-              if (png) {
-                renderedImageUrl = await uploadRenderedPdfToBlob(png)
-                console.log(`[auto-verify] rendered scanned PDF -> image ${renderedImageUrl ? 'uploaded' : 'UPLOAD FAILED'}`)
-              } else {
-                console.error(`[auto-verify] scanned PDF (text ${text.length} chars) could not be rendered by native or Chromium`)
-              }
+            // Always render page 1 to an image so vision can read the form and
+            // detect a signature — even when a text layer exists, text alone
+            // cannot tell us whether the form was actually signed.
+            let png = await renderPdfFirstPageToPng(buf)
+            if (!png) {
+              console.log(`[auto-verify] native canvas render failed (text ${text.length} chars); falling back to Chromium`)
+              png = await renderPdfFirstPageToPngWithChromium(buf)
+            }
+            if (png) {
+              renderedImageUrl = await uploadRenderedPdfToBlob(png)
+              console.log(`[auto-verify] rendered PDF -> image ${renderedImageUrl ? 'uploaded' : 'UPLOAD FAILED'}`)
+            } else {
+              console.error(`[auto-verify] PDF (text ${text.length} chars) could not be rendered by native or Chromium`)
             }
           }
         } else {
@@ -1362,6 +1435,13 @@ export async function autoVerifyInstallerDocument(args: {
         notes: null,
       },
     })
+  }
+
+  // A dedicated zoomed-in signature check is far more reliable than the main
+  // full-page read. Override `signed` whenever we have a page image to inspect.
+  if (ai && imageUrlForAi) {
+    const sig = await detectSignatureInImage(imageUrlForAi)
+    if (sig !== null) ai.signed = sig
   }
 
   return buildResult({ claimedType, companyName, personName, text, ai })
