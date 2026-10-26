@@ -1161,21 +1161,28 @@ function buildResult(args: {
 
   if (treatAsCoi && claimedType !== 'auto_insurance') {
     // Handwritten signatures are hard for vision to detect reliably, so only
-    // pass when one is seen; otherwise warn the admin to check by eye rather
-    // than hard-failing a document that may well be signed.
+    // pass when one is clearly seen. Otherwise warn so the admin checks it by
+    // eye rather than hard-failing a document that may well be signed.
     if (args.ai?.signed === true) {
       checks.push({
         id: 'signed',
         label: 'Authorized signature',
         status: 'pass',
-        detail: 'Authorized representative signature looks present.',
+        detail: 'Authorized representative signature is present.',
+      })
+    } else if (args.ai?.signed === false) {
+      checks.push({
+        id: 'signed',
+        label: 'Authorized signature',
+        status: 'warn',
+        detail: 'No authorized representative signature found. Check that it is signed.',
       })
     } else {
       checks.push({
         id: 'signed',
         label: 'Authorized signature',
-        status: 'pass',
-        detail: 'Signature present.',
+        status: 'warn',
+        detail: 'Could not confirm a signature. Check it by eye.',
       })
     }
   }
