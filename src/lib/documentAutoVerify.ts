@@ -721,30 +721,41 @@ async function readAcordDateBox(imageUrl: string): Promise<string | null> {
 /** Zoomed-in signature check: crop the bottom strip of the page (where the
  *  AUTHORIZED REPRESENTATIVE signature block sits on an ACORD 25) and ask the
  *  vision model to focus ONLY on whether a signature is present. This is far
- *  more reliable than folding it into the big 30-field read. */
+ *  more reliable than folding it into the big 30-field read. If the crop fails
+ *  for any reason (native canvas, image fetch, or re-upload), it falls back to
+ *  the full-page image rather than silently returning null. */
 async function detectSignatureInImage(imageUrl: string): Promise<boolean | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey || apiKey === 'sk-your-openai-api-key-here' || !imageUrl) return null
+
+  // Prefer a zoomed crop of the bottom strip for better resolution; otherwise
+  // fall back to the full page image (both read the signature reliably).
+  let targetUrl = imageUrl
   try {
     const res = await fetch(imageUrl)
-    if (!res.ok) return null
-    const buf = Buffer.from(await res.arrayBuffer())
-    const { createCanvas, loadImage } = await import('@napi-rs/canvas')
-    const img = await loadImage(buf)
-    const w = img.width
-    const h = img.height
-    if (!w || !h) return null
-    // Signature block is in the bottom ~22% of the form.
-    const cropY = Math.max(0, Math.floor(h * 0.78))
-    const cropH = h - cropY
-    if (cropH < 30 || w < 60) return null
-    const canvas = createCanvas(w, cropH)
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(img, 0, cropY, w, cropH, 0, 0, w, cropH)
-    const cropPng = canvas.toBuffer('image/png')
-    const cropUrl = await uploadRenderedPdfToBlob(cropPng)
-    if (!cropUrl) return null
+    if (res.ok) {
+      const buf = Buffer.from(await res.arrayBuffer())
+      const { createCanvas, loadImage } = await import('@napi-rs/canvas')
+      const img = await loadImage(buf)
+      const w = img.width
+      const h = img.height
+      if (w > 0 && h > 0) {
+        const cropY = Math.max(0, Math.floor(h * 0.7))
+        const cropH = h - cropY
+        if (cropH >= 30 && w >= 60) {
+          const canvas = createCanvas(w, cropH)
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, cropY, w, cropH, 0, 0, w, cropH)
+          const cropUrl = await uploadRenderedPdfToBlob(canvas.toBuffer('image/png'))
+          if (cropUrl) targetUrl = cropUrl
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[auto-verify] signature crop failed, using full page:', (e as Error)?.message || e)
+  }
 
+  try {
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -759,13 +770,13 @@ async function detectSignatureInImage(imageUrl: string): Promise<boolean | null>
           {
             role: 'system',
             content:
-              'You are looking at the BOTTOM strip of an ACORD 25 certificate, which holds the AUTHORIZED REPRESENTATIVE signature block. Reply with ONLY JSON: {"signed": true} if there is ANY handwritten signature, ink, scribble, initials, or mark on or above the signature line; otherwise {"signed": false}.',
+              'You are looking at an ACORD 25 certificate (or its bottom strip) where the AUTHORIZED REPRESENTATIVE signature block sits. Reply with ONLY JSON: {"signed": true} if there is ANY signature on or above the signature line — a handwritten signature, initials, a scribble, a typed/printed name, a cursive or script name, a signature image or stamp, or any mark or text. Reply {"signed": false} ONLY if the signature line and its immediate area are completely blank and empty.',
           },
           {
             role: 'user',
             content: [
               { type: 'text', text: 'Is there a signature here? Return {"signed": true} or {"signed": false}.' },
-              { type: 'image_url', image_url: { url: cropUrl, detail: 'high' } },
+              { type: 'image_url', image_url: { url: targetUrl, detail: 'high' } },
             ],
           },
         ],
@@ -837,7 +848,7 @@ async function analyzeWithOpenAI(args: {
           {
             role: 'system',
             content:
-              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit, officersExcluded, addlInsd, subrWvd. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. In the COVERAGES table there are two X-mark columns: ADDL INSD (additional insured endorsement) and SUBR WVD (subrogation waived). For each of gl, auto, and workersComp set addlInsd true if that row\'s ADDL INSD box has an X or checkmark (blank or empty if not), and subrWvd true if that row\'s SUBR WVD box has an X or checkmark. These X marks are the primary evidence of additional-insured and waiver status, so read them carefully. For workersComp section C: set workersComp.present true whenever Section C has ANY content (limits filled, boxes marked, or policy number present) — even on a GL COI. statutory is true if the PER STATUTE box is marked/X\'d. officersExcluded refers to the "ANY PROPRIETOR/PARTNER/EXECUTIVE OFFICER/MEMBER EXCLUDED?" question — set officersExcluded true only if the Y (Yes) box is marked with an X or checkmark, false if the N (No) box is marked, and null if neither can be seen. additionalInsured true if Description of Operations lists FIS as additional insured OR the GL row has an X in ADDL INSD (not merely certificate holder). signed is true if there is ANY handwriting, ink, or signature in the Authorized Representative signature box near the bottom. Even a stylized, scribbled, or partially legible signature counts as signed. Only set signed false if that box is completely blank.',
+              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit, officersExcluded, addlInsd, subrWvd. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. In the COVERAGES table there are two X-mark columns: ADDL INSD (additional insured endorsement) and SUBR WVD (subrogation waived). For each of gl, auto, and workersComp set addlInsd true if that row\'s ADDL INSD box has an X or checkmark (blank or empty if not), and subrWvd true if that row\'s SUBR WVD box has an X or checkmark. These X marks are the primary evidence of additional-insured and waiver status, so read them carefully. For workersComp section C: set workersComp.present true whenever Section C has ANY content (limits filled, boxes marked, or policy number present) — even on a GL COI. statutory is true if the PER STATUTE box is marked/X\'d. officersExcluded refers to the "ANY PROPRIETOR/PARTNER/EXECUTIVE OFFICER/MEMBER EXCLUDED?" question — set officersExcluded true only if the Y (Yes) box is marked with an X or checkmark, false if the N (No) box is marked, and null if neither can be seen. additionalInsured true if Description of Operations lists FIS as additional insured OR the GL row has an X in ADDL INSD (not merely certificate holder). signed is true if there is ANY signature in the Authorized Representative signature box near the bottom — handwriting, ink, a scribble, initials, a typed or printed name, a cursive or script name, or a signature image/stamp. A typed or digital signature counts as signed. Only set signed false if that box is completely blank.',
           },
           { role: 'user', content },
         ],
@@ -1503,11 +1514,20 @@ export async function autoVerifyInstallerDocument(args: {
     })
   }
 
-  // A dedicated zoomed-in signature check is far more reliable than the main
-  // full-page read. Override `signed` whenever we have a page image to inspect.
+  // Merge the dedicated zoomed signature check with the full-page read. A
+  // signature counts as present if EITHER saw one; only mark "no signature"
+  // when both are confident the area is blank. This prevents a crop failure
+  // or a misread from downgrading a signature the full-page read already saw.
   if (ai && imageUrlForAi) {
     const sig = await detectSignatureInImage(imageUrlForAi)
-    if (sig !== null) ai.signed = sig
+    const mainSigned = ai.signed
+    if (sig === true || mainSigned === true) {
+      ai.signed = true
+    } else if (sig === false && mainSigned === false) {
+      ai.signed = false
+    } else {
+      ai.signed = null
+    }
   }
 
   return buildResult({ claimedType, companyName, personName, text, ai })
