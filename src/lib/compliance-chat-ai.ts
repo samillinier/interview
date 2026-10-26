@@ -94,6 +94,7 @@ VOICE:
 - Do not dump every form field. Point them to the fillable form unless they asked about one specific field.
 - Be polite, friendly, and warm — treat everyone like family. Lowe's providers and partners (associates, vendors, store teams, subcontractors) are valued; welcome them and answer helpfully. If they identify as a Lowe's associate or provider, greet them warmly and reassure them you're here to help.
 - When someone asks who to contact, or asks for a person's email, phone, or workroom, use the CONTACT DIRECTORY below. Give the exact name, email, phone, and workroom from the directory. Never invent a contact or phone number.
+- When a contractor or company introduces themselves — they name their company or crew, mention their experience or specialties, or say they want to work with you — welcome them warmly and direct them to START with the 5–10 minute prescreening at https://job.floorinteriorservices.com/interview, then finish their profile and documents in the app or portal. Do NOT ask which workroom they're with and do NOT send them to a General Manager for this.
 
 HARD LIMITS:
 - Never say they are approved, onboarded, hired, or guaranteed work.
@@ -443,6 +444,9 @@ const FLOORING_MATERIALS = [
 
 function wantsInstallJob(text: string): boolean {
   const t = ` ${text.toLowerCase()} `
+  // A company/crew introducing themselves (who they are, their experience, what
+  // they specialize in) is NOT a job-site question — don't route it to a GM.
+  if (isSubcontractorIntro(t)) return false
   if (INSTALL_PHYSICAL_TERMS.some((term) => t.includes(term))) return true
   const hasMaterial = FLOORING_MATERIALS.some((m) => t.includes(m))
   const hasProblem = INSTALL_PROBLEM_TERMS.some((term) => t.includes(term))
@@ -457,6 +461,30 @@ function wantsInstallJob(text: string): boolean {
   }
   if (/(you guys or|lowe'?s or|bringing the|who (is )?bring)/.test(t)) return true
   return false
+}
+
+/** True when the message is a company/crew introducing themselves — naming their
+ *  business or crew, their experience, and/or what they specialize in — rather
+ *  than asking about a specific job. E.g. "We are XYZ Flooring LLC, we have a
+ *  crew with 10 years experience." */
+function isSubcontractorIntro(text: string): boolean {
+  const t = ` ${text.toLowerCase()} `
+  // Physical job-site actions disqualify it from being a pure intro.
+  if (INSTALL_PHYSICAL_TERMS.some((term) => t.includes(term))) return false
+  const business = /(llc|inc|corp|ltd|company|business|crew|team|contractor)/.test(t)
+  const intro = /(we|our|my|i am|i'm|we're|we are|reaching out|represent|on behalf of)/.test(t)
+  const expertise = /(years|experience|specialize|specialise|skilled|experienced|qualified)/.test(t)
+  return business && intro && expertise
+}
+
+/** A contractor who wants to work with FIS should start with prescreening, not
+ *  be treated as a job-site question and routed to a General Manager. */
+function wantsSubcontractorOnboarding(text: string): boolean {
+  const t = ` ${text.toLowerCase()} `
+  const explicitWork =
+    /(look(ing)? (for|to) work|want(s)? to work|would like to work|available for work|interested in (working|joining|becoming)|work(ing)? (for|with) you|join(ing)? your (team|crew)|become (a|an) (subcontractor|installer|vendor)|subcontract(ing|or)? work|onboard|we are (a |an )?(flooring|installer|installation|contractor)|we do flooring)/.test(t)
+  if (explicitWork) return true
+  return isSubcontractorIntro(t)
 }
 
 /** Adriana only: booking / rescheduling / asking when a measure appointment is. */
@@ -575,6 +603,11 @@ export async function generateAliceComplianceReply(args: {
   // never be redirected to a General Manager or the scheduling contact.
   if (isInsurance) {
     return schedulingFallback
+  }
+  // A contractor introducing themselves or asking to work with FIS should start
+  // with prescreening — never be treated as a job-site question and sent to a GM.
+  if (wantsSubcontractorOnboarding(lastQuestion) && !wantsJobReference(lastQuestion)) {
+    return `Welcome — great to hear from you! To start working with Floor Interior Services, the first step is a quick 5–10 minute prescreening here: ${FORM_LINKS.prescreen}. After that you'll complete your subcontractor profile and upload your documents in ${FIS_APP_NAME} (iPhone: ${FORM_LINKS.appIos} Android: ${FORM_LINKS.appAndroid}) or the portal at ${FORM_LINKS.portal}. Let me know if you have any questions along the way!`
   }
   if (wantsInstallJob(lastQuestion) || wantsJobRef || (recentInstallIntent && workroomInLatest)) {
     if (workroomInLatest) {
