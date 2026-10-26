@@ -79,13 +79,6 @@ const WC_EL_MIN = {
 const AUTO_CSL_MIN = 300_000
 const AUTO_SPLIT = { perPerson: 100_000, perAccident: 300_000, property: 50_000 }
 
-const AI_WORDING_KEYS = [
-  'additionalInsured',
-  'primaryNoncontributory',
-  'waiverOfSubrogation',
-  'thirtyDayCancellation',
-] as const
-
 function typeLabel(type: string): string {
   return TYPE_LABELS[type] || type.replace(/_/g, ' ')
 }
@@ -453,6 +446,8 @@ type CoverageBox = {
   elEachEmployee: number | null
   elPolicyLimit: number | null
   officersExcluded: boolean | null
+  addlInsd: boolean | null
+  subrWvd: boolean | null
 }
 
 type ExtractedFields = {
@@ -506,6 +501,8 @@ function emptyBox(): CoverageBox {
     elEachEmployee: null,
     elPolicyLimit: null,
     officersExcluded: null,
+    addlInsd: null,
+    subrWvd: null,
   }
 }
 
@@ -539,6 +536,8 @@ function readBox(raw: unknown): CoverageBox {
   box.elEachEmployee = asMoney(o.elEachEmployee)
   box.elPolicyLimit = asMoney(o.elPolicyLimit)
   box.officersExcluded = asBool(o.officersExcluded)
+  box.addlInsd = asBool(o.addlInsd)
+  box.subrWvd = asBool(o.subrWvd)
   return box
 }
 
@@ -822,7 +821,7 @@ async function analyzeWithOpenAI(args: {
           {
             role: 'system',
             content:
-              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit, officersExcluded. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. For workersComp section C: statutory is true if the PER STATUTE box is marked/X\'d. officersExcluded refers to the "ANY PROPRIETOR/PARTNER/EXECUTIVE OFFICER/MEMBER EXCLUDED?" question — set officersExcluded true only if the Y (Yes) box is marked with an X or checkmark, false if the N (No) box is marked, and null if neither can be seen. additionalInsured true only if Description of Operations lists FIS as additional insured (not merely certificate holder). signed is true if there is ANY handwriting, ink, or signature in the Authorized Representative signature box near the bottom. Even a stylized, scribbled, or partially legible signature counts as signed. Only set signed false if that box is completely blank.',
+              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit, officersExcluded, addlInsd, subrWvd. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. In the COVERAGES table there are two X-mark columns: ADDL INSD (additional insured endorsement) and SUBR WVD (subrogation waived). For each of gl, auto, and workersComp set addlInsd true if that row\'s ADDL INSD box has an X or checkmark (blank or empty if not), and subrWvd true if that row\'s SUBR WVD box has an X or checkmark. These X marks are the primary evidence of additional-insured and waiver status, so read them carefully. For workersComp section C: statutory is true if the PER STATUTE box is marked/X\'d. officersExcluded refers to the "ANY PROPRIETOR/PARTNER/EXECUTIVE OFFICER/MEMBER EXCLUDED?" question — set officersExcluded true only if the Y (Yes) box is marked with an X or checkmark, false if the N (No) box is marked, and null if neither can be seen. additionalInsured true if Description of Operations lists FIS as additional insured OR the GL row has an X in ADDL INSD (not merely certificate holder). signed is true if there is ANY handwriting, ink, or signature in the Authorized Representative signature box near the bottom. Even a stylized, scribbled, or partially legible signature counts as signed. Only set signed false if that box is completely blank.',
           },
           { role: 'user', content },
         ],
@@ -1204,6 +1203,12 @@ function buildResult(args: {
   }
 
   if (treatAsCoi && claimedType !== 'auto_insurance') {
+    const glBox = args.ai?.gl || emptyBox()
+    const autoBox = args.ai?.auto || emptyBox()
+    const glAddlInsd = glBox.addlInsd === true
+    const glSubrWvd = glBox.subrWvd === true
+    const autoAddlInsd = autoBox.addlInsd === true
+
     const textHits = [
       hay.includes('additional insured'),
       hay.includes('ongoing') && hay.includes('completed'),
@@ -1211,19 +1216,26 @@ function buildResult(args: {
       hay.includes('waiver of subrogation'),
       hay.includes('30 day') || hay.includes('thirty day'),
     ].filter(Boolean).length
-    const aiHits = AI_WORDING_KEYS.filter((k) => args.ai?.[k] === true).length
+    const aiInsured = args.ai?.additionalInsured === true || glAddlInsd
+    const aiWaiver = args.ai?.waiverOfSubrogation === true || glSubrWvd
+    const aiPrimary = args.ai?.primaryNoncontributory === true
+    const aiThirty = args.ai?.thirtyDayCancellation === true
+    const aiHits = [aiInsured, aiWaiver, aiPrimary, aiThirty].filter(Boolean).length
     const hits = Math.max(textHits, aiHits)
-    const aiSaysInsured = args.ai?.additionalInsured === true
+    const aiSaysInsured = aiInsured
+    const xMarkNote = glAddlInsd || glSubrWvd || autoAddlInsd
+      ? ` GL ADDL INSD ${glAddlInsd ? 'X' : 'blank'} / SUBR WVD ${glSubrWvd ? 'X' : 'blank'}.`
+      : ''
     checks.push({
       id: 'ai-wording',
       label: 'Additional insured statement',
       status: hits >= 3 || aiSaysInsured ? 'pass' : hits >= 1 ? 'warn' : 'fail',
       detail:
         hits >= 3 || aiSaysInsured
-          ? 'Description of Operations has the additional insured / waiver / 30-day cancellation wording.'
+          ? `Additional insured / waiver confirmed (X marks or description wording).${xMarkNote}`
           : hits >= 1
-            ? 'Some additional-insured wording was found, but the full yellow sample paragraph is incomplete.'
-            : 'Missing the additional insured statement. FIS must be additional insured for GL (and auto if listed), with waiver and 30-day cancellation.',
+            ? `Some additional-insured wording was found, but the full yellow sample paragraph is incomplete.${xMarkNote}`
+            : `Missing the additional insured statement. FIS must be additional insured for GL (and auto if listed), with waiver and 30-day cancellation.${xMarkNote}`,
     })
   }
 
