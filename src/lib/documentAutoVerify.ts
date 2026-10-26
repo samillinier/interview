@@ -541,6 +541,22 @@ function readBox(raw: unknown): CoverageBox {
   return box
 }
 
+/** True when the workers-comp section has ANY data (a filled Section C), even if
+ *  the model did not set `present`. Used to decide whether to surface WC checks
+ *  on a GL COI that also carries workers comp. */
+function wcHasData(wc: CoverageBox): boolean {
+  return (
+    wc.present === true ||
+    wc.statutory != null ||
+    wc.officersExcluded != null ||
+    wc.elEachAccident != null ||
+    wc.elEachEmployee != null ||
+    wc.elPolicyLimit != null ||
+    wc.addlInsd != null ||
+    wc.subrWvd != null
+  )
+}
+
 async function extractPdfText(buf: Buffer): Promise<string> {
   try {
     const mod: { default?: (data: Buffer) => Promise<{ text?: string }> } = await import('pdf-parse')
@@ -821,7 +837,7 @@ async function analyzeWithOpenAI(args: {
           {
             role: 'system',
             content:
-              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit, officersExcluded, addlInsd, subrWvd. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. In the COVERAGES table there are two X-mark columns: ADDL INSD (additional insured endorsement) and SUBR WVD (subrogation waived). For each of gl, auto, and workersComp set addlInsd true if that row\'s ADDL INSD box has an X or checkmark (blank or empty if not), and subrWvd true if that row\'s SUBR WVD box has an X or checkmark. These X marks are the primary evidence of additional-insured and waiver status, so read them carefully. For workersComp section C: statutory is true if the PER STATUTE box is marked/X\'d. officersExcluded refers to the "ANY PROPRIETOR/PARTNER/EXECUTIVE OFFICER/MEMBER EXCLUDED?" question — set officersExcluded true only if the Y (Yes) box is marked with an X or checkmark, false if the N (No) box is marked, and null if neither can be seen. additionalInsured true if Description of Operations lists FIS as additional insured OR the GL row has an X in ADDL INSD (not merely certificate holder). signed is true if there is ANY handwriting, ink, or signature in the Authorized Representative signature box near the bottom. Even a stylized, scribbled, or partially legible signature counts as signed. Only set signed false if that box is completely blank.',
+              'You check Floor Interior Services subcontractor ACORD 25 COIs and other compliance files. Return ONLY JSON with keys: detectedType (liability_insurance|auto_insurance|workers_comp|workers_comp_certificate|business_registration|sunbiz|w9|lrrp|lead_firm_certificate|employers_liability|other), detectedTypeLabel, namedInsured, insuredAddress, dateBoxPrinted, issueDate, effectiveDate, expiryDate, certificateHolder, certificateHolderAddress, coverages, gl, auto, workersComp, additionalInsured, primaryNoncontributory, waiverOfSubrogation, thirtyDayCancellation, signed, notes. dateBoxPrinted is the exact MM/DD/YYYY from the small DATE box in the TOP RIGHT, next to the title — not POLICY EFF and not POLICY EXP. Example: printed 08/28/2026 means dateBoxPrinted "08/28/2026" and issueDate 2026-08-28. NEVER turn 08/28/2026 into 2022-08-20 or 10/23/2026 into 2023-10-23. Never use the day as the year. Never copy POLICY EFF (for example 08/20/2026) into the DATE box. Other dates YYYY-MM-DD. Money as numbers not strings. gl/auto/workersComp objects use present, commercialCgl, claimsMade, occurrence, aggregatePerPolicy, aggregatePerProject, aggregatePerLocation, eachOccurrence, damageToRented, medicalExpense, personalAdInjury, generalAggregate, productsCompletedOps, anyAuto, hiredAutos, scheduledAutos, nonOwnedAutos, combinedSingleLimit, bodilyInjuryPerPerson, bodilyInjuryPerAccident, propertyDamage, statutory, elEachAccident, elEachEmployee, elPolicyLimit, officersExcluded, addlInsd, subrWvd. GL section A must note Commercial General Liability, Occurrence (not claims-made), and Gen\'l Aggregate Limit Applies Per POLICY. If auto section B is filled, record which of Any Auto, Hired Autos, Scheduled Autos, and Non-Owned Autos are marked. All Owned Autos is not required. In the COVERAGES table there are two X-mark columns: ADDL INSD (additional insured endorsement) and SUBR WVD (subrogation waived). For each of gl, auto, and workersComp set addlInsd true if that row\'s ADDL INSD box has an X or checkmark (blank or empty if not), and subrWvd true if that row\'s SUBR WVD box has an X or checkmark. These X marks are the primary evidence of additional-insured and waiver status, so read them carefully. For workersComp section C: set workersComp.present true whenever Section C has ANY content (limits filled, boxes marked, or policy number present) — even on a GL COI. statutory is true if the PER STATUTE box is marked/X\'d. officersExcluded refers to the "ANY PROPRIETOR/PARTNER/EXECUTIVE OFFICER/MEMBER EXCLUDED?" question — set officersExcluded true only if the Y (Yes) box is marked with an X or checkmark, false if the N (No) box is marked, and null if neither can be seen. additionalInsured true if Description of Operations lists FIS as additional insured OR the GL row has an X in ADDL INSD (not merely certificate holder). signed is true if there is ANY handwriting, ink, or signature in the Authorized Representative signature box near the bottom. Even a stylized, scribbled, or partially legible signature counts as signed. Only set signed false if that box is completely blank.',
           },
           { role: 'user', content },
         ],
@@ -1160,46 +1176,49 @@ function buildResult(args: {
     }
   }
 
-  const checkWc = claimedType === 'workers_comp' || (treatAsCoi && claimedType === 'liability_insurance' && args.ai?.workersComp.present === true)
-  if (claimedType === 'workers_comp' || checkWc) {
-    const wc = args.ai?.workersComp || emptyBox()
-    if (claimedType === 'workers_comp' || wc.present === true) {
-      if (wc.statutory === false) {
-        checks.push({
-          id: 'wc-statutory',
-          label: 'WC statutory',
-          status: 'warn',
-          detail: 'The "Per Statute" box is not marked — confirm the statutory limits apply.',
-        })
-      } else if (wc.statutory === true) {
-        checks.push({
-          id: 'wc-statutory',
-          label: 'WC statutory',
-          status: 'pass',
-          detail: 'Workers compensation is Per Statute.',
-        })
-      }
-
-      if (wc.officersExcluded === true) {
-        checks.push({
-          id: 'wc-officers',
-          label: 'WC officers excluded',
-          status: 'warn',
-          detail: 'Any Proprietor/Partner/Executive Officer/Member is marked EXCLUDED (Y). Confirm FIS allows this.',
-        })
-      } else if (wc.officersExcluded === false) {
-        checks.push({
-          id: 'wc-officers',
-          label: 'WC officers excluded',
-          status: 'pass',
-          detail: 'Proprietor/Partner/Executive Officer/Member is covered (N).',
-        })
-      }
-
-      pushLimit(checks, 'wc-acc', "WC employer's liability each accident", wc.elEachAccident, WC_EL_MIN.eachAccident)
-      pushLimit(checks, 'wc-emp', 'EL each employee (disease)', wc.elEachEmployee, WC_EL_MIN.eachEmployee)
-      pushLimit(checks, 'wc-pol', 'EL disease policy limit', wc.elPolicyLimit, WC_EL_MIN.policyLimit)
+  // Workers comp checks show whenever: (a) this slot is a workers-comp upload,
+  // or (b) it's a COI and Section C actually has data. `present` alone is too
+  // brittle — the model often fills the EL limits but leaves `present` unset.
+  const wcBox = args.ai?.workersComp || emptyBox()
+  const wcFilled = wcHasData(wcBox)
+  const checkWc = claimedType === 'workers_comp' || (treatAsCoi && wcFilled)
+  if (checkWc) {
+    const wc = wcBox
+    if (wc.statutory === false) {
+      checks.push({
+        id: 'wc-statutory',
+        label: 'WC statutory',
+        status: 'warn',
+        detail: 'The "Per Statute" box is not marked — confirm the statutory limits apply.',
+      })
+    } else if (wc.statutory === true) {
+      checks.push({
+        id: 'wc-statutory',
+        label: 'WC statutory',
+        status: 'pass',
+        detail: 'Workers compensation is Per Statute.',
+      })
     }
+
+    if (wc.officersExcluded === true) {
+      checks.push({
+        id: 'wc-officers',
+        label: 'WC officers excluded',
+        status: 'warn',
+        detail: 'Any Proprietor/Partner/Executive Officer/Member is marked EXCLUDED (Y). Confirm FIS allows this.',
+      })
+    } else if (wc.officersExcluded === false) {
+      checks.push({
+        id: 'wc-officers',
+        label: 'WC officers excluded',
+        status: 'pass',
+        detail: 'Proprietor/Partner/Executive Officer/Member is covered (N).',
+      })
+    }
+
+    pushLimit(checks, 'wc-acc', "WC employer's liability each accident", wc.elEachAccident, WC_EL_MIN.eachAccident)
+    pushLimit(checks, 'wc-emp', 'EL each employee (disease)', wc.elEachEmployee, WC_EL_MIN.eachEmployee)
+    pushLimit(checks, 'wc-pol', 'EL disease policy limit', wc.elPolicyLimit, WC_EL_MIN.policyLimit)
   }
 
   if (treatAsCoi && claimedType !== 'auto_insurance') {
